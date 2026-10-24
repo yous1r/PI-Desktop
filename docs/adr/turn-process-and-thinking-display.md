@@ -63,12 +63,14 @@ wrapper.
 still load, is no longer exposed in Settings, and is not read for rendering; new
 writes store `transcriptDisplayMode`.
 
-Group folding defaults are unified across modes and do not depend on the
-thinking preference. The active ordinary group stays open while its segment is
-active. After completion, ordinary groups with at most four visible items stay
-open, larger ordinary groups start closed, and Task topology groups stay open.
-Tool, search and run-row payloads keep their own closed defaults. Explicit user
-choices remain authoritative.
+Group folding defaults are unified across modes. Every ordinary group of a turn
+stays open while that turn is active, whether or not it still owns the live
+segment, so work never folds away mid-run. After the turn settles, ordinary
+groups with at most four visible items stay open, larger groups of plain tool
+rows start closed, and Task topology groups stay open. A group that still renders
+a Thinking row stays open too: with `Show thinking` on the reasoning is content
+the reader asked to see. Tool, search and run-row payloads keep their own closed
+defaults. Explicit user choices remain authoritative.
 
 The turn's disclosure header states the turn's outcome and carries only its
 bounded metadata: status, recorded duration and direct tool/search count. It
@@ -116,13 +118,15 @@ still exposes the retained item choices without opening all descendants.
 
 Each header toggles only its own level. Parent and child states are independent:
 closing a parent preserves descendant choices, reopening restores them, and
-sibling groups do not form an accordion. Manual interaction with an item claims
-its containing group as user-owned without toggling it; completion must not close
-a container around content the user opened, focused, or selected. Manual choices
-survive streaming, completion, preference changes, reparenting from singleton to
-group, and row remounts while the owning retained session pane remains alive.
-Pane eviction, session deletion, or renderer restart releases this presentation
-memory; it is not stored in messages or host settings.
+sibling groups do not form an accordion. An explicit choice belongs to its own
+level alone and never pins an ancestor. Reading protection is transient: while
+focus or a selection is inside a level, an automatic close is deferred for that
+level and its ancestors, and leaving the content hands control straight back to
+the automatic default. Manual choices survive streaming, completion, preference
+changes, reparenting from singleton to group, and row remounts while the owning
+retained session pane remains alive. Pane eviction, session deletion, or renderer
+restart releases this presentation memory; it is not stored in messages or host
+settings.
 
 Search/navigation reveals the ancestor path its target needs: the turn process
 and, where one exists, the activity group that own the named message. Item-level
@@ -229,3 +233,10 @@ text-only hover and the inline caret position, while `turn-process.test.mjs` and
 `transcript-style.test.mjs` continue to cover phase precedence and the shared
 header geometry. See E2E-CHAT-turn-process-and-thinking-display for the
 synchronized scenario text.
+For the 2026-10-24 automatic-folding amendment,
+`apps/desktop/test/activity-group-folding.test.mjs` covers the settled group
+defaults, and `pnpm test:e2e:transcript` exercises the automatic turn and group
+folding, transient reading protection, manual-choice locality and `Show thinking`
+behavior in real Chromium. The same suite measures the activity issue counter's
+inline layout at 320/800px and 100%/150% zoom in English and Simplified Chinese.
+See E2E-CHAT-turn-process-and-thinking-display.

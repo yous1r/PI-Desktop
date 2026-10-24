@@ -28,8 +28,10 @@ entitled to it.
   endpoint keys are optional, with no authentication-mode switch. An empty or
   whitespace-only key on a row without a stored key saves `authKind: "none"`
   without `secretValue`; a supplied key uses API-key authentication. Editing
-  with an empty key preserves the stored key. **Clear saved API key** stages
-  removal, keeps the input enabled, and stops discovery from reusing that key;
+  with an empty key preserves the stored key. **Clear saved API key** is an
+  icon button beside the input on the same row, with a localized tooltip and
+  accessible name. It stages removal, keeps the input enabled, and stops
+  discovery from reusing that key;
   Save applies the removal and no-auth mode unless a replacement key is typed.
   Closing without saving changes no stored credential. Named cloud services
   keep their existing authentication defaults.

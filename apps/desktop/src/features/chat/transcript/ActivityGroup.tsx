@@ -1,4 +1,5 @@
 import { SubagentStopButton } from "./SubagentStopButton";
+import { activityGroupStartsOpen } from "../../../lib/activity-group-folding";
 import { activityTimingInputs, cachedVisibleActivityItems } from "../../../lib/transcript-activity-summary";
 import { reuseReferences } from "../../../lib/transcript-summary";
 import { ActivityItems } from "./ActivityItems";
@@ -60,9 +61,6 @@ import { resolveTranscriptDisplayMode } from "../../../lib/transcript-display-mo
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 type ActivityItem = AssistantActivityItem;
-
-const AUTOMATIC_OPEN_MAX_ITEMS = 4;
-
 
 function waitingSubagentActionLabel(
   agent: AgentActivityAgent,
@@ -137,6 +135,8 @@ type ActivityGroupProps = {
   items: ActivityItem[];
   embedded?: boolean;
   isActive: boolean;
+  /** The owning assistant turn is still running. */
+  turnActive: boolean;
   endedAt?: string;
   /** Current runtime wait phase, when the group owns the live turn tail. */
   runtimeActivity?: AgentActivity;
@@ -171,6 +171,7 @@ function activityGroupPropsEqual(
   if (
     previous.embedded !== next.embedded ||
     previous.isActive !== next.isActive ||
+    previous.turnActive !== next.turnActive ||
     previous.endedAt !== next.endedAt ||
     previous.runtimeActivity !== next.runtimeActivity ||
     previous.items.length !== next.items.length
@@ -198,6 +199,7 @@ export const ActivityGroup = memo(function ActivityGroup({
   items,
   embedded: _embedded = false,
   isActive,
+  turnActive,
   endedAt,
   runtimeActivity,
   turnDelegationStatuses,
@@ -244,7 +246,13 @@ export const ActivityGroup = memo(function ActivityGroup({
   const first = items[0];
   // Groups frame their rows; each tool or search payload keeps its own
   // disclosure, so leaving a small group open does not reveal tool details.
-  const automaticallyOpen = hasSubagentTopology || live || visibleItems.length <= AUTOMATIC_OPEN_MAX_ITEMS;
+  // Work the turn still owns and reasoning the reader asked to see stay open;
+  // only a settled group of plain tool rows falls back to the size rule.
+  const automaticallyOpen = activityGroupStartsOpen(visibleItems, {
+    subagentTopology: hasSubagentTopology,
+    turnActive,
+    groupActive: live,
+  });
   const disclosure = useAutomaticDisclosure(
     automaticallyOpen,
     revealRequest,
