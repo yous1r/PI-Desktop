@@ -906,3 +906,55 @@
   max-height: 100%;
   border-radius: var(--radius-sm);
 }
+
+/* Work-panel terminal. The PTY is a real shell, so the pane owns its own
+   scroll surface and must fill the tab without a document scrollbar. */
+.terminal-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.terminal-tab__bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--ds-border-subtle);
+  color: var(--ds-text-muted);
+  font-size: var(--text-xs);
+}
+
+.terminal-tab__shell select {
+  padding: 2px 4px;
+  border: 1px solid var(--ds-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--ds-surface-raised);
+  color: var(--ds-text);
+  font-size: var(--text-xs);
+}
+
+.terminal-tab__status {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-tab__surface {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.terminal-tab__surface .xterm {
+  height: 100%;
+}
+
+.terminal-tab__surface .xterm-viewport {
+  background: transparent !important;
+}

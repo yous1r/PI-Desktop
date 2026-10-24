@@ -4830,33 +4830,33 @@ window; opening a normal panel afterward must still work.
 - **Milestone**: M5
 - **Status**: Unit-covered (`chat-review-entry.test.mjs`); full UI scenario Draft
 
-#### E2E-058: Built-in interactive terminal is absent
+#### E2E-058: Work-panel terminal hosts a real PTY
 
-- **Preconditions**: A workspace is open and the Agent has completed a Bash
-  tool call.
-- **Steps**: 1) Open the work panel with Cmd/Ctrl+J and inspect the empty
-  state and context menu. 2) Confirm there is no Terminal tab, launcher row,
-  terminal-specific panel copy, or terminal IPC surface. 3) Confirm the
-  completed Bash row still shows its command, output, status, and copy action,
-  and that its `IconTerminal` presentation remains available. 4) Verify an
-  interactive shell is opened in the user's external terminal instead of the
-  work panel. 5) Build/package the desktop app and inspect the dependency and
-  unpacked-resource lists.
-- **Expected**: The work panel offers the Review launcher row plus Browser and
-  in-scope plugin views; Review opens on explicit user action and file resources
-  are transcript-opened; no PTY is created and no terminal tab can be opened.
-  Agent Bash remains non-interactive and fully visible in the transcript.
-  Interactive shell work is performed by the external terminal. Desktop
-  packaging has no PTY/xterm dependency, terminal-specific
-  IPC, or native terminal payload, while generic lifecycle `terminal` values
-  continue to work.
+- **Preconditions**: A workspace is open on a machine with at least one
+  discoverable shell.
+- **Steps**: 1) Open the work panel with Cmd/Ctrl+J, use the `+` launcher, and
+  pick the Terminal row. 2) Confirm a shell starts in the workspace directory
+  and that typing a command runs it in the pane. 3) Resize the panel and
+  confirm the PTY follows the new size. 4) Run `exit` and confirm the pane
+  reports the exit and offers a restart. 5) Close the tab and confirm the shell
+  process is gone. 6) With several tabs open, close the window and confirm no
+  shell survives. 7) Confirm a completed Bash tool row still shows its command,
+  output, status, and copy action in the transcript.
+- **Expected**: The launcher offers Review, Terminal, and in-scope plugin views.
+  A terminal tab owns exactly one PTY created by the main process; keystrokes,
+  resizes, and exit flow over the terminal IPC channels, and no PTY survives a
+  closed tab or a closed window. The renderer never spawns a process, and a cwd
+  outside the workspace is refused. Agent Bash stays non-interactive and fully
+  visible in the transcript.
 - **Specs linked**: `02-architecture/02-tech-stack.md`,
   `03-runtime/01-ipc-protocol.md` §13a, `04-ux/08-component-spec.md` §5,
   ADR 0108
 - **Acceptance**: D (workspace), Quality
 - **Milestone**: M5
-- **Status**: Unit-covered (`work-panel.test.mjs`, `packaging-footprint.test.mjs`);
-  full UI scenario Draft
+- **Status**: Unit-covered (`work-panel.test.mjs`,
+  `terminal-service.test.mjs`, `terminal-ipc.test.mjs`,
+  `terminal-shell-registry.test.mjs`); full UI scenario Draft
+
 
 #### E2E-059: Embedded browser preview isolation and overlays
 

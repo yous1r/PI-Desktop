@@ -2400,6 +2400,27 @@ D193, and D194.
   `03-runtime/11-provider-model-system.md`,
   `03-runtime/13-model-catalog-and-selection.md`, and E2E-066/E2E-080/E2E-154.
 
+## 2026-10-09 — The work panel hosts a terminal again
+
+- This supersedes D251's terminal clauses and reverses commit a635e18b1. The
+  work panel owns a Terminal tab again: users asked for an interactive shell
+  beside the conversation instead of only an external terminal.
+- Ownership is unchanged from the earlier design and from the frozen process
+  model: Electron main owns the PTY (node-pty), the renderer owns only the
+  xterm view and forwards keystrokes over `pi-desktop/terminal/*`. The
+  renderer never spawns a process.
+- Boundaries kept explicit: a terminal opens only in the active workspace
+  (a cwd outside it is refused), the shell catalog is a filesystem probe in
+  main so the renderer cannot choose an executable, app-private
+  `PI_DESKTOP_*` variables are stripped from the child environment, and every
+  channel authenticates the main window as sender.
+- Lifecycle: closing a tab, closing the window, and quitting all kill the PTY.
+  Closing the window is not quitting, so the service stays usable for a
+  reopened window; only shutdown seals it.
+- Agent Bash stays non-interactive and transcript-owned; a tool result never
+  opens a terminal on its own.
+- See E2E-058, `04-ux/08-component-spec.md` §5, and ADR 0108.
+
 ## 2026-10-02 — models.dev is the chat model metadata authority
 
 - D639 supersedes the Pi 0.99.1 metadata decision and the Pi sibling fallback.

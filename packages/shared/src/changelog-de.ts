@@ -22,6 +22,7 @@ export const deEntries: ChangelogEntry[] = [
       "Lokale HTML-Artefakte öffnen sich in der Sitzung, in der sie erstellt wurden.",
       "Breite Markdown-Tabellen lassen sich horizontal scrollen, ohne das Gesprächslayout zu stören.",
       "Auch nach einem zu großen Tool-Bild bleibt die Unterhaltung bedienbar.",
+      "Führen Sie eine interaktive Shell in einem Terminal-Tab des Arbeitspanels im aktuellen Arbeitsbereich neben dem Gespräch aus.",
     ],
   },
   {

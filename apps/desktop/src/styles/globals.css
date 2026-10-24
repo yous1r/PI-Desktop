@@ -28,6 +28,7 @@
 @import "./project-create-dialog.css";
 @import "./sessions.css";
 @import "./worktree.css";
+@import "@xterm/xterm/css/xterm.css";
 @import "./work-panel.css";
 @import "./providers.css";
 @import "./model-config.css";

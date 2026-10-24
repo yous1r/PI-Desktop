@@ -22,6 +22,7 @@ export const zhCNEntries: ChangelogEntry[] = [
       "可在创建 HTML 本地页面的会话中直接打开页面。",
       "宽 Markdown 表格可横向滚动，不影响对话布局。",
       "工具返回超大图片时，对话仍可正常使用。",
+      "在当前工作区的侧边工作面板 Terminal 标签中，与对话并排运行交互式终端。",
     ],
   },
   {

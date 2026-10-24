@@ -23,6 +23,7 @@ import {
   pluginWorkPanelTab,
   subagentTabDisplayLabels,
   toolWorkPanelTab,
+  terminalWorkPanelTab,
 } from "../../lib/work-panel-tabs";
 import type { PluginViewMeta } from "@pi-desktop/shared";
 import { pluginViewIcon, pluginViewInitial } from "../../lib/plugin-view-icons";
@@ -40,11 +41,13 @@ import {
   IconPanelRestore,
   IconPlug,
   IconPlus,
+  IconTerminal,
 } from "../icons";
 import { ReviewTab } from "./ReviewTab";
 import { FilesTab } from "./FilesTab";
 import { PluginViewTab } from "./PluginViewTab";
 import { SubagentTranscriptTab } from "./SubagentTranscriptTab";
+import { TerminalTab } from "./TerminalTab";
 import {
   MAIN_PANE_MIN_WIDTH,
   WORK_PANEL_COMPACT_MIN_WIDTH,
@@ -62,6 +65,7 @@ const TAB_ICONS = {
   file: IconFileText,
   plugin: IconPlug,
   subagent: IconBot,
+  terminal: IconTerminal,
 } as const;
 
 type WorkPanelResizeState = {
@@ -133,6 +137,13 @@ function workPanelTools(
       tab: toolWorkPanelTab("review"),
       label: t("panel.tabs.review"),
       icon: IconDiff,
+    },
+    {
+      // Host-owned like Review: a terminal is a local PTY, not a plugin view.
+      id: "terminal",
+      tab: terminalWorkPanelTab(t("panel.terminal.title")),
+      label: t("panel.terminal.title"),
+      icon: IconTerminal,
     },
     ...pluginViews.map((view) => {
       const Icon = pluginViewIcon(view.icon);
@@ -1006,6 +1017,17 @@ function LocalWorkPanel({
               aria-labelledby={`work-panel-tab-${activeTab.id}`}
             >
               <ReviewTab />
+            </div>
+          )}
+          {activeTab?.kind === "terminal" && (
+            <div
+              key={activeTab.id}
+              id={`work-panel-surface-${activeTab.id}`}
+              className="work-panel-tabpane"
+              role="tabpanel"
+              aria-labelledby={`work-panel-tab-${activeTab.id}`}
+            >
+              <TerminalTab tabId={activeTab.id} />
             </div>
           )}
           {activeTab?.kind === "file" && (

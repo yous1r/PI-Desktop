@@ -2089,7 +2089,20 @@ sklm: {
       "browser": "Browser",
       "file": "Dateien",
       "plugin": "Plugin-Ansicht",
-      "subagent": "Subagent"
+      "subagent": "Subagent",
+      "terminal": "Terminal"
+    },
+    "terminal": {
+      "title": "Terminal",
+      "exited": "Terminal beendet",
+      "exitCode": "Exit-Code {{code}}",
+      "restart": "Terminal neu starten",
+      "shellLabel": "Shell",
+      "shell": "Shell",
+      "new": "Neues Terminal",
+      "unavailable": "Terminal nicht verfügbar",
+      "failed": "Terminal nicht verfügbar",
+      "noShells": "Auf diesem Rechner wurde keine Shell gefunden."
     },
     "pluginView": {
       "failed": "Diese Ansicht konnte nicht geladen werden. Laden Sie das Plugin neu und versuchen Sie es erneut."

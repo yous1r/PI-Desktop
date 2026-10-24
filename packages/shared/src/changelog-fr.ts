@@ -22,6 +22,7 @@ export const frEntries: ChangelogEntry[] = [
       "Ouvrez les artefacts HTML locaux dans la conversation qui les a créés.",
       "Faites défiler les tableaux Markdown larges sans déformer la conversation.",
       "La conversation reste utilisable lorsqu’un outil renvoie une image trop volumineuse.",
+      "Exécutez un shell interactif dans un onglet Terminal du panneau de travail, dans l'espace de travail actuel, à côté de la conversation.",
     ],
   },
   {

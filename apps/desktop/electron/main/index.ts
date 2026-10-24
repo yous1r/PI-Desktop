@@ -52,6 +52,8 @@ import { getStorageBootstrap } from "./storage/bootstrap";
 import { createPlanUiProbe } from "./plan-ui-probe";
 import { registerIpcHandlers } from "./ipc/register";
 import { createVoiceService } from "./voice-service";
+import { ShellRegistry } from "./terminal/shell-registry";
+import { TerminalService } from "./terminal/terminal-service";
 import { MicrophoneLeaseRegistry } from "./live-voice/microphone-lease";
 import { createLiveCallService } from "./live-voice/runtime";
 import { createLiveVoiceWidget } from "./live-voice/widget-window";
@@ -159,6 +161,14 @@ const {
 const desktopServices = createDesktopServices({
   getLogger: () => logger,
   getMainWindow,
+});
+
+/** Work-panel terminal: PTY lifecycles live in main, never in the renderer. */
+const terminalShellRegistry = new ShellRegistry();
+const terminalService = new TerminalService({
+  getWindow: getMainWindow,
+  log: (level, message, data) =>
+    logger.app("runtime", level, `terminal: ${message}`, data as { data?: unknown } | undefined),
 });
 const {
   clipboardHistory,
@@ -525,6 +535,7 @@ applicationLifecycle = createApplicationLifecycle({
   pluginViews,
   plugins,
   logger,
+  closeTerminals: () => terminalService.closeAll(),
   refreshReleaseNotes: () => updater.refreshReleaseNotes(),
   applyPluginLauncherShortcut: applyPluginLauncherShortcutForLifecycle,
   applyToggleWindowShortcut: applyToggleWindowShortcutForLifecycle,
@@ -960,6 +971,9 @@ function registerIpc() {
     recordPastedClipboardFiles,
     currentWorkspacePath,
     setCurrentWorkspacePath,
+    terminalShellRegistry,
+    terminalService,
+    terminalDefaultCwd: () => currentWorkspacePath() ?? undefined,
     withGitBranch,
     activeTurnUsages,
     approvedExecutionIdsBySession,
@@ -1095,9 +1109,10 @@ registerShutdownHandlers({
   updater,
   logger,
   confirmQuitDialog,
-  disposePowerSaveBlockers,
   liveCallService,
   disposeSystemProxyRelay,
+  disposePowerSaveBlockers,
+  closeTerminals: () => terminalService.dispose(),
 });
 
 registerApplicationActivation({

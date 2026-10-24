@@ -177,6 +177,12 @@ import type {
   ModelConfigImportCandidate,
   ModelConfigImportSource,
 } from "@pi-desktop/shared";
+import type {
+  TerminalDataEvent,
+  TerminalExitEvent,
+  TerminalOpenResult,
+  TerminalShellProfile,
+} from "@pi-desktop/shared";
 export type { ModelConfigImportCandidate, ModelConfigImportSource };
 
 export interface ImportCandidate {
@@ -846,6 +852,34 @@ export const api = {
     return window.piDesktop.on(IPC.event.backgroundTasksChanged, (payload) =>
       listener((payload ?? {}) as { version?: number }),
     );
+  },
+  terminalListShells: (refresh?: boolean) =>
+    invoke<{ shells: TerminalShellProfile[] }>(IPC.invoke.terminalListShells, { refresh }),
+  terminalCreate: (input: { shellId: string; cwd?: string; cols: number; rows: number }) =>
+    invoke<TerminalOpenResult>(IPC.invoke.terminalCreate, input),
+  terminalWrite: (terminalId: string, data: string) =>
+    invoke<{ ok: boolean }>(IPC.invoke.terminalWrite, { terminalId, data }),
+  terminalResize: (terminalId: string, cols: number, rows: number) =>
+    invoke<{ ok: boolean }>(IPC.invoke.terminalResize, { terminalId, cols, rows }),
+  terminalClose: (terminalId: string) =>
+    invoke<{ ok: boolean }>(IPC.invoke.terminalClose, { terminalId }),
+  terminalGetBuffer: (terminalId: string, maxBytes?: number) =>
+    invoke<{ text: string }>(IPC.invoke.terminalGetBuffer, { terminalId, maxBytes }),
+  onTerminalData: (listener: (event: TerminalDataEvent) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.terminalData, (payload) => {
+      const event = payload as TerminalDataEvent | undefined;
+      if (!event || typeof event.terminalId !== "string" || typeof event.data !== "string") return;
+      listener(event);
+    });
+  },
+  onTerminalExit: (listener: (event: TerminalExitEvent) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.terminalExit, (payload) => {
+      const event = payload as TerminalExitEvent | undefined;
+      if (!event || typeof event.terminalId !== "string") return;
+      listener({ terminalId: event.terminalId, exitCode: event.exitCode ?? null });
+    });
   },
   configSyncGetState: () => invoke<ConfigSyncState>(IPC.invoke.configSyncGetState),
   configSyncConfigure: (input: ConfigSyncConfigureInput) =>

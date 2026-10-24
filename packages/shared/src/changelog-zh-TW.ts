@@ -22,6 +22,7 @@ export const zhTWEntries: ChangelogEntry[] = [
       "可在建立本機 HTML 頁面的對話中直接開啟頁面。",
       "寬大的 Markdown 表格可橫向捲動，不影響對話版面。",
       "工具回傳超大圖片時，對話仍可正常使用。",
+      "在目前工作區的側邊工作面板 Terminal 標籤中，與對話並排執行互動式終端機。",
     ],
   },
   {

@@ -2089,7 +2089,20 @@ sklm: {
       "browser": "Navegador",
       "file": "Archivos",
       "plugin": "Vista de complemento",
-      "subagent": "Subagente"
+      "subagent": "Subagente",
+      "terminal": "Terminal"
+    },
+    "terminal": {
+      "title": "Terminal",
+      "exited": "Terminal finalizado",
+      "exitCode": "Código de salida {{code}}",
+      "restart": "Reiniciar terminal",
+      "shellLabel": "Shell",
+      "shell": "Shell",
+      "new": "Nuevo terminal",
+      "unavailable": "Terminal no disponible",
+      "failed": "Terminal no disponible",
+      "noShells": "No se encontró ningún shell en este equipo."
     },
     "pluginView": {
       "failed": "Esta vista no se pudo cargar. Vuelva a cargar el complemento e inténtelo de nuevo."

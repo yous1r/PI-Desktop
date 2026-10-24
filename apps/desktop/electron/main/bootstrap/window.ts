@@ -120,6 +120,12 @@ export type WindowLifecycleDependencies = {
   browserHost: BrowserHost;
   pluginViews: PluginViewHost;
   logger: Pick<Logger, "app">;
+  /**
+   * Kills the work-panel PTYs owned by this window. Called when the main window
+   * closes: under `closeBehavior: "tray"` the app keeps running, and a PTY whose
+   * renderer is gone can never be reattached or closed by the user.
+   */
+  closeTerminals?: () => void;
 };
 
 export async function createWindow({
@@ -144,6 +150,7 @@ export async function createWindow({
   browserHost,
   pluginViews,
   logger,
+  closeTerminals,
 }: WindowLifecycleDependencies): Promise<void> {
 
   windowState.notificationViewingSessionId = null;
@@ -783,6 +790,9 @@ export async function createWindow({
     }
     if (windowState.mainWindow !== window) return;
     windowState.mainWindow = null;
+    // The PTYs belonged to this window's renderer. Under "tray" the app stays
+    // alive with no surface able to write to or close them.
+    closeTerminals?.();
     browserHost.setWindow(null);
     pluginViews.setWindow(null);
     if (

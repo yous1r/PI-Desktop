@@ -72,6 +72,8 @@ export default defineConfig({
           "jiti/static",
           "@picovoice/pvrecorder-node",
           "transcribe-cpp",
+          // Native PTY binding, loaded lazily by the terminal service.
+          "node-pty",
         ],
         input: {
           index: resolve(__dirname, "electron/main/entry.ts"),

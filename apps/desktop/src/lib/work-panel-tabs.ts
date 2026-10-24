@@ -3,7 +3,8 @@ export type WorkPanelTabKind =
   | "review"
   | "file"
   | "plugin"
-  | "subagent";
+  | "subagent"
+  | "terminal";
 
 export type WorkPanelTab = {
   id: string;
@@ -139,6 +140,18 @@ export function subagentWorkPanelTab(
   };
 }
 
+/**
+ * A work-panel terminal tab. Each tab owns one PTY, so the id must be unique
+ * per tab rather than keyed by shell: two terminals may run the same shell.
+ * `resource` carries the PTY handle once main has created it.
+ */
+export function terminalWorkPanelTab(label?: string): WorkPanelTab {
+  return {
+    id: `terminal:${Date.now().toString(36)}-${++newWorkPanelTabSequence}`,
+    kind: "terminal",
+    ...(label ? { label } : {}),
+  };
+}
 export const BROWSER_PLUGIN_TAB = {
   pluginId: "pi.browser",
   viewId: "browser",
@@ -248,7 +261,7 @@ export function isKnownWorkPanelTab(tab: WorkPanelTab): boolean {
     Boolean(tab) &&
     (tab.kind === "new" || tab.kind === "review" ||
       tab.kind === "file" || tab.kind === "plugin" ||
-      tab.kind === "subagent")
+      tab.kind === "subagent" || tab.kind === "terminal")
   );
 }
 

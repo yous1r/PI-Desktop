@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import { dialog, shell, type BrowserWindow, type IpcMain, type IpcMainInvokeEvent } from "electron";
 import { err, ErrorCodes, IPC, ok, type LifecycleDialogChoice, type Result } from "@pi-desktop/shared";
 import type { AgentHostBridge } from "../agent-host-bridge";
@@ -34,9 +34,12 @@ import { registerWorktreeIpc } from "./worktree-ipc";
 import { createComposerTemplateLoader, registerWorkspaceIpc } from "./workspace-ipc";
 import { registerComposerIpc } from "./composer-ipc";
 import { registerSpeechIpc } from "./speech-ipc";
+import { registerTerminalIpc } from "./terminal-ipc";
 import { registerVoiceIpc } from "./voice-ipc";
 import { registerLiveVoiceIpc } from "./live-voice-ipc";
 import type { LiveCallService } from "../live-voice/call-service";
+import type { ShellRegistry } from "../terminal/shell-registry";
+import type { TerminalService } from "../terminal/terminal-service";
 import type { ComposerSuggestionAnswer } from "../services/composer-suggestion";
 import type { LiveVoiceWidget } from "../live-voice/widget-window";
 import type { IpcRegistrar } from "./types";
@@ -75,6 +78,11 @@ export type RegisterIpcDependencies = {
   completionNoticeTurns: Set<string>;
   liveCallService?: LiveCallService;
   liveVoiceWidget?: LiveVoiceWidget;
+  /** Work-panel terminal: shell discovery + PTY lifecycle (main-owned). */
+  terminalShellRegistry: ShellRegistry;
+  terminalService: TerminalService;
+  /** Workspace cwd a new terminal opens in when the request omits one. */
+  terminalDefaultCwd?: () => string | undefined;
   restartForStorage: () => void;
   mcpOAuth?: McpOAuthManager;
   markLifecycleDialogRendererReady: (window: BrowserWindow) => boolean;
@@ -195,8 +203,10 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     voiceService,
     liveCallService,
     liveVoiceWidget,
+    terminalShellRegistry,
+    terminalService,
+    terminalDefaultCwd,
   } = dependencies;
-
 
   const ipcHandlers = new Map<string, (...args: any[]) => Promise<any>>();
   const handle = (channel: string, fn: (...args: any[]) => Promise<any>) => {
@@ -332,6 +342,20 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     onProviderInvalidated: (providerId) => liveCallService?.invalidateProvider(providerId),
   });
   registerJevIpc({ registrar, logger });
+  registerTerminalIpc({
+    registrar,
+    registry: terminalShellRegistry,
+    service: terminalService,
+    defaultCwd: terminalDefaultCwd ?? (() => undefined),
+    // A terminal may open in the active workspace only. Without this the
+    // renderer could park a shell in any directory on the machine.
+    isAllowedCwd: (cwd) => {
+      const root = terminalDefaultCwd?.();
+      if (!root) return false;
+      const relativePath = relative(resolve(root), resolve(cwd));
+      return relativePath === "" || (!relativePath.startsWith("..") && !isAbsolute(relativePath));
+    },
+  });
   registerWorktreeIpc({
     registrar,
     getHost,

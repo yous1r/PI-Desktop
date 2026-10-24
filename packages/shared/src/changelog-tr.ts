@@ -22,6 +22,7 @@ export const trEntries: ChangelogEntry[] = [
       "Yerel HTML çıktılarını oluşturan oturumun içinde açın.",
       "Geniş Markdown tablolarını sohbet düzenini bozmadan kaydırın.",
       "Bir araç aşırı büyük bir görsel döndürse bile konuşmayı kullanmaya devam edin.",
+      "Geçerli çalışma alanında, konuşmanın yanındaki çalışma paneli Terminal sekmesinde etkileşimli bir kabuk çalıştırın.",
     ],
   },
   {
