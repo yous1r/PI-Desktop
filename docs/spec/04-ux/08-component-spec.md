@@ -123,6 +123,12 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
   the message is already loaded but outside the mounted row window, first restore
   the saved absolute scroll offset; the bounded window can then grow as the user
   scrolls toward the anchor.
+  Restored ranges continue automatically near the visible lower boundary, in
+  bounded pages and without a Load later messages button. Appending a page must
+  preserve the viewport; hidden panes must not initiate continuation. Do not
+  merge a disjoint live tail across unread history. Once the range reaches the
+  tail, canonical updates and new live rows resume without prepending older
+  cached rows. Explicit search retains its separate manual paging behavior.
   Explicit disclosure choices and the mounted-window budget survive eviction;
   bookmarks do not persist across renderer/app restarts.
 - A pane renders the store's live `messages` while its session is the active one
@@ -917,12 +923,18 @@ thinking never creates an empty wrapper. All three modes render exactly one
 top-level process disclosure and change neither what a tool received nor what is
 stored.
 
-The ordinary group owning the active execution segment stays open while its turn
-is active. Afterward, ordinary groups with at most four visible items remain open;
-larger groups start closed, while Task topology groups remain open. These defaults
-are unified across modes and do not depend on the thinking preference. Explicit
-user choices remain authoritative. Group headers summarize count, running state
-and issue count without treating a failed child as a failed turn.
+Every ordinary group of a turn stays open while that turn is active, whether or
+not it still owns the live execution segment, so work never folds away mid-run.
+After the turn settles, ordinary groups with at most four visible items remain
+open, larger groups start closed, and Task topology groups remain open. A group
+that still renders a Thinking row also remains open: with `Show thinking` on the
+reasoning is content the reader asked to see, and folding the group around it
+would make the setting look broken. These defaults are unified across modes and
+otherwise do not depend on the thinking preference. Explicit user choices remain
+authoritative. Group headers summarize count, running state and issue count
+without treating a failed child as a failed turn; the issue counter is one inline
+non-wrapping chip whose icon and localized count share a centred line and
+truncate together when the band runs out of width.
 
 The turn disclosure header states the turn's outcome and carries only its bounded
 metadata: status, recorded duration and direct tool/search count. It never echoes
@@ -946,22 +958,25 @@ extra hierarchy.
 Except for the display mode's Thinking default, no item payload opens itself: a
 tool, hosted-search or plan call stays a header row until the user opens its
 disclosure, including a Bash row, whose detail stays closed until the user opens
-it. Active groups stay open; after completion, small groups (up to four visible
-items) and Task topology groups remain open, while larger ordinary groups start
-closed. With `Show thinking` on, Thinking rows expand by default in every display
-mode and collapse only on user action. An expanded Thinking row shows its full
-reasoning markdown; a collapsed one shows only the Thinking indicator, with no
-summary or excerpt. With `Show thinking` off, no completed reasoning row renders;
-only a live whole-run TextShimmer `Thinking` indicator remains while reasoning is
-actively streaming, and empty thinking-only containers are omitted. The stored
-reasoning is retained and reappears when the preference is turned back on.
+it. Groups stay open while their turn runs; after it settles, small groups (up to
+four visible items), Task topology groups and groups that still render a Thinking
+row remain open, while larger ordinary groups of plain tool rows start closed.
+With `Show thinking` on, Thinking rows expand by default in every display mode and
+collapse only on user action. An expanded Thinking row shows its full reasoning
+markdown; a collapsed one shows only the Thinking indicator, with no summary or
+excerpt. With `Show thinking` off, no completed reasoning row renders; only a live
+whole-run TextShimmer `Thinking` indicator remains while reasoning is actively
+streaming, and empty thinking-only containers are omitted. The stored reasoning is
+retained and reappears when the preference is turned back on.
 
 Group, run row and item are independent controls. Closing an ancestor keeps
 descendant choices and reopening restores them; closing the turn's disclosure hides
 every row under it, and reopening restores the groups the user had opened. Opening
-a parent never expands all children. User interaction with a child claims its
-containing group without toggling it, so completion cannot close around opened,
-focused or selected content. Choices use stable turn/group/item identities and
+a parent never expands all children. An explicit choice belongs to its own level
+alone and never pins an ancestor; reading protection is transient instead: while
+focus or a selection is inside a level, an automatic close is deferred for that
+level and its ancestors, and leaving the content hands control straight back to
+the automatic default. Choices use stable turn/group/item identities and
 remain while the retained session pane lives, including preference changes and row
 remounts; pane eviction, deletion or renderer restart reapplies defaults rather
 than persisting disclosure state to messages or settings.

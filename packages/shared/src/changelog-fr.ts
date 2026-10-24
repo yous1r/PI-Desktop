@@ -3,8 +3,15 @@ import type { ChangelogEntry } from "./changelog.js";
 export const frEntries: ChangelogEntry[] = [
   {
     version: "0.21.0",
-    date: "2026-10-16",
+    date: "2026-10-24",
     highlights: [
+      "Le moteur Pi 1.3.0 améliore la validation des appels d’outils et la relecture sécurisée de l’historique.",
+      "Activez les visualisations intégrées facultatives dans Paramètres → IA pour afficher des cartes interactives isolées dans les conversations.",
+      "Les pages du navigateur de chaque conversation restent disponibles lorsque le panneau est masqué, lors d’un changement de conversation ou d’un rechargement.",
+      "Choisissez le mode d’affichage, développez les activités de chaque tour de façon cohérente et consultez sa consommation de tokens.",
+      "Affichez le fil d’Ariane du projet au-dessus de la conversation et modifiez le titre sur place.",
+      "Le panneau des tâches reste replié entre les conversations ; les plages de lecture des longues conversations se restaurent sans action de chargement supplémentaire.",
+      "Les réglages explicites de raisonnement sont conservés et son intensité est correctement transmise aux services officiels DeepSeek.",
       "Les plugins installés s'affichent en cartes dans une grille auto-adaptative, chacune avec une action claire et son état de confiance, de mise à jour et de portée visible.",
       "Consultez les notes et avis publics des plugins du marché et ouvrez le centre de plugins pour en écrire un — l'application de bureau ne se connecte jamais.",
       "Les longues commandes Bash continuent en tâche de fond à la fin du tour, et leur sortie reste consultable.",

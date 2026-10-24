@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { repositoryRoot, resolveElectronBinary } from "../../../scripts/e2e/boot.mjs";
@@ -103,7 +103,7 @@ function mount(element) { flushSync(() => rootNode.render(element)); }
 window.customProviderNoApiKeyProbe = async () => {
   const check = (condition, message) => { if (!condition) throw new Error(message); };
   const button = (label) => [...document.querySelectorAll("button")]
-    .find((item) => item.textContent.trim() === label);
+    .find((item) => item.getAttribute("aria-label") === label || item.textContent.trim() === label);
   const keyField = () => document.querySelector('input[type="password"]');
   const edit = (provider, key) => {
     updateInput = null;
@@ -181,8 +181,17 @@ window.customProviderNoApiKeyProbe = async () => {
     "an untouched empty input overwrote the saved key");
 
   edit(keyedProvider, "edit-keyed-clear-and-cancel");
-  check(button("Clear saved API key"), "the saved-key removal action was missing");
-  flushSync(() => button("Clear saved API key").click());
+  const clearButton = button("Clear saved API key");
+  check(clearButton, "the saved-key removal action was missing");
+  check(clearButton.textContent.trim() === "" && clearButton.querySelector('svg[aria-hidden="true"]'),
+    "the saved-key removal action is not an accessible icon-only button");
+  const inputRect = keyField().getBoundingClientRect();
+  const clearRect = clearButton.getBoundingClientRect();
+  check(clearRect.left >= inputRect.right && clearRect.top < inputRect.bottom
+    && clearRect.bottom > inputRect.top, "the clear icon is not beside the API-key input");
+  check(clearRect.width >= 24 && clearRect.height >= 24, "the clear icon target is too small");
+  flushSync(() => clearButton.click());
+  check(document.activeElement === keyField(), "clearing the key did not focus its input");
   check(!updateInput, "clearing a key persisted before Save");
   check(keyField().value === "" && !keyField().disabled, "clearing a saved key disabled the input");
   const afterClear = calls.length;
@@ -283,9 +292,15 @@ test("a custom endpoint can be saved and selected without an API key", {
       },
       nodePaths: [join(root, "apps/desktop/node_modules")],
     });
+    const styles = await Promise.all(
+      ["tokens", "base", "ui-kit", "settings", "composer", "providers", "model-config"].map(
+        (name) => readFile(join(root, "apps/desktop/src/styles/" + name + ".css"), "utf8"),
+      ),
+    );
+    await writeFile(join(temp, "style.css"), styles.join("\n").replace(/@theme(?: inline)?/g, ":root"));
     await writeFile(
       join(temp, "index.html"),
-      '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'self\'; style-src \'self\' \'unsafe-inline\'"><body><div id="root"></div><script type="module" src="renderer.js"></script>',
+      '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'self\'; style-src \'self\' \'unsafe-inline\'"><link rel="stylesheet" href="style.css"><body><div id="root"></div><script type="module" src="renderer.js"></script>',
     );
     await writeFile(
       join(temp, "main.cjs"),

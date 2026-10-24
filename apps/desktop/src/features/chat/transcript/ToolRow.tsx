@@ -726,6 +726,7 @@ function SubagentRunFollow({
                   key={`thinking-${item.message.id}`}
                   message={item.message}
                   streaming={item.message.status === "streaming"}
+                  autoOpen
                 />
               ) : (
                 <div

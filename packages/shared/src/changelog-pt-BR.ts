@@ -3,8 +3,15 @@ import type { ChangelogEntry } from "./changelog.js";
 export const ptBREntries: ChangelogEntry[] = [
   {
     version: "0.21.0",
-    date: "2026-10-16",
+    date: "2026-10-24",
     highlights: [
+      "O motor Pi 1.3.0 melhora a validação de chamadas de ferramentas e a reprodução segura do histórico.",
+      "Ative as visualizações inline opcionais em Configurações → IA para ver cartões interativos isolados nas conversas.",
+      "As páginas do navegador de cada conversa continuam disponíveis ao ocultar o painel, trocar de conversa ou recarregar a interface.",
+      "Escolha modos de exibição, expanda a atividade de cada turno de forma consistente e confira seu consumo de tokens.",
+      "Veja o caminho do projeto acima da conversa e renomeie o título no próprio lugar.",
+      "O painel de tarefas permanece recolhido ao trocar de conversa; os trechos de leitura de conversas longas são restaurados sem outra ação de carregamento.",
+      "As opções explícitas de raciocínio são preservadas e sua intensidade é enviada corretamente aos endpoints oficiais do DeepSeek.",
       "Os plugins instalados aparecem como cartões em uma grade de preenchimento automático, cada um com uma ação clara e o estado de confiança, atualização e escopo à vista.",
       "Leia notas e avaliações públicas dos plugins do mercado e abra o centro de plugins para escrever uma — o aplicativo de desktop nunca faz login.",
       "Comandos Bash longos continuam em tarefas em segundo plano após o turno, e você pode consultar a saída depois.",

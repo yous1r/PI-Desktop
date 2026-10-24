@@ -943,9 +943,11 @@ may be retained while exactly one workspace supplies the visible shell context.
   hidden thinking does not create a redundant group, and existing Task topology
   remains separate. No mode adds a second top-level disclosure or leaves a run
   row outside the process.
-- The active ordinary group stays open while the turn runs. After completion,
-  ordinary groups with at most four visible items and Task topology groups remain
-  open; larger ordinary groups start closed. These defaults do not depend on the
+- Every ordinary group of a turn stays open while that turn runs, whether or not
+  it still owns the live segment. After the turn settles, ordinary groups with at
+  most four visible items, Task topology groups and groups that still render a
+  Thinking row remain open; larger ordinary groups of plain tool rows start
+  closed. Apart from visible reasoning these defaults do not depend on the
   thinking preference. Closing the turn's disclosure hides every group and run
   row under it without erasing their choices; reopening restores their defaults
   and any explicit user choices.
@@ -967,9 +969,11 @@ may be retained while exactly one workspace supplies the visible shell context.
 - Activating a group or item header toggles only that level. Closing a parent
   preserves child state, reopening restores it, and sibling groups remain
   independent. Opening a parent is never an expand-all action.
-- A manual item action claims its containing group as user-owned without toggling
-  it. Streaming and completion cannot reopen a manual close or close around
-  content the user opened, focused or selected. Choices survive preference
+- An explicit choice belongs to its own level alone: it never pins an ancestor
+  open or closed. Streaming and completion cannot reopen a manual close. Reading
+  protection is transient - while focus or a selection is inside a level, an
+  automatic close is deferred for that level and its ancestors, and leaving the
+  content hands control back to the automatic default. Choices survive preference
   changes, singleton-to-group growth and remounts while the retained session pane
   lives.
 - Search/navigation opens the turn process and activity group that own the named

@@ -3,8 +3,15 @@ import type { ChangelogEntry } from "./changelog.js";
 export const enEntries: ChangelogEntry[] = [
   {
     version: "0.21.0",
-    date: "2026-10-16",
+    date: "2026-10-24",
     highlights: [
+      "Use the Pi 1.3.0 agent engine with safer tool-call validation and replay.",
+      "Enable optional inline visualizations in Settings → AI to view interactive, sandboxed cards inside conversations.",
+      "Keep session browser pages available while the work panel is hidden, another session is selected, or the interface reloads.",
+      "Choose transcript display modes, expand turn activity consistently, and inspect per-turn token usage.",
+      "See the project breadcrumb above a conversation and rename its title in place.",
+      "Keep the task dock collapsed across session switches, and restore long-conversation reading ranges without an extra load action.",
+      "Preserve explicit model reasoning settings and send reasoning effort correctly to official DeepSeek endpoints.",
       "Browse installed plugins as cards in an auto-filling grid, each with one clear action and its trust, update, and scope state at a glance.",
       "Read public ratings and reviews for marketplace plugins, and open the plugin center to write one — the desktop never signs in.",
       "Keep long-running Bash commands going after a turn ends, then review their output as background tasks.",

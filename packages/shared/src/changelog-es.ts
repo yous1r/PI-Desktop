@@ -3,8 +3,15 @@ import type { ChangelogEntry } from "./changelog.js";
 export const esEntries: ChangelogEntry[] = [
   {
     version: "0.21.0",
-    date: "2026-10-16",
+    date: "2026-10-24",
     highlights: [
+      "El motor Pi 1.3.0 mejora la validación de llamadas a herramientas y la reproducción segura del historial.",
+      "Activa las visualizaciones en línea opcionales en Ajustes → IA para ver tarjetas interactivas aisladas dentro de las conversaciones.",
+      "Las páginas del navegador de cada sesión siguen disponibles al ocultar el panel, cambiar de sesión o recargar la interfaz.",
+      "Elige modos de visualización, despliega la actividad de cada turno de forma consistente y consulta su uso de tokens.",
+      "Consulta la ruta del proyecto sobre la conversación y cambia el título sin salir de ella.",
+      "El panel de tareas permanece contraído al cambiar de sesión; el rango de lectura de conversaciones largas se restaura sin otra acción de carga.",
+      "Se conservan los ajustes explícitos de razonamiento y se envía correctamente su intensidad a los endpoints oficiales de DeepSeek.",
       "Los plugins instalados aparecen como tarjetas en una cuadrícula autoajustable, cada una con una acción clara y su estado de confianza, actualización y alcance a la vista.",
       "Lee valoraciones y reseñas públicas de los plugins del mercado y abre el centro de plugins para escribir una: la aplicación de escritorio nunca inicia sesión.",
       "Los comandos Bash largos continúan como tareas en segundo plano cuando termina el turno, y puedes consultar su salida después.",

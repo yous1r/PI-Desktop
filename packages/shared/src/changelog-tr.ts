@@ -3,8 +3,15 @@ import type { ChangelogEntry } from "./changelog.js";
 export const trEntries: ChangelogEntry[] = [
   {
     version: "0.21.0",
-    date: "2026-10-16",
+    date: "2026-10-24",
     highlights: [
+      "Daha güvenli araç çağrısı doğrulaması ve geçmiş yeniden oynatımı için Pi 1.3.0 motoruna geçin.",
+      "Konuşmalarda etkileşimli, korumalı kartlar görmek için Ayarlar → AI bölümünde isteğe bağlı satır içi görselleştirmeleri açın.",
+      "Çalışma paneli gizliyken, başka oturum seçiliyken veya arayüz yenilenirken oturumun tarayıcı sayfaları kullanılabilir kalır.",
+      "Konuşma görünümünü seçin, tur etkinliğini tutarlı biçimde açın ve her turun token kullanımını inceleyin.",
+      "Konuşmanın üzerinde proje yolunu görün ve başlığı yerinde yeniden adlandırın.",
+      "Oturum değiştirirken görev paneli daraltılmış kalır; uzun konuşmalardaki okuma aralığı ek yükleme işlemi olmadan geri yüklenir.",
+      "Açıkça ayarlanan model düşünme seçenekleri korunur ve resmi DeepSeek uç noktalarına düşünme düzeyi doğru gönderilir.",
       "Yüklü eklentiler kendiliğinden dolan bir kart ızgarasında görünür; her kartta net bir eylem ile güven, güncelleme ve kapsam durumu yer alır.",
       "Mağaza eklentilerinin herkese açık puanlarını ve değerlendirmelerini okuyun, yazmak için eklenti merkezini açın — masaüstü uygulaması hiçbir zaman oturum açmaz.",
       "Uzun Bash komutları tur bittikten sonra arka plan görevleri olarak çalışmaya devam eder; çıktıları daha sonra inceleyebilirsiniz.",

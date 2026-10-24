@@ -3,8 +3,15 @@ import type { ChangelogEntry } from "./changelog.js";
 export const deEntries: ChangelogEntry[] = [
   {
     version: "0.21.0",
-    date: "2026-10-16",
+    date: "2026-10-24",
     highlights: [
+      "Die Pi-1.3.0-Engine verbessert die Validierung von Tool-Aufrufen und die sichere Wiedergabe des Verlaufs.",
+      "Optionale Inline-Visualisierungen unter Einstellungen → KI zeigen interaktive, isolierte Karten direkt im Gespräch.",
+      "Browserseiten einer Sitzung bleiben bei verborgenem Arbeitsbereich, Sitzungswechsel und Neuladen der Oberfläche verfügbar.",
+      "Gesprächsansichten wählen, Aktivitäten eines Turns zuverlässig aufklappen und den Token-Verbrauch pro Turn prüfen.",
+      "Die Projektpfad-Navigation über dem Gespräch anzeigen und den Titel direkt bearbeiten.",
+      "Das Aufgaben-Dock bleibt beim Sitzungswechsel eingeklappt; Lesebereiche langer Gespräche werden ohne zusätzlichen Ladevorgang wiederhergestellt.",
+      "Explizite Denkeinstellungen bleiben erhalten und die Denkintensität wird korrekt an offizielle DeepSeek-Endpunkte gesendet.",
       "Installierte Plugins erscheinen als Karten in einem selbst füllenden Raster, jede mit einer klaren Aktion und sichtbarem Vertrauens-, Update- und Geltungsstatus.",
       "Öffentliche Bewertungen und Rezensionen für Marketplace-Plugins lesen und im Plugin-Center eine schreiben — die Desktop-App meldet sich nie an.",
       "Lange Bash-Befehle laufen nach dem Agenten-Turn als Hintergrundaufgaben weiter; ihre Ausgabe lässt sich später prüfen.",
