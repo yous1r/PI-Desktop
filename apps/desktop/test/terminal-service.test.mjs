@@ -422,3 +422,30 @@ test("stripAnsiCodes removes SGR and OSC sequences but keeps text", () => {
   assert.equal(stripAnsiCodes("\u001b[1;31mred\u001b[0m plain"), "red plain");
   assert.equal(stripAnsiCodes("\u001b]0;title\u0007body"), "body");
 });
+
+test("launch overrides append argv after the profile and layer env over the sanitized base", () => {
+  const { service, spawns } = harness();
+  service.create(
+    { ...PROFILE, args: ["-NoProfile"] },
+    "C:\\work",
+    { cols: 80, rows: 24 },
+    { launchArgs: "-NoLogo --flag \"a b\"", env: "MY_VAR=1\n# note\nBROKEN" },
+  );
+
+  // The profile's own argv stays in front: a shell's required flags must not be
+  // reordered by a user preference.
+  assert.deepEqual(spawns[0].args, ["-NoProfile", "-NoLogo", "--flag", "a b"]);
+  const env = spawns[0].spawnOptions.env;
+  assert.equal(env.MY_VAR, "1");
+  assert.equal(env.TERM, "xterm-256color");
+  // A malformed line is skipped rather than aborting the launch.
+  assert.equal(env.BROKEN, undefined);
+});
+
+test("no overrides keeps the previous spawn shape exactly", () => {
+  const { service, spawns } = harness();
+  service.create(PROFILE, "C:\\work", { cols: 80, rows: 24 });
+  assert.deepEqual(spawns[0].args, []);
+  assert.equal(spawns[0].spawnOptions.env.MY_VAR, undefined);
+  assert.equal(spawns[0].spawnOptions.env.TERM, "xterm-256color");
+});

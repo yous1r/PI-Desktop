@@ -928,12 +928,22 @@
   font-size: var(--text-xs);
 }
 
-.terminal-tab__shell select {
-  padding: 2px 4px;
-  border: 1px solid var(--ds-border-subtle);
-  border-radius: var(--radius-sm);
-  background: var(--ds-surface-raised);
-  color: var(--ds-text);
+/* Shell picker: the shared menu select, sized for a compact tool bar. It
+   inherits the trigger definition from Settings so the panel does not ship a
+   second, differently-shaped popup (and so the option list is themed by the
+   menu surface instead of the OS). */
+.terminal-tab__shell {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 40%;
+}
+
+.terminal-tab__shell-trigger {
+  /* Same pill vocabulary as Settings; only the metric is denser, because this
+     trigger sits on a 26px tool bar rather than a settings row. */
+  height: 22px;
+  padding: 0 24px 0 9px;
+  gap: 5px;
   font-size: var(--text-xs);
 }
 

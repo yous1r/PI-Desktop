@@ -39,6 +39,7 @@ import { FontFamilyRow } from "../../components/settings/FontFamilyRow";
 import { ShowThinkingRow } from "../../components/settings/ShowThinkingRow";
 import { TranscriptDisplayModeRow } from "../../components/settings/TranscriptDisplayModeRow";
 import { FontSizeRow } from "../../components/settings/FontSizeRow";
+import { TerminalSettingsCard } from "../../components/settings/TerminalSettingsCard";
 import { LanguageRow } from "../../components/settings/LanguageRow";
 import { SettingsMenuSelect } from "../../components/settings/SettingsMenuSelect";
 import { ThemeRow } from "../../components/settings/ThemeRow";
@@ -418,6 +419,10 @@ export function SettingsPage() {
                 {platform === "darwin" && (
                   <MacosWindowTranslucencyRow settings={settings} saveSettings={saveSettings} />
                 )}
+              </SettingsCard>
+
+              <SettingsCard title={t("panel.terminal.title")}>
+                <TerminalSettingsCard settings={settings} saveSettings={saveSettings} />
               </SettingsCard>
 
               <SettingsCard title={t("settings.sidebar")}>

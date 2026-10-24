@@ -1827,6 +1827,21 @@ sklm: {
     "fontSizeXl": "Trenta",
     "fontSizeScale": "Échelle de taille du texte",
     "fontSizePercent": "{{value}}%",
+    "terminalFont": "Police du terminal",
+    "terminalFontDesc":
+      "Police utilisée par le terminal du panneau de travail. Seules les familles à chasse fixe sont proposées afin que les colonnes restent alignées.",
+    "terminalFontSize": "Taille de police du terminal",
+    "terminalFontSizeDesc":
+      "Taille de cellule de la grille du terminal en pixels (8–32). Indépendante de la taille de police de l'interface.",
+    "terminalLaunchArgs": "Arguments de lancement",
+    "terminalLaunchArgsDesc":
+      "Arguments ajoutés à chaque lancement du shell, par exemple -NoLogo ou --login. Mettez entre guillemets les valeurs contenant des espaces.",
+    "terminalLaunchArgsPlaceholder": "ex. -NoLogo",
+    "terminalEnv": "Variables d'environnement",
+    "terminalEnvDesc":
+      "Une ligne KEY=value par ligne, ajoutée à l'environnement du shell. Les lignes vides et les commentaires # sont ignorés.",
+    "terminalEnvPlaceholder": "KEY=value",
+    "terminalSaveError": "Impossible d'enregistrer le paramètre du terminal",
   },
   "project": {
     "open": "Ouvrir le projet",

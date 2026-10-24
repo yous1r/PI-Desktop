@@ -1827,6 +1827,21 @@ sklm: {
     "fontSizeXl": "Trenta",
     "fontSizeScale": "Textgrößenskala",
     "fontSizePercent": "{{value}}%",
+    "terminalFont": "Schriftart des Terminals",
+    "terminalFontDesc":
+      "Schriftart für das Terminal im Arbeitsbereich. Es werden nur Monospace-Familien angeboten, damit Spalten ausgerichtet bleiben.",
+    "terminalFontSize": "Terminal-Schriftgröße",
+    "terminalFontSizeDesc":
+      "Zeilengröße des Terminal-Rasters in Pixeln (8–32). Unabhängig von der UI-Schriftgröße.",
+    "terminalLaunchArgs": "Startargumente",
+    "terminalLaunchArgsDesc":
+      "Zusätzliche Argumente für jeden Shell-Start, z. B. -NoLogo oder --login. Werte mit Leerzeichen in Anführungszeichen setzen.",
+    "terminalLaunchArgsPlaceholder": "z. B. -NoLogo",
+    "terminalEnv": "Umgebungsvariablen",
+    "terminalEnvDesc":
+      "Je Zeile ein KEY=value, wird der Shell-Umgebung hinzugefügt. Leerzeilen und #-Kommentare werden ignoriert.",
+    "terminalEnvPlaceholder": "KEY=value",
+    "terminalSaveError": "Terminal-Einstellung konnte nicht gespeichert werden",
   },
   "project": {
     "open": "Projekt öffnen",

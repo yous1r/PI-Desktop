@@ -1827,6 +1827,21 @@ sklm: {
     "fontSizeXl": "Trenta",
     "fontSizeScale": "Escala de tamaño de texto",
     "fontSizePercent": "{{value}}%",
+    "terminalFont": "Fuente del terminal",
+    "terminalFontDesc":
+      "Tipografía del terminal del panel de trabajo. Solo se listan familias monoespaciadas para que las columnas queden alineadas.",
+    "terminalFontSize": "Tamaño de fuente del terminal",
+    "terminalFontSizeDesc":
+      "Tamaño de celda de la rejilla del terminal en píxeles (8–32). Independiente del tamaño de fuente de la interfaz.",
+    "terminalLaunchArgs": "Argumentos de inicio",
+    "terminalLaunchArgsDesc":
+      "Argumentos adicionales añadidos a cada inicio del shell, por ejemplo -NoLogo o --login. Entrecomilla los valores con espacios.",
+    "terminalLaunchArgsPlaceholder": "p. ej. -NoLogo",
+    "terminalEnv": "Variables de entorno",
+    "terminalEnvDesc":
+      "Una línea KEY=value por línea, añadida al entorno del shell. Las líneas vacías y los comentarios # se ignoran.",
+    "terminalEnvPlaceholder": "KEY=value",
+    "terminalSaveError": "No se pudo guardar la configuración del terminal",
   },
   "project": {
     "open": "Abrir proyecto",

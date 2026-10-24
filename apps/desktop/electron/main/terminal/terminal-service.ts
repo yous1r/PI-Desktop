@@ -3,8 +3,15 @@ import { createRequire } from "node:module";
 
 import type { BrowserWindow } from "electron";
 
-import { ErrorCodes, IPC } from "@pi-desktop/shared";
-import type { TerminalOpenResult, TerminalShellProfile } from "@pi-desktop/shared";
+import { ErrorCodes, IPC, parseTerminalEnv, parseTerminalLaunchArgs } from "@pi-desktop/shared";
+import type { TerminalOpenResult, TerminalSettings, TerminalShellProfile } from "@pi-desktop/shared";
+
+/**
+ * Launch overrides applied on top of a shell profile. Both come from
+ * `AppSettings.terminal`: `launchArgs` is appended after the profile's own
+ * argv so a shell's required flags stay in front of user extras.
+ */
+export type TerminalLaunchOverrides = Pick<TerminalSettings, "launchArgs" | "env">;
 
 /**
  * The subset of `node-pty` this service uses. Declared here so the module can
@@ -146,7 +153,12 @@ export class TerminalService {
     return [...this.terminals.values()].map(({ id, shellId, cols, rows }) => ({ id, shellId, cols, rows }));
   }
 
-  create(profile: TerminalShellProfile, cwd: string | undefined, size: { cols: number; rows: number }): TerminalOpenResult {
+  create(
+    profile: TerminalShellProfile,
+    cwd: string | undefined,
+    size: { cols: number; rows: number },
+    overrides?: TerminalLaunchOverrides,
+  ): TerminalOpenResult {
     if (this.sealed) {
       throw Object.assign(new Error("terminal service is shutting down"), { errorCode: ErrorCodes.INTERNAL });
     }
@@ -159,14 +171,19 @@ export class TerminalService {
     }
     const cols = Math.max(2, Math.min(500, Math.floor(size.cols)));
     const rows = Math.max(2, Math.min(300, Math.floor(size.rows)));
+    // User extras follow the profile's own argv; the env block is layered over
+    // the sanitized environment, so it can add variables but never re-expose a
+    // `PI_DESKTOP_*` value `shellEnv` withheld.
+    const args = [...(profile.args ?? []), ...parseTerminalLaunchArgs(overrides?.launchArgs)];
+    const env = { ...shellEnv(process.env), ...parseTerminalEnv(overrides?.env) };
     let pty: PtyProcess;
     try {
-      pty = ptyModule.spawn(profile.path, profile.args ?? [], {
+      pty = ptyModule.spawn(profile.path, args, {
         name: "xterm-256color",
         cols,
         rows,
         cwd: cwd && cwd.trim() ? cwd : process.cwd(),
-        env: shellEnv(process.env),
+        env,
       });
     } catch {
       // The message can embed an absolute install path; keep it in the log and

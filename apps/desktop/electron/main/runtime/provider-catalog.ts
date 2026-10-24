@@ -5,6 +5,7 @@ import {
   isCommandShellId,
   validateNetworkProxy,
   validateSpeechSettings,
+  terminalSettingsError,
   type CommandShellId,
   type ModelBinding,
   type SessionThinkingLevel,
@@ -200,7 +201,16 @@ export function createProviderCatalogRuntime({
       networkProxy?: unknown;
       macosWindowTranslucency?: unknown;
       transcriptDisplayMode?: unknown;
+      terminal?: unknown;
     };
+    if (Object.prototype.hasOwnProperty.call(value, "terminal")) {
+      const terminalError = terminalSettingsError(value.terminal);
+      if (terminalError) {
+        throw Object.assign(new Error(terminalError), {
+          errorCode: ErrorCodes.INVALID_PARAMS,
+        });
+      }
+    }
     if (
       Object.prototype.hasOwnProperty.call(value, "defaultCommandShell") &&
       !isCommandShellId(value.defaultCommandShell)

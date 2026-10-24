@@ -24,6 +24,12 @@ export type TerminalIpcDependencies = {
    * shell in any directory on the machine.
    */
   isAllowedCwd?: (cwd: string) => boolean;
+  /**
+   * Launch overrides from `AppSettings.terminal`. Read from main's settings
+   * view rather than the create payload: the renderer must not be able to
+   * append argv or environment to a shell by calling the channel directly.
+   */
+  launchOverrides?: () => { launchArgs?: string; env?: string } | undefined;
 };
 
 function requiredText(input: unknown, field: string): string {
@@ -63,6 +69,7 @@ export function registerTerminalIpc({
   service,
   defaultCwd,
   isAllowedCwd,
+  launchOverrides,
 }: TerminalIpcDependencies): void {
   const handle = registrar.handleWithEvent.bind(registrar);
   const fromMain = (event: Parameters<IpcRegistrar["assertMainWindowSender"]>[0]): void =>
@@ -90,7 +97,7 @@ export function registerTerminalIpc({
         errorCode: ErrorCodes.PERMISSION_REQUIRED,
       });
     }
-    return service.create(profile, cwd, requiredSize(input));
+    return service.create(profile, cwd, requiredSize(input), launchOverrides?.());
   });
 
   handle(IPC.invoke.terminalWrite, async (event, input: unknown) => {

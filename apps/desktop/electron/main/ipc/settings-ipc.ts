@@ -27,6 +27,8 @@ export type SettingsIpcDependencies = {
   applyKeepAwakeWhileRunning: (settings?: { keepAwakeWhileRunning?: unknown } | null) => void;
   applyUpdatePreference: (preference: UpdatePreference) => void;
   resolveEffectiveCommandShell: () => Promise<unknown>;
+  /** Caches the terminal launch overrides `terminalCreate` applies. */
+  applyTerminalLaunchSettings?: (settings: unknown) => void;
   liveCallService?: Pick<LiveCallService, "beginSettingsWrite" | "settingsWritten">;
 };
 
@@ -47,6 +49,7 @@ export function registerSettingsIpc({
   applyKeepAwakeWhileRunning,
   applyUpdatePreference,
   resolveEffectiveCommandShell,
+  applyTerminalLaunchSettings,
   liveCallService,
 }: SettingsIpcDependencies): void {
   let host: HostProcess | null = null;
@@ -119,6 +122,7 @@ export function registerSettingsIpc({
       } | null,
     );
     applyDeveloperMode(validatedSettings as { developerMode?: unknown } | null);
+    applyTerminalLaunchSettings?.(result);
     return result;
   });
 

@@ -83,6 +83,11 @@ export type RegisterIpcDependencies = {
   terminalService: TerminalService;
   /** Workspace cwd a new terminal opens in when the request omits one. */
   terminalDefaultCwd?: () => string | undefined;
+  /**
+   * Launch overrides from the current settings. Main-owned on purpose: a
+   * renderer could otherwise append argv or environment through the channel.
+   */
+  terminalLaunchOverrides?: () => { launchArgs?: string; env?: string } | undefined;
   restartForStorage: () => void;
   mcpOAuth?: McpOAuthManager;
   markLifecycleDialogRendererReady: (window: BrowserWindow) => boolean;
@@ -205,6 +210,8 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     liveVoiceWidget,
     terminalShellRegistry,
     terminalService,
+    terminalLaunchOverrides,
+    applyTerminalLaunchSettings,
     terminalDefaultCwd,
   } = dependencies;
 
@@ -318,6 +325,7 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     applyKeepAwakeWhileRunning,
     applyUpdatePreference: (preference) => updater.setPreference(preference),
     resolveEffectiveCommandShell,
+    applyTerminalLaunchSettings,
     liveCallService,
   });
   registerConfigSyncIpc({
@@ -347,6 +355,7 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     registry: terminalShellRegistry,
     service: terminalService,
     defaultCwd: terminalDefaultCwd ?? (() => undefined),
+    launchOverrides: terminalLaunchOverrides,
     // A terminal may open in the active workspace only. Without this the
     // renderer could park a shell in any directory on the machine.
     isAllowedCwd: (cwd) => {

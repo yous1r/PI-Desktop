@@ -1797,6 +1797,21 @@ export const ptBR = {
     fontSizeXl: "Extra grande",
     fontSizeScale: "Escala de tamanho de texto",
     fontSizePercent: "{{value}}%",
+    terminalFont: "Fonte do terminal",
+    terminalFontDesc:
+      "Tipografia usada pelo terminal do painel de trabalho. Apenas famílias monoespaçadas são listadas para manter as colunas alinhadas.",
+    terminalFontSize: "Tamanho da fonte do terminal",
+    terminalFontSizeDesc:
+      "Tamanho da célula da grade do terminal em pixels (8–32). Independente do tamanho da fonte da interface.",
+    terminalLaunchArgs: "Argumentos de inicialização",
+    terminalLaunchArgsDesc:
+      "Argumentos extras anexados a cada inicialização do shell, por exemplo -NoLogo ou --login. Coloque entre aspas valores com espaços.",
+    terminalLaunchArgsPlaceholder: "ex.: -NoLogo",
+    terminalEnv: "Variáveis de ambiente",
+    terminalEnvDesc:
+      "Uma linha KEY=value por linha, adicionada ao ambiente do shell. Linhas vazias e comentários com # são ignorados.",
+    terminalEnvPlaceholder: "KEY=value",
+    terminalSaveError: "Não foi possível salvar a configuração do terminal",
   },
   project: {
     open: "Abrir projeto",

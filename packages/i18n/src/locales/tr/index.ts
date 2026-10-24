@@ -1837,6 +1837,21 @@ sklm: {
     fontSizeXl: "Trenta",
     fontSizeScale: "Metin ölçeği",
     fontSizePercent: "%{{value}}",
+    terminalFont: "Terminal yazı tipi",
+    terminalFontDesc:
+      "Çalışma paneli terminalinde kullanılan yazı tipi. Sütunların hizalı kalması için yalnızca eş aralıklı aileler listelenir.",
+    terminalFontSize: "Terminal yazı tipi boyutu",
+    terminalFontSizeDesc:
+      "Terminal ızgarasının hücre boyutu (piksel, 8–32). Arayüz yazı tipi boyutundan bağımsızdır.",
+    terminalLaunchArgs: "Başlatma bağımsız değişkenleri",
+    terminalLaunchArgsDesc:
+      "Her kabuk başlatmasına eklenen ek bağımsız değişkenler, örneğin -NoLogo veya --login. Boşluk içeren değerleri tırnak içine alın.",
+    terminalLaunchArgsPlaceholder: "örn. -NoLogo",
+    terminalEnv: "Ortam değişkenleri",
+    terminalEnvDesc:
+      "Her satırda bir KEY=value, kabuk ortamına eklenir. Boş satırlar ve # yorumları yok sayılır.",
+    terminalEnvPlaceholder: "KEY=value",
+    terminalSaveError: "Terminal ayarı kaydedilemedi",
   },
   project: {
     open: "Proje aç",

@@ -1847,6 +1847,21 @@ sklm: {
     fontSizeXl: "Trenta",
     fontSizeScale: "Text size scale",
     fontSizePercent: "{{value}}%",
+    terminalFont: "Terminal font",
+    terminalFontDesc:
+      "Typeface used by the work-panel terminal. Only monospaced families are listed so columns stay aligned.",
+    terminalFontSize: "Terminal font size",
+    terminalFontSizeDesc:
+      "Cell size of the terminal grid in pixels (8–32). Independent of the UI font size.",
+    terminalLaunchArgs: "Launch arguments",
+    terminalLaunchArgsDesc:
+      "Extra arguments appended to every shell launch, for example -NoLogo or --login. Quote a value that contains spaces.",
+    terminalLaunchArgsPlaceholder: "e.g. -NoLogo",
+    terminalEnv: "Environment variables",
+    terminalEnvDesc:
+      "One KEY=value per line, added to the shell environment. Blank lines and # comments are ignored.",
+    terminalEnvPlaceholder: "KEY=value",
+    terminalSaveError: "Could not save the terminal setting",
   },
   project: {
     open: "Open project",

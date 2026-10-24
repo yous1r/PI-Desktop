@@ -1822,6 +1822,18 @@ sklm: {
     fontSizeXl: "超超大杯",
     fontSizeScale: "文字縮放比例",
     fontSizePercent: "{{value}}%",
+    terminalFont: "終端字型",
+    terminalFontDesc: "工作面板終端使用的字型。僅列出等寬字型，確保欄位對齊。",
+    terminalFontSize: "終端字級",
+    terminalFontSizeDesc: "終端格線的字元尺寸（8–32 像素），與介面字級互相獨立。",
+    terminalLaunchArgs: "啟動參數",
+    terminalLaunchArgsDesc:
+      "每次啟動 shell 時附加的參數，例如 -NoLogo 或 --login。含空格的值請用引號包住。",
+    terminalLaunchArgsPlaceholder: "例如 -NoLogo",
+    terminalEnv: "環境變數",
+    terminalEnvDesc: "每行一個 KEY=value，附加到 shell 環境。空行與 # 註解會被忽略。",
+    terminalEnvPlaceholder: "KEY=value",
+    terminalSaveError: "無法儲存終端設定",
   },
   project: {
     open: "開啟專案",

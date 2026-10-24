@@ -168,6 +168,7 @@ import {
   validateNetworkProxy,
   validateSpeechSettings,
   JEV_API_KEY_SECRET_REF,
+  terminalSettingsError,
 } from "@pi-desktop/shared";
 
 export type ImportSource = "claude-code" | "opencode" | "codex" | "pi";
@@ -505,7 +506,14 @@ export function validateSettingsWrite(settings: AppSettings): AppSettings {
     lastNotifiedUpdateVersion?: unknown;
     networkProxy?: unknown;
     networkPolicy?: unknown;
+    terminal?: unknown;
   };
+  if (Object.prototype.hasOwnProperty.call(value, "terminal")) {
+    const terminalError = terminalSettingsError(value.terminal);
+    if (terminalError) {
+      throw Object.assign(new Error(terminalError), { errorCode: "INVALID_PARAMS" });
+    }
+  }
   if (
     Object.prototype.hasOwnProperty.call(value, "defaultCommandShell") &&
     !isCommandShellId(value.defaultCommandShell)

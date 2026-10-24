@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_TERMINAL_FONT_SIZE,
   IPC,
   IPC_WHITELIST,
+  TERMINAL_FONT_SIZE_MAX,
   isTerminalDataEvent,
   isTerminalExitEvent,
   isTerminalOpenResult,
   isTerminalShellFamily,
   isTerminalShellProfile,
+  parseTerminalEnv,
+  parseTerminalLaunchArgs,
+  resolveTerminalAppearance,
+  terminalSettingsError,
 } from "./index.js";
-
 /**
  * The work-panel terminal crosses the preload boundary, so its channel names
  * and payload guards are a contract: a rename here silently breaks the panel
@@ -76,5 +81,60 @@ describe("work-panel terminal protocol", () => {
     // A killed PTY reports null, which the renderer treats as "unknown exit".
     expect(isTerminalExitEvent({ terminalId: "term_1", exitCode: null })).toBe(true);
     expect(isTerminalExitEvent({ terminalId: "term_1", exitCode: "0" })).toBe(false);
+  });
+});
+
+/**
+ * Appearance and launch resolution. These are the values the renderer draws
+ * with and the main process spawns with, so a regression here is visible as a
+ * broken-looking terminal rather than a failed request.
+ */
+describe("terminal appearance and launch settings", () => {
+  it("falls back to the built-in monospace stack, never a CSS variable", () => {
+    const appearance = resolveTerminalAppearance(undefined);
+    expect(appearance.fontFamily).toContain("monospace");
+    // A `var(--token)` would be measured as an unknown family by xterm.
+    expect(appearance.fontFamily).not.toContain("var(");
+    expect(appearance.fontSize).toBe(DEFAULT_TERMINAL_FONT_SIZE);
+  });
+
+  it("clamps out-of-range numbers instead of persisting them", () => {
+    const appearance = resolveTerminalAppearance({
+      fontSize: 999,
+      lineHeight: 9,
+      letterSpacing: -99,
+    });
+    expect(appearance.fontSize).toBe(TERMINAL_FONT_SIZE_MAX);
+    expect(appearance.lineHeight).toBeLessThanOrEqual(2);
+    expect(appearance.letterSpacing).toBeGreaterThanOrEqual(-2);
+  });
+
+  it("splits launch arguments on whitespace and keeps quoted values whole", () => {
+    expect(parseTerminalLaunchArgs(undefined)).toEqual([]);
+    expect(parseTerminalLaunchArgs("  ")).toEqual([]);
+    expect(parseTerminalLaunchArgs("-NoLogo -WorkingDirectory C:\\work")).toEqual([
+      "-NoLogo",
+      "-WorkingDirectory",
+      "C:\\work",
+    ]);
+    expect(parseTerminalLaunchArgs(`--flag "a b"`)).toEqual(["--flag", "a b"]);
+    expect(parseTerminalLaunchArgs(`--flag 'a b'`)).toEqual(["--flag", "a b"]);
+  });
+
+  it("parses KEY=value lines and ignores comments and malformed rows", () => {
+    expect(parseTerminalEnv(undefined)).toEqual({});
+    expect(
+      parseTerminalEnv("# comment\nFOO=1\n\nBAR=two words\nNO_EQUALS\n1BAD=x"),
+    ).toEqual({ FOO: "1", BAR: "two words" });
+  });
+
+  it("rejects malformed terminal settings and accepts valid ones", () => {
+    expect(terminalSettingsError(undefined)).toBeNull();
+    expect(terminalSettingsError({ fontSize: 13, launchArgs: "-NoLogo" })).toBeNull();
+    expect(terminalSettingsError("nope")).not.toBeNull();
+    expect(terminalSettingsError({ fontSize: "13" })).not.toBeNull();
+    expect(terminalSettingsError({ fontSize: 100 })).not.toBeNull();
+    expect(terminalSettingsError({ fontFamily: 1 })).not.toBeNull();
+    expect(terminalSettingsError({ launchArgs: "x".repeat(4096) })).not.toBeNull();
   });
 });

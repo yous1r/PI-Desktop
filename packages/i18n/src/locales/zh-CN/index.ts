@@ -1822,6 +1822,18 @@ sklm: {
     fontSizeXl: "超超大杯",
     fontSizeScale: "文字缩放比例",
     fontSizePercent: "{{value}}%",
+    terminalFont: "终端字体",
+    terminalFontDesc: "工作面板终端使用的字体。只列出等宽字体，保证列对齐。",
+    terminalFontSize: "终端字号",
+    terminalFontSizeDesc: "终端网格的字符尺寸（8–32 像素），与界面字号相互独立。",
+    terminalLaunchArgs: "启动参数",
+    terminalLaunchArgsDesc:
+      "每次启动 shell 时追加的参数，例如 -NoLogo 或 --login。含空格的值请用引号包裹。",
+    terminalLaunchArgsPlaceholder: "例如 -NoLogo",
+    terminalEnv: "环境变量",
+    terminalEnvDesc: "每行一个 KEY=value，追加到 shell 环境中。空行和 # 注释会被忽略。",
+    terminalEnvPlaceholder: "KEY=value",
+    terminalSaveError: "无法保存终端设置",
   },
   project: {
     open: "打开项目",

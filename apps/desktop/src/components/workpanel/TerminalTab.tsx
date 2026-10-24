@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { TerminalShellProfile } from "@pi-desktop/shared";
+import { resolveTerminalAppearance } from "@pi-desktop/shared";
 
 import { api } from "../../lib/api";
 import { useAppStore } from "../../stores/app-store";
 import { TooltipButton } from "../ui";
 import { IconRefresh } from "../icons";
+import { SettingsMenuSelect } from "../settings/SettingsMenuSelect";
+
 /**
  * One work-panel terminal. The PTY lives in the main process; this component
  * owns the xterm view, forwards keystrokes, and reports its size.
@@ -14,11 +17,20 @@ import { IconRefresh } from "../icons";
  * Every await is followed by a liveness check: a session switch, a tab close,
  * or a renderer reload can land between creating the PTY and subscribing to it,
  * and a terminal created for a gone component would never be closed.
+ *
+ * Appearance comes from `AppSettings.terminal` and is applied as a concrete CSS
+ * stack, never a `var(--token)`: xterm measures glyphs through a canvas context
+ * that cannot resolve custom properties, so a token string silently renders the
+ * browser default face — the "bad font" a token stack produces here.
  */
 export function TerminalTab({ tabId }: { tabId: string }) {
   const { t } = useTranslation();
   const workspacePath = useAppStore((s) => s.workspace?.path ?? null);
-  const showToast = useAppStore((s) => s.showToast);
+  const terminalSettings = useAppStore((s) => s.settings?.terminal);
+  const appearance = useMemo(
+    () => resolveTerminalAppearance(terminalSettings),
+    [terminalSettings],
+  );
 
   const hostRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<import("@xterm/xterm").Terminal | null>(null);
@@ -66,6 +78,8 @@ export function TerminalTab({ tabId }: { tabId: string }) {
   }, []);
 
   // Own the PTY for this tab. Re-running on `generation` restarts a dead shell.
+  // Appearance is applied at construction only, so the effect also re-runs when
+  // it changes and the shell is restarted in place.
   useEffect(() => {
     if (!shellId) return;
     let cancelled = false;
@@ -81,11 +95,18 @@ export function TerminalTab({ tabId }: { tabId: string }) {
 
       const term = new Terminal({
         cursorBlink: true,
-        fontFamily: "var(--font-mono, monospace)",
-        fontSize: 12,
-        theme: { background: "#00000000" },
+        fontFamily: appearance.fontFamily,
+        fontSize: appearance.fontSize,
+        lineHeight: appearance.lineHeight,
+        letterSpacing: appearance.letterSpacing,
+        fontWeight: 400,
+        fontWeightBold: 600,
+        theme: readTerminalTheme(host),
         scrollback: 5000,
         convertEol: true,
+        allowTransparency: true,
+        drawBoldTextInBrightColors: true,
+        minimumContrastRatio: 1,
       });
       const fit = new FitAddon();
       term.loadAddon(fit);
@@ -179,30 +200,33 @@ export function TerminalTab({ tabId }: { tabId: string }) {
       cleanupRef.current = null;
       closeTerminal();
     };
-  }, [shellId, workspacePath, generation, closeTerminal]);
+  }, [shellId, workspacePath, generation, closeTerminal, appearance]);
 
   const restart = () => {
     closeTerminal();
     setGeneration((value) => value + 1);
   };
 
+  const shellOptions = useMemo(
+    () => shells.map((profile) => ({ id: profile.id, label: profile.label })),
+    [shells],
+  );
+
   return (
     <div className="terminal-tab" data-testid={`terminal-tab-${tabId}`}>
       <div className="terminal-tab__bar">
-        <label className="terminal-tab__shell">
-          <span className="sr-only">{t("panel.terminal.shell")}</span>
-          <select
-            value={shellId ?? ""}
-            onChange={(event) => setShellId(event.target.value)}
-            disabled={shells.length === 0}
-          >
-            {shells.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SettingsMenuSelect
+          className="terminal-tab__shell"
+          triggerClassName="terminal-tab__shell-trigger"
+          label={t("panel.terminal.shell")}
+          value={shellId ?? ""}
+          options={shellOptions}
+          disabled={shells.length === 0}
+          onChange={(next) => {
+            if (next === shellId) return;
+            setShellId(next);
+          }}
+        />
         <span className="terminal-tab__status">
           {state === "exited" ? t("panel.terminal.exited") : null}
           {state === "failed" ? (error ?? t("panel.terminal.failed")) : null}
@@ -219,4 +243,51 @@ export function TerminalTab({ tabId }: { tabId: string }) {
       <div className="terminal-tab__surface" ref={hostRef} />
     </div>
   );
+}
+
+/**
+ * Resolve the xterm palette from the active theme tokens.
+ *
+ * xterm paints into a canvas, so it needs concrete colors rather than CSS
+ * variables. Reading the computed custom properties keeps the terminal on the
+ * same surface, text, and accent colors as the rest of the panel instead of a
+ * hard-coded black background.
+ */
+function readTerminalTheme(host: HTMLElement): import("@xterm/xterm").ITheme {
+  const styles = getComputedStyle(host);
+  const token = (name: string, fallback: string): string => {
+    const value = styles.getPropertyValue(name).trim();
+    return value || fallback;
+  };
+  const background = token("--ds-bg-elevated-opaque", "#1b1c1f");
+  const foreground = token("--ds-text-primary", "#e6e6e6");
+  const accent = token("--ds-accent", "#4f8cff");
+  return {
+    background: "#00000000",
+    foreground,
+    cursor: accent,
+    cursorAccent: background,
+    selectionBackground: colorMix(accent, 34, "transparent"),
+    black: "#1b1c1f",
+    red: token("--ds-danger", "#e5534b"),
+    green: token("--ds-success", "#3fb950"),
+    yellow: token("--ds-warning", "#d29922"),
+    blue: accent,
+    magenta: "#bc8cff",
+    cyan: "#39c5cf",
+    white: foreground,
+    brightBlack: token("--ds-text-muted", "#8b949e"),
+    brightRed: "#ff7b72",
+    brightGreen: "#56d364",
+    brightYellow: "#e3b341",
+    brightBlue: "#79c0ff",
+    brightMagenta: "#d2a8ff",
+    brightCyan: "#56d4dd",
+    brightWhite: "#ffffff",
+  };
+}
+
+/** `color-mix` keeps the selection tinted by the accent in either theme. */
+function colorMix(color: string, percent: number, target: string): string {
+  return `color-mix(in oklab, ${color} ${percent}%, ${target})`;
 }

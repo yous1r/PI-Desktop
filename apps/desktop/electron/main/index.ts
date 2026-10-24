@@ -170,6 +170,24 @@ const terminalService = new TerminalService({
   log: (level, message, data) =>
     logger.app("runtime", level, `terminal: ${message}`, data as { data?: unknown } | undefined),
 });
+/**
+ * Last known terminal launch overrides. The renderer owns the settings form,
+ * but a shell's argv and environment must be decided here: a direct IPC call
+ * to `terminalCreate` would otherwise be able to inject both.
+ */
+let terminalLaunchOverrides: { launchArgs?: string; env?: string } | undefined;
+const applyTerminalLaunchSettings = (settings: unknown): void => {
+  const terminal =
+    settings && typeof settings === "object"
+      ? (settings as { terminal?: unknown }).terminal
+      : undefined;
+  if (!terminal || typeof terminal !== "object") return;
+  const source = terminal as { launchArgs?: unknown; env?: unknown };
+  terminalLaunchOverrides = {
+    launchArgs: typeof source.launchArgs === "string" ? source.launchArgs : undefined,
+    env: typeof source.env === "string" ? source.env : undefined,
+  };
+};
 const {
   clipboardHistory,
   getPluginNotificationPermission,
@@ -974,6 +992,8 @@ function registerIpc() {
     terminalShellRegistry,
     terminalService,
     terminalDefaultCwd: () => currentWorkspacePath() ?? undefined,
+    terminalLaunchOverrides: () => terminalLaunchOverrides,
+    applyTerminalLaunchSettings,
     withGitBranch,
     activeTurnUsages,
     approvedExecutionIdsBySession,

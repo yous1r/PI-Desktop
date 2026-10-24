@@ -1843,6 +1843,21 @@ sklm: {
     fontSizeXl: "Trenta",
     fontSizeScale: "텍스트 크기 배율",
     fontSizePercent: "{{value}}%",
+    terminalFont: "터미널 글꼴",
+    terminalFontDesc:
+      "작업 패널 터미널에 사용할 글꼴입니다. 열 정렬을 유지하기 위해 고정폭 글꼴만 표시됩니다.",
+    terminalFontSize: "터미널 글꼴 크기",
+    terminalFontSizeDesc:
+      "터미널 그리드의 셀 크기(픽셀, 8–32)입니다. UI 글꼴 크기와는 별개입니다.",
+    terminalLaunchArgs: "실행 인수",
+    terminalLaunchArgsDesc:
+      "셸을 시작할 때마다 추가할 인수입니다(예: -NoLogo, --login). 공백이 포함된 값은 따옴표로 묶으세요.",
+    terminalLaunchArgsPlaceholder: "예: -NoLogo",
+    terminalEnv: "환경 변수",
+    terminalEnvDesc:
+      "한 줄에 하나씩 KEY=value 형식으로 셸 환경에 추가됩니다. 빈 줄과 # 주석은 무시됩니다.",
+    terminalEnvPlaceholder: "KEY=value",
+    terminalSaveError: "터미널 설정을 저장하지 못했습니다",
   },
   project: {
     open: "프로젝트 열기",

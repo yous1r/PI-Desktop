@@ -1238,6 +1238,32 @@
   width: 140px;
 }
 
+/* Terminal card (General → Terminal). The launch fields are wider than a
+   number input: an argv line and an env block both need room to be read. */
+.settings-terminal-launch {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  min-width: 0;
+}
+
+.settings-terminal-launch .field-input {
+  width: 260px;
+  max-width: 100%;
+}
+
+.settings-terminal-env {
+  width: 260px;
+  max-width: 100%;
+  min-height: 68px;
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.settings-row:has(.settings-terminal-launch) .settings-row-control {
+  max-width: none;
+}
 .settings-font-size {
   display: flex;
   flex-direction: column;

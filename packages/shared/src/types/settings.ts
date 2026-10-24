@@ -10,6 +10,7 @@ import type { PluginMarketSource } from "./plugins.js";
 import type { SpeechSettings } from "./speech.js";
 import type { ThinkingLevel } from "./models.js";
 import type { UpdatePreference } from "./platform.js";
+import type { TerminalSettings } from "./terminal.js";
 import type { LiveVoiceSettings } from "./live-voice.js";
 
 export type ThemePreference = "system" | "light" | "dark" | `plugin:${string}`;
@@ -224,6 +225,13 @@ export type AppSettings = {
    * disabled, so a fresh install shows a clean sidebar until the user opts in.
    */
   sidebarSessionTime?: boolean;
+  /**
+   * Work-panel terminal presentation and launch overrides. Absent means the
+   * built-in defaults resolved by `resolveTerminalAppearance` /
+   * `resolveTerminalLaunch` in `types/terminal.ts`. These never change how a
+   * shell is discovered: only how it is drawn and what extra argv it receives.
+   */
+  terminal?: TerminalSettings;
   /** Voice input settings (D-voice-runtime). */
   voice?: VoiceInputSettings;
   onboardingDismissed: boolean;
