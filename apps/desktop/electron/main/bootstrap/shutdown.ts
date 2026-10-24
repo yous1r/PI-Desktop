@@ -54,6 +54,8 @@ export type ShutdownDependencies = {
   disposePowerSaveBlockers: () => void;
   liveCallService?: Pick<LiveCallService, "endForLifecycle">;
   disposeSystemProxyRelay?: () => Promise<void>;
+  /** Kills every work-panel PTY before the process tears down. */
+  closeTerminals?: () => void;
 };
 
 /** Register the last-window and before-quit resource lifecycle handlers. */
@@ -76,10 +78,11 @@ export function registerShutdownHandlers({
   composerSuggestion,
   updater,
   logger,
-  confirmQuitDialog,
-  disposePowerSaveBlockers,
   liveCallService,
   disposeSystemProxyRelay,
+  closeTerminals,
+  confirmQuitDialog,
+  disposePowerSaveBlockers,
 }: ShutdownDependencies): void {
   let quitConfirmationPending = false;
   app.on("window-all-closed", () => {
@@ -144,6 +147,9 @@ export function registerShutdownHandlers({
     // Persist the confirmed shutdown before any awaited cleanup so a forced
     // process termination still leaves an observable lifecycle boundary.
     logger.app("lifecycle", "info", "app shutdown");
+    // PTY children die with the process anyway; an explicit kill first keeps
+    // conpty agents from outliving the window and writing to a dead pipe.
+    closeTerminals?.();
     disposePowerSaveBlockers();
     state.tray?.destroy();
     state.tray = null;

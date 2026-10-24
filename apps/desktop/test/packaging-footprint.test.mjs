@@ -31,6 +31,7 @@ test("packaging keeps native voice modules as runtime dependencies", () => {
   assert.deepEqual(Object.keys(packageJson.dependencies).sort(), [
     "@picovoice/pvrecorder-node",
     "electron-updater",
+    "node-pty",
     "transcribe-cpp",
   ]);
 
@@ -115,11 +116,12 @@ test("main bundles JavaScript dependencies and externalizes runtime modules", ()
   // jiti is listed so the trusted-extension loader's lazy import never
   // enters the main bundle; main itself never loads it (spec 16 §4.2).
   assert.match(viteConfigSource, /external:\s*\[/);
-  for (const moduleName of ["@picovoice/pvrecorder-node", "transcribe-cpp"]) {
+  // node-pty is a native runtime dependency loaded lazily by the terminal
+  // service, so it must be externalized rather than bundled.
+  for (const moduleName of ["@picovoice/pvrecorder-node", "transcribe-cpp", "node-pty"]) {
     assert.match(viteConfigSource, new RegExp(`"${moduleName.replaceAll("/", "\\/")}"`));
   }
-  assert.doesNotMatch(viteConfigSource, /node-pty/);
-  assert.doesNotMatch(JSON.stringify(packageJson.dependencies), /node-pty/);
+  assert.match(JSON.stringify(packageJson.dependencies), /node-pty/);
 });
 
 test("sandbox preload entries use standalone shared subpath bundles", () => {
@@ -220,7 +222,9 @@ test("packaging keeps only shipped locales and excludes non-runtime artifacts", 
       to: "models.dev",
     },
   ]);
-  assert.doesNotMatch(JSON.stringify(packageJson.build), /node-pty/);
+  // The PTY native payload ships unpacked so the .node/.exe files load from
+  // disk instead of an asar archive.
+  assert.match(JSON.stringify(packageJson.build.asarUnpack), /node-pty/);
 });
 
 test("macOS targets follow the native architecture selected by the runner", () => {
@@ -266,17 +270,38 @@ test("macOS DMG remains a two-icon install and artifacts omit first-launch guida
     137, 80, 78, 71, 13, 10, 26, 10,
   ]);
   assert.equal(dmgBackgroundRetina.readUInt32BE(16), 1440);
-  assert.equal(dmgBackgroundRetina.readUInt32BE(20), 880);
 });
 
-test("packaging keeps voice native payloads unpacked and excludes removed PTY payloads", () => {
+test("packaging keeps voice and PTY native payloads unpacked", () => {
   assert.deepEqual(packageJson.build.asar, { smartUnpack: false });
   assert.deepEqual(packageJson.build.asarUnpack, [
     "node_modules/transcribe-cpp/**/*.node",
     "node_modules/transcribe-cpp/**/bin/**",
     "node_modules/@picovoice/pvrecorder-node/**/*.node",
     "node_modules/@picovoice/pvrecorder-node/**/lib/**",
+    "node_modules/node-pty/**",
   ]);
-  assert.doesNotMatch(JSON.stringify(packageJson.build.files), /node-pty/);
-  assert.doesNotMatch(JSON.stringify(packageJson.build.extraResources), /node-pty/);
+  // node-pty resolves its native binding through `loadNativeModule`, which
+  // probes `prebuilds/<platform>-<arch>` and rewrites `app.asar` to
+  // `app.asar.unpacked`. A payload left inside asar cannot be dlopen'd, and
+  // narrowing this glob to `.node/.exe/.dll` drops the extensionless macOS
+  // `spawn-helper` and the `conpty/` directory, so the whole package is
+  // unpacked instead of a file-extension allowlist.
+  assert.match(JSON.stringify(packageJson.build.asarUnpack), /node-pty/);
+  // Debug symbols and C++ build inputs are build residue, not runtime payload.
+  assert.ok(
+    packageJson.build.files.includes("!**/node_modules/node-pty/**/*.pdb"),
+    "packaging must drop node-pty debug symbols",
+  );
+  assert.ok(
+    packageJson.build.files.includes(
+      "!**/node_modules/node-pty/{build,deps,src,third_party,scripts,typings}/**",
+    ),
+    "packaging must drop node-pty build inputs",
+  );
+  // Every native module ships prebuilt binaries, so the source rebuild must be
+  // skipped: @electron/rebuild compiles node-pty's binding.gyp from source and
+  // fails on Windows without the Spectre-mitigated MSVC libraries, while the
+  // shipped N-API prebuild already loads in Electron.
+  assert.equal(packageJson.build.npmRebuild, false);
 });

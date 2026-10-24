@@ -438,6 +438,12 @@ export const IPC = {
     menuRendererReady: "pi-desktop/menu/rendererReady",
     traySetSessionPreferences: "pi-desktop/tray/setSessionPreferences",
     nativeMenuAction: "pi-desktop/menu/nativeAction",
+    terminalListShells: "pi-desktop/terminal/listShells",
+    terminalCreate: "pi-desktop/terminal/create",
+    terminalWrite: "pi-desktop/terminal/write",
+    terminalResize: "pi-desktop/terminal/resize",
+    terminalClose: "pi-desktop/terminal/close",
+    terminalGetBuffer: "pi-desktop/terminal/getBuffer",
   },
   event: {
     pluginChanged: "pi-desktop/event/pluginChanged",
@@ -505,6 +511,10 @@ export const IPC = {
     liveVoiceTranscript: "pi-desktop/voice/live/event/transcript",
     liveVoiceWidgetState: "pi-desktop/voice/live/event/widgetState",
     liveVoiceWidgetAction: "pi-desktop/voice/live/event/widgetAction",
+    /** One PTY output chunk for a work-panel terminal, base64-encoded. */
+    terminalData: "pi-desktop/terminal/event/data",
+    /** A work-panel terminal's shell process exited. */
+    terminalExit: "pi-desktop/terminal/event/exit",
   },
 } as const;
 

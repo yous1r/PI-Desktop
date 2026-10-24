@@ -2056,6 +2056,19 @@ export const ptBR = {
       file: "Arquivos",
       plugin: "Visualização de plugin",
       subagent: "Subagente",
+      terminal: "Terminal",
+    },
+    terminal: {
+      title: "Terminal",
+      exited: "Terminal encerrado",
+      exitCode: "Código de saída {{code}}",
+      restart: "Reiniciar terminal",
+      shellLabel: "Shell",
+      shell: "Shell",
+      new: "Novo terminal",
+      unavailable: "Terminal indisponível",
+      failed: "Terminal indisponível",
+      noShells: "Nenhum shell foi encontrado nesta máquina.",
     },
     pluginView: {
       failed: "Não foi possível carregar esta visualização. Recarregue o plugin e tente novamente."

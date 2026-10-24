@@ -22,6 +22,7 @@ export const esEntries: ChangelogEntry[] = [
       "Abre artefactos HTML locales dentro de la sesión que los creó.",
       "Desplázate por tablas Markdown anchas sin alterar el diseño de la conversación.",
       "Las conversaciones siguen funcionando si una herramienta devuelve una imagen demasiado grande.",
+      "Ejecute un shell interactivo en una pestaña Terminal del panel de trabajo, en el espacio de trabajo actual, junto a la conversación.",
     ],
   },
   {

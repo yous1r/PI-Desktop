@@ -71,6 +71,8 @@ export type ApplicationLifecycleDependencies = {
   pluginViews: PluginViewHost;
   plugins: PluginRuntime;
   logger: Pick<Logger, "app">;
+  /** Kills work-panel PTYs when the main window closes (see window.ts). */
+  closeTerminals?: () => void;
   refreshReleaseNotes: () => void;
   applyPluginLauncherShortcut: (keybindings?: KeybindingOverrides) => void;
   applyToggleWindowShortcut: (keybindings?: KeybindingOverrides) => void;
@@ -104,6 +106,7 @@ export function createApplicationLifecycle({
   pluginViews,
   plugins,
   logger,
+  closeTerminals,
   refreshReleaseNotes,
   applyPluginLauncherShortcut,
   applyToggleWindowShortcut,
@@ -349,6 +352,7 @@ export function createApplicationLifecycle({
       browserHost,
       pluginViews,
       logger,
+      closeTerminals,
     });
   }
 

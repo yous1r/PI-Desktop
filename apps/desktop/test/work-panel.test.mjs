@@ -510,12 +510,15 @@ test("Electron enforces the responsive shell minimum", () => {
   assert.doesNotMatch(mainSource, /setMinimumSize\(windowMinWidth, windowMinHeight\);\n\s*\/\/ Prefer normal layer/);
 });
 
-test("built-in terminal is absent while the work panel keeps its other surfaces", () => {
-  assert.doesNotMatch(panelSource, /TerminalTab|terminalOpen|kind: "terminal"/);
-  assert.doesNotMatch(panelSource, /work-panel-surface-terminal|activeTab\?\.kind !== "terminal"/);
+test("the work panel hosts a terminal tab beside its other surfaces", () => {
+  // The built-in terminal was removed in a635e18b1 and reintroduced here as a
+  // host-owned tab: the PTY lives in the main process, the tab only renders it.
+  assert.match(panelSource, /TerminalTab/);
+  assert.match(panelSource, /kind === "terminal"/);
   assert.match(panelSource, /activeTab\?\.kind === "review"/);
   assert.match(panelSource, /activeTab\?\.kind === "plugin"/);
   assert.match(panelSource, /activeTab\?\.kind === "file"/);
+  // A tool result still never opens a terminal on its own; only the user does.
   assert.match(transcriptSource, /action === "run"/);
   assert.doesNotMatch(transcriptSource, /openTerminal|terminalArtifact|chat\.openTerminal/);
 });
