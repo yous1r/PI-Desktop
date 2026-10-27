@@ -210,7 +210,14 @@ function createRuntime(
     pluginTools: overrides.pluginTools,
     subagents: overrides.subagents,
     subagentProviders: overrides.subagentProviders,
-    subagentModelKeys: overrides.subagentModelKeys,
+    // Delegating on the session model now requires that model's own
+    // `availableForSubagents` opt-in. These tests exercise delegation
+    // mechanics, not the opt-in gate, so they start from an opted-in session
+    // model; the gate itself is covered by the dedicated tests below, which
+    // pass `subagentModelKeys` explicitly.
+    subagentModelKeys:
+      overrides.subagentModelKeys ??
+      [`${(overrides.provider ?? provider).vendorKey ?? (overrides.provider ?? provider).name}/${(overrides.provider ?? provider).modelId}`],
     projectInstructions: overrides.projectInstructions,
     projectMemory: overrides.projectMemory,
     pluginSkills: overrides.pluginSkills,
@@ -8055,7 +8062,7 @@ describe("DesktopAgentRuntime subagents", () => {
     expect(host.call).toHaveBeenCalledTimes(1);
   });
 
-  it("guides empty override catalogs to model opt-in without blocking default delegation (#1043)", async () => {
+  it("guides empty override catalogs to model opt-in and refuses the un-opted session model (#1043)", async () => {
     const host = { call: vi.fn().mockRejectedValue(new Error("not enabled for delegation")) };
     const runtime = createRuntime({ subagents: [explorer], subagentModelKeys: [], host });
     subagentRuns.calls.length = 0;
@@ -8072,17 +8079,67 @@ describe("DesktopAgentRuntime subagents", () => {
       expect(guidance).toContain("Advanced");
       expect(guidance).toContain("Available for AI delegation");
       expect(guidance).toContain("save");
-      expect(guidance).toContain("Omit");
     }
     expect(denied.details.error).toContain("not available for delegation");
     expect(subagentRuns.calls).toHaveLength(0);
+    // Inheriting the session model is a model choice too, so an empty catalog
+    // refuses it instead of silently running on an un-opted model.
     const inherited = await tool.execute("inherit-after-denial", { agent: "explorer", task: "Search." });
-    expect(inherited.details.error).toBeUndefined();
+    expect(inherited.details.error).toContain("is not enabled for delegation");
+    expect(subagentRuns.calls).toHaveLength(0);
+    await runtime.dispose();
+  });
+
+
+  it("refuses to inherit an un-opted session model for a fresh delegation", async () => {
+    // The session runs on `local/local-model`; the user opted in only a
+    // different model. A delegate that pins nothing would otherwise inherit the
+    // un-opted session model and bypass the opt-in entirely.
+    const optedIn = { ...provider, id: "opted", vendorKey: "opted", modelId: "opted-model" };
+    const runtime = createRuntime({
+      subagents: [explorer],
+      subagentProviders: { "opted/opted-model": optedIn },
+      subagentModelKeys: ["opted/opted-model"],
+    });
+    subagentRuns.calls.length = 0;
+    subagentRuns.deferred = false;
+    subagentRuns.result = undefined;
+    const tool = taskTool(runtime);
+
+    const denied = await tool.execute("un-opted-inherit", { agent: "explorer", task: "Search." });
+
+    expect(denied.details.error).toContain("is not enabled for delegation");
+    expect(denied.details.error).toContain("opted/opted-model");
+    expect(subagentRuns.calls).toHaveLength(0);
+
+    // Naming an opted-in model is the way through, and the Task description
+    // says so instead of telling the parent to omit `model`.
+    expect(tool.description).toContain("not enabled for delegation");
+    expect(tool.description).toContain("Pass one of the listed delegation models instead.");
+    const allowed = await tool.execute("opted-override", {
+      agent: "explorer", task: "Search.", model: "opted/opted-model",
+    });
+    expect(allowed.details.error).toBeUndefined();
+    expect(subagentRuns.calls).toHaveLength(1);
+    expect(subagentRuns.calls[0].provider).toBe(optedIn);
+    await runtime.dispose();
+  });
+
+  it("still delegates on an opted-in session model without an override", async () => {
+    const runtime = createRuntime({ subagents: [explorer] });
+    subagentRuns.calls.length = 0;
+    subagentRuns.deferred = false;
+    subagentRuns.result = undefined;
+
+    const result = await taskTool(runtime).execute("opted-inherit", {
+      agent: "explorer", task: "Search.",
+    });
+
+    expect(result.details.error).toBeUndefined();
     expect(subagentRuns.calls).toHaveLength(1);
     expect(subagentRuns.calls[0].provider).toBe(provider);
     await runtime.dispose();
   });
-
   it("lists exact authorized keys instead of empty-catalog guidance for an invalid override (#1043)", async () => {
     const runtime = createRuntime({
       subagents: [explorer],

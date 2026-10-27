@@ -925,8 +925,14 @@ core set rather than the on-demand catalog of §7.1:
   point to Settings → Models → edit service/account → model Advanced →
   "Available for AI delegation" → save, and require an exact catalog key
   rather than guessed provider/model keys. If
-  the delegation catalog is empty, the prompt tells the model to omit `model`
-  and use the definition pin, or inherit the session model when unpinned; an
+  the delegation catalog is empty, the prompt tells the model that omitting
+  `model` fails when the session model is not opted in, and to pass an
+  authorized model key instead; it inherits the session model only when that
+  model is itself marked `availableForSubagents`. Inheriting the session model
+  is a model choice the parent makes on the user's behalf, so it is gated like
+  an explicit override: a fresh delegation is refused when the session model is
+  absent from `subagentModelKeys`. A definition's own pin and a `resume`
+  reauthorization (ADR 0279) are exempt. An
   explicit key that exactly names the current session provider/model is treated as the same inheritance case. Other
   explicit model keys must be configured and enabled for delegation. Electron
   sends `subagentModelKeys` separately from `subagentProviders`: the latter may
