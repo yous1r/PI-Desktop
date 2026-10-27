@@ -3,6 +3,12 @@
  * panel in the side work panel). A profile is one launchable shell program;
  * availability is probed by Electron main, never asserted by the renderer.
  */
+import {
+  DEFAULT_TERMINAL_COLOR_SCHEME,
+  TERMINAL_COLOR_SCHEMES,
+  isTerminalColorSchemeId,
+  type TerminalColorSchemeId,
+} from "./terminal-palettes.js";
 
 export const TERMINAL_SHELL_FAMILIES = [
   "cmd",
@@ -150,6 +156,13 @@ export type TerminalSettings = {
   /** Letter spacing in CSS px; absent means 0. */
   letterSpacing?: number;
   /**
+   * ANSI color scheme. `"app"` (and absent) follows the application theme
+   * tokens; every other id is a fixed palette from
+   * `TERMINAL_COLOR_SCHEME_TABLE`. Unknown ids resolve to `"app"` so a settings
+   * file written by a newer build never leaves the pane unthemed.
+   */
+  theme?: TerminalColorSchemeId;
+  /**
    * Extra argv appended to every shell launch, split on whitespace. Absent
    * means the shell's own interactive defaults.
    */
@@ -160,7 +173,6 @@ export type TerminalSettings = {
    */
   env?: string;
 };
-
 function clampNumber(value: unknown, min: number, max: number, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, value));
@@ -197,6 +209,21 @@ export function resolveTerminalAppearance(
       DEFAULT_TERMINAL_LINE_HEIGHT,
     ),
   };
+}
+
+/**
+ * Resolve the effective color scheme id.
+ *
+ * An unknown or absent id falls back to `"app"` (follow the application
+ * theme). That keeps a settings file written by a newer build from leaving the
+ * pane with no palette at all, and it makes `theme` purely additive.
+ */
+export function resolveTerminalColorScheme(
+  settings: TerminalSettings | null | undefined,
+): TerminalColorSchemeId {
+  return isTerminalColorSchemeId(settings?.theme)
+    ? settings.theme
+    : DEFAULT_TERMINAL_COLOR_SCHEME;
 }
 
 /**
@@ -270,6 +297,9 @@ export function terminalSettingsError(input: unknown): string | null {
     if (value[key] !== undefined && typeof value[key] !== "string") {
       return `terminal.${key} must be a string`;
     }
+  }
+  if (value.theme !== undefined && !isTerminalColorSchemeId(value.theme)) {
+    return `terminal.theme must be one of ${TERMINAL_COLOR_SCHEMES.join(", ")}`;
   }
   if (typeof value.launchArgs === "string" && value.launchArgs.length > TERMINAL_MAX_LAUNCH_ARGS_LENGTH) {
     return `terminal.launchArgs must be at most ${TERMINAL_MAX_LAUNCH_ARGS_LENGTH} characters`;

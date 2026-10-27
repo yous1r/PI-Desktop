@@ -303,6 +303,29 @@ export class TerminalService {
     const limit = Math.max(1, Math.floor(maxBytes));
     return stripAnsiCodes(tailWithin(whole, limit).toString("utf8"));
   }
+
+  /**
+   * Raw replay for a renderer that re-attaches to a terminal which kept running
+   * while its tab was unmounted. Base64 of the ring bytes with ANSI sequences
+   * intact: the caller feeds them straight into xterm, and the stripped
+   * `getBuffer` form would lose colors, cursor position, and clear-screen.
+   *
+   * `null` means the terminal is unknown or already exited, which the caller
+   * must tell apart from "still alive, no output yet".
+   */
+  replay(terminalId: string, maxBytes = TERMINAL_RING_BYTES): string | null {
+    const record = this.terminals.get(terminalId);
+    if (!record || record.exited) return null;
+    const whole = Buffer.concat(record.ring);
+    const limit = Math.max(1, Math.floor(maxBytes));
+    return tailWithin(whole, limit).toString("base64");
+  }
+
+  /** Whether a terminal is still running, without touching its output. */
+  isAlive(terminalId: string): boolean {
+    const record = this.terminals.get(terminalId);
+    return record !== undefined && !record.exited;
+  }
   /**
    * Kills every open PTY without sealing the service. The main window closing
    * is not the app exiting: under `closeBehavior: "tray"` a new window can open

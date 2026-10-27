@@ -136,4 +136,16 @@ export function registerTerminalIpc({
         : undefined;
     return { text: service.getBuffer(requiredText(input, "terminalId"), maxBytes) };
   });
+
+  handle(IPC.invoke.terminalReplay, async (event, input: unknown) => {
+    fromMain(event);
+    const source = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+    const maxBytes =
+      typeof source.maxBytes === "number" && Number.isFinite(source.maxBytes) && source.maxBytes >= 1
+        ? Math.min(Math.floor(source.maxBytes), 256 * 1024)
+        : undefined;
+    // `null` means the terminal is gone; the renderer restarts it instead of
+    // attaching to a PTY that no longer exists.
+    return { data: service.replay(requiredText(input, "terminalId"), maxBytes) };
+  });
 }

@@ -23,6 +23,14 @@ function loadSlice() {
     "../../lib/remote-session-safety": { isRemoteSession: () => false },
     "../../lib/work-panel-tabs": workPanelTabs,
     "../../lib/work-panel-resize": workPanelResize,
+    // Closing a tab ends its terminal; the PTY registry itself is not under
+    // test here, so the slice only needs the call to exist.
+    "../../lib/terminal-sessions": {
+      closeTerminalForTab: () => {},
+      forgetTerminalHandle: () => {},
+      setTerminalHandle: () => {},
+      terminalHandleFor: () => undefined,
+    },
   };
   const module = { exports: {} };
   new Function("require", "exports", "module", outputText)(

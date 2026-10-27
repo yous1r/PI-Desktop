@@ -12,6 +12,10 @@ import {
   parseTerminalEnv,
   parseTerminalLaunchArgs,
   resolveTerminalAppearance,
+  resolveTerminalColorScheme,
+  TERMINAL_COLOR_SCHEMES,
+  TERMINAL_COLOR_SCHEME_TABLE,
+  findTerminalColorScheme,
   terminalSettingsError,
 } from "./index.js";
 /**
@@ -136,5 +140,39 @@ describe("terminal appearance and launch settings", () => {
     expect(terminalSettingsError({ fontSize: 100 })).not.toBeNull();
     expect(terminalSettingsError({ fontFamily: 1 })).not.toBeNull();
     expect(terminalSettingsError({ launchArgs: "x".repeat(4096) })).not.toBeNull();
+  });
+});
+
+describe("terminal color scheme settings", () => {
+  it("accepts every built-in scheme id and rejects unknown ones", () => {
+    for (const theme of TERMINAL_COLOR_SCHEMES) {
+      expect(terminalSettingsError({ theme })).toBeNull();
+    }
+    expect(terminalSettingsError({ theme: "solarized-purple" })).not.toBeNull();
+    expect(terminalSettingsError({ theme: 1 })).not.toBeNull();
+  });
+
+  it("resolves an absent or unknown scheme to following the app theme", () => {
+    expect(resolveTerminalColorScheme(undefined)).toBe("app");
+    expect(resolveTerminalColorScheme({ theme: "one-dark" })).toBe("one-dark");
+    // A settings file from a newer build must not leave the pane unthemed.
+    // The cast models untrusted persisted JSON, not a typed literal.
+    expect(
+      resolveTerminalColorScheme({ theme: "future-scheme" } as unknown as Parameters<
+        typeof resolveTerminalColorScheme
+      >[0]),
+    ).toBe("app");
+  });
+
+  it("keeps every scheme palette complete so xterm needs no fallbacks", () => {
+    expect(TERMINAL_COLOR_SCHEME_TABLE.length).toBeGreaterThanOrEqual(10);
+    for (const scheme of TERMINAL_COLOR_SCHEME_TABLE) {
+      expect(TERMINAL_COLOR_SCHEMES).toContain(scheme.id);
+      for (const value of Object.values(scheme.palette)) {
+        expect(value).toMatch(/^#[0-9a-f]{6}$/i);
+      }
+    }
+    // `app` is a mode, not a fixed palette.
+    expect(findTerminalColorScheme("app")).toBeUndefined();
   });
 });

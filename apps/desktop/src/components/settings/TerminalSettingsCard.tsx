@@ -7,6 +7,7 @@ import {
   TERMINAL_FONT_SIZE_MAX,
   TERMINAL_FONT_SIZE_MIN,
   resolveTerminalAppearance,
+  resolveTerminalColorScheme,
 } from "@pi-desktop/shared";
 
 import { SettingsRow } from "../../features/settings/primitives";
@@ -19,6 +20,8 @@ import {
   readableFamily,
   terminalFontStack,
 } from "../../lib/terminal-fonts";
+import { buildTerminalSchemeOptions } from "../../lib/terminal-theme";
+import { TerminalSchemePreview } from "./TerminalSchemePreview";
 /**
  * Terminal card (Settings → General → Terminal).
  *
@@ -41,6 +44,21 @@ export function TerminalSettingsCard({
   const showToast = useAppStore((state) => state.showToast);
   const terminal = settings.terminal ?? {};
   const appearance = useMemo(() => resolveTerminalAppearance(terminal), [terminal]);
+  const colorScheme = useMemo(() => resolveTerminalColorScheme(terminal), [terminal]);
+  const schemeOptions = useMemo(
+    () =>
+      buildTerminalSchemeOptions((id, fallback) => {
+        const key = `settings.terminalTheme.${id.replace(
+          /-([a-z])/g,
+          (_match: string, char: string) => char.toUpperCase(),
+        )}`;
+        const translated = t(key);
+        // i18next echoes the key back when a locale has no entry; the scheme's
+        // own English label is the honest fallback.
+        return translated === key ? fallback : translated;
+      }),
+    [t],
+  );
 
   const [fonts, setFonts] = useState<string[] | null>(null);
   const [fontSizeDraft, setFontSizeDraft] = useState(String(appearance.fontSize));
@@ -104,6 +122,28 @@ export function TerminalSettingsCard({
 
   return (
     <>
+      <SettingsRow
+        title={t("settings.terminalTheme")}
+        description={t("settings.terminalThemeDesc")}
+      >
+        <div className="settings-terminal-theme">
+          <SettingsMenuSelect
+            className="settings-terminal-theme-select"
+            label={t("settings.terminalTheme")}
+            value={colorScheme}
+            options={schemeOptions}
+            onChange={(id) => {
+              if (id === colorScheme) return;
+              void save({ theme: id as typeof terminal.theme });
+            }}
+          />
+          <TerminalSchemePreview
+            schemeId={colorScheme}
+            className="settings-terminal-theme-preview"
+          />
+        </div>
+      </SettingsRow>
+
       <SettingsRow
         title={t("settings.terminalFont")}
         description={t("settings.terminalFontDesc")}

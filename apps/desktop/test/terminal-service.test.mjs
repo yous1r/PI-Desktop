@@ -167,6 +167,58 @@ test("getBuffer replays the ring with ANSI sequences stripped", () => {
   assert.match(text, /plain/);
 });
 
+test("replay returns raw bytes with ANSI intact so a re-attached view keeps colors", () => {
+  const { service, handle } = harness();
+  const { terminalId } = service.create(PROFILE, "C:\\work", { cols: 80, rows: 24 });
+
+  handle.emitData("\u001b[32mgreen\u001b[0m");
+  handle.emitData("\r\nplain");
+
+  const data = service.replay(terminalId);
+  assert.equal(typeof data, "string");
+  const raw = Buffer.from(data, "base64").toString("utf8");
+  // The whole point of `replay` over `getBuffer`: escapes survive, so the
+  // re-attached terminal renders the same colors it had before detaching.
+  assert.equal(raw.includes("\u001b[32m"), true, `replay must keep ANSI: ${raw}`);
+  assert.match(raw, /green/);
+  assert.match(raw, /plain/);
+  assert.equal(service.getBuffer(terminalId).includes("\u001b"), false);
+});
+
+test("replay is null once the shell exited, so the tab starts a fresh one", () => {
+  const { service, handle } = harness();
+  const { terminalId } = service.create(PROFILE, "C:\\work", { cols: 80, rows: 24 });
+  handle.emitData("output");
+
+  handle.emitExit(0);
+
+  assert.equal(service.replay(terminalId), null);
+});
+
+test("replay is null for an unknown terminal instead of throwing", () => {
+  const { service } = harness();
+  assert.equal(service.replay("term_missing"), null);
+});
+
+test("replay honors a byte limit by keeping the newest tail", () => {
+  const { service, handle } = harness({ ringBytes: 64 });
+  const { terminalId } = service.create(PROFILE, "C:\\work", { cols: 80, rows: 24 });
+  handle.emitData("0123456789");
+
+  const data = service.replay(terminalId, 4);
+  assert.equal(Buffer.from(data, "base64").toString("utf8"), "6789");
+});
+
+test("isAlive reports a live terminal and stops reporting after exit", () => {
+  const { service, handle } = harness();
+  const { terminalId } = service.create(PROFILE, "C:\\work", { cols: 80, rows: 24 });
+
+  assert.equal(service.isAlive(terminalId), true);
+  handle.emitExit(0);
+  assert.equal(service.isAlive(terminalId), false);
+  assert.equal(service.isAlive("term_missing"), false);
+});
+
 test("the ring is bounded: oldest bytes are dropped, newest survive", () => {
   const { service, handle } = harness({ ringBytes: 16 });
   const { terminalId } = service.create(PROFILE, "C:\\work", { cols: 80, rows: 24 });

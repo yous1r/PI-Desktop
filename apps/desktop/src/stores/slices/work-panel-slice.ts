@@ -18,6 +18,7 @@ import {
   type WorkPanelContext,
   type WorkPanelTab,
 } from "../../lib/work-panel-tabs";
+import { closeTerminalForTab } from "../../lib/terminal-sessions";
 import {
   WORK_PANEL_COMPACT_MIN_WIDTH,
   WORK_PANEL_DEFAULT_WIDTH,
@@ -299,6 +300,10 @@ export function createWorkPanelSlice({
     });
   },
   closeWorkPanelTab: (tabId) => {
+    // Closing a tab is an explicit end for its terminal: the PTY is only
+    // detached (not killed) when the view merely unmounts, so this is the one
+    // place that stops a background shell the user deliberately closed.
+    closeTerminalForTab(tabId);
     const current = get();
     if (current.activeSessionId && current.workPanelTabs.some((tab) => tab.id === tabId && tab.resource === "pi.browser/browser")) {
       void api.pluginViewClose("pi.browser", "browser", { sessionId: current.activeSessionId, tabId })

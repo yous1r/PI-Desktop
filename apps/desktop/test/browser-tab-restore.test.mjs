@@ -13,6 +13,13 @@ const imports = {
   "../../lib/remote-session-safety": { isRemoteSession: () => false },
   "../../lib/work-panel-tabs": workPanelTabs,
   "../../lib/work-panel-resize": workPanelResize,
+  // A closed tab also ends its terminal; the PTY registry is not under test.
+  "../../lib/terminal-sessions": {
+    closeTerminalForTab: () => {},
+    forgetTerminalHandle: () => {},
+    setTerminalHandle: () => {},
+    terminalHandleFor: () => undefined,
+  },
 };
 const module = { exports: {} };
 new Function("require", "exports", "module", outputText)((id) => {

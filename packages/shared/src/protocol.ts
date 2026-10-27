@@ -444,6 +444,12 @@ export const IPC = {
     terminalResize: "pi-desktop/terminal/resize",
     terminalClose: "pi-desktop/terminal/close",
     terminalGetBuffer: "pi-desktop/terminal/getBuffer",
+    /**
+     * Raw replay of a live terminal's ring buffer, base64-encoded and with ANSI
+     * sequences intact. `getBuffer` strips escapes for diagnostics; replaying a
+     * stripped buffer would lose colors and cursor control.
+     */
+    terminalReplay: "pi-desktop/terminal/replay",
   },
   event: {
     pluginChanged: "pi-desktop/event/pluginChanged",

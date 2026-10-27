@@ -5,6 +5,16 @@ import type { TerminalShellProfile } from "@pi-desktop/shared";
 import { resolveTerminalAppearance } from "@pi-desktop/shared";
 
 import { api } from "../../lib/api";
+import {
+  closeTerminalForTab,
+  forgetTerminalHandle,
+  setTerminalHandle,
+  terminalHandleFor,
+} from "../../lib/terminal-sessions";
+import {
+  resolveTerminalTheme,
+  terminalSchemeBackground,
+} from "../../lib/terminal-theme";
 import { useAppStore } from "../../stores/app-store";
 import { TooltipButton } from "../ui";
 import { IconRefresh } from "../icons";
@@ -14,9 +24,14 @@ import { SettingsMenuSelect } from "../settings/SettingsMenuSelect";
  * One work-panel terminal. The PTY lives in the main process; this component
  * owns the xterm view, forwards keystrokes, and reports its size.
  *
- * Every await is followed by a liveness check: a session switch, a tab close,
- * or a renderer reload can land between creating the PTY and subscribing to it,
- * and a terminal created for a gone component would never be closed.
+ * Unmounting detaches without killing the shell, so a background command keeps
+ * running while the user is on another tab, another project, or another
+ * session. Only an explicit close (tab close, restart, or shell exit) ends the
+ * process. `lib/terminal-sessions` holds the tab-to-PTY map that survives the
+ * unmount. Every await is followed by a liveness check: a session switch, a
+ * tab close, or a renderer reload can land between creating the PTY and
+ * subscribing to it, and a terminal created for a gone component would never
+ * be closed.
  *
  * Appearance comes from `AppSettings.terminal` and is applied as a concrete CSS
  * stack, never a `var(--token)`: xterm measures glyphs through a canvas context
@@ -29,6 +44,13 @@ export function TerminalTab({ tabId }: { tabId: string }) {
   const terminalSettings = useAppStore((s) => s.settings?.terminal);
   const appearance = useMemo(
     () => resolveTerminalAppearance(terminalSettings),
+    [terminalSettings],
+  );
+  // The scheme is applied through `term.options.theme`, so switching it never
+  // restarts the shell: a PTY restart would drop the user's scrollback and any
+  // running command just because they changed a color.
+  const schemeBackground = useMemo(
+    () => terminalSchemeBackground(terminalSettings),
     [terminalSettings],
   );
 
@@ -70,12 +92,15 @@ export function TerminalTab({ tabId }: { tabId: string }) {
     };
   }, [t]);
 
+  /**
+   * Ends the shell for good. Reached only by an explicit user action (restart)
+   * or by a tab close; a plain unmount detaches instead, so a background
+   * command survives a tab, project, or session switch.
+   */
   const closeTerminal = useCallback(() => {
-    const terminalId = terminalIdRef.current;
     terminalIdRef.current = null;
-    if (!terminalId) return;
-    void api.terminalClose(terminalId).catch(() => undefined);
-  }, []);
+    closeTerminalForTab(tabId);
+  }, [tabId]);
 
   // Own the PTY for this tab. Re-running on `generation` restarts a dead shell.
   // Appearance is applied at construction only, so the effect also re-runs when
@@ -101,12 +126,16 @@ export function TerminalTab({ tabId }: { tabId: string }) {
         letterSpacing: appearance.letterSpacing,
         fontWeight: 400,
         fontWeightBold: 600,
-        theme: readTerminalTheme(host),
+        theme: resolveTerminalTheme(terminalSettings, getComputedStyle(host)),
         scrollback: 5000,
         convertEol: true,
         allowTransparency: true,
         drawBoldTextInBrightColors: true,
-        minimumContrastRatio: 1,
+        // xterm's own floor: below this, a shell's colored text on a colored
+        // background is never nudged toward legibility. `1` disables the
+        // correction entirely, which is how PowerShell's blue-on-blue
+        // directory cells stayed unreadable until a selection covered them.
+        minimumContrastRatio: 4.5,
       });
       const fit = new FitAddon();
       term.loadAddon(fit);
@@ -119,27 +148,63 @@ export function TerminalTab({ tabId }: { tabId: string }) {
         // The pane can be zero-sized while the panel animates open.
       }
 
-      let opened;
-      try {
-        opened = await api.terminalCreate({
-          shellId,
-          cwd: workspacePath ?? undefined,
-          cols: term.cols,
-          rows: term.rows,
-        });
-      } catch (cause) {
-        if (cancelled) return;
-        setState("failed");
-        setError(cause instanceof Error ? cause.message : String(cause));
-        return;
+      // Attach to the PTY this tab already owns when it is still alive: a tab
+      // switch, project switch, or session switch unmounts the view, and
+      // starting a fresh shell there would discard the user's background work.
+      const existing = terminalHandleFor(tabId);
+      let terminalId = "";
+      let replayed: string | null = null;
+      if (existing) {
+        try {
+          const { data } = await api.terminalReplay(existing.terminalId);
+          if (cancelled || disposedRef.current) return;
+          if (data !== null) {
+            replayed = data;
+            terminalId = existing.terminalId;
+          } else {
+            // The shell exited while the view was detached: start a new one.
+            forgetTerminalHandle(tabId);
+          }
+        } catch {
+          forgetTerminalHandle(tabId);
+        }
       }
-      // The tab may have closed while the PTY was being spawned: close it now
-      // rather than leaking a shell nobody can reach.
-      if (cancelled || disposedRef.current) {
-        void api.terminalClose(opened.terminalId).catch(() => undefined);
-        return;
+
+      if (!terminalId) {
+        let opened;
+        try {
+          opened = await api.terminalCreate({
+            shellId,
+            cwd: workspacePath ?? undefined,
+            cols: term.cols,
+            rows: term.rows,
+          });
+        } catch (cause) {
+          if (cancelled) return;
+          setState("failed");
+          setError(cause instanceof Error ? cause.message : String(cause));
+          return;
+        }
+        // The tab may have closed while the PTY was being spawned: close it now
+        // rather than leaking a shell nobody can reach.
+        if (cancelled || disposedRef.current) {
+          void api.terminalClose(opened.terminalId).catch(() => undefined);
+          return;
+        }
+        terminalId = opened.terminalId;
       }
-      terminalIdRef.current = opened.terminalId;
+
+      terminalIdRef.current = terminalId;
+      setTerminalHandle(tabId, { terminalId, cols: term.cols, rows: term.rows });
+
+      // Replay before subscribing so the scrollback lands first and no live
+      // chunk is rendered ahead of the history it belongs after.
+      if (replayed) {
+        term.write(Uint8Array.from(atob(replayed), (char) => char.charCodeAt(0)));
+        // The PTY kept the size its detached view had; restore it to the new
+        // viewport or the shell wraps its output at the wrong column count.
+        void api.terminalResize(terminalId, term.cols, term.rows).catch(() => undefined);
+      }
       setState("ready");
 
       const unsubData = api.onTerminalData((event) => {
@@ -150,6 +215,9 @@ export function TerminalTab({ tabId }: { tabId: string }) {
       const unsubExit = api.onTerminalExit((event) => {
         if (event.terminalId !== terminalIdRef.current) return;
         terminalIdRef.current = null;
+        // The shell is gone, so the registry entry must go with it: a later
+        // re-attach would otherwise replay a dead id and stay blank.
+        forgetTerminalHandle(tabId);
         setState("exited");
       });
 
@@ -196,11 +264,32 @@ export function TerminalTab({ tabId }: { tabId: string }) {
     return () => {
       cancelled = true;
       disposedRef.current = true;
+      // Detach only: the PTY keeps running in main so a background command
+      // survives a tab, project, or session switch. `terminalHandles` keeps the
+      // id, so remounting replays the scrollback and re-attaches. The process
+      // ends when the shell exits on its own, on `restart`, or when the tab is
+      // actually closed (`closeTerminalForTab`).
       cleanupRef.current?.();
       cleanupRef.current = null;
-      closeTerminal();
     };
-  }, [shellId, workspacePath, generation, closeTerminal, appearance]);
+    // `workspacePath` is deliberately absent: switching project must not tear
+    // down a running shell. It is read once at creation, which is the only
+    // moment the workspace cwd matters.
+    // `terminalSettings` is absent too: the theme and scheme background are
+    // applied in place below, so changing a color never restarts the shell.
+    // Font metrics still need a restart, which is why `appearance` stays.
+  }, [shellId, generation, appearance, tabId]);
+
+  // Apply a scheme change to the live terminal. xterm repaints from
+  // `options.theme`, so this is a color swap rather than a PTY restart; the
+  // app-theme path re-reads the tokens because a theme switch changes them
+  // without touching `terminalSettings`.
+  useEffect(() => {
+    const term = termRef.current;
+    const host = hostRef.current;
+    if (!term || !host) return;
+    term.options.theme = resolveTerminalTheme(terminalSettings, getComputedStyle(host));
+  }, [terminalSettings]);
 
   const restart = () => {
     closeTerminal();
@@ -240,7 +329,14 @@ export function TerminalTab({ tabId }: { tabId: string }) {
           <IconRefresh size={14} />
         </TooltipButton>
       </div>
-      <div className="terminal-tab__surface" ref={hostRef} />
+      <div
+        className="terminal-tab__surface"
+        ref={hostRef}
+        // A fixed scheme owns its own background: the panel surface is the app
+        // theme's color, which would show through every unpainted cell of a
+        // light scheme. `app` leaves this unset so the panel keeps painting.
+        style={schemeBackground ? { background: schemeBackground } : undefined}
+      />
     </div>
   );
 }
