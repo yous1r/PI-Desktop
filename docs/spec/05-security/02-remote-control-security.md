@@ -260,6 +260,41 @@ retry or a rollback claim. Readiness for browse/files does not replay tools.
 Remote picker and Settings errors use allowlisted localized categories rather
 than raw SSH stderr, tokens, password/private-key paths or forwarded URLs.
 
+### 3.7 Remote mirror helper (`pi-helper`)
+
+Mirror projects keep the local copy authoritative and use a separate remote
+service for synchronization and debugging. That service is not `pi-host` and
+carries no Agent authority: it has no model, session, provider, or tool-relay
+endpoint, and it cannot execute a shell.
+
+- The `pi-helper` binary is release content bundled with the desktop application.
+  It is uploaded over the user's existing SSH session, its SHA-256 is verified on
+  the host before execution, and its version must match the desktop. No
+  model-generated or user-supplied code is executed through this path.
+- The helper installs under the fixed per-user directory
+  `$HOME/.pi-desktop-helper` with mode `0700`, holds its authentication token in a
+  `0600` file, binds loopback only, prints one ready line, and is consumed through
+  an SSH loopback port forward. There is no public listener, no SSH stdio RPC, no
+  systemd unit, and no elevated privilege.
+- The first frame on a connection must authenticate with the token; any other
+  first frame, a wrong token, or a repeated `auth` closes the connection. The
+  token never appears in a URL, log line, error payload, or renderer payload.
+- Every path is resolved with `realpath` and must stay inside an allowlisted
+  mirror root or the helper root. `..`, symlink, and junction escapes are refused
+  with `REMOTE_PATH_ESCAPE`. Credential-shaped paths (`.env*`, `.ssh/`, `*.pem`,
+  `*.key`) are refused in both directions.
+- The protocol has no shell, no arbitrary argv, no archive extraction, and no
+  delete operation. Adapter launch arguments come only from the desktop-bundled
+  manifest; an unknown placeholder or a non-array entry invalidates the entry.
+- Debug adapters are installed by remote execution of the pinned manifest command
+  into an isolated virtual environment or a helper-local `GOBIN`. The user's
+  site-packages, `$GOPATH/bin`, and shell configuration are never modified.
+- The 50 MB per-file ceiling is enforced on both sides. Frames, in-flight streams,
+  request rate, and per-request deadlines are bounded, and a transfer failure
+  leaves the target file unchanged.
+- Removing `$HOME/.pi-desktop-helper` removes the entire remote mirror
+  environment; nothing outside that directory is written by mirror development.
+
 ## 4. Authorization model
 
 ### 4.1 Role matrix

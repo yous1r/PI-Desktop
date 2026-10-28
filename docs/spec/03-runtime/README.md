@@ -26,3 +26,4 @@
 
 - [Image generation and editing](21-image-generation.md)
 - [Portable configuration sync](22-config-sync.md)
+- [Remote mirror development](23-remote-mirror-development.md) — bundled helper protocol and remote development

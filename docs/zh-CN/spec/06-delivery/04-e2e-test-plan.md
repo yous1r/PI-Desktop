@@ -5829,6 +5829,10 @@ eleven-tool-round desktop paths are verified by
 - **自动化：** `pnpm test:e2e:todos` 从生产 Agent 的 ToolSearch/TodoWrite 路径进入，使用生产渲染器、真实 Host/SQLite 和隔离 Electron 配置验证清单旅程；仅替换外部模型流和 preload 传输，不使用真实 Provider 或用户配置。覆盖 Unicode 截断及警告重放、单一活动项归一化、全量清单渲染与 dock 内滚动、首次读取失败后不切换会话的主机恢复、已缓存快照重新同步及旧事件拒绝。运行时 `runtime-todos.test.ts` 使用确定性 Provider 验证 Agent 工具校验、超长内容归一化和续跑。
 - **状态：** 构建 Desktop 和 Host 后，在确切的请求候选中执行。Host-core 和渲染器定向测试是辅助检查，不能替代 Electron 用户旅程。
 
+| A / D / F / Security / Quality — 镜像项目 helper 初始化与验证 | E2E-MIRROR-initialization |
+| D / E / Security / Quality — 镜像文件同步、忽略规则、大小上限与人工冲突处理 | E2E-MIRROR-synchronization |
+| D / F / Security / Quality — 远程调试与 host-core 断点持久化 | E2E-MIRROR-debug-session |
+
 ## 8. 可追溯性矩阵
 | 验收 | 应用场景 |
 |---|---|
