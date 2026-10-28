@@ -367,7 +367,7 @@ New durable state, owned by Rust host-core:
 | Initialization receipts | Per project and step: version, completedAt |
 | Adapter install receipts | Per host and adapter: version, installedAt |
 
-A schema migration adds the baseline and breakpoint storage with upgrade
+Schema v28 adds the baseline and breakpoint storage with upgrade
 compatibility and migration tests. The project-group binding is additive and
 backward compatible; a build without mirror support ignores it.
 

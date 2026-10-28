@@ -142,9 +142,8 @@ bundled manifest only.
 
 Existing remote projects, `pi-host` pairing, RACP, and their persisted data are
 unchanged. A build that does not know the `mirror` binding ignores it. The
-synchronization baseline and breakpoint tables require a storage schema
-migration with upgrade compatibility and migration tests; no existing row is
-rewritten.
+synchronization baseline and breakpoint tables arrive in storage schema v28,
+with upgrade compatibility and migration tests; no existing row is rewritten.
 
 ## Consequences
 
