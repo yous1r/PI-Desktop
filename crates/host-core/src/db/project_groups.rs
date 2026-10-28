@@ -257,12 +257,20 @@ impl Database {
     }
 
     /// Delete a stored project group record together with its group-scoped
-    /// memory and instructions. The underlying project rows are left untouched;
-    /// callers remove those separately when appropriate.
+    /// memory, instructions, and remote-mirror state. The underlying project
+    /// rows are left untouched; callers remove those separately when
+    /// appropriate.
+    ///
+    /// Group-scoped data has no foreign key to cascade through: a project group
+    /// is a `kv` record, so every owner removes its rows here, in the same
+    /// transaction that drops the record.
     pub fn delete_project_group_record(&self, id: &str) -> Result<()> {
+        let transaction = self.conn.unchecked_transaction()?;
         self.kv_delete(GROUP_NAMESPACE, id)?;
         self.kv_delete(GROUP_MEMORY_NAMESPACE, id)?;
         self.kv_delete(GROUP_INSTRUCTIONS_NAMESPACE, id)?;
+        delete_mirror_project_rows(&self.conn, id)?;
+        transaction.commit()?;
         Ok(())
     }
 

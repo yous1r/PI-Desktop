@@ -7,7 +7,7 @@ pub(crate) use serde_json::Value;
 pub(crate) use std::path::{Path, PathBuf};
 
 /// Current SQLite schema version.
-pub const SCHEMA_VERSION: i64 = 24;
+pub const SCHEMA_VERSION: i64 = 25;
 
 /// Absolute approval deadline for a newly submitted Plan or Goal proposal.
 pub const PLAN_APPROVAL_TIMEOUT_MS: i64 = 30 * 60 * 1000;
@@ -16,6 +16,7 @@ pub const PLAN_APPROVAL_TIMEOUT_MS: i64 = 30 * 60 * 1000;
 pub const NOTIFICATION_KEEP: i64 = 200;
 
 mod migrations;
+mod mirror_storage;
 mod model;
 mod plugin_providers_migration;
 mod project_groups;
@@ -31,6 +32,10 @@ pub(crate) use migrations::{
     migrate_v19_to_v20, migrate_v20_to_v21, migrate_v7_to_v8, migrate_v8_to_v15, migrate_v9_to_v15,
     migration_backup_path, validate_session_modes,
 };
+pub(crate) use mirror_storage::{
+    delete_mirror_project_rows, migrate_v24_to_v25, MIRROR_STORAGE_DDL,
+};
+pub use mirror_storage::{MirrorBaselineEntry, MirrorBreakpointRecord, MAX_MIRROR_ROWS_PER_WRITE};
 pub(crate) use model::PlanWorkRow;
 pub use model::{Database, ProjectMemoryEntryRecord, ProjectMemoryRecord, ProjectRecord};
 pub use project_groups::{
@@ -64,5 +69,7 @@ pub fn ms_to_ts(ms: i64) -> String {
         .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
+#[cfg(test)]
+mod mirror_storage_tests;
 #[cfg(test)]
 mod tests;
