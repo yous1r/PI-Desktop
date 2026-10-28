@@ -681,8 +681,12 @@ Frontmatter 新增 `permission: inherit | ask | accept-edits | auto`（默认
   所有标记为 `availableForSubagents` 的模型。空目录下的系统摘要、Task 说明和
   覆盖请求错误均指向「设置 → 模型 → 编辑服务或账号 → 模型高级设置 →
   可供 AI 自动调度 → 保存」，要求使用目录中的准确键，避免猜测 provider/model。
-  若委托目录为空，提示会告诉模型
-  省略 `model`，使用定义的固定模型，无固定模型时继承会话模型；显式给出的键如果正好就是当前会话的
+  若委托目录为空，提示会告诉模型省略 `model` 会失败（会话模型未获授权时），
+  并要求显式传入已获授权的模型键；无固定模型且会话模型已勾选自动调度时才继承会话模型。
+  继承会话模型与显式覆盖一样属于「AI 替用户选模型」，因此同样受
+  `availableForSubagents` 约束：会话模型不在 `subagentModelKeys` 中时，新委派会被拒绝。
+  定义自身的固定模型与 `resume` 恢复不受此约束（后者沿用 ADR 0279 的授权链）。
+  显式给出的键如果正好就是当前会话的
   provider/model，同样按继承处理。其他显式模型键必须已配置并已为委托启用。
   Electron 单独传递 `subagentModelKeys` 与 `subagentProviders`：后者可含仅供定义
   固定使用的模型，只有前者授权缓存覆盖并生成模型摘要。缺省列表为空；按需解析成功

@@ -873,6 +873,12 @@ export const api = {
     invoke<{ ok: boolean }>(IPC.invoke.terminalClose, { terminalId }),
   terminalGetBuffer: (terminalId: string, maxBytes?: number) =>
     invoke<{ text: string }>(IPC.invoke.terminalGetBuffer, { terminalId, maxBytes }),
+  /**
+   * Raw base64 replay of a live terminal's scrollback, ANSI intact. `data` is
+   * null when the PTY already exited and the tab must start a new one.
+   */
+  terminalReplay: (terminalId: string, maxBytes?: number) =>
+    invoke<{ data: string | null }>(IPC.invoke.terminalReplay, { terminalId, maxBytes }),
   onTerminalData: (listener: (event: TerminalDataEvent) => void) => {
     if (!window.piDesktop?.on) return () => undefined;
     return window.piDesktop.on(IPC.event.terminalData, (payload) => {

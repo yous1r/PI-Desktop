@@ -26,3 +26,4 @@ export * from "./types/remote-host.js";
 export * from "./types/config-sync.js";
 export * from "./types/live-voice.js";
 export * from "./types/terminal.js";
+export * from "./types/terminal-palettes.js";

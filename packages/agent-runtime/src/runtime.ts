@@ -4318,6 +4318,25 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
   }
 
   /**
+   * Whether the session's own provider/model is authorized for delegation.
+   *
+   * Inheriting the session model is a model choice the parent makes on the
+   * user's behalf, so it needs the same `availableForSubagents` opt-in an
+   * explicit `Task.model` does. The launch list is the authority here: main
+   * includes only bindings the user marked available, so a session model that
+   * is absent from it was never opted in. `subagentProviders` cannot answer
+   * this — it also carries bindings resolved solely for a definition pin.
+   */
+  private sessionModelInheritable(): boolean {
+    const sessionKey = `${this.provider.vendorKey ?? this.provider.name}/${this.provider.modelId}`;
+    if (this.subagentModelKeys.has(sessionKey)) return true;
+    for (const key of this.subagentModelKeys) {
+      if (this.isSessionModelOverride(key)) return true;
+    }
+    return false;
+  }
+
+  /**
    * An explicit override that names the session's own provider/model is
    * semantically the same as omitting `Task.model`. Models sometimes echo the
    * current model id even when the delegation catalog is empty; accepting this
@@ -4705,7 +4724,9 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
         "Do not delegate what you can finish in a couple of tool calls, and do not delegate anything that needs the user — a subagent cannot ask a question or propose a plan on your behalf.",
         ...(this.availableSubagentModelKeys().length
           ? [
-              "Only pass `model` when deliberately overriding the definition default with a listed delegation model; otherwise omit it. Repeating the definition's own Default model key, or the exact parent provider/model, is the same as omitting `model`.",
+              this.sessionModelInheritable()
+                ? "Only pass `model` when deliberately overriding the definition default with a listed delegation model; otherwise omit it. Repeating the definition's own Default model key, or the exact parent provider/model, is the same as omitting `model`."
+                : "The session's own model is not enabled for delegation, so omitting `model` fails for any subagent that pins no default. Pass one of the listed delegation models instead.",
             ]
           : [
               `No delegation model overrides are configured. ${DELEGATION_DEFAULT_MODEL_GUIDANCE} ${DELEGATION_MODEL_OPT_IN_GUIDANCE}`,
@@ -4822,6 +4843,21 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
             return this.subagentToolError(
               toolCallId,
               `The ${definition.name} subagent pins ${definition.model?.providerId}/${definition.model?.modelId}, which is not configured in PI-Desktop. Do this work yourself or delegate to another subagent.`,
+            );
+          }
+          // Inheriting the session model is a model choice, so it needs the same
+          // opt-in an explicit override does. Without this gate an un-opted
+          // session model would run every delegate, multiplied by the fan-out.
+          // A resume has its own authorization chain (ADR 0279): it re-resolves
+          // the chain's recorded binding, so it is not a fresh session choice.
+          if (!resume && !definition.model && !this.sessionModelInheritable()) {
+            const available = this.availableSubagentModelKeys();
+            const hint = available.length
+              ? ` Available: ${available.join(", ")}.`
+              : " No delegation model overrides are configured.";
+            return this.subagentToolError(
+              toolCallId,
+              `The session model ${this.provider.modelId} is not enabled for delegation, and ${definition.name} pins no default model. ${hint} ${DELEGATION_MODEL_OPT_IN_GUIDANCE}`,
             );
           }
         }

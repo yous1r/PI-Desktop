@@ -37,6 +37,10 @@ function harness(overrides = {}) {
       return "buffered";
     },
     ...overrides.service,
+    replay: (id, maxBytes) => {
+      calls.push(["replay", id, maxBytes]);
+      return overrides.replayResult === undefined ? "cmVwbGF5" : overrides.replayResult;
+    },
   };
 
   registerTerminalIpc({
@@ -76,6 +80,7 @@ const CH = {
   resize: "pi-desktop/terminal/resize",
   close: "pi-desktop/terminal/close",
   getBuffer: "pi-desktop/terminal/getBuffer",
+  replay: "pi-desktop/terminal/replay",
 };
 
 test("every terminal channel is registered and authenticates the sender", async () => {
@@ -217,6 +222,35 @@ test("getBuffer requires a terminal id", async () => {
   const { invoke } = harness();
   await assert.rejects(
     () => invoke(CH.getBuffer, {}),
+    (error) => error.errorCode === "INVALID_ARGUMENT",
+  );
+});
+
+test("replay returns the raw base64 buffer so a re-attached view can restore colors", async () => {
+  const { invoke, calls } = harness();
+
+  const result = await invoke(CH.replay, { terminalId: "term_1", maxBytes: 2048 });
+
+  assert.deepEqual(calls.at(-1), ["replay", "term_1", 2048]);
+  assert.deepEqual(result, { data: "cmVwbGF5" });
+});
+
+test("replay clamps maxBytes to the ring ceiling", async () => {
+  const { invoke, calls } = harness();
+  await invoke(CH.replay, { terminalId: "term_1", maxBytes: 10 * 1024 * 1024 });
+  assert.deepEqual(calls.at(-1), ["replay", "term_1", 256 * 1024]);
+});
+
+test("replay passes a null through so the renderer knows to restart the shell", async () => {
+  const { invoke } = harness({ replayResult: null });
+  const result = await invoke(CH.replay, { terminalId: "term_gone" });
+  assert.deepEqual(result, { data: null });
+});
+
+test("replay requires a terminal id", async () => {
+  const { invoke } = harness();
+  await assert.rejects(
+    () => invoke(CH.replay, {}),
     (error) => error.errorCode === "INVALID_ARGUMENT",
   );
 });

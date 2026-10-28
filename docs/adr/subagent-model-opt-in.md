@@ -52,6 +52,18 @@ own pin is on the Task path. `models.list` keeps reporting every ready model
 with its `availableForSubagents` flag — the flag is advice to the caller and
 authority only in main, which is the side a plugin cannot rewrite (#386).
 
+**Amendment (session-model inheritance is a model choice).** Inheritance is
+governed by the same opt-in. A fresh `Task` that omits `model` on a definition
+that pins nothing runs on the parent session's model, which is the parent
+choosing a model on the user's behalf; leaving it ungated let an un-opted
+session model run every delegate in a fan-out. The runtime therefore refuses
+that delegation when the session model is absent from `subagentModelKeys`, and
+the Task description says to pass a listed delegation model instead of
+omitting `model`. A definition's own pin remains exempt, because the document
+author declares it rather than the AI choosing at delegation time. Resume is
+also exempt: it re-resolves the chain's recorded binding under its own
+authorization boundary (ADR 0279) and makes no fresh session choice.
+
 D278's priority remains Task.model → definition pin → session model. The
 existing exact-session-model exception remains unchanged. Repeating the
 target definition's own pin key is treated as omitting `model`, so catalog
