@@ -301,10 +301,15 @@ listed in an "over limit" section, and never blocks other files.
 
 - One connection serves every file; a batch of uploads uses one round trip per
   batch rather than one connection per file.
-- Writes are atomic: content goes to `<path>.pi-part`, then rename over the
-  target. A crash leaves either the old file or the new one.
-- Bytes are copied verbatim: no newline translation, no mode rewriting beyond
-  the executable bit.
+- Writes are atomic: content goes to a sibling `<name>.<nonce>.pi-part` staged
+  with an exclusive create, then rename over the target. A crash leaves either
+  the old file or the new one, and a staging path another request already owns
+  is never reused.
+- Bytes are copied verbatim: no newline translation. The target keeps its
+  existing permissions, so an executable script stays executable.
+- A batch whose reply would not fit one control frame is refused with
+  `INVALID_ARGUMENT` before any directory is created, rather than dropping the
+  connection after the work was done.
 - Transfers are cancellable; cancellation leaves no partial target file.
 
 ## 7. Debug sessions
@@ -397,13 +402,20 @@ Existing codes are reused where they already fit: `REMOTE_CONNECTION_FAILED`,
    the host through this path.
 2. Loopback-only listener, `0600` token, no public bind, no stdio RPC, no
    systemd unit, no elevation.
-3. Path allowlist: registered mirror roots plus the helper root. `..`, symlink,
-   and junction escapes are refused after `realpath`.
-4. Credential-shaped paths (`.env*`, `.ssh/`, `*.pem`, `*.key`) are refused in
-   both directions.
+3. Path allowlist: registered mirror roots plus the helper root. A project root
+   that overlaps the helper directory is refused at startup, and any resolution
+   that lands inside the helper directory from another root is refused, so the
+   token and the installed binary stay unreachable even through a symlink. `..`,
+   symlink, and junction escapes are refused after `realpath`.
+4. Credential-shaped paths (`.env`, `.env.*`, `.ssh/`, `*.pem`, `*.key`) are
+   refused in both directions.
 5. No shell and no arbitrary argv: adapter commands come from the bundled
    manifest; every other operation takes structured data.
 6. No delete operation exists in the protocol, so a misdirected client cannot
+   remove remote files. An upload may remove only the staging file it created
+   itself, which is named with a random nonce and opened with an exclusive
+   create, so a pre-existing file or symlink at a staging path is neither
+   truncated nor written through.
    remove remote files.
 7. Tokens, SSH diagnostics, and remote stderr never reach the renderer, logs, or
    error payloads.
