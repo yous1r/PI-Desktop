@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/host-core"]
+members = ["crates/host-core", "crates/pi-helper"]
 resolver = "2"
 
 [workspace.package]

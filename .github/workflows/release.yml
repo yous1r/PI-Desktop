@@ -82,9 +82,12 @@ jobs:
       - name: Rust host-core test
         run: cargo test -p host-core --locked
 
+      - name: Rust pi-helper test
+        run: cargo test -p pi-helper --locked
+
   build:
     name: Build ${{ matrix.name }}
-    needs: verify
+    needs: [verify, pi-helper-bundle]
     env:
       # Tag pushes always sign. workflow_dispatch signs unless explicitly disabled.
       MACOS_SIGN_RELEASE: ${{ github.event_name != 'workflow_dispatch' || inputs.sign_macos == true }}
@@ -143,6 +146,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: pi-helper-x64
+          path: apps/desktop/resources/pi-helper
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: pi-helper-arm64
+          path: apps/desktop/resources/pi-helper
       - name: Verify native runner architecture
         # A mislabelled or emulated runner would wrap one architecture's
         # Electron app around the other architecture's Rust sidecar. The
@@ -406,6 +418,62 @@ jobs:
             apps/desktop/release/*.blockmap
             apps/desktop/release/latest*.yml
 
+  pi-helper-bundle:
+    name: Bundle pi-helper (Linux ${{ matrix.arch }})
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            os: ubuntu-22.04
+            runner_arch: x86_64
+            target: x86_64-unknown-linux-musl
+          - arch: arm64
+            os: ubuntu-22.04-arm
+            runner_arch: aarch64
+            target: aarch64-unknown-linux-musl
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify native runner architecture
+        run: |
+          set -euo pipefail
+          actual_arch="$(uname -m)"
+          expected_arch="${{ matrix.runner_arch }}"
+          if [ "$actual_arch" != "$expected_arch" ]; then
+            echo "::error::Expected $expected_arch runner, got $actual_arch."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build static helper and manifest
+        run: |
+          set -euo pipefail
+          rustup target add "${{ matrix.target }}"
+          cargo build --release --locked -p pi-helper --target "${{ matrix.target }}"
+          node scripts/build-pi-helper-manifest.mjs \
+            --target "${{ matrix.target }}" \
+            --binary "target/${{ matrix.target }}/release/pi-helper" \
+            --out target/pi-helper-bundle \
+            --version "$(node -p "require('./apps/desktop/package.json').version")"
+
+      - name: Upload helper artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: pi-helper-${{ matrix.arch }}
+          if-no-files-found: error
+          compression-level: 0
+          path: target/pi-helper-bundle/*
   pi-host-bundle:
     name: Bundle pi-host (Linux ${{ matrix.arch }})
     needs: verify

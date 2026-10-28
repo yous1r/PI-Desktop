@@ -8101,3 +8101,44 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   check `pnpm test:e2e:radial-menu`, and capture scenes `pi-radial` /
   `pi-radial-dark`. See `04-ux/09-interaction-patterns.md` §1.11 and
   E2E-CHAT-radial-background-menu.
+
+## 2026-10-28 — Remote mirror development helper (D679)
+
+- A mirror project keeps an ordinary local primary root and adds an optional
+  `mirror {hostKey, remotePath, mode}` binding. It is mutually exclusive with
+  the existing `remote` binding, and no project is converted between them.
+- Mirror development is served by a new bundled static Rust binary, `pi-helper`,
+  uploaded from the application bundle over the existing system-`ssh` transport,
+  digest-verified, and installed under `$HOME/.pi-desktop-helper`. It binds
+  loopback only, authenticates with a `0600` token, and is reached through an SSH
+  port forward, so ADR 0326 §1 (no SSH stdio RPC, no public listener, no systemd
+  unit, no elevation) continues to hold.
+- The helper owns the control and data plane: environment verification, per-file
+  `put`/`get`, `stat`, `hash`, `mkdir`, change events, and debug-adapter
+  `install`/`probe`/`start`/`stop`. The protocol has no shell, no arbitrary argv,
+  and no delete operation, and the 50 MB per-file ceiling is enforced on both
+  sides.
+- Creating a mirror project runs a blocking, idempotent, resumable initialization
+  of ten steps covering the helper directory, helper deployment, toolchain
+  verification, pinned adapter installation, a forward self-test, the local
+  environment, the manifest, and the synchronization baseline. A project that has
+  not completed it stays `needs-init`.
+- Debug adapters are pinned by a Desktop-bundled manifest and installed by remote
+  execution into isolated `venvs/` and a helper-local `GOBIN`. A version mismatch
+  is an error carrying the exact install command, never a silent upgrade, and no
+  adapter binary is uploaded from the local machine.
+- Synchronization is `auto` or `manual` upload plus an explicit `pull`. There is
+  no bidirectional mode, no `rsync` dependency, no merge, and no remote deletion;
+  divergence is detected against a per-file baseline and resolved by the user.
+- Synchronization baseline and breakpoints persist in Rust host-core. The editor
+  plugin renders the breakpoint gutter from host state and never owns it.
+- No AI agent, model request, session, or tool relay runs on the host for mirror
+  projects; the local Agent keeps editing the local copy. No remote terminal or
+  general remote command surface is introduced, so ADR 0108 stands.
+- Qualification requires real Linux x64 and aarch64 hosts. Mocked boundaries
+  cannot accept deployment, detached survival across an SSH drop, adapter
+  installation, or a debug session.
+- See ADR `0334-remote-mirror-development-helper`,
+  `03-runtime/23-remote-mirror-development.md`,
+  `05-security/02-remote-control-security.md` §3.7, and the `E2E-MIRROR-*`
+  scenarios.

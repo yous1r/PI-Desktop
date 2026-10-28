@@ -79,6 +79,9 @@ jobs:
       - name: Test
         run: cargo test -p host-core --locked
 
+      - name: Test pi-helper
+        run: cargo test -p pi-helper --locked
+
   rust-windows:
     name: Rust host-core Windows / transcript cache E2E
     runs-on: windows-latest

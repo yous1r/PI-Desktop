@@ -291,6 +291,32 @@ their own infrastructure and it admits clients with Host-issued device
 credentials (D385). It is specified so the contract does not drift; it is not
 scheduled.
 
+### 5.4 Remote mirror projects (`pi-helper`)
+
+A mirror project is a second, independent remote topology. The project group
+keeps an ordinary local primary root and adds an additive
+`mirror {hostKey, remotePath, mode}` binding, which is mutually exclusive with the
+`remote` binding described above: a group either owns its files on the host or
+owns them locally and copies them. Neither binding is inferred from the other.
+
+The local copy is authoritative. The Agent, the editor plugin, sessions, models,
+and permissions stay local exactly as for any local project. There is no remote
+Agent, no remote session, and no RACP tool relay for a mirror project, and the
+opaque `remote-project:<groupId>` identity is not used.
+
+The remote side is a separate service, `pi-helper`, deployed from the desktop
+bundle into `$HOME/.pi-desktop-helper`, bound to loopback, and reached through an
+SSH port forward. It carries the synchronization data plane (per-file transfer,
+stat, hash, change events) and the debug-adapter lifecycle. It has no shell, no
+arbitrary argv, and no delete operation, so it never becomes a general remote
+execution surface and does not reopen the terminal scope removed by ADR 0108.
+
+Because the two services have different authority models, they are never
+interchangeable: `pi-host` serves remote Agent workspaces over RACP-WS, and
+`pi-helper` serves mirror development. See
+[23-remote-mirror-development](../03-runtime/23-remote-mirror-development.md) and
+[ADR 0338](../../adr/0338-remote-mirror-development-helper.md).
+
 ## 6. Ownership and authority
 
 ### 6.1 Agent Host ownership

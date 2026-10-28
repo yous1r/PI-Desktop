@@ -350,6 +350,37 @@ does not trigger automatic provider or billing fallback.
 | `LIVE_AUDIO_BACKPRESSURE` | no | bounded PCM or playback credits were exhausted |
 | `LIVE_EXECUTION_NOT_CONNECTED` | no | a provider requested an unsupported function/delegation execution path |
 
+### 3.10 Remote mirror development (`pi-helper`)
+
+Emitted by the desktop's mirror client and the `pi-helper` service when a locally
+owned project is mirrored to a remote Linux host
+(see [23-remote-mirror-development](23-remote-mirror-development.md),
+[../05-security/02-remote-control-security](../05-security/02-remote-control-security.md),
+ADR 0338). These codes are distinct from the RACP codes in §3.8: a mirror project
+has no remote Agent, no remote session, and no tool relay.
+
+| code | retriable | meaning |
+|---|---|---|
+| `HELPER_DEPLOY_FAILED` | yes | the `pi-helper` binary could not be installed, or its SHA-256 did not match; `details.reason` names the stage |
+| `HELPER_DIR_UNWRITABLE` | no | the helper directory is missing, not writable, or below the disk budget |
+| `HELPER_START_FAILED` | yes | the helper printed no ready line within the deadline, or the handshake failed |
+| `HELPER_VERSION_MISMATCH` | yes | the running helper version differs from the desktop; redeployment from the bundle is required |
+| `HELPER_PROTOCOL_ERROR` | no | an invalid frame, an unauthenticated request, or an unknown operation |
+| `HELPER_OPERATION_UNAVAILABLE` | no | the helper build does not implement the requested protocol operation |
+| `HELPER_AUTH_FAILED` | no | the helper rejected its token or received an unauthenticated operation |
+| `HELPER_INTERNAL_ERROR` | yes | an unexpected helper filesystem or runtime failure; sensitive diagnostics are not returned |
+| `MIRROR_INIT_FAILED` | yes | a non-transfer initialization step failed; `details.step` names it |
+| `MIRROR_CONFLICT` | no | the remote file changed since the baseline; a user decision is required |
+| `MIRROR_FILE_TOO_LARGE` | no | the file exceeds the 50 MB ceiling and was skipped |
+| `REMOTE_TRANSFER_FAILED` | yes | a per-file transfer failed; the target file is unchanged |
+| `REMOTE_PATH_ESCAPE` | no | a path resolved outside the permitted roots |
+| `DEBUG_ADAPTER_INSTALL_FAILED` | yes | adapter installation failed; `details.command` names the step |
+| `DEBUG_ADAPTER_VERSION_MISMATCH` | no | the installed adapter version differs from the pinned manifest |
+| `DEBUG_SESSION_DISCONNECTED` | yes | the debug transport dropped; session state is preserved for reconnect |
+
+Existing codes are reused where they already fit: `REMOTE_CONNECTION_FAILED`,
+`REMOTE_AUTH_FAILED`, `REMOTE_FORWARD_FAILED`, `REMOTE_PATH_NOT_FOUND`.
+
 ## 4. Mapping rules
 
 ### Host RPC numeric → AppError.code

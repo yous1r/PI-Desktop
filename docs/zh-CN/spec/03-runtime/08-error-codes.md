@@ -343,6 +343,36 @@ ADR 0285）。渲染进程除了一个标识徽章外看不到本地/远程之�
 | `LIVE_AUDIO_BACKPRESSURE` | 否 | PCM 或播放 credit 的有界容量已耗尽 |
 | `LIVE_EXECUTION_NOT_CONNECTED` | 否 | Provider 请求了当前不支持的函数/delegation 执行路径 |
 
+### 3.10 远程镜像开发（`pi-helper`）
+
+当本地拥有的项目被镜像到远程 Linux 主机时，由桌面的镜像客户端与 `pi-helper`
+服务发出（见 [23-remote-mirror-development](23-remote-mirror-development.md)、
+[../05-security/02-remote-control-security](../05-security/02-remote-control-security.md)、
+ADR 0338）。这些错误码与 §3.8 的 RACP 错误码不同：镜像项目没有远程 Agent、没有
+远程会话，也没有工具中继。
+
+| 错误码 | 可重试 | 含义 |
+|---|---|---|
+| `HELPER_DEPLOY_FAILED` | 是 | `pi-helper` 二进制无法安装，或其 SHA-256 不匹配；`details.reason` 指明阶段 |
+| `HELPER_DIR_UNWRITABLE` | 否 | helper 目录缺失、不可写，或低于磁盘预算 |
+| `HELPER_START_FAILED` | 是 | helper 在超时内未打印就绪行，或握手失败 |
+| `HELPER_VERSION_MISMATCH` | 是 | 运行中的 helper 版本与桌面不一致；需要从安装包重新部署 |
+| `HELPER_PROTOCOL_ERROR` | 否 | 无效帧、未认证请求，或未知操作 |
+| `HELPER_OPERATION_UNAVAILABLE` | 否 | 当前 helper 构建尚未实现请求的协议操作 |
+| `HELPER_AUTH_FAILED` | 否 | helper 拒绝了 token 或收到未认证操作 |
+| `HELPER_INTERNAL_ERROR` | 是 | helper 文件系统或运行时发生意外错误；不会返回敏感诊断信息 |
+| `MIRROR_INIT_FAILED` | 是 | 某个非传输初始化步骤失败；`details.step` 指明步骤 |
+| `MIRROR_CONFLICT` | 否 | 远程文件自基线以来已变更；需要用户决定 |
+| `MIRROR_FILE_TOO_LARGE` | 否 | 文件超过 50 MB 上限并被跳过 |
+| `REMOTE_TRANSFER_FAILED` | 是 | 逐文件传输失败；目标文件未变 |
+| `REMOTE_PATH_ESCAPE` | 否 | 路径解析到允许根之外 |
+| `DEBUG_ADAPTER_INSTALL_FAILED` | 是 | 适配器安装失败；`details.command` 指明步骤 |
+| `DEBUG_ADAPTER_VERSION_MISMATCH` | 否 | 已安装适配器版本与固定清单不一致 |
+| `DEBUG_SESSION_DISCONNECTED` | 是 | 调试传输断开；会话状态被保留以便重连 |
+
+既有错误码在语义已适配处复用：`REMOTE_CONNECTION_FAILED`、
+`REMOTE_AUTH_FAILED`、`REMOTE_FORWARD_FAILED`、`REMOTE_PATH_NOT_FOUND`。
+
 ## 4. 映射规则
 
 ### 主机 RPC 数字 → AppError.code

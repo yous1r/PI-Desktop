@@ -10809,6 +10809,9 @@ E2E-196b, E2E-196c, and E2E-200 (Quality, M6+).
 
 ---
 
+| A / D / F / Security / Quality — Remote mirror helper bootstrap and initialization | E2E-MIRROR-initialization |
+| D / E / Security / Quality — Per-file mirror synchronization, exclusions, size ceiling, and manual conflicts | E2E-MIRROR-synchronization |
+| D / F / Security / Quality — Remote debugger attach with host-owned breakpoints | E2E-MIRROR-debug-session |
 ## 9. How AI Must Update This Doc
 
 When adding or changing a feature that affects user-visible or protocol-visible behavior:
@@ -19175,3 +19178,93 @@ their separate platform acceptance.
   event/result agreement, batch rejection and delegate restoration.
 - **Status**: Automated offline; native UI clicking and live providers are
   outside this fixture's coverage.
+
+### E2E-MIRROR-initialization: Creating a mirror project initializes the remote helper environment
+
+- **Preconditions:** A dedicated request worktree, an isolated profile, and a
+  real Linux x64 host reachable over SSH with a key or password configured in the
+  user's own `~/.ssh`. The host has no `$HOME/.pi-desktop-helper` directory. The
+  Desktop bundle contains the matching `pi-helper` binary for the host
+  architecture.
+- **Steps:** Create a project from the local folder source, choose mirror mode,
+  select the host, select an absolute remote directory, select Python and Go
+  adapters, and start initialization. Let it complete. Repeat creation for a
+  second project on the same host. Then delete `$HOME/.pi-desktop-helper` on the
+  host, reopen the first project, and retry initialization.
+- **Expected:** The first initialization walks all ten steps and ends `ready`; the
+  helper directory is `0700`, contains `env.json`, `token`, `bin/pi-helper`, the
+  adapter receipts, and the isolated venv; the project becomes synchronizable and
+  debuggable only after `ready`. The second project reuses the running helper with
+  no redeploy and no adapter reinstall. After the directory is removed, the project
+  returns to `needs-init` and a retry redeploys cleanly. No step leaves a partial
+  `env.json`, and no failure reports raw SSH stderr or the token.
+- **Coverage:** Rust contract tests for deployment, digest mismatch, and version
+  handshake; Electron tests for the initialization state machine and receipt
+  resumption; the real-host qualification run covers detached startup and
+  adapter installation.
+- **Specs:** [23-remote-mirror-development](../03-runtime/23-remote-mirror-development.md)
+  §3, §4, §5; [ADR 0334](../../adr/0334-remote-mirror-development-helper.md);
+  [02-remote-control-security](../05-security/02-remote-control-security.md) §3.7.
+- **Acceptance:** Initialization is blocking, idempotent, and resumable; a helper
+  digest mismatch fails closed; a version mismatch redeploys instead of running an
+  incompatible helper.
+- **Milestone:** Remote mirror development M0.
+- **Status:** Not implemented.
+
+### E2E-MIRROR-synchronization: Per-file upload, exclusions, ceiling, and manual conflict resolution
+
+- **Preconditions:** A `ready` mirror project with a completed baseline. The local
+  root contains at least 1,000 files, including `node_modules/`, `.venv/`,
+  `target/`, one file larger than 50 MB, and one file with an `.env` name.
+- **Steps:** Run the first-sync preview and adjust one `include` exception. Push
+  manually. Edit three local files and save them in `auto` mode. Edit one file
+  directly on the host through an out-of-band shell, then edit the same file
+  locally and save. Attempt to upload the 50 MB file. Delete a local file and
+  rename another. Pull on explicit user action.
+- **Expected:** The preview reports included and excluded counts before any
+  transfer. Uploads are per file over one reused connection, with no archive and
+  no re-transfer of unchanged files. Excluded paths never transfer. The
+  over-limit file is skipped and listed without blocking other files. The
+  remotely modified file raises a conflict card offering keep-local, keep-remote,
+  and skip; nothing is overwritten automatically and no decision leaks to other
+  files. The deleted and renamed local paths leave the remote files untouched and
+  appear in a drift report. Pull copies remote content into the local root only
+  after an explicit action. No remote file is ever deleted.
+- **Coverage:** Electron unit tests for the baseline, drift detection, and
+  conflict mapping; Rust contract tests for `fs.put`, `fs.get`, the 50 MB
+  boundary, atomic replace, and cancellation; a real-host run for transfer
+  throughput and the drift report.
+- **Specs:** [23-remote-mirror-development](../03-runtime/23-remote-mirror-development.md)
+  §6; [ADR 0334](../../adr/0334-remote-mirror-development-helper.md).
+- **Acceptance:** No silent overwrite, no automatic retry after an uncertain
+  transfer, no deletion path, and the ceiling enforced on both sides.
+- **Milestone:** Remote mirror development M1–M3.
+- **Status:** Not implemented.
+
+### E2E-MIRROR-debug-session: Remote debug attach with mapped paths and host-owned breakpoints
+
+- **Preconditions:** A `ready` mirror project for each of Python, Node, and Go,
+  with the pinned adapters installed in the helper directory. A source file with
+  a known function and a breakpoint set at a specific line.
+- **Steps:** Start a debug session for each language. Set a breakpoint through the
+  editor gutter, start the session, hit the breakpoint, step over, step into, and
+  step out, inspect the call stack and variables, then continue to completion.
+  Restart the Desktop, reopen the project, and inspect the breakpoint set. During
+  a second session, drop the SSH connection and restore it.
+- **Expected:** The adapter starts on the host bound to loopback, the desktop
+  forwards its port, and the DAP session reaches the breakpoint. Stack frames map
+  back to local paths; an unmapped frame is shown read-only as a remote source.
+  Stepping and variable inspection reflect host execution. Breakpoints survive a
+  Desktop restart because host-core owns them. An SSH drop preserves the session
+  state and reconnects, and a terminated adapter is reported as terminated rather
+  than silently relaunched. An adapter version mismatch refuses the session with
+  the install command.
+- **Coverage:** Rust contract tests for `adapter.*` supervision and pid-file
+  validation; Electron tests for DAP client mapping, reconnect, and error
+  surfacing; a real-host run for all three adapters.
+- **Specs:** [23-remote-mirror-development](../03-runtime/23-remote-mirror-development.md)
+  §5, §7; [ADR 0334](../../adr/0334-remote-mirror-development-helper.md).
+- **Acceptance:** Three languages reach a breakpoint; breakpoints are host-owned;
+  no adapter is auto-relaunched; no public listener is created on the host.
+- **Milestone:** Remote mirror development M4.
+- **Status:** Not implemented.
