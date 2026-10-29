@@ -1,4 +1,4 @@
-//! Loopback helper service for remote mirror development (spec 23, ADR 0334).
+//! Loopback helper service for remote mirror development (spec 23, ADR 0338).
 //!
 //! The service owns the control plane and the file data plane: framed JSON
 //! control requests, per-file `put`/`get` streams, and path containment against
@@ -67,6 +67,8 @@ const CAPABILITIES: &[&str] = &[
 pub enum HelperError {
     #[error("invalid helper configuration")]
     InvalidConfig,
+    #[error("the helper directory must not overlap a project root")]
+    RootOverlap,
     #[error("helper could not initialize its private directory")]
     Directory,
     #[error("helper token is unavailable")]
@@ -284,15 +286,7 @@ fn prepare_root(root: &Path) -> HelperResult<()> {
         return Err(HelperError::Directory);
     }
     set_private_directory_permissions(root)?;
-    for relative in [
-        "bin",
-        "bin/gobin",
-        "adapters",
-        "venvs",
-        "receipts",
-        "pids",
-        "logs",
-    ] {
+    for relative in ["bin", "adapters", "receipts", "pids", "logs"] {
         let directory = root.join(relative);
         fs::create_dir_all(&directory).map_err(|_| HelperError::Directory)?;
         let metadata = fs::symlink_metadata(&directory).map_err(|_| HelperError::Directory)?;
@@ -532,7 +526,9 @@ fn valid_token(expected: &[u8], actual: Option<&Value>) -> bool {
 
 fn error_code(error: &HelperError) -> &'static str {
     match error {
-        HelperError::InvalidConfig | HelperError::InvalidArgument => "INVALID_ARGUMENT",
+        HelperError::InvalidConfig | HelperError::InvalidArgument | HelperError::RootOverlap => {
+            "INVALID_ARGUMENT"
+        }
         HelperError::Directory => "HELPER_DIR_UNWRITABLE",
         HelperError::Token | HelperError::Unauthorized => "HELPER_AUTH_FAILED",
         HelperError::Frame => "HELPER_PROTOCOL_ERROR",

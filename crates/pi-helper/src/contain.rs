@@ -23,9 +23,7 @@ const MAX_COMPONENTS: usize = 64;
 
 /// Top-level names inside the helper directory the protocol may reach.
 /// `token` and everything else the helper owns stay unreachable.
-const HELPER_TOP_LEVEL: &[&str] = &[
-    "adapters", "bin", "env.json", "logs", "pids", "receipts", "venvs",
-];
+const HELPER_TOP_LEVEL: &[&str] = &["adapters", "bin", "env.json", "logs", "pids", "receipts"];
 
 /// The allowlisted roots. Every base must be an absolute, canonical path.
 pub(crate) struct Roots {
@@ -55,7 +53,7 @@ impl Roots {
     pub(crate) fn validate(&self) -> HelperResult<()> {
         for project in &self.projects {
             if project.starts_with(&self.helper) || self.helper.starts_with(project) {
-                return Err(HelperError::InvalidConfig);
+                return Err(HelperError::RootOverlap);
             }
         }
         Ok(())

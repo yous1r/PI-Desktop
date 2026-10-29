@@ -77,11 +77,11 @@ fn overlapping_helper_and_project_roots_are_refused() {
     let enclosing = Roots::new(helper.clone(), vec![project]);
     assert!(matches!(
         enclosing.validate(),
-        Err(HelperError::InvalidConfig)
+        Err(HelperError::RootOverlap)
     ));
 
-    let nested = Roots::new(helper.clone(), vec![helper.join("venvs")]);
-    assert!(matches!(nested.validate(), Err(HelperError::InvalidConfig)));
+    let nested = Roots::new(helper.clone(), vec![helper.join("adapters")]);
+    assert!(matches!(nested.validate(), Err(HelperError::RootOverlap)));
 
     let sibling = temp.path().join("project");
     fs::create_dir_all(&sibling).unwrap();
@@ -308,15 +308,7 @@ fn prepare_root_creates_private_helper_layout_and_refuses_symlinks() {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().join(".pi-desktop-helper");
     prepare_root(&root).unwrap();
-    for relative in [
-        "bin",
-        "bin/gobin",
-        "adapters",
-        "venvs",
-        "receipts",
-        "pids",
-        "logs",
-    ] {
+    for relative in ["bin", "adapters", "receipts", "pids", "logs"] {
         let directory = root.join(relative);
         assert!(directory.is_dir());
         #[cfg(unix)]

@@ -460,7 +460,7 @@ fn promote(staging: &Path, target: &Path) -> HelperResult<()> {
     {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(staging, fs::Permissions::from_mode(0o700))
-            .map_err(HelperError::AdapterInstallFailed)?;
+            .map_err(|_| HelperError::AdapterInstallFailed)?;
     }
     fs::rename(staging, target).map_err(|_| HelperError::AdapterInstallFailed)
 }
