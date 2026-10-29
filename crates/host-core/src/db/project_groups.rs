@@ -38,6 +38,43 @@ impl RemoteWorkspace {
         Ok(())
     }
 }
+/// How a mirror project reacts to a detected remote change (spec 23 §6.3).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum MirrorSyncMode {
+    /// Upload local edits without prompting.
+    Auto,
+    /// Record drift and wait for an explicit user decision.
+    Manual,
+}
+
+/// Additive binding that turns an ordinary local project group into a mirror
+/// project: the local roots stay the source of truth and `remote_path` on
+/// `host_key` is a one-way mirror target.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MirrorWorkspace {
+    pub host_key: String,
+    pub remote_path: String,
+    pub mode: MirrorSyncMode,
+}
+
+impl MirrorWorkspace {
+    pub fn validate(&self) -> Result<()> {
+        if self.host_key.trim().is_empty()
+            || self.host_key.trim() != self.host_key
+            || self.host_key.len() > 200
+            || self.host_key.contains(':')
+            || self.host_key.chars().any(char::is_control)
+            || !self.remote_path.starts_with('/')
+            || self.remote_path.len() > 4096
+            || self.remote_path.chars().any(char::is_control)
+        {
+            return Err(anyhow!("invalid mirror workspace binding"));
+        }
+        Ok(())
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -65,6 +102,10 @@ pub struct ProjectGroupRecord {
     pub detached_paths: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub remote: Option<RemoteWorkspace>,
+    /// Present when the group is a mirror project. Mutually exclusive with
+    /// `remote`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mirror: Option<MirrorWorkspace>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -76,6 +117,9 @@ pub struct ProjectGroupContextRecord {
     pub memory: ProjectMemoryRecord,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub remote: Option<RemoteWorkspace>,
+    /// Present when the group is a mirror project.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mirror: Option<MirrorWorkspace>,
 }
 
 fn group_from_value(raw: &str) -> Result<ProjectGroupRecord> {
@@ -89,15 +133,33 @@ fn group_from_value(raw: &str) -> Result<ProjectGroupRecord> {
     if group.roots[0].path != group.primary_path {
         return Err(anyhow!("project group primary root must be first"));
     }
-    if let Some(remote) = &group.remote {
-        remote.validate()?;
-        if group.primary_path != format!("{REMOTE_PROJECT_PREFIX}{}", group.id)
-            || group.roots.len() != 1
-        {
-            return Err(anyhow!("invalid remote project identity"));
+    match (&group.remote, &group.mirror) {
+        (Some(_), Some(_)) => {
+            return Err(anyhow!(
+                "project group must not carry both a remote and a mirror binding"
+            ))
         }
-    } else if group.primary_path.starts_with(REMOTE_PROJECT_PREFIX) {
-        return Err(anyhow!("remote project identity requires a binding"));
+        (Some(remote), None) => {
+            remote.validate()?;
+            if group.primary_path != format!("{REMOTE_PROJECT_PREFIX}{}", group.id)
+                || group.roots.len() != 1
+            {
+                return Err(anyhow!("invalid remote project identity"));
+            }
+        }
+        (None, Some(mirror)) => {
+            mirror.validate()?;
+            // A mirror project syncs from a local primary copy, so its primary
+            // root can never be the synthetic remote identity.
+            if group.primary_path.starts_with(REMOTE_PROJECT_PREFIX) {
+                return Err(anyhow!("mirror project requires a local primary root"));
+            }
+        }
+        (None, None) => {
+            if group.primary_path.starts_with(REMOTE_PROJECT_PREFIX) {
+                return Err(anyhow!("remote project identity requires a binding"));
+            }
+        }
     }
     Ok(group)
 }
@@ -119,6 +181,7 @@ fn legacy_group(project: &ProjectRecord) -> ProjectGroupRecord {
         legacy: true,
         detached_paths: Vec::new(),
         remote: None,
+        mirror: None,
     }
 }
 
@@ -175,6 +238,7 @@ impl Database {
             legacy: false,
             detached_paths: Vec::new(),
             remote: Some(remote),
+            mirror: None,
         };
         let transaction = self.conn.unchecked_transaction()?;
         // The synthetic row owns local session metadata; no remote directory is
@@ -185,6 +249,102 @@ impl Database {
         )?;
         self.kv_set(GROUP_NAMESPACE, &group.id, &serde_json::to_value(&group)?)?;
         transaction.commit()?;
+        Ok(group)
+    }
+    /// Bind a mirror project: ordinary local roots plus a remote mirror target.
+    ///
+    /// The local copy stays the source of truth, so unlike a remote project the
+    /// group keeps real, existing local directories. A record carries at most
+    /// one of `remote` or `mirror`, so the two bindings cannot be combined.
+    pub fn create_mirror_project_group(
+        &self,
+        name: &str,
+        paths: &[String],
+        primary: Option<&str>,
+        mirror: MirrorWorkspace,
+    ) -> Result<ProjectGroupRecord> {
+        mirror.validate()?;
+        let name = name.trim();
+        if name.is_empty() || name.chars().count() > MAX_PROJECT_GROUP_NAME_CHARS {
+            return Err(anyhow!("project group name is invalid"));
+        }
+        let mut canonical_paths = Vec::with_capacity(paths.len());
+        for raw in paths {
+            let path = canonical_project_path(raw)
+                .ok_or_else(|| anyhow!("project group root path must not be blank"))?;
+            if !Path::new(&path).is_dir() {
+                return Err(anyhow!("project group root is not a directory: {path}"));
+            }
+            if canonical_paths.iter().any(|candidate| candidate == &path) {
+                continue;
+            }
+            if self
+                .project_group_for_path(&path)?
+                .is_some_and(|group| !group.legacy)
+            {
+                return Err(anyhow!("folder already belongs to a project group: {path}"));
+            }
+            canonical_paths.push(path);
+        }
+        if canonical_paths.is_empty() {
+            return Err(anyhow!("project group requires at least one folder"));
+        }
+        if self.stored_project_groups()?.iter().any(|group| {
+            group.mirror.as_ref().is_some_and(|bound| {
+                bound.host_key == mirror.host_key && bound.remote_path == mirror.remote_path
+            })
+        }) {
+            return Err(anyhow!(
+                "remote mirror path already belongs to a project group"
+            ));
+        }
+        let primary_path = match primary {
+            Some(raw) => {
+                let resolved = canonical_project_path(raw)
+                    .ok_or_else(|| anyhow!("project group primary root must not be blank"))?;
+                if !canonical_paths.iter().any(|path| path == &resolved) {
+                    return Err(anyhow!(
+                        "project group primary root must be one of its folders"
+                    ));
+                }
+                resolved
+            }
+            None => canonical_paths[0].clone(),
+        };
+        let mut ordered = vec![primary_path.clone()];
+        ordered.extend(
+            canonical_paths
+                .into_iter()
+                .filter(|candidate| candidate != &primary_path),
+        );
+        let now = now_ms();
+        let roots = ordered
+            .iter()
+            .enumerate()
+            .map(|(position, candidate)| ProjectGroupRoot {
+                path: candidate.clone(),
+                name: project_display_name(candidate),
+                position: position as i64,
+            })
+            .collect::<Vec<_>>();
+        for path in &ordered {
+            self.ensure_project(path, false)?;
+        }
+        let group = ProjectGroupRecord {
+            id: Uuid::new_v4().to_string(),
+            name: name.to_string(),
+            primary_path,
+            roots,
+            created_at: now,
+            updated_at: now,
+            pinned: false,
+            last_opened_at: now,
+            legacy: false,
+            detached_paths: Vec::new(),
+            remote: None,
+            mirror: Some(mirror),
+        };
+        self.kv_set(GROUP_NAMESPACE, &group.id, &serde_json::to_value(&group)?)?;
         Ok(group)
     }
 
@@ -331,6 +491,7 @@ impl Database {
             legacy: false,
             detached_paths: Vec::new(),
             remote: None,
+            mirror: None,
         };
         self.kv_set(GROUP_NAMESPACE, &group.id, &serde_json::to_value(&group)?)?;
         Ok(group)
@@ -474,6 +635,7 @@ impl Database {
             legacy: false,
             detached_paths,
             remote: None,
+            mirror: None,
         };
         if current.legacy {
             // A legacy project may already have path-scoped memory. Merge the
@@ -587,6 +749,7 @@ impl Database {
             legacy: false,
             detached_paths: current.detached_paths,
             remote: current.remote,
+            mirror: current.mirror,
         };
         self.kv_set(GROUP_NAMESPACE, &group.id, &serde_json::to_value(&group)?)?;
         Ok(Some(group))
@@ -739,6 +902,7 @@ impl Database {
             instructions: self.get_project_group_instructions(&group.id)?,
             memory: self.get_project_group_memory(&group.id)?,
             remote: group.remote,
+            mirror: group.mirror,
         }))
     }
 }

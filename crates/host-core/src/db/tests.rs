@@ -2257,3 +2257,163 @@ fn v24_model_discovery_upgrade_preserves_rows_and_reopens() {
         models
     );
 }
+
+fn mirror_binding(mode: crate::db::MirrorSyncMode) -> crate::db::MirrorWorkspace {
+    crate::db::MirrorWorkspace {
+        host_key: "build-host".to_string(),
+        remote_path: "/srv/app".to_string(),
+        mode,
+    }
+}
+
+#[test]
+fn mirror_project_group_keeps_local_roots_and_binds_the_remote_path() {
+    let dir = tempfile::tempdir().unwrap();
+    let app = dir.path().join("app");
+    let docs = dir.path().join("docs");
+    std::fs::create_dir_all(&app).unwrap();
+    std::fs::create_dir_all(&docs).unwrap();
+    let db = Database::open(&dir.path().join("pi.sqlite")).unwrap();
+
+    // `docs` is primary even though it is second in the folder list, so the
+    // roots have to be reordered to keep the "primary root is first" invariant.
+    let group = db
+        .create_mirror_project_group(
+            "App mirror",
+            &[app.to_string_lossy().into(), docs.to_string_lossy().into()],
+            Some(&docs.to_string_lossy()),
+            mirror_binding(crate::db::MirrorSyncMode::Manual),
+        )
+        .unwrap();
+
+    let canonical_docs = crate::db::canonical_project_path(&docs.to_string_lossy()).unwrap();
+    assert_eq!(group.primary_path, canonical_docs);
+    assert_eq!(group.roots[0].path, canonical_docs);
+    assert_eq!(group.roots.len(), 2);
+    assert!(group.remote.is_none());
+    let mirror = group.mirror.clone().expect("mirror binding is recorded");
+    assert_eq!(mirror.host_key, "build-host");
+    assert_eq!(mirror.remote_path, "/srv/app");
+    assert_eq!(mirror.mode, crate::db::MirrorSyncMode::Manual);
+
+    // The binding survives the kv round-trip and reaches the group context.
+    let reopened = db.list_project_groups().unwrap();
+    let stored = reopened
+        .iter()
+        .find(|candidate| candidate.id == group.id)
+        .expect("group is listed");
+    assert_eq!(stored.mirror, Some(mirror));
+    let context = db
+        .project_group_context_for_path(&app.to_string_lossy())
+        .unwrap()
+        .expect("context is built for a mirrored root");
+    assert_eq!(context.remote, None);
+    assert_eq!(
+        context.mirror.map(|bound| bound.mode),
+        Some(crate::db::MirrorSyncMode::Manual)
+    );
+    assert_eq!(
+        group.mirror.as_ref().unwrap().mode,
+        serde_json::from_str::<crate::db::MirrorSyncMode>("\"manual\"")
+            .expect("mode round-trips through its lowercase wire form")
+    );
+
+    drop(db);
+    let db = Database::open(&dir.path().join("pi.sqlite")).unwrap();
+    let reloaded = db
+        .list_project_groups()
+        .unwrap()
+        .into_iter()
+        .find(|candidate| candidate.id == group.id)
+        .expect("a reopened database still holds the mirror binding");
+    assert_eq!(reloaded.mirror, group.mirror);
+}
+
+#[test]
+fn ordinary_project_groups_never_serialize_a_mirror_binding() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("app");
+    std::fs::create_dir_all(&root).unwrap();
+    let db = Database::open(&dir.path().join("pi.sqlite")).unwrap();
+    let group = db
+        .create_project_group("Plain", &[root.to_string_lossy().into()])
+        .unwrap();
+    let stored = serde_json::to_value(&group).unwrap();
+    assert!(stored.get("mirror").is_none());
+    assert!(stored.get("remote").is_none());
+}
+
+#[test]
+fn mirror_project_group_rejects_invalid_bindings() {
+    let dir = tempfile::tempdir().unwrap();
+    let app = dir.path().join("app");
+    let other = dir.path().join("other");
+    std::fs::create_dir_all(&app).unwrap();
+    std::fs::create_dir_all(&other).unwrap();
+    let db = Database::open(&dir.path().join("pi.sqlite")).unwrap();
+    let folders = vec![app.to_string_lossy().to_string()];
+
+    let reject =
+        |mirror: crate::db::MirrorWorkspace, folders: &[String], primary: Option<&str>| -> bool {
+            db.create_mirror_project_group("Rejected", folders, primary, mirror)
+                .is_err()
+        };
+
+    // A colon carries the `user@host:port` shape the host key must never hold,
+    // and an empty host key names no host at all.
+    assert!(reject(
+        crate::db::MirrorWorkspace {
+            host_key: "build-host:22".to_string(),
+            ..mirror_binding(crate::db::MirrorSyncMode::Auto)
+        },
+        &folders,
+        None
+    ));
+    assert!(reject(
+        crate::db::MirrorWorkspace {
+            host_key: "   ".to_string(),
+            ..mirror_binding(crate::db::MirrorSyncMode::Auto)
+        },
+        &folders,
+        None
+    ));
+    // A mirror root is absolute on the host, never a local relative path.
+    assert!(reject(
+        crate::db::MirrorWorkspace {
+            remote_path: "srv/app".to_string(),
+            ..mirror_binding(crate::db::MirrorSyncMode::Auto)
+        },
+        &folders,
+        None
+    ));
+    // The primary root must be one of the selected folders.
+    assert!(reject(
+        mirror_binding(crate::db::MirrorSyncMode::Auto),
+        &folders,
+        Some(&other.to_string_lossy())
+    ));
+    // The first binding on a fresh root is accepted.
+    assert!(!reject(
+        mirror_binding(crate::db::MirrorSyncMode::Auto),
+        &folders,
+        None
+    ));
+    // A folder that is already part of a group can host only one binding.
+    assert!(db
+        .create_mirror_project_group(
+            "Second mirror on the same root",
+            &folders,
+            None,
+            mirror_binding(crate::db::MirrorSyncMode::Auto)
+        )
+        .is_err());
+    // The same remote target cannot be mirrored twice.
+    assert!(db
+        .create_mirror_project_group(
+            "Second mirror on the same target",
+            &[other.to_string_lossy().into()],
+            None,
+            mirror_binding(crate::db::MirrorSyncMode::Auto)
+        )
+        .is_err());
+}

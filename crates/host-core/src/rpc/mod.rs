@@ -2060,6 +2060,52 @@ async fn handle_request(
                 .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
             Ok(json!({ "group": group }))
         }
+        "project.group.createMirror" => {
+            let name = params
+                .get("name")
+                .and_then(Value::as_str)
+                .ok_or_else(|| rpc_err(1002, "name required", "INVALID_PARAMS"))?;
+            let folders = params
+                .get("folders")
+                .and_then(Value::as_array)
+                .ok_or_else(|| rpc_err(1002, "folders required", "INVALID_PARAMS"))?
+                .iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect::<Vec<_>>();
+            let primary = params.get("primaryPath").and_then(Value::as_str);
+            // The binding is assembled from flat fields rather than a nested
+            // object so the renderer never has to mirror the Rust layout.
+            let mirror = crate::db::MirrorWorkspace {
+                host_key: params
+                    .get("hostKey")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| rpc_err(1002, "hostKey required", "INVALID_PARAMS"))?
+                    .to_string(),
+                remote_path: params
+                    .get("remotePath")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| rpc_err(1002, "remotePath required", "INVALID_PARAMS"))?
+                    .to_string(),
+                mode: match params.get("mode").and_then(Value::as_str) {
+                    None | Some("auto") => crate::db::MirrorSyncMode::Auto,
+                    Some("manual") => crate::db::MirrorSyncMode::Manual,
+                    Some(other) => {
+                        return Err(rpc_err(
+                            1002,
+                            format!("unknown mirror mode: {other}"),
+                            "INVALID_PARAMS",
+                        ))
+                    }
+                },
+            };
+            let st = state.lock().await;
+            let group = st
+                .db
+                .create_mirror_project_group(name, &folders, primary, mirror)
+                .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
+            Ok(json!({ "group": group }))
+        }
         "project.group.create" => {
             let name = params
                 .get("name")
