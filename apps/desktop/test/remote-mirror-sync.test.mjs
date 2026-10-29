@@ -607,3 +607,68 @@ test('engine: dispose stops watchers, clears the queue and is idempotent', () =>
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+// The real helper replaces a file only inside an existing directory, and a new
+// mirror has none of the project's directories. This fake enforces that rule,
+// which the permissive harness above does not.
+test('engine: creates missing remote parents once per batch before uploading', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mirror-sync-test-'));
+  try {
+    for (const relPath of ['src/a.ts', 'src/b.ts', 'tools/deep/c.sh', 'top.txt', 'later/d.ts']) {
+      const localFile = path.join(tmpDir, ...relPath.split('/'));
+      fs.mkdirSync(path.dirname(localFile), { recursive: true });
+      fs.writeFileSync(localFile, relPath, 'utf8');
+    }
+
+    const harness = createHarness();
+    const directories = new Set();
+    const mkdirCalls = [];
+    harness.helperFs.mkdirs = async (paths) => {
+      const list = typeof paths === 'string' ? [paths] : paths;
+      mkdirCalls.push(...list);
+      for (const directory of list) {
+        let current = directory;
+        while (current !== '.') {
+          directories.add(current);
+          current = path.posix.dirname(current);
+        }
+      }
+      return list;
+    };
+    const permissivePut = harness.helperFs.putFile;
+    harness.helperFs.putFile = async (remotePath, source) => {
+      const parent = path.posix.dirname(remotePath);
+      if (parent !== '.' && !directories.has(parent)) {
+        throw Object.assign(new Error('parent directory is missing'), { errorCode: 'REMOTE_PATH_NOT_FOUND' });
+      }
+      return permissivePut(remotePath, source);
+    };
+
+    const engine = new SyncEngine({
+      projectId: 'project-1',
+      localRoot: tmpDir,
+      helperFs: harness.helperFs,
+      host: harness.host,
+      mode: 'manual',
+    });
+    for (const relPath of ['src/a.ts', 'src/b.ts', 'tools/deep/c.sh', 'top.txt']) {
+      engine.queue.enqueueCreate(relPath);
+    }
+    const first = await engine.sync();
+    assert.deepEqual([...first.uploaded].sort(), ['src/a.ts', 'src/b.ts', 'tools/deep/c.sh', 'top.txt']);
+    assert.deepEqual(first.failures, []);
+    // One request per new directory; `tools/deep` also creates `tools`.
+    assert.deepEqual([...mkdirCalls].sort(), ['src', 'tools/deep']);
+
+    // A later batch asks again, so a directory removed on the host is recreated.
+    directories.clear();
+    engine.queue.enqueueCreate('later/d.ts');
+    const second = await engine.sync();
+    assert.deepEqual(second.uploaded, ['later/d.ts']);
+    assert.deepEqual(second.failures, []);
+    assert.equal(mkdirCalls.at(-1), 'later');
+    engine.dispose();
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});

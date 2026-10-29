@@ -107,6 +107,8 @@ export class SyncEngine {
   private readonly drifts = new Map<string, MirrorDrift>();
   private readonly overLimits = new Map<string, MirrorOverLimit>();
   private readonly transferFailures = new Map<string, MirrorTransferFailure>();
+  /** Remote directories already ensured during the current batch. */
+  private readonly ensuredDirectories = new Set<string>();
 
   private readonly dirWatchers = new Map<string, fs.FSWatcher>();
   private recursiveWatcher: fs.FSWatcher | null = null;
@@ -339,6 +341,8 @@ export class SyncEngine {
       if (this.isDisposed) break;
     }
     this.isSyncing = true;
+    // A directory ensured by an earlier batch may have been removed on the host.
+    this.ensuredDirectories.clear();
 
     const result: SyncBatchResult = {
       uploaded: [],
@@ -529,6 +533,7 @@ export class SyncEngine {
 
     // Upload atomically via helperFs putFile (spec 23 §6.4)
     try {
+      await this.ensureRemoteParent(relPath);
       const putResult = await this.helperFs.putFile(relPath, localAbsPath, {
         signal: this.abortController.signal,
       });
@@ -573,6 +578,23 @@ export class SyncEngine {
       this.transferFailures.set(relPath, failure);
       result.failures.push(failure);
       this.options.onTransferFailure?.(failure);
+    }
+  }
+
+  /**
+   * Creates the remote parent of `relPath` before its upload.
+   *
+   * The helper replaces a file only inside an existing directory, and a new
+   * mirror has none of the project's directories yet. A directory is asked for
+   * once per batch together with its ancestors; creation is additive and never
+   * removes anything on the host.
+   */
+  private async ensureRemoteParent(relPath: string): Promise<void> {
+    const parent = path.posix.dirname(relPath);
+    if (parent === "." || this.ensuredDirectories.has(parent)) return;
+    await this.helperFs.mkdirs(parent);
+    for (let directory = parent; directory !== "."; directory = path.posix.dirname(directory)) {
+      this.ensuredDirectories.add(directory);
     }
   }
 
