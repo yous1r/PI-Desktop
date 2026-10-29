@@ -3,6 +3,7 @@
 //! Uploads and downloads are driven over a real loopback `TcpStream` so a
 //! framing bug cannot hide behind a direct function call.
 
+mod adapters;
 mod contain;
 
 use std::{

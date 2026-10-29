@@ -4,6 +4,7 @@
 //! control requests, per-file `put`/`get` streams, and path containment against
 //! the helper directory and the project roots registered at startup.
 
+mod adapters;
 mod contain;
 mod frame;
 mod fs_ops;
@@ -42,9 +43,10 @@ const HELPER_DIRECTORY_NAME: &str = ".pi-desktop-helper";
 
 /// Operations this build actually implements, in the order it advertises them.
 ///
-/// `fs.put.begin` and `fs.get.begin` own the data frames that follow their
-/// control frame; the chunk and end phases of a transfer are `DATA` and `END`
-/// frames rather than separate control operations, so they are not listed.
+/// `fs.put.begin`, `fs.get.begin` and `adapter.install` own the data frames
+/// that follow their control frame; the chunk and end phases of a transfer are
+/// `DATA` and `END` frames rather than separate control operations, so they are
+/// not listed.
 const CAPABILITIES: &[&str] = &[
     "auth",
     "version",
@@ -55,6 +57,10 @@ const CAPABILITIES: &[&str] = &[
     "fs.mkdirs",
     "fs.put.begin",
     "fs.get.begin",
+    "adapter.install",
+    "adapter.probe",
+    "adapter.start",
+    "adapter.stop",
 ];
 
 #[derive(Debug, Error)]
@@ -83,6 +89,10 @@ pub enum HelperError {
     FileTooLarge,
     #[error("file transfer failed")]
     TransferFailed,
+    #[error("debug adapter installation failed")]
+    AdapterInstallFailed,
+    #[error("installed debug adapter differs from the pinned manifest")]
+    AdapterVersionMismatch,
     #[error("helper I/O failed")]
     Io(#[from] io::Error),
 }
@@ -137,6 +147,10 @@ enum Op {
     Mkdirs,
     PutBegin,
     GetBegin,
+    AdapterInstall,
+    AdapterProbe,
+    AdapterStart,
+    AdapterStop,
     Unsupported,
 }
 
@@ -150,6 +164,10 @@ fn classify(op: &str) -> Op {
         "fs.mkdirs" => Op::Mkdirs,
         "fs.put.begin" => Op::PutBegin,
         "fs.get.begin" => Op::GetBegin,
+        "adapter.install" => Op::AdapterInstall,
+        "adapter.probe" => Op::AdapterProbe,
+        "adapter.start" => Op::AdapterStart,
+        "adapter.stop" => Op::AdapterStop,
         _ => Op::Unsupported,
     }
 }
@@ -188,8 +206,17 @@ pub async fn run(config: HelperConfig) -> HelperResult<()> {
         roots: Arc::new(roots),
     };
     let connections = Arc::new(Semaphore::new(MAX_CONNECTIONS));
+    // The deploy script stops a helper with SIGTERM and the helper runs
+    // detached, so a bare accept loop would exit without reaping the adapters
+    // it started and leave them listening on the host.
+    let shutdown = shutdown_signal();
+    tokio::pin!(shutdown);
     loop {
-        let (stream, peer) = match listener.accept().await {
+        let accepted = tokio::select! {
+            accepted = listener.accept() => accepted,
+            _ = &mut shutdown => break,
+        };
+        let (stream, peer) = match accepted {
             Ok(accepted) => accepted,
             // A transient accept failure (EMFILE under a burst) must not stop a
             // detached service that has no supervisor to restart it.
@@ -217,6 +244,27 @@ pub async fn run(config: HelperConfig) -> HelperResult<()> {
             }
         });
     }
+    adapters::shutdown();
+    Ok(())
+}
+
+/// Resolves when the service is asked to stop.
+///
+/// SIGTERM is how the deployment script ends a running helper; Ctrl-C is the
+/// closest equivalent where it is unavailable.
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{signal, SignalKind};
+        if let Ok(mut terminate) = signal(SignalKind::terminate()) {
+            tokio::select! {
+                _ = terminate.recv() => {}
+                _ = tokio::signal::ctrl_c() => {}
+            }
+            return;
+        }
+    }
+    let _ = tokio::signal::ctrl_c().await;
 }
 
 fn validate_config(config: &HelperConfig) -> HelperResult<()> {
@@ -374,6 +422,19 @@ async fn serve_connection(mut stream: TcpStream, state: State) -> HelperResult<(
                             }
                         }
                     }
+                    Op::AdapterInstall => {
+                        match adapters::install_stream(&mut stream, &state.roots, &request.params)
+                            .await
+                        {
+                            Ok(result) => {
+                                write_result(&mut stream, &request.id, Ok(result)).await?
+                            }
+                            Err(failure) => {
+                                retired = failure.retire;
+                                write_result(&mut stream, &request.id, Err(failure.error)).await?;
+                            }
+                        }
+                    }
                     Op::GetBegin => match fs_ops::prepare_get(&state.roots, &request.params) {
                         Ok(plan) => {
                             write_control(
@@ -427,7 +488,10 @@ fn dispatch(state: &State, op: Op, params: &Map<String, Value>) -> HelperResult<
         Op::Stat => fs_ops::stat_batch(&state.roots, params),
         Op::Hash => fs_ops::hash_file(&state.roots, params),
         Op::Mkdirs => fs_ops::mkdirs(&state.roots, params),
-        Op::Auth | Op::PutBegin | Op::GetBegin | Op::Unsupported => {
+        Op::AdapterProbe => adapters::probe(&state.roots, params),
+        Op::AdapterStart => adapters::start(&state.roots, params),
+        Op::AdapterStop => adapters::stop(&state.roots, params),
+        Op::Auth | Op::PutBegin | Op::GetBegin | Op::AdapterInstall | Op::Unsupported => {
             Err(HelperError::OperationUnavailable)
         }
     }
@@ -478,6 +542,8 @@ fn error_code(error: &HelperError) -> &'static str {
         HelperError::PathNotFound => "REMOTE_PATH_NOT_FOUND",
         HelperError::FileTooLarge => "MIRROR_FILE_TOO_LARGE",
         HelperError::TransferFailed => "REMOTE_TRANSFER_FAILED",
+        HelperError::AdapterInstallFailed => "DEBUG_ADAPTER_INSTALL_FAILED",
+        HelperError::AdapterVersionMismatch => "DEBUG_ADAPTER_VERSION_MISMATCH",
         HelperError::Io(_) => "HELPER_INTERNAL_ERROR",
     }
 }
