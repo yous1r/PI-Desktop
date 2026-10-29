@@ -29,7 +29,7 @@ const NOW = 1_700_000_000_000;
 const TOKEN = "b".repeat(64);
 const DESKTOP_VERSION = "0.21.0";
 const PAYLOAD = Buffer.from("pinned python-debugpy payload", "utf8");
-const CAPABILITIES = ["auth", "version", "health", "adapter.install", "adapter.probe", "adapter.start", "adapter.stop"];
+const CAPABILITIES = ["auth", "version", "health", "root.register", "adapter.install", "adapter.probe", "adapter.start", "adapter.stop"];
 const CONTROL = 0x01;
 const DATA = 0x02;
 const END = 0x03;
@@ -232,6 +232,7 @@ async function startServer(handler) {
 /** A helper that authenticates, then answers `version`, `env.verify` and adapters. */
 async function helperServer(answers = {}) {
   const operations = [];
+  const registered = [];
   const server = await startServer(async (socket) => {
     const reader = frameReader(socket);
     const auth = await reader.nextControl();
@@ -252,6 +253,16 @@ async function helperServer(answers = {}) {
             ok: true,
             result: { root: "/home/deploy/.pi-desktop-helper", capabilities: CAPABILITIES, ...answer },
           }),
+        );
+        continue;
+      }
+      if (request.op === "root.register") {
+        registered.push(request.path);
+        const refusal = answers.register?.error;
+        socket.write(
+          refusal
+            ? frame({ id: request.id, ok: false, error: { code: refusal } })
+            : frame({ id: request.id, ok: true, result: { root: request.path } }),
         );
         continue;
       }
@@ -281,7 +292,7 @@ async function helperServer(answers = {}) {
       socket.write(frame({ id: request.id, ok: false, error: { code: "HELPER_OPERATION_UNAVAILABLE" } }));
     }
   });
-  return { port: server.port, operations, close: server.close };
+  return { port: server.port, operations, registered, close: server.close };
 }
 
 // ── Service harness ─────────────────────────────────────────────────────────
@@ -303,6 +314,7 @@ async function harness(options = {}) {
     transport,
     desktopVersion: options.desktopVersion ?? DESKTOP_VERSION,
     helperArtifact: async () => ARTIFACT,
+    mirrorRoot: options.mirrorRoot === null ? undefined : (options.mirrorRoot ?? "/srv/projects/app"),
     adapterManifest: options.adapterManifest ?? [ADAPTER],
     adapterPayload: () => PAYLOAD,
     forwardSelfTest: options.forwardSelfTest,
@@ -396,7 +408,8 @@ test("start drives all ten steps, writing state before and a receipt after each"
     // One reachability probe, one helper-root script, one artifact upload.
     assert.equal(transport.calls.filter((call) => call.command === "true").length, 1);
     assert.equal(transport.calls.length, 3);
-    assert.deepEqual(helper.operations.filter((op) => op !== "version"), ["env.verify", "adapter.install", "adapter.probe"]);
+    assert.deepEqual(helper.operations.filter((op) => op !== "version"), ["env.verify", "root.register", "adapter.install", "adapter.probe"]);
+    assert.deepEqual(helper.registered, ["/srv/projects/app"]);
     assert.deepEqual(host.receipts.get("helper-deploy"), {
       completedAt: NOW,
       version: DESKTOP_VERSION,
@@ -565,6 +578,35 @@ test("a helper that is not ready fails step 5 with MIRROR_INIT_FAILED", async ()
   }
 });
 
+test("a mirror root the helper refuses fails step 5 with the helper's reason, not the path", async () => {
+  const { host, service, close } = await harness({
+    answers: { register: { error: "REMOTE_PATH_FORBIDDEN" } },
+  });
+  try {
+    const status = await service.start(GROUP);
+    assert.equal(status.step, "env-verify");
+    assert.equal(status.error.code, "MIRROR_INIT_FAILED");
+    assert.match(status.error.message, /REMOTE_PATH_FORBIDDEN/);
+    assert.doesNotMatch(status.error.message, /srv\/projects/);
+    assert.equal(host.receipts.has("env-verify"), false);
+  } finally {
+    await close();
+  }
+});
+
+test("a mirror without a remote root cannot pass step 5", async () => {
+  const { host, helper, service, close } = await harness({ mirrorRoot: null });
+  try {
+    const status = await service.start(GROUP);
+    assert.equal(status.step, "env-verify");
+    assert.equal(status.error.code, "MIRROR_INIT_FAILED");
+    assert.equal(helper.operations.includes("root.register"), false);
+    assert.equal(host.receipts.has("env-verify"), false);
+  } finally {
+    await close();
+  }
+});
+
 test("an adapter the helper installed with another digest fails step 6", async () => {
   const { host, service, close } = await harness({
     answers: { install: { version: ADAPTER.version, sha256: "d".repeat(64) } },
@@ -592,14 +634,16 @@ test("an installed adapter that differs from the pin fails step 7", async () => 
     await close();
   }
 });
-
-test("a target with no pinned adapter is a reported gap, not a silent pass", async () => {
-  const { host, service, close } = await harness({ adapterManifest: [] });
+test("a sync-only mirror with no selected debug adapter completes the adapter steps empty", async () => {
+  const { host, service, close } = await harness({
+    adapterManifest: [],
+    forwardSelfTest: async () => undefined,
+  });
   try {
     const status = await service.start(GROUP);
-    assert.equal(status.step, "adapter-install");
-    assert.equal(status.error.code, "DEBUG_ADAPTER_INSTALL_FAILED");
-    assert.equal(host.receipts.has("adapter-install"), false);
+    assert.equal(status.state, "ready", JSON.stringify(status));
+    assert.deepEqual(host.receipts.get("adapter-install"), { completedAt: NOW, adapters: [] });
+    assert.deepEqual(host.receipts.get("adapter-probe"), { completedAt: NOW, adapters: [] });
   } finally {
     await close();
   }

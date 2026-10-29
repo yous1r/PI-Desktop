@@ -146,6 +146,16 @@ export type MirrorInitServiceOptions = {
   desktopVersion?: string;
   /** Bundled helper binary, resolved lazily because a resume may not need it. */
   helperArtifact?: () => Promise<HelperArtifact>;
+  /**
+   * The project's mirror root on the host. Step 5 registers it with the helper,
+   * so a missing directory, or one that overlaps the helper directory, fails
+   * initialization instead of the first sync. The path is never logged.
+   */
+  mirrorRoot?: string;
+  /** Called immediately after an idempotent deploy returns its port and token. */
+  onHelperReady?: (ready: import("./helper-bootstrap.ts").HelperReady) => void;
+  /** Releases an injected SSH transport when this init run closes its client. */
+  onClose?: () => void;
   /** Adapters the bundled manifest pins for this remote target. */
   adapterManifest?: readonly AdapterManifestEntry[];
   /** Bundled payload of one pinned entry: a local path or its bytes. */
@@ -156,6 +166,8 @@ export type MirrorInitServiceOptions = {
   writeEnvManifest?: () => Promise<{ sha256: string }>;
   /** Stores the baseline scan in host-core and reports the entry count. */
   storeBaseline?: () => Promise<{ entries: number }>;
+  /** Pushes each persisted state transition to the main-process owner. */
+  onProgress?: (status: MirrorInitStatus) => void;
 };
 
 const defaultLogger: MirrorInitLogger = {
@@ -267,11 +279,15 @@ export class MirrorInitService {
   private readonly transport: SshTransport | undefined;
   private readonly desktopVersion: string | undefined;
   private readonly helperArtifact: (() => Promise<HelperArtifact>) | undefined;
+  private readonly mirrorRoot: string | undefined;
   private readonly adapterManifest: readonly AdapterManifestEntry[];
   private readonly adapterPayload: ((entry: AdapterManifestEntry) => string | Uint8Array) | undefined;
   private readonly forwardSelfTest: (() => Promise<void>) | undefined;
   private readonly writeEnvManifest: (() => Promise<{ sha256: string }>) | undefined;
   private readonly storeBaseline: (() => Promise<{ entries: number }>) | undefined;
+  private readonly onHelperReady: MirrorInitServiceOptions["onHelperReady"];
+  private readonly onClose: MirrorInitServiceOptions["onClose"];
+  private readonly onProgress: MirrorInitServiceOptions["onProgress"];
   private readonly pending = new Map<string, Promise<MirrorInitStatus>>();
   private connection: Promise<HelperClient> | null = null;
   private adapters: HelperAdapters | null = null;
@@ -281,9 +297,13 @@ export class MirrorInitService {
     this.clientSource = options.client;
     this.logger = options.logger ?? defaultLogger;
     this.now = options.now ?? Date.now;
+    this.onHelperReady = options.onHelperReady;
+    this.onClose = options.onClose;
+    this.onProgress = options.onProgress;
     this.transport = options.transport;
     this.desktopVersion = options.desktopVersion;
     this.helperArtifact = options.helperArtifact;
+    this.mirrorRoot = options.mirrorRoot;
     this.adapterManifest = options.adapterManifest ?? [];
     this.adapterPayload = options.adapterPayload;
     this.forwardSelfTest = options.forwardSelfTest;
@@ -325,8 +345,13 @@ export class MirrorInitService {
     const connection = this.connection;
     this.connection = null;
     this.adapters = null;
-    if (!connection) return;
-    void connection.then((client) => client.close()).catch(() => undefined);
+    if (connection) void connection.then((client) => client.close()).catch(() => undefined);
+    try {
+      this.onClose?.();
+    } catch {
+      // Closing a helper client is already best effort; cleanup may not make a
+      // truthful initialization outcome less truthful.
+    }
   }
 
   private async runSequence(key: string): Promise<MirrorInitStatus> {
@@ -382,7 +407,13 @@ export class MirrorInitService {
     const params: Record<string, unknown> = { projectId: key, state };
     if (step !== null) params.step = step;
     if (error !== null) params.error = { code: error.code, message: error.message, step: error.step };
-    return parseMirrorInitStatus(await this.host.call("mirror.init.state", params), key);
+    const status = parseMirrorInitStatus(await this.host.call("mirror.init.state", params), key);
+    try {
+      this.onProgress?.(status);
+    } catch {
+      // A dead renderer cannot invalidate the state already persisted in the host.
+    }
+    return status;
   }
 
   private runStep(key: string, step: MirrorInitStep): Promise<Record<string, unknown>> {
@@ -444,6 +475,7 @@ export class MirrorInitService {
     if (!transport || !desktopVersion || !resolveArtifact) throw fail("helper-deploy");
     const artifact = await resolveArtifact();
     const ready = await deployBundledHelper({ transport, artifact, desktopVersion });
+    this.onHelperReady?.(ready);
     return { completedAt: this.now(), version: ready.version, digest: artifact.manifest.sha256 };
   }
 
@@ -462,9 +494,12 @@ export class MirrorInitService {
   }
 
   /**
-   * Step 5: `env.verify`. The helper reports readiness, protocol, its root, the
-   * project root count and its capabilities — no permissions, disk budget or
-   * toolchain list — so the receipt records only what was observed.
+   * Step 5: `env.verify`, then `root.register` for this project's mirror root.
+   * The helper reports readiness, protocol, its root, the project root count and
+   * its capabilities — no permissions, disk budget or toolchain list — so the
+   * receipt records only what was observed. Registering here makes a missing
+   * remote directory, or one that contains the helper directory, fail this step
+   * with the helper's own reason instead of the first sync.
    */
   private async verifyEnvironment(): Promise<Record<string, unknown>> {
     const result = await this.request("env-verify", "env.verify");
@@ -484,7 +519,24 @@ export class MirrorInitService {
       if (typeof entry !== "string") throw fail("env-verify");
       capabilities.push(entry);
     }
+    if (!capabilities.includes("root.register")) throw fail("env-verify", "root-register-unavailable");
+    await this.registerMirrorRoot();
     return { completedAt: this.now(), ready: true, protocol: 1, projectRootCount, capabilities };
+  }
+
+  /** Registers the mirror root; a refusal carries the helper's code, never the path. */
+  private async registerMirrorRoot(): Promise<void> {
+    const mirrorRoot = this.mirrorRoot;
+    if (!mirrorRoot) throw fail("env-verify", "mirror-root-unavailable");
+    let result: Record<string, unknown>;
+    try {
+      result = await (await this.connect()).request("root.register", { path: mirrorRoot }, QUERY_TIMEOUT_MS);
+    } catch (error) {
+      throw fail("env-verify", errorCodeOf(error) ?? "root-register-failed");
+    }
+    if (typeof result.root !== "string" || result.root.length === 0) {
+      throw fail("env-verify", "root-register-invalid");
+    }
   }
 
   /**
@@ -495,7 +547,8 @@ export class MirrorInitService {
   private async installAdapters(): Promise<Record<string, unknown>> {
     const entries = this.adapterManifest;
     const payload = this.adapterPayload;
-    if (entries.length === 0 || !payload) throw fail("adapter-install");
+    if (entries.length === 0) return { completedAt: this.now(), adapters: [] };
+    if (!payload) throw fail("adapter-install");
     const adapters = await this.adapterSurface("adapter-install");
     const installed: Record<string, unknown>[] = [];
     for (const entry of entries) {
@@ -511,7 +564,7 @@ export class MirrorInitService {
   /** Step 7: the installed version and digest equal the pinned manifest entry. */
   private async probeAdapters(): Promise<Record<string, unknown>> {
     const entries = this.adapterManifest;
-    if (entries.length === 0) throw fail("adapter-probe");
+    if (entries.length === 0) return { completedAt: this.now(), adapters: [] };
     const adapters = await this.adapterSurface("adapter-probe");
     const probed: Record<string, unknown>[] = [];
     for (const entry of entries) {

@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { dialog, shell, type BrowserWindow, type IpcMain, type IpcMainInvokeEvent } from "electron";
+import { app, dialog, shell, type BrowserWindow, type IpcMain, type IpcMainInvokeEvent } from "electron";
 import { err, ErrorCodes, IPC, ok, type LifecycleDialogChoice, type Result } from "@pi-desktop/shared";
 import type { AgentHostBridge } from "../agent-host-bridge";
 import type { AgentSidecar } from "../agent-sidecar";
@@ -35,6 +35,8 @@ import { createComposerTemplateLoader, registerWorkspaceIpc } from "./workspace-
 import { registerComposerIpc } from "./composer-ipc";
 import { registerSpeechIpc } from "./speech-ipc";
 import { registerVoiceIpc } from "./voice-ipc";
+import { registerMirrorIpc } from "./mirror-ipc";
+import { createMirrorEnvironment } from "../mirror/mirror-environment";
 import { registerLiveVoiceIpc } from "./live-voice-ipc";
 import type { LiveCallService } from "../live-voice/call-service";
 import type { ComposerSuggestionAnswer } from "../services/composer-suggestion";
@@ -257,6 +259,14 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     handleWithEvent,
     assertMainWindowSender,
   };
+
+  const mirrorEnvironment = createMirrorEnvironment({
+    getHost,
+    dataDir,
+    resourcesPath: app.isPackaged ? process.resourcesPath : join(app.getAppPath(), "resources"),
+    desktopVersion: app.getVersion(),
+    logger,
+  });
 
   registerAppIpc({
     registrar,
@@ -527,6 +537,13 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
   }
 
   registerRemoteHostIpc({ registrar });
+  registerMirrorIpc({
+    registrar,
+    getHost,
+    sendToRenderer,
+    createRuntime: mirrorEnvironment.createRuntime,
+    getInitService: mirrorEnvironment.getInitService,
+  });
 
   registerMarketIpc({
     registrar,
