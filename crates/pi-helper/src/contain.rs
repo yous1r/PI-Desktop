@@ -1,47 +1,79 @@
 //! Path containment for the helper protocol (spec 23 §10).
 //!
-//! A request path is always relative and is resolved against the registered
-//! project roots or the helper directory. Anything that is not a plain
-//! component (`..`, absolute paths, Windows prefixes, backslashes, NUL bytes)
-//! is refused before the filesystem is touched, and a resolved path must still
-//! be inside its root after `fs::canonicalize`, so a symlink or junction cannot
-//! escape. Credential-shaped names are refused in both directions.
+//! A request path is always relative and resolves inside exactly one base: the
+//! project root the request names, or the helper's own directory for adapter
+//! operations. The two namespaces never mix, so a project file whose first
+//! segment matches a helper name (`bin/`, `env.json`, ...) still lands in the
+//! project, and nothing under a project path can reach helper state.
+//!
+//! Anything that is not a plain component (`..`, absolute paths, Windows
+//! prefixes, backslashes, NUL bytes) is refused before the filesystem is
+//! touched, and a resolved path must still be inside its base after
+//! `fs::canonicalize`, so a symlink or junction cannot escape. Credential-shaped
+//! names are refused in both directions.
 
 use std::{
     fs,
     path::{Component, Path, PathBuf},
+    sync::{RwLock, RwLockReadGuard},
 };
 
 use crate::{HelperError, HelperResult};
 
 /// Longest relative path accepted from the protocol.
 const MAX_RELATIVE_BYTES: usize = 4096;
+/// Longest absolute project root accepted by `root.register`.
+const MAX_ROOT_BYTES: usize = 4096;
 /// Longest single component accepted from the protocol. Leaves room for the
 /// `<name>.<streamId>.pi-part` sibling used by atomic uploads.
 const MAX_COMPONENT_BYTES: usize = 220;
 const MAX_COMPONENTS: usize = 64;
+/// Most project roots one helper process serves. The registry only grows for
+/// the life of the process, so it is bounded.
+pub(crate) const MAX_PROJECT_ROOTS: usize = 64;
 
-/// Top-level names inside the helper directory the protocol may reach.
-/// `token` and everything else the helper owns stay unreachable.
-const HELPER_TOP_LEVEL: &[&str] = &["adapters", "bin", "env.json", "logs", "pids", "receipts"];
+/// Top-level names inside the helper directory that helper-scoped operations
+/// may reach. Only the adapter tree is addressed by the protocol; the token,
+/// the installed binary, logs and receipts stay unreachable.
+const HELPER_TOP_LEVEL: &[&str] = &["adapters"];
 
-/// The allowlisted roots. Every base must be an absolute, canonical path.
+/// The single base one request resolves against.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Scope<'a> {
+    /// A registered project root, named by its canonical absolute path.
+    Project(&'a Path),
+    /// The helper's own directory, reachable only by adapter operations.
+    Helper,
+}
+
+/// The allowlisted roots. Every base is an absolute, canonical path.
 pub(crate) struct Roots {
     helper: PathBuf,
-    projects: Vec<PathBuf>,
+    projects: RwLock<Vec<PathBuf>>,
 }
 
 impl Roots {
     pub(crate) fn new(helper: PathBuf, projects: Vec<PathBuf>) -> Self {
-        Self { helper, projects }
+        Self {
+            helper,
+            projects: RwLock::new(projects),
+        }
     }
 
     pub(crate) fn helper_root(&self) -> &Path {
         &self.helper
     }
 
-    pub(crate) fn project_roots(&self) -> &[PathBuf] {
-        &self.projects
+    pub(crate) fn project_count(&self) -> usize {
+        self.read_projects().len()
+    }
+
+    /// The registry only ever grows by one complete push, so a poisoned lock
+    /// still guards a consistent list.
+    fn read_projects(&self) -> RwLockReadGuard<'_, Vec<PathBuf>> {
+        self.projects
+            .read()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     /// Refuses a configuration in which the helper directory and a project root
@@ -49,14 +81,71 @@ impl Roots {
     ///
     /// A project root that contains `$HOME/.pi-desktop-helper` would expose the
     /// token, the installed binary and adapter state as ordinary project paths,
-    /// so the fixed root models from M0 onward are disjoint by contract.
+    /// so the roots are disjoint by contract.
     pub(crate) fn validate(&self) -> HelperResult<()> {
-        for project in &self.projects {
-            if project.starts_with(&self.helper) || self.helper.starts_with(project) {
-                return Err(HelperError::RootOverlap);
-            }
+        self.read_projects()
+            .iter()
+            .try_for_each(|project| self.refuse_overlap(project))
+    }
+
+    fn refuse_overlap(&self, project: &Path) -> HelperResult<()> {
+        if project.starts_with(&self.helper) || self.helper.starts_with(project) {
+            return Err(HelperError::RootOverlap);
         }
         Ok(())
+    }
+
+    /// Registers one mirror root and returns its canonical form, which every
+    /// later file operation names as its `root`.
+    ///
+    /// Registration is idempotent. The root must be an existing directory that
+    /// is disjoint from the helper directory, so `$HOME` itself and anything
+    /// inside the helper directory are refused.
+    pub(crate) fn register(&self, requested: &str) -> HelperResult<PathBuf> {
+        if requested.is_empty() || requested.len() > MAX_ROOT_BYTES || requested.contains('\0') {
+            return Err(HelperError::InvalidArgument);
+        }
+        let requested = Path::new(requested);
+        if !requested.is_absolute() {
+            return Err(HelperError::InvalidArgument);
+        }
+        let canonical = fs::canonicalize(requested).map_err(|_| HelperError::PathNotFound)?;
+        // The canonical form travels back over the protocol as a string.
+        if !canonical.is_dir() || canonical.to_str().is_none() {
+            return Err(HelperError::InvalidArgument);
+        }
+        self.refuse_overlap(&canonical)?;
+        let mut projects = self
+            .projects
+            .write()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if !projects.contains(&canonical) {
+            if projects.len() >= MAX_PROJECT_ROOTS {
+                return Err(HelperError::InvalidArgument);
+            }
+            projects.push(canonical.clone());
+        }
+        Ok(canonical)
+    }
+
+    /// The base a scope resolves against.
+    ///
+    /// A project scope must name a registered root exactly; there is no default
+    /// root and no search across roots, so a request can never land in another
+    /// project. The helper scope admits only its allowlisted top-level names.
+    fn base(&self, scope: Scope<'_>, components: &[&str]) -> HelperResult<PathBuf> {
+        match scope {
+            Scope::Helper => match components.first() {
+                Some(first) if HELPER_TOP_LEVEL.contains(first) => Ok(self.helper.clone()),
+                _ => Err(HelperError::PathForbidden),
+            },
+            Scope::Project(root) => self
+                .read_projects()
+                .iter()
+                .find(|project| project.as_path() == root)
+                .cloned()
+                .ok_or(HelperError::PathForbidden),
+        }
     }
 
     /// Confines `candidate` to `base` and keeps the helper directory private.
@@ -73,41 +162,33 @@ impl Roots {
     }
 
     /// Resolves an existing path for a read-only operation.
-    pub(crate) fn resolve_read(&self, relative: &str) -> HelperResult<PathBuf> {
-        self.resolve_read_in(None, relative)
-    }
-
-    /// Resolves a read against exactly one registered root. Supplying a root
-    /// index removes ambiguity when projects have nested or overlapping roots.
-    pub(crate) fn resolve_read_in(
-        &self,
-        root_index: Option<usize>,
-        relative: &str,
-    ) -> HelperResult<PathBuf> {
+    pub(crate) fn resolve_read(&self, scope: Scope<'_>, relative: &str) -> HelperResult<PathBuf> {
         let components = validate_relative(relative)?;
-        let bases = self.bases(&components, root_index)?;
-        for base in bases {
-            let candidate = join(base, &components);
-            if fs::symlink_metadata(&candidate).is_ok() {
-                return self.confine(base, &candidate);
-            }
+        let base = self.base(scope, &components)?;
+        let candidate = join(&base, &components);
+        if fs::symlink_metadata(&candidate).is_err() {
+            return Err(HelperError::PathNotFound);
         }
-        Err(HelperError::PathNotFound)
+        self.confine(&base, &candidate)
     }
 
     /// Resolves a path that may be replaced by an atomic upload.
     ///
-    /// The parent directory must already exist and every existing component of
-    /// the chain must be a real directory, so no symlinked ancestor is written
-    /// through; an existing target must be a regular file.
-    pub(crate) fn resolve_write(&self, relative: &str) -> HelperResult<PathBuf> {
+    /// The parent directory must already exist and every component of the chain
+    /// must be a real directory, so no symlinked ancestor is written through; an
+    /// existing target must be a regular file.
+    pub(crate) fn resolve_write(&self, scope: Scope<'_>, relative: &str) -> HelperResult<PathBuf> {
         let components = validate_relative(relative)?;
-        let (base, candidate) = self.pick(&components, components.len() - 1, None)?;
-        verify_ancestors(base, &components[..components.len() - 1])?;
+        let base = self.base(scope, &components)?;
+        let (_, ancestors) = components
+            .split_last()
+            .ok_or(HelperError::InvalidArgument)?;
+        verify_ancestors(&base, ancestors)?;
+        let candidate = join(&base, &components);
         // A new target is not canonicalizable yet, so the parent carries the
         // containment proof on its behalf.
         let parent = candidate.parent().ok_or(HelperError::InvalidArgument)?;
-        self.confine(base, parent)?;
+        self.confine(&base, parent)?;
         if let Ok(metadata) = fs::symlink_metadata(&candidate) {
             if metadata.file_type().is_symlink() {
                 return Err(HelperError::PathEscape);
@@ -115,19 +196,20 @@ impl Roots {
             if !metadata.is_file() {
                 return Err(HelperError::InvalidArgument);
             }
-            self.confine(base, &candidate)?;
+            self.confine(&base, &candidate)?;
         }
         Ok(candidate)
     }
 
     /// Resolves a directory that may be created, together with its parents.
-    pub(crate) fn resolve_mkdir(&self, relative: &str) -> HelperResult<PathBuf> {
+    pub(crate) fn resolve_mkdir(&self, scope: Scope<'_>, relative: &str) -> HelperResult<PathBuf> {
         let components = validate_relative(relative)?;
-        let (base, candidate) = self.pick(&components, 0, None)?;
-        let depth = existing_depth(base, &components);
-        verify_ancestors(base, &components[..depth])?;
+        let base = self.base(scope, &components)?;
+        let candidate = join(&base, &components);
+        let depth = existing_depth(&base, &components);
+        verify_ancestors(&base, &components[..depth])?;
         if depth > 0 {
-            self.confine(base, &join(base, &components[..depth]))?;
+            self.confine(&base, &join(&base, &components[..depth]))?;
         }
         if depth == components.len() {
             let metadata =
@@ -138,63 +220,10 @@ impl Roots {
             if !metadata.is_dir() {
                 return Err(HelperError::InvalidArgument);
             }
-            return self.confine(base, &candidate);
+            return self.confine(&base, &candidate);
         }
         fs::create_dir_all(&candidate)?;
-        self.confine(base, &candidate)
-    }
-
-    /// Bases a request path may resolve against, in preference order.
-    ///
-    /// `root_index` pins the request to exactly one registered project root, so
-    /// a path that exists in two roots can never be read from one and written
-    /// to the other. The helper directory is only reachable through its own
-    /// top-level names and never through a project base.
-    fn bases<'a>(
-        &'a self,
-        components: &[&str],
-        root_index: Option<usize>,
-    ) -> HelperResult<Vec<&'a Path>> {
-        let mut bases: Vec<&Path> = match root_index {
-            Some(index) => vec![self
-                .projects
-                .get(index)
-                .ok_or(HelperError::InvalidArgument)?
-                .as_path()],
-            None => self.projects.iter().map(PathBuf::as_path).collect(),
-        };
-        if HELPER_TOP_LEVEL.contains(&components[0]) {
-            bases.push(self.helper.as_path());
-        }
-        Ok(bases)
-    }
-
-    /// Chooses the root with the deepest existing prefix of the request path.
-    ///
-    /// Ties keep the order above, so a project root wins over the helper
-    /// directory when both can serve the same relative path.
-    fn pick(
-        &self,
-        components: &[&str],
-        required_depth: usize,
-        root_index: Option<usize>,
-    ) -> HelperResult<(&Path, PathBuf)> {
-        let mut best: Option<(usize, &Path, PathBuf)> = None;
-        for base in self.bases(components, root_index)? {
-            let depth = existing_depth(base, components);
-            if depth < required_depth {
-                continue;
-            }
-            if best
-                .as_ref()
-                .is_some_and(|(best_depth, _, _)| *best_depth >= depth)
-            {
-                continue;
-            }
-            best = Some((depth, base, join(base, components)));
-        }
-        best.map(|(_, base, candidate)| (base, candidate))
-            .ok_or(HelperError::PathNotFound)
+        self.confine(&base, &candidate)
     }
 }
 

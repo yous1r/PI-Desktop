@@ -1,8 +1,10 @@
 //! Loopback helper service for remote mirror development (spec 23, ADR 0338).
 //!
 //! The service owns the control plane and the file data plane: framed JSON
-//! control requests, per-file `put`/`get` streams, and path containment against
-//! the helper directory and the project roots registered at startup.
+//! control requests, per-file `put`/`get` streams, and path containment. A file
+//! operation resolves only inside the project root it names, registered at
+//! startup or through `root.register`; the helper directory is a separate
+//! namespace that only adapter operations reach.
 
 mod adapters;
 mod contain;
@@ -52,6 +54,7 @@ const CAPABILITIES: &[&str] = &[
     "version",
     "health",
     "env.verify",
+    "root.register",
     "fs.stat",
     "fs.hash",
     "fs.mkdirs",
@@ -144,6 +147,7 @@ enum Op {
     Auth,
     Version,
     Health,
+    RootRegister,
     Stat,
     Hash,
     Mkdirs,
@@ -161,6 +165,7 @@ fn classify(op: &str) -> Op {
         "auth" => Op::Auth,
         "version" => Op::Version,
         "health" | "env.verify" => Op::Health,
+        "root.register" => Op::RootRegister,
         "fs.stat" => Op::Stat,
         "fs.hash" => Op::Hash,
         "fs.mkdirs" => Op::Mkdirs,
@@ -476,9 +481,10 @@ fn dispatch(state: &State, op: Op, params: &Map<String, Value>) -> HelperResult<
             "ready": true,
             "protocol": 1,
             "root": state.roots.helper_root(),
-            "projectRootCount": state.roots.project_roots().len(),
+            "projectRootCount": state.roots.project_count(),
             "capabilities": CAPABILITIES,
         })),
+        Op::RootRegister => register_root(&state.roots, params),
         Op::Stat => fs_ops::stat_batch(&state.roots, params),
         Op::Hash => fs_ops::hash_file(&state.roots, params),
         Op::Mkdirs => fs_ops::mkdirs(&state.roots, params),
@@ -489,6 +495,19 @@ fn dispatch(state: &State, op: Op, params: &Map<String, Value>) -> HelperResult<
             Err(HelperError::OperationUnavailable)
         }
     }
+}
+
+/// Registers one mirror root for the life of this helper process.
+///
+/// Returns the canonical root every later `fs.*` request must name, so a client
+/// never has to guess how the host spells its own path.
+fn register_root(roots: &Roots, params: &Map<String, Value>) -> HelperResult<Value> {
+    let Some(Value::String(requested)) = params.get("path") else {
+        return Err(HelperError::InvalidArgument);
+    };
+    let canonical = roots.register(requested)?;
+    let root = canonical.to_str().ok_or(HelperError::InvalidArgument)?;
+    Ok(serde_json::json!({ "root": root }))
 }
 
 async fn write_result(
@@ -526,9 +545,10 @@ fn valid_token(expected: &[u8], actual: Option<&Value>) -> bool {
 
 fn error_code(error: &HelperError) -> &'static str {
     match error {
-        HelperError::InvalidConfig | HelperError::InvalidArgument | HelperError::RootOverlap => {
-            "INVALID_ARGUMENT"
-        }
+        HelperError::InvalidConfig | HelperError::InvalidArgument => "INVALID_ARGUMENT",
+        // Reached over the wire through `root.register`: the chosen mirror root
+        // contains the helper directory or lies inside it.
+        HelperError::RootOverlap => "REMOTE_PATH_FORBIDDEN",
         HelperError::Directory => "HELPER_DIR_UNWRITABLE",
         HelperError::Token | HelperError::Unauthorized => "HELPER_AUTH_FAILED",
         HelperError::Frame => "HELPER_PROTOCOL_ERROR",

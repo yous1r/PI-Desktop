@@ -19,7 +19,7 @@ use sha2::{Digest, Sha256};
 use tokio::net::TcpStream;
 
 use crate::{
-    contain::Roots,
+    contain::{Roots, Scope},
     frame::{
         payload_stream_id, read_frame_timeout, write_data_frame, write_end_frame, DATA_CHUNK_BYTES,
         DATA_FRAME, END_FRAME, MAX_CONTROL_BYTES, MAX_FILE_BYTES,
@@ -52,10 +52,11 @@ impl PutFailure {
 
 pub(crate) fn stat_batch(roots: &Roots, params: &Map<String, Value>) -> HelperResult<Value> {
     let paths = required_paths(params)?;
+    let scope = project_scope(params)?;
     let mut entries = Vec::with_capacity(paths.len());
     let mut reply_bytes = 16usize;
     for relative in paths {
-        let entry = stat_entry(roots, relative)?;
+        let entry = stat_entry(roots, scope, relative)?;
         reply_bytes = reply_bytes
             .checked_add(
                 serde_json::to_vec(&entry)
@@ -73,8 +74,9 @@ pub(crate) fn stat_batch(roots: &Roots, params: &Map<String, Value>) -> HelperRe
 }
 
 pub(crate) fn hash_file(roots: &Roots, params: &Map<String, Value>) -> HelperResult<Value> {
+    let scope = project_scope(params)?;
     let relative = required_str(params, "path")?;
-    let resolved = roots.resolve_read(relative)?;
+    let resolved = roots.resolve_read(scope, relative)?;
     let metadata = fs::metadata(&resolved).map_err(|_| HelperError::PathNotFound)?;
     if !metadata.is_file() {
         return Err(HelperError::InvalidArgument);
@@ -105,6 +107,7 @@ pub(crate) fn hash_file(roots: &Roots, params: &Map<String, Value>) -> HelperRes
 }
 
 pub(crate) fn mkdirs(roots: &Roots, params: &Map<String, Value>) -> HelperResult<Value> {
+    let scope = project_scope(params)?;
     let paths = required_paths(params)?;
     // The reply is one control frame. It is priced before any directory exists,
     // because a frame that cannot be written would drop the connection after
@@ -122,7 +125,7 @@ pub(crate) fn mkdirs(roots: &Roots, params: &Map<String, Value>) -> HelperResult
     }
     let mut created = Vec::with_capacity(paths.len());
     for relative in paths {
-        roots.resolve_mkdir(relative)?;
+        roots.resolve_mkdir(scope, relative)?;
         created.push(relative);
     }
     Ok(json!({ "paths": created }))
@@ -147,8 +150,9 @@ pub(crate) async fn put_stream(
     if declared_size > MAX_FILE_BYTES {
         return Err(PutFailure::new(HelperError::FileTooLarge, retire));
     }
+    let scope = project_scope(params).map_err(|error| PutFailure::new(error, retire))?;
     let target = roots
-        .resolve_write(relative)
+        .resolve_write(scope, relative)
         .map_err(|error| PutFailure::new(error, retire))?;
     // The temporary name is random and created exclusively: a pre-existing file
     // or symlink at that path can neither be truncated nor written through, and
@@ -205,8 +209,9 @@ impl GetPlan {
 
 pub(crate) fn prepare_get(roots: &Roots, params: &Map<String, Value>) -> HelperResult<GetPlan> {
     let stream_id = required_u32(params, "streamId")?;
+    let scope = project_scope(params)?;
     let relative = required_str(params, "path")?;
-    let resolved = roots.resolve_read(relative)?;
+    let resolved = roots.resolve_read(scope, relative)?;
     let metadata = fs::metadata(&resolved).map_err(|_| HelperError::PathNotFound)?;
     if !metadata.is_file() {
         return Err(HelperError::InvalidArgument);
@@ -285,8 +290,8 @@ async fn receive(
     Ok((received, hex::encode(hasher.finalize())))
 }
 
-fn stat_entry(roots: &Roots, relative: &str) -> HelperResult<Value> {
-    let resolved = match roots.resolve_read(relative) {
+fn stat_entry(roots: &Roots, scope: Scope<'_>, relative: &str) -> HelperResult<Value> {
+    let resolved = match roots.resolve_read(scope, relative) {
         Ok(path) => path,
         Err(HelperError::PathNotFound) => return Ok(kind_entry(relative, "missing", None)),
         Err(error) => return Err(error),
@@ -364,6 +369,20 @@ fn create_temp(path: &Path) -> HelperResult<File> {
 /// Removes a staging file this request created. Never used on a target.
 fn remove_quietly(path: &Path) {
     let _ = fs::remove_file(path);
+}
+
+/// The project root a file operation names.
+///
+/// Every `fs.*` request carries the canonical root `root.register` returned.
+/// There is no default root and no search across roots, so a file can never be
+/// read from or written to a project other than the one the caller named, and
+/// the helper directory is never a file-operation target.
+fn project_scope(params: &Map<String, Value>) -> HelperResult<Scope<'_>> {
+    let root = Path::new(required_str(params, "root")?);
+    if !root.is_absolute() {
+        return Err(HelperError::InvalidArgument);
+    }
+    Ok(Scope::Project(root))
 }
 
 fn required_str<'a>(params: &'a Map<String, Value>, key: &str) -> HelperResult<&'a str> {

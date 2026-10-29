@@ -215,23 +215,15 @@ async fn adapter_install_rejects_unknown_kinds_bad_versions_and_foreign_paths() 
     .await;
     assert_eq!(escaping["error"]["code"], "INVALID_ARGUMENT");
 
-    // A project root that shadows the install directory must not receive the
-    // payload: the resolved location is then outside the helper root.
+    // A project root that holds its own `adapters/` tree cannot divert the
+    // payload: helper-scoped resolution never consults a project root.
     fs::create_dir_all(env.project.join("adapters").join(KIND).join(VERSION)).unwrap();
-    let shadowed = super::call(
-        &mut client,
-        "shadow",
-        "adapter.install",
-        json!({
-            "kind": KIND,
-            "version": VERSION,
-            "sha256": digest,
-            "path": format!("adapters/{KIND}/{VERSION}"),
-            "streamId": 4,
-        }),
-    )
-    .await;
-    assert_eq!(shadowed["error"]["code"], "REMOTE_PATH_FORBIDDEN");
+    let installed = install_bundle(&mut client, VERSION, b"payload").await;
+    assert_eq!(installed["ok"], true, "{installed}");
+    assert_eq!(
+        fs::read(installed_directory(&env.helper, VERSION).join(bundle_name())).unwrap(),
+        b"payload"
+    );
     assert!(!env
         .project
         .join("adapters")

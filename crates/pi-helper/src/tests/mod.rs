@@ -5,6 +5,7 @@
 
 mod adapters;
 mod contain;
+mod roots;
 
 use std::{
     fs,
@@ -21,7 +22,7 @@ use tokio::{
     task::JoinHandle,
 };
 
-use crate::contain::Roots;
+use crate::contain::{Roots, Scope};
 use crate::frame::{
     payload_stream_id, read_frame, write_data_frame, write_end_frame, write_frame, CONTROL_FRAME,
     DATA_FRAME, END_FRAME, MAX_FILE_BYTES, MAX_FRAME_BYTES,
@@ -59,6 +60,17 @@ fn test_env() -> Env {
         helper,
         project,
         token,
+    }
+}
+
+impl Env {
+    /// The canonical project root every `fs.*` request in these tests names.
+    fn root(&self) -> String {
+        self.project.to_str().unwrap().to_owned()
+    }
+
+    fn scope(&self) -> Scope<'_> {
+        Scope::Project(&self.project)
     }
 }
 
@@ -100,7 +112,7 @@ fn project_symlink_cannot_reach_the_helper_directory() {
     std::os::unix::fs::symlink(env.helper.join("logs"), env.project.join("logs")).unwrap();
 
     assert!(matches!(
-        env.state.roots.resolve_read("logs/helper.log"),
+        env.state.roots.resolve_read(env.scope(), "logs/helper.log"),
         Err(HelperError::PathForbidden | HelperError::PathEscape)
     ));
 }
@@ -125,6 +137,7 @@ async fn fs_put_preserves_the_target_permissions() {
         "perm",
         "fs.put.begin",
         json!({
+            "root": env.root(),
             "path": "run.sh",
             "streamId": 41,
             "size": bytes.len(),
@@ -157,7 +170,7 @@ fn fs_mkdirs_refuses_a_batch_that_cannot_fit_one_control_frame() {
     let result = dispatch(
         &env.state,
         Op::Mkdirs,
-        &object(json!({ "paths": paths.clone() })),
+        &object(json!({ "root": env.root(), "paths": paths.clone() })),
     );
     assert!(matches!(result, Err(HelperError::InvalidArgument)));
     assert!(
@@ -183,6 +196,7 @@ const PROTOCOL_OPS: &[&str] = &[
     "version",
     "health",
     "env.verify",
+    "root.register",
     "fs.stat",
     "fs.hash",
     "fs.mkdirs",
@@ -488,6 +502,7 @@ fn fs_stat_reports_kinds_and_fs_hash_matches_a_known_digest() {
         &env.state,
         Op::Stat,
         &object(json!({
+            "root": env.root(),
             "paths": ["hello.txt", "src", "src/nested/main.rs", "missing.txt"],
         })),
     )
@@ -506,7 +521,7 @@ fn fs_stat_reports_kinds_and_fs_hash_matches_a_known_digest() {
     let hash = dispatch(
         &env.state,
         Op::Hash,
-        &object(json!({ "path": "hello.txt" })),
+        &object(json!({ "root": env.root(), "path": "hello.txt" })),
     )
     .unwrap();
     assert_eq!(
@@ -515,22 +530,24 @@ fn fs_stat_reports_kinds_and_fs_hash_matches_a_known_digest() {
     );
     assert_eq!(hash["size"], 3);
 
-    // Helper-directory subdirectories are reachable, the private files are not.
+    // The helper directory is a separate namespace: its files never answer a
+    // project path, even when the project has nothing at that path.
     fs::write(env.helper.join("logs/helper.log"), b"log line\n").unwrap();
-    let log = dispatch(
-        &env.state,
-        Op::Hash,
-        &object(json!({ "path": "logs/helper.log" })),
-    )
-    .unwrap();
-    assert_eq!(log["sha256"], digest(b"log line\n"));
+    assert!(matches!(
+        dispatch(
+            &env.state,
+            Op::Hash,
+            &object(json!({ "root": env.root(), "path": "logs/helper.log" })),
+        ),
+        Err(HelperError::PathNotFound)
+    ));
 
     // One non-contained path fails the whole batch instead of being reported.
     assert!(matches!(
         dispatch(
             &env.state,
             Op::Stat,
-            &object(json!({ "paths": ["hello.txt", "../escape"] }))
+            &object(json!({ "root": env.root(), "paths": ["hello.txt", "../escape"] }))
         ),
         Err(HelperError::PathEscape)
     ));
@@ -538,12 +555,16 @@ fn fs_stat_reports_kinds_and_fs_hash_matches_a_known_digest() {
         dispatch(
             &env.state,
             Op::Hash,
-            &object(json!({ "path": "missing.txt" }))
+            &object(json!({ "root": env.root(), "path": "missing.txt" }))
         ),
         Err(HelperError::PathNotFound)
     ));
     assert!(matches!(
-        dispatch(&env.state, Op::Hash, &object(json!({ "path": "src" }))),
+        dispatch(
+            &env.state,
+            Op::Hash,
+            &object(json!({ "root": env.root(), "path": "src" }))
+        ),
         Err(HelperError::InvalidArgument)
     ));
 }
@@ -554,7 +575,7 @@ fn fs_mkdirs_creates_nested_directories_and_caps_the_batch() {
     let result = dispatch(
         &env.state,
         Op::Mkdirs,
-        &object(json!({ "paths": ["a/b/c", "a/b/c", "d"] })),
+        &object(json!({ "root": env.root(), "paths": ["a/b/c", "a/b/c", "d"] })),
     )
     .unwrap();
     assert_eq!(result["paths"].as_array().unwrap().len(), 3);
@@ -566,7 +587,7 @@ fn fs_mkdirs_creates_nested_directories_and_caps_the_batch() {
         dispatch(
             &env.state,
             Op::Mkdirs,
-            &object(json!({ "paths": ["file.txt"] }))
+            &object(json!({ "root": env.root(), "paths": ["file.txt"] }))
         ),
         Err(HelperError::InvalidArgument)
     ));
@@ -578,7 +599,7 @@ fn fs_mkdirs_creates_nested_directories_and_caps_the_batch() {
         dispatch(
             &env.state,
             Op::Mkdirs,
-            &object(json!({ "paths": oversized }))
+            &object(json!({ "root": env.root(), "paths": oversized }))
         ),
         Err(HelperError::InvalidArgument)
     ));
@@ -600,6 +621,7 @@ async fn fs_put_streams_bytes_verbatim_and_replaces_the_target_atomically() {
         "put",
         "fs.put.begin",
         json!({
+            "root": env.root(),
             "path": "data/blob.bin",
             "streamId": 7,
             "size": content.len() as u64,
@@ -639,7 +661,7 @@ async fn fs_put_rejects_short_long_and_mismatched_streams_without_leaving_a_targ
         &mut client,
         "short",
         "fs.put.begin",
-        json!({ "path": "short.txt", "streamId": 1, "size": 5, "sha256": digest(b"abc") }),
+        json!({ "root": env.root(), "path": "short.txt", "streamId": 1, "size": 5, "sha256": digest(b"abc") }),
     )
     .await;
     write_data_frame(&mut client, 1, b"abc").await.unwrap();
@@ -654,7 +676,7 @@ async fn fs_put_rejects_short_long_and_mismatched_streams_without_leaving_a_targ
         &mut client,
         "long",
         "fs.put.begin",
-        json!({ "path": "long.txt", "streamId": 2, "size": 2, "sha256": digest(b"abc") }),
+        json!({ "root": env.root(), "path": "long.txt", "streamId": 2, "size": 2, "sha256": digest(b"abc") }),
     )
     .await;
     write_data_frame(&mut client, 2, b"abc").await.unwrap();
@@ -668,7 +690,7 @@ async fn fs_put_rejects_short_long_and_mismatched_streams_without_leaving_a_targ
         &mut client,
         "digest",
         "fs.put.begin",
-        json!({ "path": "digest.txt", "streamId": 3, "size": 3, "sha256": digest(b"abd") }),
+        json!({ "root": env.root(), "path": "digest.txt", "streamId": 3, "size": 3, "sha256": digest(b"abd") }),
     )
     .await;
     write_data_frame(&mut client, 3, b"abc").await.unwrap();
@@ -695,6 +717,7 @@ async fn fs_put_refuses_a_declared_size_above_the_ceiling_before_accepting_bytes
         "huge",
         "fs.put.begin",
         json!({
+            "root": env.root(),
             "path": "huge.bin",
             "streamId": 11,
             "size": MAX_FILE_BYTES + 1,
@@ -726,7 +749,7 @@ async fn fs_get_streams_binary_content_back_over_loopback() {
         &mut client,
         "get",
         "fs.get.begin",
-        json!({ "path": "binary.bin", "streamId": 9 }),
+        json!({ "root": env.root(), "path": "binary.bin", "streamId": 9 }),
     )
     .await;
     let response = read_response(&mut client).await;
@@ -757,15 +780,16 @@ async fn fs_get_streams_binary_content_back_over_loopback() {
         &mut client,
         "m",
         "fs.get.begin",
-        json!({ "path": "nope.bin", "streamId": 10 }),
+        json!({ "root": env.root(), "path": "nope.bin", "streamId": 10 }),
     )
     .await;
     assert_eq!(missing["error"]["code"], "REMOTE_PATH_NOT_FOUND");
+    fs::create_dir_all(env.project.join("logs")).unwrap();
     let directory = call(
         &mut client,
         "d",
         "fs.get.begin",
-        json!({ "path": "logs", "streamId": 10 }),
+        json!({ "root": env.root(), "path": "logs", "streamId": 10 }),
     )
     .await;
     assert_eq!(directory["error"]["code"], "INVALID_ARGUMENT");

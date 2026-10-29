@@ -1,10 +1,13 @@
-import { randomUUID } from "node:crypto";
-import type { SshTransport } from "../remote/ssh-transport.js";
+import { createHash, randomUUID } from "node:crypto";
+import type { SshExecResult, SshTransport } from "../remote/ssh-transport.js";
 import { shellQuote } from "../remote/pi-host-bootstrap-script.js";
 import type { HelperArtifact } from "./helper-bundle.js";
 
 const DEFAULT_READY_TIMEOUT_SECONDS = 30;
 const MAX_READY_TIMEOUT_SECONDS = 120;
+const MAX_ENV_MANIFEST_BYTES = 64 * 1024;
+const ENV_MANIFEST_TIMEOUT_MS = 30_000;
+const ENV_MANIFEST_WRITTEN = "PI_HELPER_ENV_WRITTEN";
 
 export type HelperReady = {
   port: number;
@@ -200,6 +203,67 @@ export async function deployBundledHelper(options: HelperBootstrapOptions): Prom
     throw fail("The bundled helper could not be uploaded or started", "HELPER_DEPLOY_FAILED");
   }
   return parseHelperReady(result.stdout, desktopVersion);
+}
+
+/** The host-level environment record kept in `$HOME/.pi-desktop-helper/env.json`. */
+export type HelperEnvManifest = {
+  schemaVersion: 1;
+  /** Absolute helper directory, exactly as the helper resolved it. */
+  helperRoot: string;
+  helperVersion: string;
+  protocol: 1;
+  desktopVersion: string;
+  adapters: ReadonlyArray<{ kind: string; version: string; sha256: string }>;
+};
+
+/**
+ * Writes `env.json` into the helper directory over SSH (spec 23 §4 step 10).
+ *
+ * The manifest describes the host rather than one project, so it never travels
+ * through `fs.put`: file operations address registered mirror roots only. The
+ * bytes go to a private `mktemp` sibling, the byte count is checked, and only
+ * then is the sibling renamed over `env.json`, so a failed write leaves the
+ * previous manifest in place.
+ */
+export async function writeHelperEnvManifest(
+  transport: SshTransport,
+  manifest: HelperEnvManifest,
+): Promise<{ sha256: string; size: number }> {
+  const body = `${JSON.stringify(manifest)}\n`;
+  const size = Buffer.byteLength(body, "utf8");
+  if (size > MAX_ENV_MANIFEST_BYTES) {
+    throw fail("The helper environment manifest is too large", "MIRROR_INIT_FAILED");
+  }
+  const script = `set -eu
+umask 077
+die() { printf '%s\\n' "PI_HELPER_ENV_FAILED $1" >&2; exit 1; }
+[ -n "\${HOME:-}" ] || die no-home
+base="$HOME/.pi-desktop-helper"
+[ -d "$base" ] && [ ! -L "$base" ] || die helper-directory
+target="$base/env.json"
+[ ! -L "$target" ] || die unsafe-env-manifest
+[ ! -e "$target" ] || [ -f "$target" ] || die unsafe-env-manifest
+tmp=$(mktemp "$base/.env.json.XXXXXXXX") || die env-manifest-stage
+trap 'rm -f -- "$tmp"' EXIT
+cat > "$tmp" || die env-manifest-write
+[ "$(wc -c < "$tmp" | tr -d ' ')" -eq ${size} ] || die env-manifest-size
+chmod 600 "$tmp" || die env-manifest-write
+mv -f "$tmp" "$target" || die env-manifest-rename
+printf '%s\\n' ${ENV_MANIFEST_WRITTEN}
+`;
+  let result: SshExecResult;
+  try {
+    result = await transport.execWithInput(`sh -c ${shellQuote(script)}`, body, {
+      timeoutMs: ENV_MANIFEST_TIMEOUT_MS,
+      maxOutputBytes: 4 * 1024,
+    });
+  } catch {
+    throw fail("The helper environment manifest could not be written", "MIRROR_INIT_FAILED");
+  }
+  if (result.code !== 0 || !result.stdout.split(/\r?\n/).includes(ENV_MANIFEST_WRITTEN)) {
+    throw fail("The helper environment manifest could not be written", "MIRROR_INIT_FAILED");
+  }
+  return { sha256: createHash("sha256").update(body, "utf8").digest("hex"), size };
 }
 
 

@@ -233,7 +233,56 @@ function normaliseStatEntry(value: unknown): RemoteStatEntry {
   return { path, exists, size, mtimeMs, mode };
 }
 
-export function createHelperFs(client: HelperClient): HelperFs {
+/**
+ * Accepts the canonical mirror root `root.register` returned. Remote hosts are
+ * POSIX, so the root is absolute and free of `..`, backslashes and NUL bytes;
+ * the helper still checks it against its own registry on every request.
+ */
+export function validateProjectRoot(value: unknown): string {
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.length > MAX_REMOTE_PATH_CHARS ||
+    !value.startsWith("/") ||
+    value.includes("\0") ||
+    value.includes("\\") ||
+    value.split("/").some((segment) => segment === "..")
+  ) {
+    throw helperFailure("The mirror root is not a usable absolute path", "INVALID_ARGUMENT");
+  }
+  return value;
+}
+
+/**
+ * Registers a mirror root with the helper and returns the canonical form every
+ * later file operation names. Registration is idempotent on the helper side, so
+ * each new connection may repeat it.
+ */
+export async function registerHelperRoot(
+  client: HelperClient,
+  mirrorRoot: string,
+  options: TransferOptions = {},
+): Promise<string> {
+  const requested = validateProjectRoot(mirrorRoot);
+  const result = await client.request(
+    "root.register",
+    { path: requested },
+    options.timeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS,
+  );
+  try {
+    return validateProjectRoot(result.root);
+  } catch {
+    throw helperFailure("The helper reported an invalid mirror root", "HELPER_PROTOCOL_ERROR");
+  }
+}
+
+/**
+ * File operations against one registered mirror root. `root` is the canonical
+ * value `registerHelperRoot` returned; the helper refuses any other, and never
+ * resolves a file operation into its own directory.
+ */
+export function createHelperFs(client: HelperClient, root: string): HelperFs {
+  const projectRoot = validateProjectRoot(root);
   async function putFile(remotePath: string, source: Uint8Array | string, options: PutFileOptions = {}): Promise<PutFileResult> {
     const path = validateRemotePath(remotePath);
     const expected = normaliseExpectedSha256(options.expectedSha256);
@@ -254,7 +303,7 @@ export function createHelperFs(client: HelperClient): HelperFs {
     // terminated by an END frame, so only fs.put.begin is a control request.
     const stream = client.beginStream({
       op: "fs.put.begin",
-      params: { path, size, sha256 },
+      params: { root: projectRoot, path, size, sha256 },
       streamId: options.streamId,
       timeoutMs: options.timeoutMs ?? DEFAULT_TRANSFER_TIMEOUT_MS,
     });
@@ -298,7 +347,7 @@ export function createHelperFs(client: HelperClient): HelperFs {
     let received = 0;
     const stream = client.beginStream({
       op: "fs.get.begin",
-      params: { path },
+      params: { root: projectRoot, path },
       streamId: options.streamId,
       timeoutMs: options.timeoutMs ?? DEFAULT_TRANSFER_TIMEOUT_MS,
       onData: async (bytes) => {
@@ -338,13 +387,13 @@ export function createHelperFs(client: HelperClient): HelperFs {
 
   async function stat(paths: string | readonly string[], options: TransferOptions = {}): Promise<RemoteStatEntry[]> {
     const list = remotePathList(paths);
-    const result = await client.request("fs.stat", { paths: list }, options.timeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS);
+    const result = await client.request("fs.stat", { root: projectRoot, paths: list }, options.timeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS);
     return entryArray(result).map((entry) => normaliseStatEntry(entry));
   }
 
   async function hashRemote(path: string, options: TransferOptions = {}): Promise<RemoteDigest> {
     const target = validateRemotePath(path);
-    const result = await client.request("fs.hash", { path: target }, options.timeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS);
+    const result = await client.request("fs.hash", { root: projectRoot, path: target }, options.timeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS);
     const reported = typeof result.sha256 === "string" ? result.sha256 : typeof result.hash === "string" ? result.hash : "";
     if (!SHA256_PATTERN.test(reported.toLowerCase())) {
       throw helperFailure("The helper reported an invalid digest", "HELPER_PROTOCOL_ERROR");
@@ -354,7 +403,7 @@ export function createHelperFs(client: HelperClient): HelperFs {
 
   async function mkdirs(paths: string | readonly string[], options: TransferOptions = {}): Promise<string[]> {
     const list = remotePathList(paths);
-    const result = await client.request("fs.mkdirs", { paths: list }, options.timeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS);
+    const result = await client.request("fs.mkdirs", { root: projectRoot, paths: list }, options.timeoutMs ?? DEFAULT_QUERY_TIMEOUT_MS);
     for (const key of ["created", "directories", "paths"]) {
       const value = result[key];
       if (!Array.isArray(value)) continue;

@@ -29,7 +29,7 @@ use sha2::{Digest, Sha256};
 use tokio::net::TcpStream;
 
 use crate::{
-    contain::Roots,
+    contain::{Roots, Scope},
     frame::{payload_stream_id, read_frame_timeout, DATA_FRAME, END_FRAME, MAX_FILE_BYTES},
     HelperError, HelperResult,
 };
@@ -222,10 +222,10 @@ fn install_directory(
     if requested != relative {
         return Err(HelperError::InvalidArgument);
     }
-    let directory = roots.resolve_mkdir(&relative)?;
-    // `adapters/...` also resolves under a project root that happens to hold a
-    // matching directory; installing there would put the payload outside the
-    // helper's private state.
+    let directory = roots.resolve_mkdir(Scope::Helper, &relative)?;
+    // The helper scope never consults a project root, so a project that holds
+    // its own `adapters/` tree cannot divert the payload; the checks below are
+    // the defence in depth behind that scope.
     if !directory.starts_with(roots.helper_root()) {
         return Err(HelperError::PathForbidden);
     }
@@ -323,7 +323,7 @@ pub(crate) fn shutdown() {
 /// Reads the newest installed version of `kind`, if any.
 fn installed(roots: &Roots, kind: AdapterKind) -> HelperResult<Option<Installed>> {
     let relative = format!("adapters/{}", kind.id());
-    let directory = match roots.resolve_read(&relative) {
+    let directory = match roots.resolve_read(Scope::Helper, &relative) {
         Ok(path) => path,
         Err(HelperError::PathNotFound) => return Ok(None),
         Err(error) => return Err(error),
