@@ -215,6 +215,15 @@ export const IPC = {
     projectGroupList: "pi-desktop/project-group/list",
     projectGroupCreateRemote: "pi-desktop/project-group/createRemote",
     projectGroupCreateMirror: "pi-desktop/project-group/createMirror",
+    mirrorStatusGet: "pi-desktop/mirror/status/get",
+    mirrorSyncStart: "pi-desktop/mirror/sync/start",
+    mirrorSyncStop: "pi-desktop/mirror/sync/stop",
+    mirrorConflictList: "pi-desktop/mirror/conflict/list",
+    mirrorConflictResolve: "pi-desktop/mirror/conflict/resolve",
+    mirrorInitStatusGet: "pi-desktop/mirror/init/status/get",
+    mirrorInitStart: "pi-desktop/mirror/init/start",
+    mirrorRunStart: "pi-desktop/mirror/run/start",
+    mirrorRunCancel: "pi-desktop/mirror/run/cancel",
     projectGroupCreate: "pi-desktop/project-group/create",
     projectGroupRename: "pi-desktop/project-group/rename",
     projectGroupUpdate: "pi-desktop/project-group/update",
@@ -519,6 +528,14 @@ export const IPC = {
     liveVoiceTranscript: "pi-desktop/voice/live/event/transcript",
     liveVoiceWidgetState: "pi-desktop/voice/live/event/widgetState",
     liveVoiceWidgetAction: "pi-desktop/voice/live/event/widgetAction",
+    /** Mirror sync status for one project group, pushed after every change. */
+    mirrorStatus: "pi-desktop/mirror/event/status",
+    /** One ordered output chunk of a running remote build or run. */
+    mirrorRunChunk: "pi-desktop/mirror/event/runChunk",
+    /** Final outcome of a remote build or run. */
+    mirrorRunSettled: "pi-desktop/mirror/event/runSettled",
+    /** Progress of the mirror initialization state machine. */
+    mirrorInitProgress: "pi-desktop/mirror/event/initProgress",
   },
 } as const;
 

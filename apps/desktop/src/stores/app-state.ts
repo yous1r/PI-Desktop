@@ -10,6 +10,10 @@ import type {
   AppVersionInfo,
   AskToolResolution,
   ContextCompactionMark,
+  MirrorConflict,
+  MirrorConflictResolution,
+  MirrorInitStatus,
+  MirrorSyncStatus,
   Mode,
   ModelInfo,
   OnboardingState,
@@ -87,6 +91,32 @@ export type AgentTurnResult = {
 
 export type PendingPlanRefreshResult = "pending" | "terminal" | "unavailable";
 
+/** The mirror action whose invoke failed, so a retry can repeat exactly it. */
+export type MirrorAction = "load" | "start" | "stop" | "resolve" | "init";
+
+/** A failed mirror invoke, kept with its host error code for the panel. */
+export type MirrorInvokeFailure = {
+  code: string;
+  message: string;
+  action: MirrorAction;
+};
+
+/** One mirror project's renderer-side view of the host runtime. */
+export type MirrorProjectRuntime = {
+  /** Latest pushed sync snapshot; `null` until the first read lands. */
+  status: MirrorSyncStatus | null;
+  /** Initialization state machine snapshot, for the progress affordance. */
+  init: MirrorInitStatus | null;
+  /** Remote changes still waiting for a decision; the newest host list wins. */
+  conflicts: MirrorConflict[];
+  /** Conflict paths with a resolve invoke in flight. */
+  resolving: Record<string, true>;
+  /** Last failed invoke for this project, cleared by a successful one. */
+  error: MirrorInvokeFailure | null;
+  /** A status read is in flight, so the panel can say it is working. */
+  loading: boolean;
+};
+
 export type SessionHistoryWindow = {
   messageStart: number;
   hasMoreBefore: boolean;
@@ -138,6 +168,12 @@ export type AppState = {
   /** Kept as a flat map for lightweight consumers (Sidebar). */
   projectCollapsed: Record<string, boolean>;
   projectSort: ProjectSort;
+  /**
+   * Mirror runtime snapshot per project group. A project appears only after the
+   * renderer asked for it, so nothing is fetched for mirrors the user never
+   * opened.
+   */
+  mirrors?: Record<string, MirrorProjectRuntime>;
   activeSessionId?: string;
   /** Composer toolbar choices retained on the draft while it has no session. */
   draftConfiguration: DraftSessionConfiguration | null;
@@ -326,6 +362,32 @@ export type AppState = {
    * the caller.
    */
   deleteProject: (path: string) => Promise<void>;
+  /** Read the sync status, init state and conflict list of one mirror project. */
+  loadMirror: (projectGroupId: string) => Promise<void>;
+  /** Re-read only the conflicts; a resolve can leave the snapshot unchanged. */
+  refreshMirrorConflicts: (projectGroupId: string) => Promise<void>;
+  startMirrorSync: (projectGroupId: string) => Promise<void>;
+  stopMirrorSync: (projectGroupId: string) => Promise<void>;
+  /** Start the mirror initialization state machine and follow its progress. */
+  startMirrorInit: (projectGroupId: string) => Promise<void>;
+  /**
+   * Resolve one conflict. The row leaves the local list only after the host
+   * accepted the decision, so a failed invoke leaves the choice visible.
+   */
+  resolveMirrorConflict: (
+    projectGroupId: string,
+    relPath: string,
+    resolution: MirrorConflictResolution,
+  ) => Promise<boolean>;
+  /** Repeat whatever failed last for this project. */
+  retryMirrorAction: (projectGroupId: string) => Promise<void>;
+  clearMirrorError: (projectGroupId: string) => void;
+  /** Apply one pushed snapshot; the newest host state always wins. */
+  applyMirrorStatus: (status: MirrorSyncStatus) => void;
+  /** Apply one initialization progress event. */
+  applyMirrorInitProgress: (status: MirrorInitStatus) => void;
+  /** Subscribe a slice-owned listener to the host mirror events; returns the release. */
+  subscribeMirrorEvents: () => () => void;
   toggleSessionPinned: (id: string) => void;
   toggleSessionArchived: (id: string) => void;
   archiveSession: (id: string) => void;

@@ -51,6 +51,7 @@ import { createProjectSlice } from "./slices/project-slice";
 import { createCatalogSlice } from "./slices/catalog-slice";
 import { createEventsSlice } from "./slices/events-slice";
 import { createInteractionSlice } from "./slices/interaction-slice";
+import { createMirrorSlice } from "./slices/mirror-slice";
 import {
   createCatalogRuntime,
   type CatalogRuntime,
@@ -205,6 +206,8 @@ export const useAppStore = create<AppState>((set, get) => {
     upsertWorkspace,
     persistCurrentSidebar,
   }),
+
+  ...createMirrorSlice({ get, set }),
 
   ...createCatalogSlice({
     get,

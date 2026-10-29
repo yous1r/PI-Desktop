@@ -155,6 +155,12 @@ import type {
   TrustedExtensionUiPromptResponse,
   SessionTodoSnapshot,
   StorageInfo,
+  MirrorConflict,
+  MirrorConflictResolution,
+  MirrorInitStatus,
+  MirrorRunKind,
+  MirrorRunStarted,
+  MirrorSyncStatus,
 } from "@pi-desktop/shared";
 import {
   defaultCommandShellForPlatform,
@@ -1038,6 +1044,76 @@ export const api = {
             primaryPath: input.primaryPath ?? input.folders[0] ?? "",
           };
     return invoke<{ group: ProjectGroupRecord }>(IPC.invoke.projectGroupCreateMirror, payload);
+  },
+  // Remote mirror projects (spec `03-runtime/23`). The host owns the helper
+  // connection, the transfers, the baselines and every remote path; the
+  // renderer only names a project group and receives snapshots back.
+  mirrorStatusGet: (projectGroupId: string) =>
+    invoke<{ status?: MirrorSyncStatus | null }>(IPC.invoke.mirrorStatusGet, {
+      projectGroupId,
+    }).then((result) => result.status ?? null),
+  mirrorSyncStart: (projectGroupId: string) =>
+    invoke<{ status?: MirrorSyncStatus | null }>(IPC.invoke.mirrorSyncStart, {
+      projectGroupId,
+    }).then((result) => result.status ?? null),
+  mirrorSyncStop: (projectGroupId: string) =>
+    invoke<{ status?: MirrorSyncStatus | null }>(IPC.invoke.mirrorSyncStop, {
+      projectGroupId,
+    }).then((result) => result.status ?? null),
+  mirrorConflictList: (projectGroupId: string) =>
+    invoke<{ conflicts?: MirrorConflict[] | null }>(IPC.invoke.mirrorConflictList, {
+      projectGroupId,
+    }).then((result) => result.conflicts ?? []),
+  // Resolves to the host's remaining conflict list when it sends one, so the
+  // renderer can drop its optimistic row without guessing the new count.
+  mirrorConflictResolve: (
+    projectGroupId: string,
+    relPath: string,
+    resolution: MirrorConflictResolution,
+  ) =>
+    invoke<{ conflicts?: MirrorConflict[] | null }>(IPC.invoke.mirrorConflictResolve, {
+      projectGroupId,
+      relPath,
+      resolution,
+    }).then((result) => result.conflicts ?? null),
+  mirrorInitStatusGet: (projectGroupId: string) =>
+    invoke<{ init?: MirrorInitStatus | null }>(IPC.invoke.mirrorInitStatusGet, {
+      projectGroupId,
+    }).then((result) => result.init ?? null),
+  mirrorInitStart: (projectGroupId: string) =>
+    invoke<{ init?: MirrorInitStatus | null }>(IPC.invoke.mirrorInitStart, {
+      projectGroupId,
+    }).then((result) => result.init ?? null),
+  mirrorRunStart: (
+    projectGroupId: string,
+    input: { kind: MirrorRunKind; command: string },
+  ) =>
+    invoke<MirrorRunStarted>(IPC.invoke.mirrorRunStart, {
+      projectGroupId,
+      kind: input.kind,
+      command: input.command,
+    }),
+  mirrorRunCancel: (projectGroupId: string, runId: string) =>
+    invoke<{ ok?: boolean }>(IPC.invoke.mirrorRunCancel, { projectGroupId, runId }),
+  /** Replaces the snapshot for one project; pushed after every host change. */
+  onMirrorStatus: (listener: (status: MirrorSyncStatus) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.mirrorStatus, (payload) => {
+      if (!payload || typeof payload !== "object") return;
+      const value = payload as MirrorSyncStatus;
+      if (typeof value.projectGroupId !== "string" || !value.projectGroupId) return;
+      listener(value);
+    });
+  },
+  /** Progress of the initialization state machine, step by step. */
+  onMirrorInitProgress: (listener: (status: MirrorInitStatus) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.mirrorInitProgress, (payload) => {
+      if (!payload || typeof payload !== "object") return;
+      const value = payload as MirrorInitStatus;
+      if (typeof value.projectGroupId !== "string" || !value.projectGroupId) return;
+      listener(value);
+    });
   },
   createProjectGroup: (name: string, folders: string[]) =>
     invoke<{ group: ProjectGroupRecord }>(IPC.invoke.projectGroupCreate, { name, folders }),
