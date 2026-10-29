@@ -288,6 +288,14 @@ export type AppState = {
     hostKey: string;
     path: string;
   }) => Promise<void>;
+  createProjectFromMirror: (input: {
+    name: string;
+    folders: string[];
+    primaryPath?: string;
+    hostKey: string;
+    remotePath: string;
+    mode: "auto" | "manual";
+  }) => Promise<void>;
   createProjectFromFolders: (input: {
     name: string;
     folders: string[];

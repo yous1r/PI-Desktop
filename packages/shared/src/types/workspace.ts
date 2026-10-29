@@ -21,6 +21,8 @@ export type NotificationListResult = {
 
 export type RemoteWorkspace = { hostKey: string; path: string };
 
+export type MirrorWorkspace = { hostKey: string; remotePath: string; mode: "auto" | "manual" };
+
 export type ProjectWorkspace = {
   remote?: RemoteWorkspace;
   path: string;
@@ -46,6 +48,7 @@ export type ProjectGroupRoot = {
 
 export type ProjectGroupRecord = {
   remote?: RemoteWorkspace;
+  mirror?: MirrorWorkspace;
   id: string;
   name: string;
   primaryPath: string;

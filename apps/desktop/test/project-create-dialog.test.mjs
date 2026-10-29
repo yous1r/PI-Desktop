@@ -6,7 +6,7 @@ import { readStoreSource } from "./helpers/store-source.mjs";
 
 const read = (relativePath) => readFile(new URL(relativePath, import.meta.url), "utf8");
 
-const [dialogSource, editDialog, store, api, protocol, main, styles] = await Promise.all([
+const [dialogSource, editDialog, store, api, protocol, main, styles, workspaceTypes] = await Promise.all([
   read("../src/components/ProjectCreateDialog.tsx"),
   read("../src/components/ProjectEditDialog.tsx"),
   readStoreSource(),
@@ -14,6 +14,7 @@ const [dialogSource, editDialog, store, api, protocol, main, styles] = await Pro
   read("../../../packages/shared/src/protocol.ts"),
   readMainSource(),
   read("../src/styles/project-create-dialog.css"),
+  read("../../../packages/shared/src/types/workspace.ts"),
 ]);
 
 const dialog = dialogSource + await read("../src/components/ProjectFolderPicker.tsx");
@@ -44,7 +45,7 @@ test("create project dialog supports named multi-folder setup", () => {
 test("create project dialog can create the project from a git checkout", () => {
   // Same dialog, same name field: the source toggle turns the folder list into
   // one repository URL plus its clone destination.
-  assert.match(dialog, /type ProjectSource = "local" \| "git" \| "remote"/);
+  assert.match(dialog, /type ProjectSource = "local" \| "git" \| "remote" \| "mirror"/);
   assert.match(dialog, /data-project-source="git"/);
   assert.match(dialog, /parseGitCloneUrl/);
   assert.match(dialog, /project\.createSourceLabel/);
@@ -63,7 +64,30 @@ test("create project dialog can create the project from a git checkout", () => {
   assert.match(api, /cloneProjectInto: \(url: string, parentPath: string\)/);
   assert.match(protocol, /projectCloneCheckout:\s*"pi-desktop\/project\/cloneCheckout"/);
 });
-
+test("create project dialog supports remote mirror project creation", () => {
+  assert.match(dialog, /data-project-source="mirror"/);
+  assert.match(dialog, /createProjectFromMirror\(\{/);
+  assert.match(dialog, /source === "mirror"/);
+  assert.match(dialog, /hostKey: remoteProject\.hostKey/);
+  assert.match(dialog, /remotePath: remoteProject\.path/);
+  assert.match(dialog, /mode: mirrorMode/);
+  assert.match(dialog, /folders/);
+  assert.match(dialog, /project\.createSourceMirror/);
+  assert.match(dialog, /project\.mirrorMode/);
+  assert.match(dialog, /project\.mirrorModeAuto/);
+  assert.match(dialog, /project\.mirrorModeManual/);
+  assert.match(store, /createProjectFromMirror: async \(\{/);
+  assert.match(store, /api\.createMirrorProjectGroup\(\{/);
+  assert.match(api, /createMirrorProjectGroup:/);
+  assert.match(protocol, /projectGroupCreateMirror:\s*"pi-desktop\/project-group\/createMirror"/);
+  assert.match(main, /IPC\.invoke\.projectGroupCreateMirror/);
+  assert.match(main, /project\.group\.createMirror/);
+  assert.match(main, /host\.call\("project\.group\.createMirror",\s*\{[\s\S]*?name,[\s\S]*?folders:\s*safeFolders,[\s\S]*?primaryPath,[\s\S]*?hostKey,[\s\S]*?remotePath,[\s\S]*?mode/);
+  assert.match(main, /mirror and remote bindings are mutually exclusive/);
+  assert.match(store, /mirror and remote bindings are mutually exclusive/);
+  assert.match(workspaceTypes, /export type MirrorWorkspace = \{\s*hostKey: string;\s*remotePath: string;\s*mode: "auto" \| "manual";?\s*\};/);
+  assert.match(workspaceTypes, /mirror\?:\s*MirrorWorkspace;/);
+});
 test("project creation creates one logical group with a primary workspace", () => {
   assert.match(store, /createProjectDialogOpen: boolean/);
   assert.match(

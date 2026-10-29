@@ -12,7 +12,7 @@ import {
   resolveProjectName,
 } from "../lib/project-name";
 import { useAppStore } from "../stores/app-store";
-import { OverlayBackdrop, Button, Input, TooltipButton } from "./ui";
+import { OverlayBackdrop, Button, Field, Input, Select, TooltipButton } from "./ui";
 import { ProjectFolderPicker } from "./ProjectFolderPicker";
 import { RemoteProjectPicker, type RemoteProjectSelection } from "./remote/RemoteProjectPicker";
 import {
@@ -20,10 +20,11 @@ import {
   IconClose,
   IconFolder,
   IconMonitor,
+  IconRefresh,
 } from "./icons";
 
 /** One project entry point for local folders, git checkouts and remote hosts. */
-type ProjectSource = "local" | "git" | "remote";
+type ProjectSource = "local" | "git" | "remote" | "mirror";
 
 function pathParts(path: string) {
   return path.split(/[\\/]/).filter(Boolean);
@@ -62,6 +63,8 @@ function ProjectCreateDialogContent({ initialRemoteHostKey }: { initialRemoteHos
   const showToast = useAppStore((state) => state.showToast);
   const [source, setSource] = useState<ProjectSource>(initialRemoteHostKey ? "remote" : "local");
   const createProjectFromRemote = useAppStore((state) => state.createProjectFromRemote);
+  const createProjectFromMirror = useAppStore((state) => state.createProjectFromMirror);
+  const [mirrorMode, setMirrorMode] = useState<"auto" | "manual">("auto");
   const [remoteBrowseOpen, setRemoteBrowseOpen] = useState(false);
   const [remoteProject, setRemoteProject] = useState<RemoteProjectSelection | null>(null);
   const [name, setName] = useState("");
@@ -81,8 +84,13 @@ function ProjectCreateDialogContent({ initialRemoteHostKey }: { initialRemoteHos
     allowInsecureHttp: allowInsecureUserEndpoints(settings),
   });
   const defaultName = defaultProjectName({
-    source: source === "remote" ? "local" : source,
-    folders: source === "remote" && remoteProject ? [remoteProject.path] : folders,
+    source: source === "remote" ? "local" : source === "mirror" ? "local" : source,
+    folders:
+      source === "remote" && remoteProject
+        ? [remoteProject.path]
+        : source === "mirror" && folders.length === 0 && remoteProject
+          ? [remoteProject.path]
+          : folders,
     repositoryName: cloneTarget?.name,
   });
   const projectName = resolveProjectName(name, defaultName);
@@ -93,6 +101,7 @@ function ProjectCreateDialogContent({ initialRemoteHostKey }: { initialRemoteHos
     setFolders([]);
     setGitUrl("");
     setCloneParent("");
+    setMirrorMode("auto");
     busyRef.current = false;
     folderPickerInFlightRef.current = false;
     nameTouchedRef.current = false;
@@ -185,6 +194,7 @@ function ProjectCreateDialogContent({ initialRemoteHostKey }: { initialRemoteHos
     const projectName = resolveProjectName(name, defaultName);
     if (busyRef.current) return;
     if (!projectName || (source === "remote" && !remoteProject)) return;
+    if (source === "mirror" && (!remoteProject || folders.length === 0)) return;
     if (source === "git") {
       if (!cloneTarget || !cloneParent) return;
     } else if (source === "local" && folders.length === 0) {
@@ -195,6 +205,15 @@ function ProjectCreateDialogContent({ initialRemoteHostKey }: { initialRemoteHos
     try {
       if (source === "remote" && remoteProject) {
         await createProjectFromRemote({ name: projectName, hostKey: remoteProject.hostKey, path: remoteProject.path });
+      } else if (source === "mirror" && remoteProject) {
+        await createProjectFromMirror({
+          name: projectName,
+          folders,
+          primaryPath: folders[0],
+          hostKey: remoteProject.hostKey,
+          remotePath: remoteProject.path,
+          mode: mirrorMode,
+        });
       } else if (source === "git" && cloneTarget) {
         await createProjectFromGit({
           name: projectName,
@@ -344,11 +363,37 @@ function ProjectCreateDialogContent({ initialRemoteHostKey }: { initialRemoteHos
                   onClick={() => setSource("remote")}>
                   <IconMonitor size={15} aria-hidden />{t("remote:remote")}
                 </Button>
+                <Button type="button" className={`project-create-dialog-source-option${source === "mirror" ? " is-active" : ""}`}
+                  data-project-source="mirror" aria-pressed={source === "mirror"} disabled={busy}
+                  onClick={() => setSource("mirror")}>
+                  <IconRefresh size={15} aria-hidden />{t("project.createSourceMirror")}
+                </Button>
               </div>
             </section>
 
             {source === "remote" ? (
               <RemoteProjectPicker busy={busy} initialHostKey={initialRemoteHostKey} onChange={setRemoteProject} onBrowsingChange={setRemoteBrowseOpen} />
+            ) : source === "mirror" ? (
+              <>
+                <ProjectFolderPicker folders={folders} busy={busy} pickerBusy={folderPickerBusy}
+                  onAdd={() => void addFolders()}
+                  onRemove={(path) => setFolders((current) => current.filter((item) => item !== path))} />
+                <RemoteProjectPicker busy={busy} initialHostKey={initialRemoteHostKey} onChange={setRemoteProject} onBrowsingChange={setRemoteBrowseOpen} />
+                <section className="project-create-dialog-section">
+                  <Field label={t("project.mirrorMode")}>
+                    <Select
+                      id="project-create-mirror-mode"
+                      aria-label={t("project.mirrorMode")}
+                      value={mirrorMode}
+                      disabled={busy}
+                      onChange={(event) => setMirrorMode(event.target.value as "auto" | "manual")}
+                    >
+                      <option value="auto">{t("project.mirrorModeAuto")}</option>
+                      <option value="manual">{t("project.mirrorModeManual")}</option>
+                    </Select>
+                  </Field>
+                </section>
+              </>
             ) : source === "local" ? (
               <ProjectFolderPicker folders={folders} busy={busy} pickerBusy={folderPickerBusy}
                 onAdd={() => void addFolders()}
@@ -425,9 +470,13 @@ function ProjectCreateDialogContent({ initialRemoteHostKey }: { initialRemoteHos
               type="submit"
               variant="primary"
               disabled={
-                source === "remote" ? !projectName || !remoteProject || busy : source === "git"
-                  ? !projectName || !cloneTarget || !cloneParent || busy
-                  : !projectName || folders.length === 0 || busy
+                source === "remote"
+                  ? !projectName || !remoteProject || busy
+                  : source === "mirror"
+                    ? !projectName || folders.length === 0 || !remoteProject || busy
+                    : source === "git"
+                      ? !projectName || !cloneTarget || !cloneParent || busy
+                      : !projectName || folders.length === 0 || busy
               }
             >
               {busy

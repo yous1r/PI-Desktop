@@ -1006,6 +1006,39 @@ export const api = {
     invoke<{ groups: ProjectGroupRecord[] }>(IPC.invoke.projectGroupList),
   createRemoteProjectGroup: (name: string, hostKey: string, path: string) =>
     invoke<{ group: ProjectGroupRecord }>(IPC.invoke.projectGroupCreateRemote, { name, hostKey, path }),
+  createMirrorProjectGroup: (
+    input:
+      | {
+          name: string;
+          folders: string[];
+          primaryPath?: string;
+          hostKey: string;
+          remotePath: string;
+          mode: "auto" | "manual";
+        }
+      | string,
+    folders?: string[],
+    hostKey?: string,
+    remotePath?: string,
+    mode?: "auto" | "manual",
+    primaryPath?: string,
+  ) => {
+    const payload =
+      typeof input === "string"
+        ? {
+            name: input,
+            folders: folders ?? [],
+            primaryPath: primaryPath ?? folders?.[0] ?? "",
+            hostKey: hostKey ?? "",
+            remotePath: remotePath ?? "",
+            mode: mode ?? "auto",
+          }
+        : {
+            ...input,
+            primaryPath: input.primaryPath ?? input.folders[0] ?? "",
+          };
+    return invoke<{ group: ProjectGroupRecord }>(IPC.invoke.projectGroupCreateMirror, payload);
+  },
   createProjectGroup: (name: string, folders: string[]) =>
     invoke<{ group: ProjectGroupRecord }>(IPC.invoke.projectGroupCreate, { name, folders }),
   renameProjectGroup: (groupId: string, name: string) =>

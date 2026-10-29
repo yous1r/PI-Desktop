@@ -224,8 +224,11 @@ export function registerWorkspaceIpc({
     }
     return { workspace: await withGitBranch(res.workspace) };
   });
-  handle(IPC.invoke.projectGroupCreateRemote, async (input: { name?: unknown; hostKey?: unknown; path?: unknown } = {}) => {
+  handle(IPC.invoke.projectGroupCreateRemote, async (input: { name?: unknown; hostKey?: unknown; path?: unknown; mirror?: unknown; remotePath?: unknown; mode?: unknown } = {}) => {
     if (!host) throw new Error("host unavailable");
+    if (input.mirror !== undefined || input.remotePath !== undefined || input.mode !== undefined) {
+      throw Object.assign(new Error("remote and mirror bindings are mutually exclusive"), { errorCode: ErrorCodes.INVALID_ARGUMENT });
+    }
     const name = typeof input.name === "string" ? input.name.trim() : "";
     const hostKey = typeof input.hostKey === "string" ? input.hostKey.trim() : "";
     const path = typeof input.path === "string" ? input.path.trim() : "";
@@ -254,6 +257,79 @@ export function registerWorkspaceIpc({
     rememberProjectGroups(result?.groups ?? null);
     return result;
   });
+  handle(
+    IPC.invoke.projectGroupCreateMirror,
+    async (
+      input: {
+        name?: unknown;
+        folders?: unknown;
+        primaryPath?: unknown;
+        hostKey?: unknown;
+        remotePath?: unknown;
+        mode?: unknown;
+        remote?: unknown;
+        path?: unknown;
+      } = {},
+    ) => {
+      if (!host) throw new Error("host unavailable");
+      if (input.remote !== undefined || input.path !== undefined) {
+        throw Object.assign(new Error("mirror and remote bindings are mutually exclusive"), {
+          errorCode: ErrorCodes.INVALID_ARGUMENT,
+        });
+      }
+      const name = typeof input.name === "string" ? input.name.trim() : "";
+      const folders = Array.isArray(input.folders)
+        ? input.folders.filter((path): path is string => typeof path === "string")
+        : [];
+      if (!name || folders.length === 0) {
+        throw Object.assign(new Error("project group name and folders required"), {
+          errorCode: ErrorCodes.INVALID_ARGUMENT,
+        });
+      }
+      const safeFolders = [
+        ...new Set(
+          folders
+            .map((path) => path.trim())
+            .filter((path) => path.length > 0)
+            .map((path) => resolve(path)),
+        ),
+      ];
+      if (safeFolders.some((path) => !existsSync(path) || !statSync(path).isDirectory())) {
+        throw Object.assign(new Error("project group folders must be directories"), {
+          errorCode: ErrorCodes.INVALID_ARGUMENT,
+        });
+      }
+      const primaryPath =
+        typeof input.primaryPath === "string" && input.primaryPath.trim().length > 0
+          ? resolve(input.primaryPath.trim())
+          : safeFolders[0];
+      const hostKey = typeof input.hostKey === "string" ? input.hostKey.trim() : "";
+      const remotePath = typeof input.remotePath === "string" ? input.remotePath.trim() : "";
+      const mode = input.mode === "manual" ? "manual" : "auto";
+      if (
+        !hostKey ||
+        hostKey.length > 200 ||
+        hostKey.includes(":") ||
+        !remotePath.startsWith("/") ||
+        remotePath.length > 4096 ||
+        /[\u0000-\u001f]/.test(hostKey + remotePath)
+      ) {
+        throw Object.assign(new Error("invalid mirror project"), {
+          errorCode: ErrorCodes.INVALID_ARGUMENT,
+        });
+      }
+      const created = await host.call("project.group.createMirror", {
+        name,
+        folders: safeFolders,
+        primaryPath,
+        hostKey,
+        remotePath,
+        mode,
+      });
+      void refreshProjectGroups(host);
+      return created;
+    },
+  );
   handle(
     IPC.invoke.projectGroupCreate,
     async (input: { name?: unknown; folders?: unknown } = {}) => {

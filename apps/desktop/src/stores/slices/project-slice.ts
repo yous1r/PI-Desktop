@@ -240,6 +240,7 @@ export function createProjectSlice({
   | "closeProjectDialog"
   | "createProjectFromFolders"
   | "createProjectFromRemote"
+  | "createProjectFromMirror"
   | "createProjectFromGit"
   | "clearProject"
   | "deleteProject"
@@ -406,6 +407,9 @@ export function createProjectSlice({
         { name, folders, primaryPath },
       ),
     createProjectFromRemote: async ({ name, hostKey, path }) => {
+      if ((arguments[0] as { mirror?: unknown }).mirror !== undefined || (arguments[0] as { remotePath?: unknown }).remotePath !== undefined) {
+        throw new Error("remote and mirror bindings are mutually exclusive");
+      }
       const normalizedName = normalizeProjectName(name);
       if (!normalizedName) throw new Error(i18n.t("errors.projectNameLength"));
       const intent = runtime.beginNavigationIntent();
@@ -414,6 +418,64 @@ export function createProjectSlice({
       const workspace = await get().activateProject(group.primaryPath, { navigationIntent: intent });
       if (!workspace || !runtime.navigationIntentIsCurrent(intent)) return;
       get().renameProject(group.primaryPath, normalizedName);
+      const onboarding = await api.getOnboarding();
+      if (!runtime.navigationIntentIsCurrent(intent)) return;
+      set({ createProjectDialogOpen: false, createProjectDialogRemoteHostKey: undefined, onboarding, page: "chat" });
+    },
+    createProjectFromMirror: async ({
+      name,
+      folders,
+      primaryPath,
+      hostKey,
+      remotePath,
+      mode,
+    }: {
+      name: string;
+      folders: string[];
+      primaryPath?: string;
+      hostKey: string;
+      remotePath: string;
+      mode: "auto" | "manual";
+    }) => {
+      if ((arguments[0] as { remote?: unknown }).remote !== undefined) {
+        throw new Error("mirror and remote bindings are mutually exclusive");
+      }
+      const normalizedName = normalizeProjectName(name);
+      if (!normalizedName) throw new Error(i18n.t("errors.projectNameLength"));
+      const uniqueFolders = folders.filter(
+        (path, index, all) =>
+          Boolean(normalizeProjectPath(path)) &&
+          all.findIndex(
+            (candidate) => normalizeProjectPath(candidate) === normalizeProjectPath(path),
+          ) === index,
+      );
+      if (uniqueFolders.length === 0) {
+        throw new Error(i18n.t("project.createFolderRequired"));
+      }
+      const normalizedPrimary = normalizeProjectPath(primaryPath ?? uniqueFolders[0]);
+      const primary =
+        uniqueFolders.find((path) => normalizeProjectPath(path) === normalizedPrimary) ??
+        uniqueFolders[0];
+      const orderedFolders = [
+        primary,
+        ...uniqueFolders.filter(
+          (path) => normalizeProjectPath(path) !== normalizeProjectPath(primary),
+        ),
+      ];
+      const intent = runtime.beginNavigationIntent();
+      const { group } = await api.createMirrorProjectGroup({
+        name: normalizedName,
+        folders: orderedFolders,
+        primaryPath: primary,
+        hostKey,
+        remotePath,
+        mode,
+      });
+      if (!runtime.navigationIntentIsCurrent(intent)) return;
+      const groupPrimary = group.primaryPath || primary;
+      const workspace = await get().activateProject(groupPrimary, { navigationIntent: intent });
+      if (!workspace || !runtime.navigationIntentIsCurrent(intent)) return;
+      get().renameProject(groupPrimary, normalizedName);
       const onboarding = await api.getOnboarding();
       if (!runtime.navigationIntentIsCurrent(intent)) return;
       set({ createProjectDialogOpen: false, createProjectDialogRemoteHostKey: undefined, onboarding, page: "chat" });

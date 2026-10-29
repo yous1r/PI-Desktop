@@ -214,6 +214,7 @@ export const IPC = {
     projectMemorySave: "pi-desktop/project/memory/save",
     projectGroupList: "pi-desktop/project-group/list",
     projectGroupCreateRemote: "pi-desktop/project-group/createRemote",
+    projectGroupCreateMirror: "pi-desktop/project-group/createMirror",
     projectGroupCreate: "pi-desktop/project-group/create",
     projectGroupRename: "pi-desktop/project-group/rename",
     projectGroupUpdate: "pi-desktop/project-group/update",
