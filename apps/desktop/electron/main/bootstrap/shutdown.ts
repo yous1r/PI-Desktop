@@ -16,6 +16,10 @@ import type { McpControlServer } from "../mcp-control";
 import type { McpOAuthManager } from "../mcp-oauth";
 import { getActiveRemoteHostsBoot, setActiveRemoteHostsBoot } from "./remote-hosts";
 import type { LiveCallService } from "../live-voice/call-service";
+import {
+  mirrorRuntimeRegistry,
+  type MirrorRuntimeDisposalResult,
+} from "../mirror/mirror-runtime";
 
 const QUIT_TURN_SETTLE_BUDGET_MS = 2_000;
 
@@ -54,6 +58,11 @@ export type ShutdownDependencies = {
   disposePowerSaveBlockers: () => void;
   liveCallService?: Pick<LiveCallService, "endForLifecycle">;
   disposeSystemProxyRelay?: () => Promise<void>;
+  /**
+   * Mirror runtimes of open remote projects. Defaults to the process-wide
+   * registry, which is empty until a mirror project opens.
+   */
+  mirrorRuntime?: { disposeAll(): Promise<MirrorRuntimeDisposalResult[]> };
 };
 
 /** Register the last-window and before-quit resource lifecycle handlers. */
@@ -80,6 +89,7 @@ export function registerShutdownHandlers({
   disposePowerSaveBlockers,
   liveCallService,
   disposeSystemProxyRelay,
+  mirrorRuntime = mirrorRuntimeRegistry,
 }: ShutdownDependencies): void {
   let quitConfirmationPending = false;
   app.on("window-all-closed", () => {
@@ -157,6 +167,17 @@ export function registerShutdownHandlers({
     }
     state.shutdownPromise = (async () => {
       await liveCallService?.endForLifecycle("app-quit");
+      // Mirror runtimes own local watchers, coalescing timers, SSH forwards, and
+      // DAP sockets for open remote projects. They stop before the remote hosts
+      // those forwards tunnel through close, so a teardown never surfaces as an
+      // unexplained drop mid-handshake. Disposal is bounded and per-project.
+      try {
+        await mirrorRuntime.disposeAll();
+      } catch (error) {
+        logger.app("lifecycle", "warn", "mirror runtime shutdown failed", {
+          data: String(error),
+        });
+      }
       // Close every paired remote host before the local host-core so any
       // in-flight remote turn's abort still goes over a live socket. Bounded
       // parallelism inside `closeAll`; safe to run before local disposals.
