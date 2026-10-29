@@ -1,5 +1,6 @@
 mod config_sync_rpc;
 mod gen_ui;
+mod mirror_rpc;
 mod plugin_reviews_rpc;
 mod remote_tools;
 mod scheduled_rpc;
@@ -8,6 +9,8 @@ mod todos;
 mod window_corner_rpc;
 mod worktree_rpc;
 
+#[cfg(test)]
+mod mirror_rpc_tests;
 #[cfg(test)]
 mod plugin_reviews_rpc_tests;
 #[cfg(test)]
@@ -3989,6 +3992,8 @@ async fn handle_request(
             let st = state.lock().await;
             scheduled_rpc::handle(&st, method, params)
         }
+
+        method if method.starts_with("mirror.") => mirror_rpc::handle(&state, method, params).await,
 
         method if method.starts_with("worktree.") => {
             worktree_rpc::handle(&state, method, params).await

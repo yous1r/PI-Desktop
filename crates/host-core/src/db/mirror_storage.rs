@@ -67,7 +67,7 @@ CREATE INDEX IF NOT EXISTS idx_mirror_breakpoints_project
 
 /// One drift-detection baseline row: what the remote mirror looked like the
 /// last time this relative path was synchronized.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MirrorBaselineEntry {
     pub rel_path: String,
@@ -78,7 +78,7 @@ pub struct MirrorBaselineEntry {
 }
 
 /// One stored breakpoint. `column` is zero for a whole-line breakpoint.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MirrorBreakpointRecord {
     pub rel_path: String,

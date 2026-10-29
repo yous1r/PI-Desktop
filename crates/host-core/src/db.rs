@@ -2,7 +2,7 @@
 
 pub(crate) use anyhow::{anyhow, Context, Result};
 pub(crate) use rusqlite::{params, Connection, OptionalExtension};
-pub(crate) use serde::Serialize;
+pub(crate) use serde::{Deserialize, Serialize};
 pub(crate) use serde_json::Value;
 pub(crate) use std::path::{Path, PathBuf};
 
