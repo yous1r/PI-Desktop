@@ -3,7 +3,12 @@
 > Scope: local-primary projects mirrored to a remote Linux host, the bundled
 > `pi-helper` service, environment initialization, file synchronization, and
 > remote debugging.
-> Status: M0 helper skeleton implemented (loopback/auth/version/health and bundled deployment entry). File synchronization, watcher, adapter lifecycle, project UI, and DAP remain unimplemented.
+> Status: implemented are the helper service (framing, auth, `env.verify`,
+> `fs.*`, `adapter.install/probe/start/stop`), host-core mirror storage and
+> `mirror.*` RPC, the per-file sync engine with baseline drift detection, mirror
+> project creation, the DAP client, and remote build/run. Not implemented yet:
+> the helper `watch.*` operations, the mirror initialization state machine, the
+> debug UI, and the `pull` mode.
 > Cross-references: [05-remote-agent-control](../02-architecture/05-remote-agent-control.md) ·
 > [02-remote-control-security](../05-security/02-remote-control-security.md) ·
 > [08-error-codes](08-error-codes.md) ·
@@ -81,9 +86,7 @@ $HOME/.pi-desktop-helper/       0700
   env.json                      environment manifest, written atomically
   token                         0600, helper authentication secret
   bin/pi-helper                 installed binary
-  adapters/<id>/<version>/      adapter install receipts
-  venvs/<id>/                   isolated Python adapter environments
-  bin/gobin/                    GOBIN for Go adapters
+  adapters/<kind>/<version>/    installed adapter bundle plus its receipt
   pids/<id>.pid                 adapter pid files
   logs/helper.log               helper log, no credentials
 ```
@@ -100,7 +103,7 @@ path is never embedded in the application.
 | Already running, version matches | Reuse the running instance; no redeploy |
 | Version mismatch | Replace the binary atomically, stop the old process, start, handshake |
 | SSH drop | The helper is detached and keeps running; adapters keep running; the desktop reopens the forward and reconnects |
-| Desktop upgrade | Redeploy `bin/pi-helper` and rewrite `env.json`; `venvs/` and `adapters/` are preserved |
+| Desktop upgrade | Redeploy `bin/pi-helper` and rewrite `env.json`; `adapters/` is preserved |
 | Uninstall | Stop adapters, stop the helper, remove `$HOME/.pi-desktop-helper` |
 | Stale pid file | `kill -0` plus executable-path check before any kill; a reused PID is never killed |
 
@@ -149,9 +152,9 @@ Operation set (v1):
 | `watch.start` / `watch.stop` | Project-root change notification |
 | `adapter.install` | Install a manifest-pinned adapter |
 | `adapter.probe` | Report the installed adapter version |
-| `adapter.start` / `adapter.stop` / `adapter.list` | Adapter process supervision |
+| `adapter.start` / `adapter.stop` | Adapter process supervision |
 
-M0 currently implements only `auth`, `version`, `health`, and `env.verify`. Other listed operations return `HELPER_OPERATION_UNAVAILABLE`; the helper is not yet sufficient to mark a mirror project ready.
+Implemented today: `auth`, `version`, `health`, `env.verify`, `fs.stat`, `fs.hash`, `fs.mkdirs`, `fs.put.*`, `fs.get.*`, `adapter.install`, `adapter.probe`, `adapter.start`, and `adapter.stop`. `watch.start` and `watch.stop` are not implemented and report `HELPER_OPERATION_UNAVAILABLE`; the desktop compares against its baseline instead of subscribing. Any other operation is reserved.
 
 Not present in the protocol: shell execution, arbitrary argv, archive
 extraction, recursive delete, file move across project roots, and any operation
@@ -172,7 +175,7 @@ idempotent and resumable, and each step records a receipt.
 | 3 | Helper deployment | Binary installed and digest verified | `HELPER_DEPLOY_FAILED` |
 | 4 | Helper start and handshake | Ready line received, `version` matches, forward open | `HELPER_START_FAILED` |
 | 5 | `env.verify` | Directory, permissions, disk, toolchains reported | `MIRROR_INIT_FAILED` |
-| 6 | Adapter installation | Each selected language installs | `DEBUG_ADAPTER_INSTALL_FAILED` |
+| 6 | Adapter installation | The pinned bundle installs and its digest matches the manifest | `DEBUG_ADAPTER_INSTALL_FAILED` |
 | 7 | Adapter probe | Installed version equals the manifest version | `DEBUG_ADAPTER_VERSION_MISMATCH` |
 | 8 | Forward self-test | One loopback forward connects and closes | `REMOTE_FORWARD_FAILED` |
 | 9 | Local environment | Project registered, `workspace.get` returns the local root, local toolchain usable | `MIRROR_INIT_FAILED` |
@@ -188,41 +191,22 @@ whose receipts are still valid.
 
 ## 5. Debug adapter manifest
 
-The Desktop bundle carries a versioned manifest. The manifest is the only source
-of adapter identity, version, and launch arguments.
+The Desktop bundle carries a versioned manifest together with the adapter
+payloads it names. The manifest is the only source of adapter identity, version,
+digest and install eligibility. The helper is the only component that decides
+how an installed adapter is started.
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "adapters": [
     {
       "id": "python-debugpy",
-      "language": "python",
+      "kind": "python-debugpy",
       "version": "1.8.5",
-      "probe": ["{venv}/bin/python", "-c", "import debugpy;print(debugpy.__version__)"],
-      "install": [
-        ["python3", "-m", "venv", "{helper}/venvs/python-debugpy"],
-        ["{helper}/venvs/python-debugpy/bin/pip", "install", "debugpy==1.8.5"]
-      ],
-      "launch": ["{venv}/bin/python", "-m", "debugpy", "--listen", "127.0.0.1:{port}"]
-    },
-    {
-      "id": "go-dlv",
-      "language": "go",
-      "version": "1.23.0",
-      "probe": ["{helper}/bin/gobin/dlv", "version"],
-      "install": [
-        ["env", "GOBIN={helper}/bin/gobin", "go", "install", "github.com/go-delve/delve/cmd/dlv@v1.23.0"]
-      ],
-      "launch": ["{helper}/bin/gobin/dlv", "dap", "--listen=127.0.0.1:{port}", "--headless"]
-    },
-    {
-      "id": "node-inspector",
-      "language": "node",
-      "version": "system",
-      "probe": ["node", "--version"],
-      "install": [],
-      "launch": ["node", "--inspect-brk=127.0.0.1:{port}", "{program}"]
+      "sha256": "<64 hex characters>",
+      "bundle": "resources/pi-helper/adapters/python-debugpy-1.8.5",
+      "hosts": ["x86_64-unknown-linux-musl"]
     }
   ]
 }
@@ -230,21 +214,30 @@ of adapter identity, version, and launch arguments.
 
 Rules:
 
-1. Installation is executed **on the host** by the helper; no adapter binary is
-   uploaded from the local machine.
-2. Python adapters install into an isolated virtual environment inside the
-   helper directory. The user's site-packages and shell configuration are never
-   modified.
-3. Go adapters install into a helper-local `GOBIN`. The user's `$GOPATH/bin` is
-   never modified.
-4. A probe result that differs from the manifest version is an error carrying
-   both versions and the exact install command. There is no silent upgrade.
-5. `{helper}`, `{venv}`, `{port}`, and `{program}` are the only substitutions.
-   An unknown placeholder, or an `install`/`launch` entry that is not an argv
-   array, invalidates the manifest entry.
-6. Adapter installation needs host network access to PyPI or a Go module proxy.
-   A blocked network is a reported initialization failure with the failing
-   command, never a silent skip.
+1. Installation is a byte stream from the Desktop bundle to the helper
+   (`adapter.install`). Nothing is fetched from PyPI, a Go module proxy or any
+   other network location, and no shell command runs on the host.
+2. The payload is a single opaque executable file. The helper never extracts an
+   archive, never interprets the payload's contents, and never accepts a target
+   path from the caller: the request path must be exactly
+   `adapters/<kind>/<version>`.
+3. The helper verifies the streamed bytes against the manifest `sha256` before
+   anything durable is written. A mismatch removes the staging file and reports
+   `DEBUG_ADAPTER_INSTALL_FAILED`. A verified install lands atomically in the
+   install directory `adapters/<kind>/<version>/`, and its receipt is written
+   last.
+4. The launch argv belongs to the helper's kind allowlist, not to the manifest.
+   `python-debugpy` launches as `<bundle> --listen 127.0.0.1:<port>`. Adding a
+   kind is a code change plus a manifest entry, never a configuration edit.
+5. `adapter.probe` reports the installed version, digest and install time, and
+   reports the adapter as absent when a directory has no receipt. Asking for a
+   version that is absent, or whose digest differs from the manifest, is
+   `DEBUG_ADAPTER_VERSION_MISMATCH`; there is no silent upgrade.
+6. Several versions of one kind may be installed side by side. A request without
+   an explicit version resolves to the most recently installed receipt.
+7. A host without a pinned payload for its target does not offer that adapter.
+   The manifest `hosts` list is authoritative, and an unsupported target is a
+   reported initialization gap rather than a silent skip.
 
 ## 6. File synchronization
 
@@ -388,7 +381,7 @@ backward compatible; a build without mirror support ignores it.
 | `MIRROR_FILE_TOO_LARGE` | no | The file exceeds the 50 MB ceiling and was skipped |
 | `REMOTE_TRANSFER_FAILED` | yes | A per-file transfer failed; the target file is unchanged |
 | `REMOTE_PATH_ESCAPE` | no | A path resolved outside the permitted roots |
-| `DEBUG_ADAPTER_INSTALL_FAILED` | yes | Adapter installation failed; `details.command` names the step |
+| `DEBUG_ADAPTER_INSTALL_FAILED` | yes | The bundled adapter payload failed digest verification or the install could not complete |
 | `DEBUG_ADAPTER_VERSION_MISMATCH` | no | The installed adapter version differs from the pinned manifest |
 | `DEBUG_SESSION_DISCONNECTED` | yes | The debug transport dropped; the session state is preserved |
 
@@ -416,7 +409,6 @@ Existing codes are reused where they already fit: `REMOTE_CONNECTION_FAILED`,
    itself, which is named with a random nonce and opened with an exclusive
    create, so a pre-existing file or symlink at a staging path is neither
    truncated nor written through.
-   remove remote files.
 7. Tokens, SSH diagnostics, and remote stderr never reach the renderer, logs, or
    error payloads.
 8. Remote commands are subject to the same local permission policy as any other
@@ -426,8 +418,40 @@ Existing codes are reused where they already fit: `REMOTE_CONNECTION_FAILED`,
 
 | Level | Coverage |
 |---|---|
-| Rust unit | Framing, token auth, path containment (including symlink escape), atomic write, 50 MB boundary, pid-file validation, manifest placeholder rejection |
+| Rust unit | Framing, token auth, path containment (including symlink escape), atomic write, 50 MB boundary, pid-file validation, manifest digest and kind-allowlist rejection |
 | Rust contract | In-process client against the full operation set, including malformed frames, half-frames, and cancellation |
 | Electron unit | Helper client reconnect, timeout, and error mapping against a fake helper |
+| Electron unit (remote run) | Path and command validation, ordered stdout and stderr, the 1 MiB output cap with truncation, single-settle cancellation, the one-run-per-project rule, and transport errors that leak nothing |
 | Integration | Deploy, handshake, upload, download, and adapter start over loopback with no real SSH |
 | Qualification gate | Real Linux x64 and aarch64 hosts over SSH: deployment, detached survival across an SSH drop, adapter install, debug session, baseline accuracy. Mocked boundaries do not satisfy this gate |
+
+## 12. Remote build and run
+
+A mirror project can run one explicit build or run command on the host inside
+the remote mirror directory. This is not a general remote shell: the command and
+its working directory are the only inputs, and both are validated first.
+
+1. The working directory is always the project's `remotePath`. A value that is
+   not an absolute POSIX path, or that contains `..`, `//`, a backslash or a
+   control character, is refused with `REMOTE_PATH_ESCAPE`.
+2. The command is one user-configured string of at most 4096 characters without
+   control characters. It runs through the same remote execution mode the app
+   already uses for host commands, so quoting has exactly one implementation.
+3. At most one live run per project. A second start is refused with `CONFLICT`
+   rather than queued, so two builds never interleave in one mirror directory.
+4. Output is streamed as ordered stdout and stderr chunks, decoded per stream so
+   a multi-byte character split across chunks survives. Unconsumed output is
+   capped at 1 MiB; past the cap the run keeps executing but its remaining
+   output is dropped and the outcome is marked truncated, while the byte count
+   still reports everything the host wrote.
+5. Cancelling terminates the remote process and settles the handle exactly once.
+   Disposal on shutdown cancels every live run and refuses new starts with
+   `HOST_SHUTTING_DOWN`.
+6. A transport failure surfaces a typed error with a fixed message: neither the
+   command line nor any credential reaches the error text.
+7. Nothing is written to the local root. The local copy stays the source of
+   truth, and a build never mutates it.
+8. Files a build writes on the host — `dist`, `build`, `target`, and anything
+   else the local exclusion rules already ignore — are never pulled back and
+   never removed by the application. Host-side build output belongs to the user,
+   so a mirror directory can hold artifacts the local copy does not.

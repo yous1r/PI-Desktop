@@ -10812,6 +10812,7 @@ E2E-196b, E2E-196c, and E2E-200 (Quality, M6+).
 | A / D / F / Security / Quality — Remote mirror helper bootstrap and initialization | E2E-MIRROR-initialization |
 | D / E / Security / Quality — Per-file mirror synchronization, exclusions, size ceiling, and manual conflicts | E2E-MIRROR-synchronization |
 | D / F / Security / Quality — Remote debugger attach with host-owned breakpoints | E2E-MIRROR-debug-session |
+| D / E / Security / Quality — Remote build and run in the mirror directory | E2E-MIRROR-remote-run |
 ## 9. How AI Must Update This Doc
 
 When adding or changing a feature that affects user-visible or protocol-visible behavior:
@@ -19187,23 +19188,25 @@ their separate platform acceptance.
   Desktop bundle contains the matching `pi-helper` binary for the host
   architecture.
 - **Steps:** Create a project from the local folder source, choose mirror mode,
-  select the host, select an absolute remote directory, select Python and Go
-  adapters, and start initialization. Let it complete. Repeat creation for a
+  select a host, select an absolute remote directory, select the adapter bundles
+  the manifest offers for that host, and start initialization. Let it complete.
+  Repeat creation for a
   second project on the same host. Then delete `$HOME/.pi-desktop-helper` on the
   host, reopen the first project, and retry initialization.
 - **Expected:** The first initialization walks all ten steps and ends `ready`; the
   helper directory is `0700`, contains `env.json`, `token`, `bin/pi-helper`, the
-  adapter receipts, and the isolated venv; the project becomes synchronizable and
-  debuggable only after `ready`. The second project reuses the running helper with
+  installed adapter bundles with their receipts; the project becomes
+  synchronizable and debuggable only after `ready`. The second project reuses the
+  running helper with
   no redeploy and no adapter reinstall. After the directory is removed, the project
   returns to `needs-init` and a retry redeploys cleanly. No step leaves a partial
   `env.json`, and no failure reports raw SSH stderr or the token.
 - **Coverage:** Rust contract tests for deployment, digest mismatch, and version
   handshake; Electron tests for the initialization state machine and receipt
   resumption; the real-host qualification run covers detached startup and
-  adapter installation.
+  adapter bundle installation.
 - **Specs:** [23-remote-mirror-development](../03-runtime/23-remote-mirror-development.md)
-  §3, §4, §5; [ADR 0334](../../adr/0334-remote-mirror-development-helper.md);
+  §3, §4, §5; [ADR 0338](../../adr/0338-remote-mirror-development-helper.md);
   [02-remote-control-security](../05-security/02-remote-control-security.md) §3.7.
 - **Acceptance:** Initialization is blocking, idempotent, and resumable; a helper
   digest mismatch fails closed; a version mismatch redeploys instead of running an
@@ -19235,7 +19238,7 @@ their separate platform acceptance.
   boundary, atomic replace, and cancellation; a real-host run for transfer
   throughput and the drift report.
 - **Specs:** [23-remote-mirror-development](../03-runtime/23-remote-mirror-development.md)
-  §6; [ADR 0334](../../adr/0334-remote-mirror-development-helper.md).
+  §6; [ADR 0338](../../adr/0338-remote-mirror-development-helper.md).
 - **Acceptance:** No silent overwrite, no automatic retry after an uncertain
   transfer, no deletion path, and the ceiling enforced on both sides.
 - **Milestone:** Remote mirror development M1–M3.
@@ -19244,7 +19247,8 @@ their separate platform acceptance.
 ### E2E-MIRROR-debug-session: Remote debug attach with mapped paths and host-owned breakpoints
 
 - **Preconditions:** A `ready` mirror project for each of Python, Node, and Go,
-  with the pinned adapters installed in the helper directory. A source file with
+  with the pinned adapter bundles installed in the helper directory. A source
+  file with a known function and a breakpoint set at a specific line.
   a known function and a breakpoint set at a specific line.
 - **Steps:** Start a debug session for each language. Set a breakpoint through the
   editor gutter, start the session, hit the breakpoint, step over, step into, and
@@ -19258,13 +19262,41 @@ their separate platform acceptance.
   Desktop restart because host-core owns them. An SSH drop preserves the session
   state and reconnects, and a terminated adapter is reported as terminated rather
   than silently relaunched. An adapter version mismatch refuses the session with
-  the install command.
+  `DEBUG_ADAPTER_VERSION_MISMATCH`; no install command is echoed anywhere.
 - **Coverage:** Rust contract tests for `adapter.*` supervision and pid-file
   validation; Electron tests for DAP client mapping, reconnect, and error
-  surfacing; a real-host run for all three adapters.
+  surfacing; a real-host run of each adapter bundle the manifest pins for that host.
 - **Specs:** [23-remote-mirror-development](../03-runtime/23-remote-mirror-development.md)
-  §5, §7; [ADR 0334](../../adr/0334-remote-mirror-development-helper.md).
+  §5, §7; [ADR 0338](../../adr/0338-remote-mirror-development-helper.md).
 - **Acceptance:** Three languages reach a breakpoint; breakpoints are host-owned;
   no adapter is auto-relaunched; no public listener is created on the host.
 - **Milestone:** Remote mirror development M4.
 - **Status:** Not implemented.
+
+### E2E-MIRROR-remote-run: Build and run execute inside the remote mirror directory
+
+- **Preconditions:** A `ready` mirror project with a configured build command
+  and a source file that fails to compile.
+- **Steps:** Run the build. While its output streams, cancel it. Fix the file,
+  let the synchronization upload it, and run the build again. Start a second
+  run while the first is still live. Point the project at a remote path
+  containing `..` and try to run.
+- **Expected:** The command executes on the host with the remote mirror
+  directory as its working directory, and its output streams in order to the
+  app with stdout and stderr kept apart. Cancelling stops the remote process and
+  settles the run exactly once. A second concurrent run for the same project is
+  refused with `CONFLICT`. A path containing `..` is refused with
+  `REMOTE_PATH_ESCAPE` before any connection is used. Nothing is written to the
+  local root, and no raw SSH stderr, command line, or credential appears in any
+  error.
+- **Coverage:** Electron unit tests for path and command validation, chunk
+  ordering, the 1 MiB output cap, cancellation, the one-run rule, and transport
+  error mapping. A real-host build is not yet qualified.
+- **Specs:** [23-remote-mirror-development](../03-runtime/23-remote-mirror-development.md)
+  §12; [ADR 0338](../../adr/0338-remote-mirror-development-helper.md).
+- **Acceptance:** Build and run both complete in the remote mirror; output is
+  ordered and bounded; cancellation is single-settle; the local root is
+  untouched.
+- **Milestone:** Remote mirror development M2.
+- **Status:** Unit-covered for validation, ordering, the byte cap, cancellation,
+  and the one-run rule; a real-host build is not yet run.

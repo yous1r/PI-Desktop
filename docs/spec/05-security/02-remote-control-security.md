@@ -284,11 +284,15 @@ endpoint, and it cannot execute a shell.
   with `REMOTE_PATH_ESCAPE`. Credential-shaped paths (`.env*`, `.ssh/`, `*.pem`,
   `*.key`) are refused in both directions.
 - The protocol has no shell, no arbitrary argv, no archive extraction, and no
-  delete operation. Adapter launch arguments come only from the desktop-bundled
-  manifest; an unknown placeholder or a non-array entry invalidates the entry.
-- Debug adapters are installed by remote execution of the pinned manifest command
-  into an isolated virtual environment or a helper-local `GOBIN`. The user's
-  site-packages, `$GOPATH/bin`, and shell configuration are never modified.
+  delete operation. An adapter's launch argv comes only from the helper's own
+  kind allowlist, so neither the manifest nor the renderer can contribute an
+  executable or an argument.
+- Debug adapters are carried by the application bundle: the helper streams the
+  payload in, verifies the pinned SHA-256 before anything durable is written,
+  and installs it under `adapters/<kind>/<version>/` inside the helper
+  directory. There is no package-manager or proxy access on the host, and the
+  user's site-packages, `$GOPATH/bin`, and shell configuration are never
+  modified.
 - The 50 MB per-file ceiling is enforced on both sides. Frames, in-flight streams,
   request rate, and per-request deadlines are bounded, and a transfer failure
   leaves the target file unchanged.

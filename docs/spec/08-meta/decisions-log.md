@@ -8123,10 +8123,13 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   verification, pinned adapter installation, a forward self-test, the local
   environment, the manifest, and the synchronization baseline. A project that has
   not completed it stays `needs-init`.
-- Debug adapters are pinned by a Desktop-bundled manifest and installed by remote
-  execution into isolated `venvs/` and a helper-local `GOBIN`. A version mismatch
-  is an error carrying the exact install command, never a silent upgrade, and no
-  adapter binary is uploaded from the local machine.
+- Debug adapters are pinned by a Desktop-bundled manifest that carries the
+  adapter payload itself. The helper streams the payload in, verifies its
+  pinned SHA-256 before writing anything durable, and installs it under
+  `adapters/<kind>/<version>/`. There is no PyPI or Go proxy access, no shell
+  install command and no uploaded user binary; the launch argv belongs to the
+  helper's kind allowlist, and a version mismatch is a reported error rather
+  than a silent upgrade.
 - Synchronization is `auto` or `manual` upload plus an explicit `pull`. There is
   no bidirectional mode, no `rsync` dependency, no merge, and no remote deletion;
   divergence is detected against a per-file baseline and resolved by the user.
@@ -8138,7 +8141,7 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 - Qualification requires real Linux x64 and aarch64 hosts. Mocked boundaries
   cannot accept deployment, detached survival across an SSH drop, adapter
   installation, or a debug session.
-- See ADR `0334-remote-mirror-development-helper`,
+- See ADR `0338-remote-mirror-development-helper`,
   `03-runtime/23-remote-mirror-development.md`,
   `05-security/02-remote-control-security.md` §3.7, and the `E2E-MIRROR-*`
   scenarios.

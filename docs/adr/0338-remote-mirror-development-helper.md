@@ -80,11 +80,14 @@ or an unbounded command channel.
    receipt so a retry does not repeat downloads, and a failure never leaves a
    partial manifest.
 
-6. **Debug adapters are pinned locally and installed remotely.** A
-   Desktop-bundled manifest fixes the adapter version for each supported
-   language; the helper installs into an isolated virtual environment or `GOBIN`
-   inside the helper directory. A version mismatch is a typed error, never a
-   silent upgrade, and no adapter binary is uploaded from the local machine.
+6. **Debug adapters are pinned locally and carried by the application.** A
+   Desktop-bundled manifest fixes the adapter kind, version, digest and payload
+   for each supported target. The helper streams the payload from the
+   application bundle, verifies it against the pinned digest before writing
+   anything durable, and installs it under `adapters/<kind>/<version>/`. There
+   is no PyPI or Go proxy access, no shell install command, and no uploaded
+   user binary; the launch argv belongs to the helper's kind allowlist, and a
+   version mismatch is a typed error rather than a silent upgrade.
 
 7. **Synchronization is upload plus explicit pull.** `auto` and `manual` upload
    modes push local changes; `pull` copies remote content back on explicit user

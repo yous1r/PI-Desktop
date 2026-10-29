@@ -5920,6 +5920,7 @@ eleven-tool-round desktop paths are verified by
 | A / D / F / Security / Quality — 镜像项目 helper 初始化与验证 | E2E-MIRROR-initialization |
 | D / E / Security / Quality — 镜像文件同步、忽略规则、大小上限与人工冲突处理 | E2E-MIRROR-synchronization |
 | D / F / Security / Quality — 远程调试与 host-core 断点持久化 | E2E-MIRROR-debug-session |
+| D / E / Security / Quality — 在镜像目录中远程构建与运行 | E2E-MIRROR-remote-run |
 
 ## 8. 可追溯性矩阵
 | 验收 | 应用场景 |

@@ -4,7 +4,10 @@
 
 > 范围：本地为主副本、镜像到远程 Linux 主机的项目，随包发布的 `pi-helper`
 > 服务，环境初始化，文件同步，以及远程调试。
-> 状态：M0 helper 骨架已实现（loopback/认证/version/health 与包内部署入口）。文件同步、watcher、适配器生命周期、项目 UI 和 DAP 尚未实现。
+> 状态：已实现的是 helper 服务（分帧、认证、`env.verify`、`fs.*`、
+> `adapter.install/probe/start/stop`）、host-core 镜像存储与 `mirror.*` RPC、
+> 带基线漂移检测的逐文件同步引擎、镜像项目创建、DAP 客户端，以及远程构建与运行。
+> 尚未实现：helper 的 `watch.*` 操作、镜像初始化状态机、调试 UI，以及 `pull` 模式。
 > 交叉引用：[05-remote-agent-control](../02-architecture/05-remote-agent-control.md) ·
 > [02-remote-control-security](../05-security/02-remote-control-security.md) ·
 > [08-error-codes](08-error-codes.md) ·
@@ -77,9 +80,7 @@ $HOME/.pi-desktop-helper/       0700
   env.json                      environment manifest, written atomically
   token                         0600, helper authentication secret
   bin/pi-helper                 installed binary
-  adapters/<id>/<version>/      adapter install receipts
-  venvs/<id>/                   isolated Python adapter environments
-  bin/gobin/                    GOBIN for Go adapters
+  adapters/<kind>/<version>/    installed adapter bundle plus its receipt
   pids/<id>.pid                 adapter pid files
   logs/helper.log               helper log, no credentials
 ```
@@ -95,7 +96,7 @@ $HOME/.pi-desktop-helper/       0700
 | 已在运行且版本一致 | 复用运行中的实例，不重新部署 |
 | 版本不符 | 原子替换二进制，停止旧进程，启动，握手 |
 | SSH 断开 | helper 已脱离会话继续运行；适配器继续运行；桌面重开转发并重连 |
-| 桌面升级 | 重新部署 `bin/pi-helper` 并重写 `env.json`；保留 `venvs/` 与 `adapters/` |
+| 桌面升级 | 重新部署 `bin/pi-helper` 并重写 `env.json`；保留 `adapters/` |
 | 卸载 | 停止适配器、停止 helper、删除 `$HOME/.pi-desktop-helper` |
 | 残留 pid 文件 | 先 `kill -0` 加可执行文件路径校验；绝不对复用的 PID 执行 kill |
 
@@ -139,9 +140,9 @@ SSH 通道从 helper 目录读取。
 | `watch.start` / `watch.stop` | 项目根变更通知 |
 | `adapter.install` | 安装清单固定版本的适配器 |
 | `adapter.probe` | 报告已安装适配器版本 |
-| `adapter.start` / `adapter.stop` / `adapter.list` | 适配器进程监管 |
+| `adapter.start` / `adapter.stop` | 适配器进程监管 |
 
-M0 目前只实现 `auth`、`version`、`health` 和 `env.verify`。其他表列操作会返回 `HELPER_OPERATION_UNAVAILABLE`；当前 helper 尚不足以将镜像项目标为 ready。
+目前实现：`auth`、`version`、`health`、`env.verify`、`fs.stat`、`fs.hash`、`fs.mkdirs`、`fs.put.*`、`fs.get.*`、`adapter.install`、`adapter.probe`、`adapter.start` 与 `adapter.stop`。`watch.start` 与 `watch.stop` 尚未实现，调用时报告 `HELPER_OPERATION_UNAVAILABLE`；桌面改为与自身基线比较，而不是订阅。其他任何操作均为保留。
 
 协议中不存在：shell 执行、任意 argv、归档解包、递归删除、跨项目根移动文件，以及
 任何接受白名单之外路径的操作。
@@ -159,7 +160,7 @@ M0 目前只实现 `auth`、`version`、`health` 和 `env.verify`。其他表列
 | 3 | helper 部署 | 二进制已安装且摘要校验通过 | `HELPER_DEPLOY_FAILED` |
 | 4 | helper 启动与握手 | 收到就绪行、`version` 一致、转发已开 | `HELPER_START_FAILED` |
 | 5 | `env.verify` | 目录、权限、磁盘、工具链均已报告 | `MIRROR_INIT_FAILED` |
-| 6 | 适配器安装 | 每个所选语言均安装成功 | `DEBUG_ADAPTER_INSTALL_FAILED` |
+| 6 | 适配器安装 | 固定随包的 bundle 安装成功，且其摘要与清单一致 | `DEBUG_ADAPTER_INSTALL_FAILED` |
 | 7 | 适配器探测 | 已安装版本等于清单版本 | `DEBUG_ADAPTER_VERSION_MISMATCH` |
 | 8 | 转发自检 | 一条 loopback 转发能连接并关闭 | `REMOTE_FORWARD_FAILED` |
 | 9 | 本地环境 | 项目已注册、`workspace.get` 返回本地根、本地工具链可用 | `MIRROR_INIT_FAILED` |
@@ -174,40 +175,20 @@ M0 目前只实现 `auth`、`version`、`health` 和 `env.verify`。其他表列
 
 ## 5. 调试适配器清单
 
-桌面安装包携带一份带版本的清单。清单是适配器身份、版本与启动参数的唯一来源。
+桌面应用包携带一份带版本的清单，以及清单所指名的适配器载荷。清单是适配器身份、版本、
+摘要与安装资格的唯一来源。helper 是唯一决定已安装适配器如何启动的组件。
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "adapters": [
     {
       "id": "python-debugpy",
-      "language": "python",
+      "kind": "python-debugpy",
       "version": "1.8.5",
-      "probe": ["{venv}/bin/python", "-c", "import debugpy;print(debugpy.__version__)"],
-      "install": [
-        ["python3", "-m", "venv", "{helper}/venvs/python-debugpy"],
-        ["{helper}/venvs/python-debugpy/bin/pip", "install", "debugpy==1.8.5"]
-      ],
-      "launch": ["{venv}/bin/python", "-m", "debugpy", "--listen", "127.0.0.1:{port}"]
-    },
-    {
-      "id": "go-dlv",
-      "language": "go",
-      "version": "1.23.0",
-      "probe": ["{helper}/bin/gobin/dlv", "version"],
-      "install": [
-        ["env", "GOBIN={helper}/bin/gobin", "go", "install", "github.com/go-delve/delve/cmd/dlv@v1.23.0"]
-      ],
-      "launch": ["{helper}/bin/gobin/dlv", "dap", "--listen=127.0.0.1:{port}", "--headless"]
-    },
-    {
-      "id": "node-inspector",
-      "language": "node",
-      "version": "system",
-      "probe": ["node", "--version"],
-      "install": [],
-      "launch": ["node", "--inspect-brk=127.0.0.1:{port}", "{program}"]
+      "sha256": "<64 hex characters>",
+      "bundle": "resources/pi-helper/adapters/python-debugpy-1.8.5",
+      "hosts": ["x86_64-unknown-linux-musl"]
     }
   ]
 }
@@ -215,16 +196,22 @@ M0 目前只实现 `auth`、`version`、`health` 和 `env.verify`。其他表列
 
 规则：
 
-1. 安装**在主机上**由 helper 执行；绝不从本地机器上传适配器二进制。
-2. Python 适配器安装到 helper 目录内的隔离虚拟环境。用户的 site-packages 与
-   shell 配置永不被修改。
-3. Go 适配器安装到 helper 本地的 `GOBIN`。用户的 `$GOPATH/bin` 永不被修改。
-4. 探测结果与清单版本不一致即为错误，同时携带双方版本与确切的安装命令。不存在
-   静默升级。
-5. `{helper}`、`{venv}`、`{port}`、`{program}` 是唯一的替换项。未知占位符，或
-   `install`/`launch` 条目不是 argv 数组，都会使该清单条目失效。
-6. 适配器安装需要主机访问 PyPI 或 Go 模块代理的网络。网络被阻断是可报告的初始化
-   失败，附带失败命令，绝不静默跳过。
+1. 安装是从桌面应用包到 helper 的字节流（`adapter.install`）。绝不从 PyPI、Go 模块
+   代理或任何其他网络位置获取内容，主机上也不运行任何 shell 命令。
+2. 载荷是单个不透明的可执行文件。helper 绝不解包归档、绝不解释载荷内容，也绝不接受
+   调用方给出的目标路径：请求路径必须恰好是 `adapters/<kind>/<version>`。
+3. helper 在写入任何持久内容之前，先用清单 `sha256` 校验流式字节。不匹配会删除暂存
+   文件并报告 `DEBUG_ADAPTER_INSTALL_FAILED`。校验通过的安装原子落在
+   `adapters/<kind>/<version>/`，其回执最后写入。
+4. 启动 argv 属于 helper 的 kind 白名单，而不属于清单。`python-debugpy` 以
+   `<bundle> --listen 127.0.0.1:<port>` 启动。新增一个 kind 是一次代码变更加一条
+   清单条目，绝不是一次配置编辑。
+5. `adapter.probe` 报告已安装版本、摘要与安装时间；某目录没有回执时报告该适配器缺失。
+   请求一个缺失的版本，或请求的版本摘要与清单不一致，即
+   `DEBUG_ADAPTER_VERSION_MISMATCH`；不存在静默升级。
+6. 同一 kind 可以并存安装多个版本。未显式指定版本的请求解析到最近安装的那份回执。
+7. 目标平台没有固定载荷的主机不提供该适配器。清单的 `hosts` 列表是权威依据；目标
+   平台不受支持时，它是被报告的初始化缺口，而不是静默跳过。
 
 ## 6. 文件同步
 
@@ -277,9 +264,8 @@ M0 目前只实现 `auth`、`version`、`health` 和 `env.verify`。其他表列
 ### 6.4 传输保证
 
 - 一条连接服务所有文件；一批上传按批次往返，而不是每个文件一条连接。
-- 写入是原子的：内容先写到 `<path>.pi-part`，再改名覆盖目标。崩溃只会留下旧文件
-  或新文件。
-- 写入是原子的：内容先写入以独占方式创建的 `<name>.<nonce>.pi-part` 暂存文件，再改名覆盖目标。崩溃只会留下旧文件或新文件；已被其他请求占用的暂存路径不会被复用。
+- 写入是原子的：内容先写入以独占方式创建的 `<name>.<nonce>.pi-part` 暂存文件，再改名
+  覆盖目标。崩溃只会留下旧文件或新文件；已被其他请求占用的暂存路径不会被复用。
 - 字节原样复制：不做换行转换。目标保留原有权限，因此可执行脚本仍然是可执行的。
 - 若某批次的回复无法装入单个 control 帧，则在创建任何目录之前以 `INVALID_ARGUMENT` 拒绝，而不是在工作完成后再断开连接。
 - 传输可取消；取消不会留下部分目标文件。
@@ -353,7 +339,7 @@ schema v28 新增基线与断点存储，含升级兼容与迁移测试。项目
 | `MIRROR_FILE_TOO_LARGE` | 否 | 文件超过 50 MB 上限并被跳过 |
 | `REMOTE_TRANSFER_FAILED` | 是 | 逐文件传输失败；目标文件未变 |
 | `REMOTE_PATH_ESCAPE` | 否 | 路径解析到允许根之外 |
-| `DEBUG_ADAPTER_INSTALL_FAILED` | 是 | 适配器安装失败；`details.command` 指明步骤 |
+| `DEBUG_ADAPTER_INSTALL_FAILED` | 是 | 随包适配器载荷未通过摘要校验，或安装无法完成 |
 | `DEBUG_ADAPTER_VERSION_MISMATCH` | 否 | 已安装适配器版本与固定清单不一致 |
 | `DEBUG_SESSION_DISCONNECTED` | 是 | 调试传输断开；会话状态被保留以便重连 |
 
@@ -378,8 +364,31 @@ schema v28 新增基线与断点存储，含升级兼容与迁移测试。项目
 
 | 层级 | 覆盖 |
 |---|---|
-| Rust 单元 | 分帧、token 认证、路径围栏（含符号链接逃逸）、原子写、50 MB 边界、pid 文件校验、清单占位符拒绝 |
+| Rust 单元 | 分帧、token 认证、路径围栏（含符号链接逃逸）、原子写、50 MB 边界、pid 文件校验、清单摘要与 kind 白名单拒绝 |
 | Rust 契约 | 进程内客户端对全操作集，含畸形帧、半帧与取消 |
 | Electron 单元 | 针对 fake helper 的 helper 客户端重连、超时与错误映射 |
+| Electron 单元（远程运行） | 路径与命令校验、有序 stdout 与 stderr、带截断标记的 1 MiB 输出上限、单次结算的取消、每项目单次运行的规则，以及不泄漏任何内容的传输错误 |
 | 集成 | 无真实 SSH 情况下经 loopback 完成部署、握手、上传、下载与适配器启动 |
 | 资格门 | 经 SSH 连接的真实 Linux x64 与 aarch64 主机：部署、SSH 断开后的脱离存活、适配器安装、调试会话、基线准确性。被 mock 的边界不满足此门 |
+
+## 12. 远程构建与运行
+
+镜像项目可以在主机上、远程镜像目录内运行一条显式的构建或运行命令。这不是通用远程
+shell：命令与其工作目录是仅有的输入，且两者都先被校验。
+
+1. 工作目录始终是项目的 `remotePath`。不是绝对 POSIX 路径，或包含 `..`、`//`、反斜杠
+   或控制字符的值，以 `REMOTE_PATH_ESCAPE` 拒绝。
+2. 命令是一条用户配置的字符串，最长 4096 个字符，且不含控制字符。它通过应用已用于
+   主机命令的同一种远程执行模式运行，因此引号处理只有一份实现。
+3. 每个项目最多一个进行中的运行。第二次启动以 `CONFLICT` 拒绝而不是排队，因此两个
+   构建绝不会在同一个镜像目录内交错。
+4. 输出以有序的 stdout 与 stderr 分块流式传输，并按流分别解码，因此被分块切断的
+   多字节字符仍能完整还原。未被消费的输出上限为 1 MiB；超过上限后运行继续执行，但
+   其余输出被丢弃且结果标记为已截断，而字节计数仍报告主机写入的全部内容。
+5. 取消会终止远程进程，并恰好结算句柄一次。关闭时的销毁会取消所有进行中的运行，并
+   以 `HOST_SHUTTING_DOWN` 拒绝新的启动。
+6. 传输失败会浮出类型化错误，其消息固定：命令行与任何凭据都不会进入错误文本。
+7. 本地根不写入任何内容。本地副本始终是唯一事实来源，构建绝不改动它。
+8. 构建在主机上写出的文件——`dist`、`build`、`target` 以及本地排除规则本就忽略的
+   其他内容——绝不会被拉回本地，应用也绝不删除它们。主机侧构建产物归用户所有，
+   因此镜像目录中可以存在本地副本没有的产物。
