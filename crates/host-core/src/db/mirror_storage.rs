@@ -197,6 +197,9 @@ pub(crate) fn delete_mirror_project_rows(conn: &Connection, project_id: &str) ->
         "DELETE FROM mirror_breakpoints WHERE project_id = ?1",
         params![project_id],
     )?;
+    // Initialization state is mirror state too: it names the host and the
+    // helper root, so it goes with the group rather than outliving it.
+    super::mirror_init_storage::delete_mirror_init_rows(conn, project_id)?;
     Ok(())
 }
 

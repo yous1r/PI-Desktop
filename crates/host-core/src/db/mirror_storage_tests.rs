@@ -62,11 +62,11 @@ fn breakpoint(
 }
 
 #[test]
-fn fresh_database_opens_at_v28_with_mirror_tables() {
+fn fresh_database_opens_at_v29_with_mirror_tables() {
     let dir = tempfile::tempdir().unwrap();
     let db = Database::open(&dir.path().join("pi.sqlite")).unwrap();
-    assert_eq!(SCHEMA_VERSION, 28);
-    assert_eq!(schema_version(db.conn()), 28);
+    assert_eq!(SCHEMA_VERSION, 29);
+    assert_eq!(schema_version(db.conn()), 29);
     for table in ["mirror_sync_baseline", "mirror_breakpoints"] {
         assert!(table_exists(db.conn(), table), "missing {table}");
     }

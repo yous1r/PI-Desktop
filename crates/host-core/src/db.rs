@@ -7,7 +7,7 @@ pub(crate) use serde_json::Value;
 pub(crate) use std::path::{Path, PathBuf};
 
 /// Current SQLite schema version.
-pub const SCHEMA_VERSION: i64 = 28;
+pub const SCHEMA_VERSION: i64 = 29;
 
 /// Absolute approval deadline for a newly submitted Plan or Goal proposal.
 pub const PLAN_APPROVAL_TIMEOUT_MS: i64 = 30 * 60 * 1000;
@@ -16,6 +16,7 @@ pub const PLAN_APPROVAL_TIMEOUT_MS: i64 = 30 * 60 * 1000;
 pub const NOTIFICATION_KEEP: i64 = 200;
 
 mod migrations;
+mod mirror_init_storage;
 mod mirror_storage;
 mod model;
 mod model_discovery_migration;
@@ -34,6 +35,14 @@ pub(crate) use migrations::{
     migrate_v13_to_v15, migrate_v14_to_v15, migrate_v17_to_v18, migrate_v18_to_v19,
     migrate_v19_to_v20, migrate_v20_to_v21, migrate_v7_to_v8, migrate_v8_to_v15, migrate_v9_to_v15,
     migration_backup_path, validate_session_modes,
+};
+pub(crate) use mirror_init_storage::{
+    delete_mirror_init_rows, migrate_v28_to_v29, validate_mirror_init_state,
+    MIRROR_INIT_STORAGE_DDL,
+};
+pub use mirror_init_storage::{
+    MirrorInitFailure, MirrorInitReceipt, MirrorInitRecord, MirrorInitState, MirrorInitStep,
+    MAX_MIRROR_INIT_RECEIPT_BYTES, MIRROR_INIT_STEP_ORDER,
 };
 pub(crate) use mirror_storage::{
     delete_mirror_project_rows, migrate_v27_to_v28, MIRROR_STORAGE_DDL,
@@ -73,6 +82,8 @@ pub fn ms_to_ts(ms: i64) -> String {
         .to_rfc3339_opts(chrono::SecondsFormat::Millis, true)
 }
 
+#[cfg(test)]
+mod mirror_init_storage_tests;
 #[cfg(test)]
 mod mirror_storage_tests;
 #[cfg(test)]

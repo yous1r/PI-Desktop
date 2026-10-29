@@ -148,6 +148,7 @@ impl Database {
                 tx.execute_batch(crate::session_collaboration::SCHEMA)?;
                 tx.execute_batch(WORKTREE_DDL)?;
                 tx.execute_batch(MIRROR_STORAGE_DDL)?;
+                tx.execute_batch(MIRROR_INIT_STORAGE_DDL)?;
                 tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
                 tx.commit()?;
             }
@@ -220,6 +221,9 @@ impl Database {
             27 => {
                 migrate_v27_to_v28(&conn, path)?;
             }
+            28 => {
+                migrate_v28_to_v29(&conn, path)?;
+            }
             legacy @ 1..=6 => {
                 let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
                 drop(conn);
@@ -286,6 +290,9 @@ impl Database {
         }
         if migrated_version == 27 {
             migrate_v27_to_v28(&conn, path)?;
+        }
+        if migrated_version == 28 {
+            migrate_v28_to_v29(&conn, path)?;
         }
         let db = Self { conn, data_dir };
         db.boot_maintenance()?;
