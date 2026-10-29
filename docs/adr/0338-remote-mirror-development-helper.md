@@ -137,11 +137,12 @@ or an unbounded command channel.
 The helper binary is release content, not user or model content: it is bundled,
 digest-verified before execution, and version-bound. The helper directory is
 `0700`, the token is `0600`, the listener is loopback, and the token never
-appears in a URL, log, or error payload. Every path is resolved against an
-allowlist of registered mirror roots and the helper root, with `..` and symlink
-escapes refused, and credential-shaped paths (`.env*`, `.ssh/`, `*.pem`, `*.key`)
-denied. The helper never executes a shell string; adapter launches come from the
-bundled manifest only.
+appears in a URL, log, or error payload. Every file operation names one
+registered mirror root and resolves only inside it, and adapter operations
+resolve only inside the helper directory, so the two namespaces never mix; `..`
+and symlink escapes are refused, and credential-shaped paths (`.env*`, `.ssh/`,
+`*.pem`, `*.key`) are denied. The helper never executes a shell string; adapter
+launches come from the bundled manifest only.
 
 Existing remote projects, `pi-host` pairing, RACP, and their persisted data are
 unchanged. A build that does not know the `mirror` binding ignores it. The

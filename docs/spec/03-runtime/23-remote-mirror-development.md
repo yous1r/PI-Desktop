@@ -4,11 +4,11 @@
 > `pi-helper` service, environment initialization, file synchronization, and
 > remote debugging.
 > Status: implemented are the helper service (framing, auth, `env.verify`,
-> `fs.*`, `adapter.install/probe/start/stop`), host-core mirror storage and
-> `mirror.*` RPC, the per-file sync engine with baseline drift detection, mirror
-> project creation, the DAP client, and remote build/run. Not implemented yet:
-> the helper `watch.*` operations, the mirror initialization state machine, the
-> debug UI, and the `pull` mode.
+> `root.register`, `fs.*`, `adapter.install/probe/start/stop`), host-core mirror
+> storage and `mirror.*` RPC, the per-file sync engine with baseline drift
+> detection, mirror project creation, the resumable initialization state machine
+> and its main-process IPC, the DAP client, and remote build/run. Not implemented
+> yet: the helper `watch.*` operations, the debug UI, and the `pull` mode.
 > Cross-references: [05-remote-agent-control](../02-architecture/05-remote-agent-control.md) ·
 > [02-remote-control-security](../05-security/02-remote-control-security.md) ·
 > [08-error-codes](08-error-codes.md) ·
@@ -144,6 +144,7 @@ Operation set (v1):
 | `version` | Protocol and helper version handshake |
 | `health` | Liveness, disk space, writable helper root |
 | `env.verify` | Directory, permissions, toolchains, disk budget |
+| `root.register` | Register one mirror root; returns the canonical root every `fs.*` request names |
 | `fs.stat` | Batch `{path, size, mtimeMs, mode}` |
 | `fs.hash` | SHA-256 of one file |
 | `fs.mkdirs` | Batch directory creation |
@@ -154,7 +155,13 @@ Operation set (v1):
 | `adapter.probe` | Report the installed adapter version |
 | `adapter.start` / `adapter.stop` | Adapter process supervision |
 
-Implemented today: `auth`, `version`, `health`, `env.verify`, `fs.stat`, `fs.hash`, `fs.mkdirs`, `fs.put.*`, `fs.get.*`, `adapter.install`, `adapter.probe`, `adapter.start`, and `adapter.stop`. `watch.start` and `watch.stop` are not implemented and report `HELPER_OPERATION_UNAVAILABLE`; the desktop compares against its baseline instead of subscribing. Any other operation is reserved.
+Implemented today: `auth`, `version`, `health`, `env.verify`, `root.register`, `fs.stat`, `fs.hash`, `fs.mkdirs`, `fs.put.*`, `fs.get.*`, `adapter.install`, `adapter.probe`, `adapter.start`, and `adapter.stop`. Every `fs.*` request names the canonical root `root.register` returned; there is no default root and no search across roots, and the helper directory is never a file-operation target. `watch.start` and `watch.stop` are not implemented and report `HELPER_OPERATION_UNAVAILABLE`; the desktop compares against its baseline instead of subscribing. Any other operation is reserved.
+
+`root.register` is idempotent and lasts for the life of the helper process. It
+refuses a missing directory (`REMOTE_PATH_NOT_FOUND`) and one that contains or
+lies inside the helper directory (`REMOTE_PATH_FORBIDDEN`), so `$HOME` itself
+cannot be a mirror root. A restarted helper starts with no registered root; the
+desktop registers again on every connection.
 
 Not present in the protocol: shell execution, arbitrary argv, archive
 extraction, recursive delete, file move across project roots, and any operation
@@ -174,12 +181,16 @@ idempotent and resumable, and each step records a receipt.
 | 2 | Helper root | Directory exists, `0700`, writable, at least 500 MB free | `HELPER_DIR_UNWRITABLE` |
 | 3 | Helper deployment | Binary installed and digest verified | `HELPER_DEPLOY_FAILED` |
 | 4 | Helper start and handshake | Ready line received, `version` matches, forward open | `HELPER_START_FAILED` |
-| 5 | `env.verify` | Directory, permissions, disk, toolchains reported | `MIRROR_INIT_FAILED` |
+| 5 | `env.verify` | Directory, permissions, disk, toolchains reported; the mirror root is registered with `root.register` | `MIRROR_INIT_FAILED` |
 | 6 | Adapter installation | The pinned bundle installs and its digest matches the manifest | `DEBUG_ADAPTER_INSTALL_FAILED` |
 | 7 | Adapter probe | Installed version equals the manifest version | `DEBUG_ADAPTER_VERSION_MISMATCH` |
 | 8 | Forward self-test | One loopback forward connects and closes | `REMOTE_FORWARD_FAILED` |
 | 9 | Local environment | Project registered, `workspace.get` returns the local root, local toolchain usable | `MIRROR_INIT_FAILED` |
-| 10 | Manifest and baseline | `env.json` written atomically; baseline scan stored in host-core | `MIRROR_INIT_FAILED` |
+| 10 | Manifest and baseline | `env.json` written atomically into the helper directory over SSH; baseline scan stored in host-core | `MIRROR_INIT_FAILED` |
+
+A mirror root the helper refuses fails step 5. The step message carries the
+helper's code (`REMOTE_PATH_NOT_FOUND` or `REMOTE_PATH_FORBIDDEN`) but never
+the path.
 
 Step 9 checks the **local** environment only. Mirror projects have no remote
 Agent, so there is nothing remote to verify for the Agent.
@@ -294,6 +305,9 @@ listed in an "over limit" section, and never blocks other files.
 
 - One connection serves every file; a batch of uploads uses one round trip per
   batch rather than one connection per file.
+- A new mirror has none of the project's directories, so each batch creates the
+  remote parent of a file before uploading it, once per directory; creation is
+  additive and never removes anything on the host.
 - Writes are atomic: content goes to a sibling `<name>.<nonce>.pi-part` staged
   with an exclusive create, then rename over the target. A crash leaves either
   the old file or the new one, and a staging path another request already owns
@@ -395,11 +409,14 @@ Existing codes are reused where they already fit: `REMOTE_CONNECTION_FAILED`,
    the host through this path.
 2. Loopback-only listener, `0600` token, no public bind, no stdio RPC, no
    systemd unit, no elevation.
-3. Path allowlist: registered mirror roots plus the helper root. A project root
-   that overlaps the helper directory is refused at startup, and any resolution
-   that lands inside the helper directory from another root is refused, so the
-   token and the installed binary stay unreachable even through a symlink. `..`,
-   symlink, and junction escapes are refused after `realpath`.
+3. Path scoping: every file operation names one registered mirror root and
+   resolves only inside it; adapter operations resolve only inside the helper
+   directory's adapter tree. The two namespaces never mix, so a project file
+   named like helper state (`bin/`, `env.json`) stays in the project. A mirror
+   root that contains or lies inside the helper directory is refused, and any
+   resolution that lands inside the helper directory from a mirror root is
+   refused, so the token and the installed binary stay unreachable even through
+   a symlink. `..`, symlink, and junction escapes are refused after `realpath`.
 4. Credential-shaped paths (`.env`, `.env.*`, `.ssh/`, `*.pem`, `*.key`) are
    refused in both directions.
 5. No shell and no arbitrary argv: adapter commands come from the bundled

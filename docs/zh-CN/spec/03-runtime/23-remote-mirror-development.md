@@ -4,10 +4,10 @@
 
 > 范围：本地为主副本、镜像到远程 Linux 主机的项目，随包发布的 `pi-helper`
 > 服务，环境初始化，文件同步，以及远程调试。
-> 状态：已实现的是 helper 服务（分帧、认证、`env.verify`、`fs.*`、
+> 状态：已实现的是 helper 服务（分帧、认证、`env.verify`、`root.register`、`fs.*`、
 > `adapter.install/probe/start/stop`）、host-core 镜像存储与 `mirror.*` RPC、
-> 带基线漂移检测的逐文件同步引擎、镜像项目创建、DAP 客户端，以及远程构建与运行。
-> 尚未实现：helper 的 `watch.*` 操作、镜像初始化状态机、调试 UI，以及 `pull` 模式。
+> 带基线漂移检测的逐文件同步引擎、镜像项目创建、可恢复的初始化状态机及其主进程 IPC、
+> DAP 客户端，以及远程构建与运行。尚未实现：helper 的 `watch.*` 操作、调试 UI，以及 `pull` 模式。
 > 交叉引用：[05-remote-agent-control](../02-architecture/05-remote-agent-control.md) ·
 > [02-remote-control-security](../05-security/02-remote-control-security.md) ·
 > [08-error-codes](08-error-codes.md) ·
@@ -132,6 +132,7 @@ SSH 通道从 helper 目录读取。
 | `version` | 协议与 helper 版本握手 |
 | `health` | 存活、磁盘空间、helper 根可写 |
 | `env.verify` | 目录、权限、工具链、磁盘预算 |
+| `root.register` | 注册一个镜像根；返回每个 `fs.*` 请求都要指明的规范根路径 |
 | `fs.stat` | 批量 `{path, size, mtimeMs, mode}` |
 | `fs.hash` | 单个文件的 SHA-256 |
 | `fs.mkdirs` | 批量创建目录 |
@@ -142,7 +143,12 @@ SSH 通道从 helper 目录读取。
 | `adapter.probe` | 报告已安装适配器版本 |
 | `adapter.start` / `adapter.stop` | 适配器进程监管 |
 
-目前实现：`auth`、`version`、`health`、`env.verify`、`fs.stat`、`fs.hash`、`fs.mkdirs`、`fs.put.*`、`fs.get.*`、`adapter.install`、`adapter.probe`、`adapter.start` 与 `adapter.stop`。`watch.start` 与 `watch.stop` 尚未实现，调用时报告 `HELPER_OPERATION_UNAVAILABLE`；桌面改为与自身基线比较，而不是订阅。其他任何操作均为保留。
+目前实现：`auth`、`version`、`health`、`env.verify`、`root.register`、`fs.stat`、`fs.hash`、`fs.mkdirs`、`fs.put.*`、`fs.get.*`、`adapter.install`、`adapter.probe`、`adapter.start` 与 `adapter.stop`。每个 `fs.*` 请求都要指明 `root.register` 返回的规范根；不存在默认根，也不会跨根查找，helper 目录永远不是文件操作的目标。`watch.start` 与 `watch.stop` 尚未实现，调用时报告 `HELPER_OPERATION_UNAVAILABLE`；桌面改为与自身基线比较，而不是订阅。其他任何操作均为保留。
+
+`root.register` 是幂等的，在 helper 进程存活期间有效。它拒绝不存在的目录
+（`REMOTE_PATH_NOT_FOUND`），也拒绝包含 helper 目录或位于其内部的目录
+（`REMOTE_PATH_FORBIDDEN`），因此 `$HOME` 本身不能作为镜像根。重启后的 helper
+没有任何已注册的根；桌面在每次连接时重新注册。
 
 协议中不存在：shell 执行、任意 argv、归档解包、递归删除、跨项目根移动文件，以及
 任何接受白名单之外路径的操作。
@@ -159,12 +165,15 @@ SSH 通道从 helper 目录读取。
 | 2 | helper 根 | 目录存在、`0700`、可写、至少 500 MB 空闲 | `HELPER_DIR_UNWRITABLE` |
 | 3 | helper 部署 | 二进制已安装且摘要校验通过 | `HELPER_DEPLOY_FAILED` |
 | 4 | helper 启动与握手 | 收到就绪行、`version` 一致、转发已开 | `HELPER_START_FAILED` |
-| 5 | `env.verify` | 目录、权限、磁盘、工具链均已报告 | `MIRROR_INIT_FAILED` |
+| 5 | `env.verify` | 目录、权限、磁盘、工具链均已报告；镜像根已通过 `root.register` 注册 | `MIRROR_INIT_FAILED` |
 | 6 | 适配器安装 | 固定随包的 bundle 安装成功，且其摘要与清单一致 | `DEBUG_ADAPTER_INSTALL_FAILED` |
 | 7 | 适配器探测 | 已安装版本等于清单版本 | `DEBUG_ADAPTER_VERSION_MISMATCH` |
 | 8 | 转发自检 | 一条 loopback 转发能连接并关闭 | `REMOTE_FORWARD_FAILED` |
 | 9 | 本地环境 | 项目已注册、`workspace.get` 返回本地根、本地工具链可用 | `MIRROR_INIT_FAILED` |
-| 10 | 清单与基线 | `env.json` 原子写入；基线扫描存入 host-core | `MIRROR_INIT_FAILED` |
+| 10 | 清单与基线 | `env.json` 经 SSH 原子写入 helper 目录；基线扫描存入 host-core | `MIRROR_INIT_FAILED` |
+
+helper 拒绝的镜像根会让第 5 步失败。该步骤的消息带有 helper 的错误码
+（`REMOTE_PATH_NOT_FOUND` 或 `REMOTE_PATH_FORBIDDEN`），但绝不包含路径。
 
 第 9 步只检查**本地**环境。镜像项目没有远程 Agent，因此 Agent 侧没有任何远程项
 可校验。
@@ -264,6 +273,7 @@ SSH 通道从 helper 目录读取。
 ### 6.4 传输保证
 
 - 一条连接服务所有文件；一批上传按批次往返，而不是每个文件一条连接。
+- 新镜像还没有项目的任何目录，因此每个批次在上传文件前先创建其远程父目录，每个目录只请求一次；创建是增量的，绝不删除主机上的任何内容。
 - 写入是原子的：内容先写入以独占方式创建的 `<name>.<nonce>.pi-part` 暂存文件，再改名
   覆盖目标。崩溃只会留下旧文件或新文件；已被其他请求占用的暂存路径不会被复用。
 - 字节原样复制：不做换行转换。目标保留原有权限，因此可执行脚本仍然是可执行的。
@@ -352,7 +362,7 @@ schema v28 新增基线与断点存储，含升级兼容与迁移测试。项目
    或用户提供的代码绝不通过这条路径在主机上执行。
 2. 仅 loopback 监听、`0600` token、无公共绑定、无 stdio RPC、无 systemd 单元、
    无提权。
-3. 路径白名单：已注册的镜像根加 helper 根。与 helper 目录重叠的项目根在启动时被拒绝，且从其他根解析到 helper 目录内的路径同样被拒绝，因此 token 与已安装二进制即便经由符号链接也无法触达。`..`、符号链接与 junction 逃逸在
+3. 路径作用域：每个文件操作都指明一个已注册的镜像根，并且只在该根内解析；适配器操作只在 helper 目录的适配器子树内解析。两个命名空间互不混用，因此名称与 helper 状态相同的项目文件（`bin/`、`env.json`）仍留在项目内。包含 helper 目录或位于其内部的镜像根会被拒绝，从镜像根解析到 helper 目录内的路径同样被拒绝，因此 token 与已安装二进制即便经由符号链接也无法触达。`..`、符号链接与 junction 逃逸在
    `realpath` 之后一律拒绝。
 4. 凭据类路径（`.env`、`.env.*`、`.ssh/`、`*.pem`、`*.key`）在两个方向上都被拒绝。
 5. 无 shell、无任意 argv：适配器命令只来自随包清单；其他所有操作只接受结构化数据。
