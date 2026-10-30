@@ -118,6 +118,48 @@ jobs:
             --arch ${{ matrix.arch }} \
             --host-core "target/${{ matrix.target }}/release/pi-desktop-host-core"
 
+      - name: Smoke-test the packaged pi-host startup
+        # Exercise the same entry point used by remote setup. Pairing tokens
+        # are present only in the private temp file and are always redacted.
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./apps/pi-host/package.json').version")"
+          bundle="apps/pi-host/dist-bundle/pi-host-${version}-linux-${{ matrix.arch }}"
+          data=$(mktemp -d)
+          stdout="$data/pi-host.stdout"
+          stderr="$data/pi-host.stderr"
+          PI_DESKTOP_DATA_DIR="$data/state" "$bundle/bin/pi-host" --port 0 --pair >"$stdout" 2>"$stderr" &
+          host_pid=$!
+          cleanup() {
+            if (( host_pid > 0 )); then
+              kill -TERM "$host_pid" 2>/dev/null || true
+              wait "$host_pid" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+          deadline=$((SECONDS + 30))
+          while (( SECONDS < deadline )); do
+            if grep -q '^PI_HOST_READY ' "$stdout" && grep -q '^PI_HOST_PAIRING_TOKEN ' "$stdout"; then
+              sed 's/^PI_HOST_PAIRING_TOKEN .*/PI_HOST_PAIRING_TOKEN <redacted>/' "$stdout"
+              echo "packaged pi-host printed ready and pairing output"
+              exit 0
+            fi
+            state="$(ps -o stat= -p "$host_pid" 2>/dev/null || true)"
+            if [[ -z "$state" || "$state" == Z* ]]; then
+              wait "$host_pid" 2>/dev/null || true
+              host_pid=0
+              sed 's/^PI_HOST_PAIRING_TOKEN .*/PI_HOST_PAIRING_TOKEN <redacted>/' "$stdout" || true
+              cat "$stderr"
+              echo "::error::packaged pi-host exited before ready and pairing output"
+              exit 1
+            fi
+            sleep 0.2
+          done
+          sed 's/^PI_HOST_PAIRING_TOKEN .*/PI_HOST_PAIRING_TOKEN <redacted>/' "$stdout" || true
+          cat "$stderr"
+          echo "::error::packaged pi-host timed out before ready and pairing output"
+          exit 1
+
       - name: Archive the bundle with its checksum
         run: |
           set -euo pipefail
