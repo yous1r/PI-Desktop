@@ -655,6 +655,11 @@ Shell smoke on each native runner:
   (Ubuntu 22.04, Debian 12, Fedora 36+). Each tag job runs
   `scripts/check-linux-host-glibc.mjs` and refuses a binary that needs a
   newer glibc.
+- The `pi-host` bundle a desktop installs on a remote machine is the
+  exception: the `host-core-musl` lane builds host-core for
+  `x86_64-unknown-linux-musl` and `aarch64-unknown-linux-musl`,
+  `scripts/check-linux-host-static.mjs` refuses a dynamically linked binary,
+  and `pi-host-bundle` consumes that artifact (ADR 0338).
 - Linux arm64 microphone capture works on Raspberry Pi boards only:
   `@picovoice/pvrecorder-node` classifies Linux arm64 by `/proc/cpuinfo` CPU
   part. Speech-to-text (`transcribe-cpp` ships a `linux-arm64-cpu-vulkan`

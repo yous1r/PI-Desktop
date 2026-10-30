@@ -548,6 +548,10 @@ electron PI-Desktop-<version>-linux-<arch>.asar
   `ubuntu-22.04-arm` 运行器），因此 host-core 需要 glibc 2.35 或更高版本
   （Ubuntu 22.04、Debian 12、Fedora 36+）。每个标签作业都会运行
   `scripts/check-linux-host-glibc.mjs`，拒绝需要更新 glibc 的二进制文件。
+- 桌面在远端机器上安装的 `pi-host` 包是例外：`host-core-musl` 通道为
+  `x86_64-unknown-linux-musl` 与 `aarch64-unknown-linux-musl` 构建 host-core，
+  `scripts/check-linux-host-static.mjs` 拒绝动态链接的二进制，
+  `pi-host-bundle` 消费该产物（ADR 0338）。
 - Linux arm64 的麦克风采集仅在 Raspberry Pi 板卡上可用：
   `@picovoice/pvrecorder-node` 按 `/proc/cpuinfo` 的 CPU part 判定 Linux
   arm64。语音转写（`transcribe-cpp` 随附 `linux-arm64-cpu-vulkan` 包）以及

@@ -3,3 +3,14 @@
 # Visual C++ Redistributable installation before the local service can boot.
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
+
+# The `pi-host` bundle a desktop installs on a remote machine ships a statically
+# linked musl host-core, so that machine needs no glibc for it at all (ADR 0338).
+#
+# No linker or rustflags entry is set for the musl targets on purpose. rustc's
+# bundled self-contained musl already links them statically, and pointing the
+# target at the system `musl-gcc` instead produced a binary that linked but
+# segfaulted inside libc startup before `main` ran: the measured result was
+# `segfault at 0` in `__init_libc` while walking the auxiliary vector. A static
+# ELF report does not catch that, so `scripts/check-linux-host-static.mjs` checks
+# the link and the packaging lane runs `app.handshake` against the binary.

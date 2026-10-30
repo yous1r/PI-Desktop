@@ -10,9 +10,11 @@ import {
   glibcMissingSymbol,
   hostGlibcWithinFloor,
   isGlibcUnsupportedError,
+  isStaticElfReport,
   maxNeededGlibc,
   parseGlibcVersion,
   readRuntimeGlibcVersion,
+  resolvesNoSharedLibrary,
 } from "../electron/main/linux-glibc.ts";
 
 test("glibc 2.35 is the packaged Linux floor", () => {
@@ -85,5 +87,50 @@ test("assertLinuxGlibcSupported throws only below the floor on Linux", () => {
   assert.deepEqual(
     readRuntimeGlibcVersion({ header: { glibcVersionRuntime: "2.41" } }),
     { major: 2, minor: 41 },
+  );
+});
+
+test("a static musl build names no interpreter and needs no shared library", () => {
+  // A plain static executable and a static PIE both count; `file` spells them
+  // "statically linked" and "static-pie linked" respectively.
+  assert.equal(
+    isStaticElfReport(
+      "ELF 64-bit LSB pie executable, x86-64, version 1 (GNU/Linux), static-pie linked, BuildID[sha1]=d7e50bd5, for GNU/Linux 3.2.0, not stripped",
+    ),
+    true,
+  );
+  assert.equal(
+    isStaticElfReport(
+      "ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped",
+    ),
+    true,
+  );
+  assert.equal(
+    isStaticElfReport(
+      "ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, for GNU/Linux 3.7.0, with debug_info, not stripped",
+    ),
+    false,
+  );
+  // A static-PIE keeps a dynamic section for self-relocation but never asks
+  // the loader for a library.
+  assert.equal(
+    resolvesNoSharedLibrary(
+      [
+        "Dynamic section at offset 0xaed88 contains 22 entries:",
+        "  0x0000000000000019 (INIT_ARRAY)         0xac530",
+        "",
+      ].join("\n"),
+    ),
+    true,
+  );
+  assert.equal(
+    resolvesNoSharedLibrary(
+      [
+        "Dynamic section at offset 0x1a2b8 contains 27 entries:",
+        "  0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]",
+        "",
+      ].join("\n"),
+    ),
+    false,
   );
 });

@@ -1,0 +1,202 @@
+name: Hotfix pi-host bundle
+
+# Temporary packaging lane for a `hotfix-*` branch: it builds the static
+# host-core, assembles the Linux `pi-host` bundle, and uploads the archive with
+# its checksum so one machine can be fixed without waiting for a tag. Publishing
+# stays with `.github/workflows/release.yml`; this workflow only produces
+# downloadable artifacts.
+
+on:
+  push:
+    branches: ['hotfix-*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hotfix-pi-host-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bundle:
+    name: Bundle pi-host (linux ${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            os: ubuntu-22.04
+            runner_arch: x86_64
+            target: x86_64-unknown-linux-musl
+          - arch: arm64
+            os: ubuntu-22.04-arm
+            runner_arch: aarch64
+            target: aarch64-unknown-linux-musl
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify native runner architecture
+        run: |
+          set -euo pipefail
+          actual_arch="$(uname -m)"
+          expected_arch="${{ matrix.runner_arch }}"
+          if [ "$actual_arch" != "$expected_arch" ]; then
+            echo "::error::Expected $expected_arch runner, got $actual_arch."
+            exit 1
+          fi
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install the musl C toolchain
+        # mimalloc has a C source file. Use musl-gcc for that C compilation;
+        # leave Rust's linker at rustc's bundled, self-contained musl linker.
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y musl-tools
+
+      - name: Build static host-core
+        run: |
+          set -uo pipefail
+          status=0
+          CC=musl-gcc cargo build --release --locked -p host-core --target "${{ matrix.target }}" 2>&1 | tee build.log || status="${PIPESTATUS[0]}"
+          if [ "$status" -ne 0 ]; then
+            tail -40 build.log
+            printf '::error title=cargo build::%s\n' "$(tail -c 1500 build.log | tr '\n' ' ')"
+            exit "$status"
+          fi
+
+      - name: Verify the binary is static and actually starts
+        # `readelf` proves the link; a real request proves the runtime. A broken
+        # link only shows up when the process runs, and EPIPE from an exiting
+        # child is how that reached the user the first time.
+        run: |
+          set -uo pipefail
+          binary="target/${{ matrix.target }}/release/pi-desktop-host-core"
+          node scripts/check-linux-host-static.mjs "$binary"
+          data=$(mktemp -d)
+          out=$(
+            printf '%s\n' '{"jsonrpc":"2.0","id":"1","method":"app.handshake","params":{"protocolVersion":1}}' \
+              | PI_DESKTOP_DATA_DIR="$data" timeout 30 "$binary" 2>&1
+          ); rc=$?
+          printf '%s\n' "$out" | head -20
+          if [ "$rc" -ne 0 ]; then
+            printf '::error title=host-core runtime::exited with %s\n' "$rc"
+            exit 1
+          fi
+          if ! printf '%s' "$out" | grep -q '"jsonrpc"'; then
+            printf '::error title=host-core runtime::no JSON-RPC reply to app.handshake\n'
+            exit 1
+          fi
+          echo "host-core answered app.handshake"
+
+      - name: Assemble the pi-host bundle
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm build:js
+          pnpm --filter @pi-desktop/agent-runtime bundle
+          pnpm --filter @pi-desktop/pi-host build
+          node apps/pi-host/scripts/bundle.mjs \
+            --platform linux \
+            --arch ${{ matrix.arch }} \
+            --host-core "target/${{ matrix.target }}/release/pi-desktop-host-core"
+
+      - name: Smoke-test the packaged pi-host startup
+        # Exercise the same entry point used by remote setup. Pairing tokens
+        # are present only in the private temp file and are always redacted.
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./apps/pi-host/package.json').version")"
+          bundle="apps/pi-host/dist-bundle/pi-host-${version}-linux-${{ matrix.arch }}"
+          data=$(mktemp -d)
+          stdout="$data/pi-host.stdout"
+          stderr="$data/pi-host.stderr"
+          PI_DESKTOP_DATA_DIR="$data/state" "$bundle/bin/pi-host" --port 0 --pair >"$stdout" 2>"$stderr" &
+          host_pid=$!
+          cleanup() {
+            if (( host_pid > 0 )); then
+              kill -TERM "$host_pid" 2>/dev/null || true
+              wait "$host_pid" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+          deadline=$((SECONDS + 30))
+          while (( SECONDS < deadline )); do
+            if grep -q '^PI_HOST_READY ' "$stdout" && grep -q '^PI_HOST_PAIRING_TOKEN ' "$stdout"; then
+              sed 's/^PI_HOST_PAIRING_TOKEN .*/PI_HOST_PAIRING_TOKEN <redacted>/' "$stdout"
+              echo "packaged pi-host printed ready and pairing output"
+              exit 0
+            fi
+            state="$(ps -o stat= -p "$host_pid" 2>/dev/null || true)"
+            if [[ -z "$state" || "$state" == Z* ]]; then
+              wait "$host_pid" 2>/dev/null || true
+              host_pid=0
+              sed 's/^PI_HOST_PAIRING_TOKEN .*/PI_HOST_PAIRING_TOKEN <redacted>/' "$stdout" || true
+              cat "$stderr"
+              echo "::error::packaged pi-host exited before ready and pairing output"
+              exit 1
+            fi
+            sleep 0.2
+          done
+          sed 's/^PI_HOST_PAIRING_TOKEN .*/PI_HOST_PAIRING_TOKEN <redacted>/' "$stdout" || true
+          cat "$stderr"
+          echo "::error::packaged pi-host timed out before ready and pairing output"
+          exit 1
+
+      - name: Archive the bundle with its checksum
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./apps/pi-host/package.json').version")"
+          name="pi-host-${version}-linux-${{ matrix.arch }}"
+          out=apps/pi-host/dist-bundle
+          if [ ! -d "$out/$name" ]; then
+            echo "::error::expected the bundle directory $out/$name"
+            ls -la "$out" || true
+            exit 1
+          fi
+          tar -czf "$out/${name}.tar.gz" -C "$out" "$name"
+          ( cd "$out" && sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256" )
+          cat "$out/${name}.tar.gz.sha256"
+          {
+            echo "### Hotfix pi-host bundle (linux ${{ matrix.arch }})"
+            echo
+            echo '```'
+            cat "$out/${name}.tar.gz.sha256"
+            echo '```'
+            echo
+            echo "Size: $(du -h "$out/${name}.tar.gz" | cut -f1)"
+            echo
+            echo 'Install on the target machine, then start it with a pairing token:'
+            echo '```sh'
+            echo "tar -xzf ${name}.tar.gz"
+            echo "sh ${name}/install.sh"
+            echo "~/.pi-desktop/pi-host/current/bin/pi-host --port 0 --pair"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: pi-host-hotfix-linux-${{ matrix.arch }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            apps/pi-host/dist-bundle/pi-host-*-linux-${{ matrix.arch }}.tar.gz
+            apps/pi-host/dist-bundle/pi-host-*-linux-${{ matrix.arch }}.tar.gz.sha256

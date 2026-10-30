@@ -406,9 +406,92 @@ jobs:
             apps/desktop/release/*.blockmap
             apps/desktop/release/latest*.yml
 
+  host-core-musl:
+    name: Static host-core (musl, linux ${{ matrix.arch }})
+    # A remote machine runs this build, so it must not depend on that machine's
+    # glibc at all (ADR 0338). Both lanes build natively: musl-tools provides
+    # `musl-gcc` for the runner's own architecture.
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            os: ubuntu-22.04
+            runner_arch: x86_64
+            target: x86_64-unknown-linux-musl
+          - arch: arm64
+            os: ubuntu-22.04-arm
+            runner_arch: aarch64
+            target: aarch64-unknown-linux-musl
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify native runner architecture
+        run: |
+          set -euo pipefail
+          actual_arch="$(uname -m)"
+          expected_arch="${{ matrix.runner_arch }}"
+          if [ "$actual_arch" != "$expected_arch" ]; then
+            echo "::error::Expected $expected_arch runner, got $actual_arch."
+            exit 1
+          fi
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install the musl C toolchain
+        # mimalloc has a C source file; use musl-gcc only for C compilation.
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y musl-tools
+
+      - name: Build static host-core
+        # mimalloc is C code, so it needs the native musl compiler. Do not set
+        # the Rust linker: rustc's bundled self-contained musl linker is what
+        # produces the runnable static binary.
+        run: CC=musl-gcc cargo build --release --locked -p host-core --target ${{ matrix.target }}
+
+      - name: Run the host-core RPC smoke test
+        run: |
+          set -uo pipefail
+          binary="target/${{ matrix.target }}/release/pi-desktop-host-core"
+          data=$(mktemp -d)
+          out=$(
+            printf '%s\n' '{"jsonrpc":"2.0","id":"1","method":"app.handshake","params":{"protocolVersion":1}}' \
+              | PI_DESKTOP_DATA_DIR="$data" timeout 30 "$binary" 2>&1
+          ); rc=$?
+          printf '%s\n' "$out" | head -20
+          if [ "$rc" -ne 0 ] || ! printf '%s' "$out" | grep -q '"jsonrpc"'; then
+            echo "::error::host-core did not answer app.handshake (exit $rc)"
+            exit 1
+          fi
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Verify the binary is static
+        run: node scripts/check-linux-host-static.mjs target/${{ matrix.target }}/release/pi-desktop-host-core
+
+      - name: Upload the static host-core
+        uses: actions/upload-artifact@v7
+        with:
+          name: host-core-linux-${{ matrix.arch }}-musl
+          if-no-files-found: error
+          retention-days: 7
+          path: target/${{ matrix.target }}/release/pi-desktop-host-core
+
   pi-host-bundle:
     name: Bundle pi-host (Linux ${{ matrix.arch }})
-    needs: verify
+    needs: [verify, host-core-musl]
     strategy:
       fail-fast: false
       matrix:
@@ -459,33 +542,25 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: Swatinem/rust-cache@v2
-
-      - name: Build inputs (host-core, workspace, sidecar bundle)
+      - name: Build inputs (workspace, sidecar bundle)
         run: |
           set -euo pipefail
-          # Ubuntu 22.04 keeps the host-core glibc floor at 2.35, matching the
-          # desktop Linux build so the bundled binary loads on the same distros.
-          cargo build --release --locked -p host-core &
-          host_build_pid=$!
-          trap 'kill "$host_build_pid" 2>/dev/null || true' EXIT
-
           pnpm install --frozen-lockfile
           pnpm build:js
           pnpm --filter @pi-desktop/agent-runtime bundle
           pnpm --filter @pi-desktop/pi-host build
 
-          wait "$host_build_pid"
-          trap - EXIT
+      - name: Download the static host-core
+        uses: actions/download-artifact@v8
+        with:
+          name: host-core-linux-${{ matrix.arch }}-musl
+          path: target/musl-host-core
 
-      - name: Verify host-core glibc floor
-        run: node scripts/check-linux-host-glibc.mjs target/release/pi-desktop-host-core
+      - name: Verify the bundled host-core is static
+        run: node scripts/check-linux-host-static.mjs target/musl-host-core/pi-desktop-host-core
 
       - name: Assemble pi-host bundle
-        run: node apps/pi-host/scripts/bundle.mjs --platform linux --arch ${{ matrix.arch }}
+        run: node apps/pi-host/scripts/bundle.mjs --platform linux --arch ${{ matrix.arch }} --host-core target/musl-host-core/pi-desktop-host-core
 
       - name: Archive bundle with checksum
         run: |

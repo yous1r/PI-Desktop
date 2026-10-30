@@ -3,6 +3,11 @@
  * glibc can load that binary; older distros fail with
  * `version 'GLIBC_2.xx' not found`. Detect the floor before spawn so the
  * UI can name supported releases instead of looping restarts.
+ *
+ * The remote `pi-host` bundle is not subject to that floor: it ships a
+ * statically linked musl host-core (ADR 0338), and the predicate pair at the
+ * bottom of this module is what `scripts/check-linux-host-static.mjs` uses to
+ * refuse a dynamic build before it reaches a bundle.
  */
 
 export const MIN_LINUX_GLIBC = { major: 2, minor: 35 } as const;
@@ -60,6 +65,32 @@ export function maxNeededGlibc(text: string): GlibcVersion | null {
 export function hostGlibcWithinFloor(needed: GlibcVersion | null): boolean {
   if (!needed) return true;
   return glibcAtLeast(MIN_LINUX_GLIBC, needed);
+}
+
+/**
+ * `file(1)` report for a binary that needs no loader to start. Both spellings
+ * count: `statically linked` for a plain static executable and `static-pie
+ * linked`, which a static position-independent build reports. A dynamic one
+ * names an interpreter instead, and that is the glibc dependency the remote
+ * `pi-host` bundle must not have (ADR 0338).
+ */
+export function isStaticElfReport(output: string): boolean {
+  const text = String(output);
+  return (
+    /\b(?:statically|static-pie) linked\b/i.test(text) &&
+    !/dynamically linked/i.test(text) &&
+    !/\binterpreter\b/i.test(text)
+  );
+}
+
+/**
+ * `readelf -d` proves nothing is resolved at load time when no `NEEDED` entry
+ * asks for a shared library. A static executable has no dynamic section at all
+ * and a static PIE keeps one for self-relocation, so the absence of `NEEDED` is
+ * the property that actually matters for the bundle.
+ */
+export function resolvesNoSharedLibrary(output: string): boolean {
+  return !/\(NEEDED\)/.test(String(output));
 }
 
 type ProcessReport = { header?: { glibcVersionRuntime?: unknown } };
