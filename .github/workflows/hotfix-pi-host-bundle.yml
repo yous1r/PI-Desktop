@@ -68,19 +68,20 @@ jobs:
         run: |
           set -uo pipefail
           status=0
-          cargo build --release --locked -p host-core --target ${{ matrix.target }} 2>&1 | tee build.log || status=${PIPESTATUS[0]}
-          if [ "$status" -ne 0 ]; then
+          cargo build --release --locked -p host-core --target "${{ matrix.target }}" 2>&1 | tee build.log || status="${PIPESTATUS[0]}"
           if [ "$status" -ne 0 ]; then
             tail -40 build.log
             printf '::error title=cargo build::%s\n' "$(tail -c 1500 build.log | tr '\n' ' ')"
             exit "$status"
           fi
+
+      - name: Verify the binary is static and actually starts
         # `readelf` proves the link; a real request proves the runtime. A broken
         # link only shows up when the process runs, and EPIPE from an exiting
         # child is how that reached the user the first time.
         run: |
           set -uo pipefail
-          binary=target/${{ matrix.target }}/release/pi-desktop-host-core
+          binary="target/${{ matrix.target }}/release/pi-desktop-host-core"
           node scripts/check-linux-host-static.mjs "$binary"
           data=$(mktemp -d)
           out=$(
@@ -108,7 +109,7 @@ jobs:
           node apps/pi-host/scripts/bundle.mjs \
             --platform linux \
             --arch ${{ matrix.arch }} \
-            --host-core target/${{ matrix.target }}/release/pi-desktop-host-core
+            --host-core "target/${{ matrix.target }}/release/pi-desktop-host-core"
 
       - name: Archive the bundle with its checksum
         run: |
