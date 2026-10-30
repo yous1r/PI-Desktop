@@ -40,14 +40,17 @@ error path named glibc.
    `x86_64-unknown-linux-musl` / `aarch64-unknown-linux-musl` and statically
    linked (`-C target-feature=+crt-static`). `.cargo/config.toml` pins the
    linker for both targets, so the build stays one `cargo build --target` call.
+   Rust emits a static PIE for these targets, so `file(1)` reports
+   `static-pie linked` rather than `statically linked`.
 2. A dedicated release job (`host-core-musl`) builds both architectures on
    native runners and uploads the binary; `pi-host-bundle` consumes that
    artifact through `bundle.mjs --host-core` and no longer compiles Rust.
 3. `scripts/check-linux-host-static.mjs` fails a binary that `file(1)` calls
-   dynamically linked, that `readelf -d` reports a dynamic section for, or that
-  imports any `GLIBC_*` symbol. The release lane, the path-filtered
-  `Host-core static build` workflow and a musl-only smoke run all execute it,
-  so a dynamic build fails on the change that introduces it.
+   dynamically linked or that names an interpreter, that `readelf -d` shows
+   resolving a shared library, or that imports any `GLIBC_*` symbol. The
+   release lane, the path-filtered `Host-core static build` workflow and a
+   musl-only smoke run all execute it, so a dynamic build fails on the change
+   that introduces it.
 4. The desktop's own Linux package keeps the glibc 2.35 build. Its floor is
    Electron's, its JIT and GPU paths cannot live in a static musl process, and
    its local host-core is already bound to that floor.

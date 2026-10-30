@@ -8,13 +8,13 @@ import {
   formatGlibcVersion,
   glibcAtLeast,
   glibcMissingSymbol,
-  hasNoDynamicSection,
   hostGlibcWithinFloor,
   isGlibcUnsupportedError,
   isStaticElfReport,
   maxNeededGlibc,
   parseGlibcVersion,
   readRuntimeGlibcVersion,
+  resolvesNoSharedLibrary,
 } from "../electron/main/linux-glibc.ts";
 
 test("glibc 2.35 is the packaged Linux floor", () => {
@@ -90,7 +90,15 @@ test("assertLinuxGlibcSupported throws only below the floor on Linux", () => {
   );
 });
 
-test("a static musl build imports nothing and names no interpreter", () => {
+test("a static musl build names no interpreter and needs no shared library", () => {
+  // The Rust musl target emits a static PIE, so `file` says "static-pie
+  // linked" rather than "statically linked"; both forms must pass.
+  assert.equal(
+    isStaticElfReport(
+      "ELF 64-bit LSB pie executable, x86-64, version 1 (GNU/Linux), static-pie linked, BuildID[sha1]=d7e50bd5, for GNU/Linux 3.2.0, not stripped",
+    ),
+    true,
+  );
   assert.equal(
     isStaticElfReport(
       "ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped",
@@ -103,12 +111,20 @@ test("a static musl build imports nothing and names no interpreter", () => {
     ),
     false,
   );
+  // A static-PIE keeps a dynamic section for self-relocation but never asks
+  // the loader for a library.
   assert.equal(
-    hasNoDynamicSection("There is no dynamic section in this file.\n"),
+    resolvesNoSharedLibrary(
+      [
+        "Dynamic section at offset 0xaed88 contains 22 entries:",
+        "  0x0000000000000019 (INIT_ARRAY)         0xac530",
+        "",
+      ].join("\n"),
+    ),
     true,
   );
   assert.equal(
-    hasNoDynamicSection(
+    resolvesNoSharedLibrary(
       [
         "Dynamic section at offset 0x1a2b8 contains 27 entries:",
         "  0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]",

@@ -75,7 +75,7 @@ jobs:
           status=0
           timeout 20 ./target/x86_64-unknown-linux-musl/release/pi-desktop-host-core </dev/null >"$log" 2>&1 || status=$?
           cat "$log"
-          if grep -Eq 'not found|GLIBC|error while loading' "$log"; then
+          if grep -Eq 'error while loading shared libraries|GLIBC_[0-9]' "$log"; then
             echo "static host-core could not load under musl" >&2
             exit 1
           fi

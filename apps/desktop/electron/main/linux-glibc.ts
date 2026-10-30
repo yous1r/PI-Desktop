@@ -68,23 +68,29 @@ export function hostGlibcWithinFloor(needed: GlibcVersion | null): boolean {
 }
 
 /**
- * `file(1)` report for a fully static executable. A dynamic or PIE binary names
- * an interpreter and so reintroduces a glibc floor on the machine that runs it,
- * which is exactly what the remote `pi-host` bundle must not have (ADR 0338).
+ * `file(1)` report for a binary that needs no loader to start. Two spellings
+ * count: `statically linked` for a plain static executable and `static-pie
+ * linked` for the static position-independent form Rust's musl targets emit by
+ * default. Either way a dynamic one names an interpreter, which is the glibc
+ * dependency the remote `pi-host` bundle must not have (ADR 0338).
  */
 export function isStaticElfReport(output: string): boolean {
   const text = String(output);
   return (
-    /\bstatically linked\b/i.test(text) &&
+    /\b(?:statically|static-pie) linked\b/i.test(text) &&
     !/dynamically linked/i.test(text) &&
     !/\binterpreter\b/i.test(text)
   );
 }
 
-/** `readelf -d` on a static executable has no dynamic section to resolve. */
-export function hasNoDynamicSection(output: string): boolean {
-  const text = String(output);
-  return /There is no dynamic section/i.test(text) && !/\(NEEDED\)/.test(text);
+/**
+ * `readelf -d` proves nothing is resolved at load time when no `NEEDED` entry
+ * asks for a shared library. A static executable has no dynamic section at all
+ * and a static-PIE has one for self-relocation, so the absence of `NEEDED` is
+ * the property that actually matters for the bundle.
+ */
+export function resolvesNoSharedLibrary(output: string): boolean {
+  return !/\(NEEDED\)/.test(String(output));
 }
 
 type ProcessReport = { header?: { glibcVersionRuntime?: unknown } };

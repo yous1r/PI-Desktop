@@ -17,9 +17,9 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
-  hasNoDynamicSection,
   isStaticElfReport,
   maxNeededGlibc,
+  resolvesNoSharedLibrary,
 } from "../apps/desktop/electron/main/linux-glibc.ts";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
@@ -38,8 +38,8 @@ if (!existsSync(binary)) {
 
 /**
  * Both binutils commands report some outcomes on stderr and still exit
- * non-zero, and a static binary legitimately has no dynamic section or dynamic
- * symbol table to print. Only a command that cannot run at all is an error.
+ * non-zero, and a static binary legitimately has no dynamic symbol table to
+ * print. Only a command that cannot run at all is an error.
  */
 function inspect(tool, args) {
   const result = spawnSync(tool, args, {
@@ -67,13 +67,19 @@ if (!isStaticElfReport(fileReport)) {
 }
 
 const dynamicReport = inspect("readelf", ["-d", binary]);
-if (!hasNoDynamicSection(dynamicReport)) {
+if (!/dynamic section/i.test(dynamicReport)) {
+  console.error(
+    `${binary} produced no readable dynamic-section report:\n${dynamicReport.trim()}`,
+  );
+  process.exit(1);
+}
+if (!resolvesNoSharedLibrary(dynamicReport)) {
   const needed = dynamicReport
     .split(/\r?\n/)
     .filter((line) => line.includes("(NEEDED)"))
     .map((line) => line.trim());
   console.error(
-    `${binary} still resolves dynamic dependencies${needed.length ? `: ${needed.join(", ")}` : ""}`,
+    `${binary} still resolves shared libraries: ${needed.join(", ")}`,
   );
   process.exit(1);
 }
@@ -87,4 +93,4 @@ if (neededGlibc) {
   process.exit(1);
 }
 
-console.log(`${binary} is statically linked with no glibc dependency`);
+console.log(`${binary} is statically linked with no shared-library dependency`);
