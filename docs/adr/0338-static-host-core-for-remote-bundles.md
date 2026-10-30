@@ -49,9 +49,9 @@ error path named glibc.
 3. `scripts/check-linux-host-static.mjs` fails a binary that `file(1)` calls
    dynamically linked or that names an interpreter, that `readelf -d` shows
    resolving a shared library, or that imports any `GLIBC_*` symbol. The
-   release lane, the path-filtered `Host-core static build` workflow and a
-   musl-only smoke run all execute it, so a dynamic build fails on the change
-   that introduces it.
+   release lane, the `Hotfix pi-host bundle` workflow (a `hotfix-*` branch push,
+   which also packages the archive) and a musl-only smoke run all execute it, so
+   a dynamic build fails before it reaches a machine.
 4. The desktop's own Linux package keeps the glibc 2.35 build. Its floor is
    Electron's, its JIT and GPU paths cannot live in a static musl process, and
    its local host-core is already bound to that floor.
