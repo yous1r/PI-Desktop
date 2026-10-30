@@ -64,49 +64,54 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install the musl toolchain
+      - name: Probe link configurations
+        # Temporary diagnostic: only a configuration whose binary actually runs
+        # is usable. A static link that segfaults in libc init looks identical
+        # to a good one in `file` output, so each candidate is executed.
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y musl-tools
+          set -uo pipefail
+          work=$(mktemp -d)
+          printf 'fn main(){println!("alive");}\n' > "$work/main.rs"
+          probe() {
+            label="$1"; shift
+            if rustc -O --target "${{ matrix.target }}" "$@" "$work/main.rs" -o "$work/$label" 2>"$work/$label.err"; then
+              kind=$(file -b "$work/$label")
+              runout=$("$work/$label" 2>&1); runrc=$?
+              printf '::error title=probe %s::file= %s || run rc=%s out=%s\n' "$label" "$kind" "$runrc" "$(printf '%s' "$runout" | head -c 160 | tr '\n' ' ')"
+            else
+              printf '::error title=probe %s BUILD-FAILED::%s\n' "$label" "$(tail -3 "$work/$label.err" | tr '\n' ' ')"
+            fi
+          }
+          probe P1_default
+          probe P2_link_static -C link-args=-static
+          probe P3_lld_selfcontained -C linker-features=-lld -C link-args=-static
 
       - name: Build static host-core
-        # .cargo/config.toml already pins musl-gcc and the static link for this
-        # target, so the plain target build is what the bundle ships.
         run: cargo build --release --locked -p host-core --target ${{ matrix.target }}
 
-      - name: Verify the binary resolves nothing dynamically
-        # A failure here has to be readable without the job log, so the reported
-        # reason and the raw ELF report both become annotations.
+      - name: Verify the binary is static and actually starts
+        # `readelf` proves the link; a real request proves the runtime. A broken
+        # link only shows up when the process runs, and EPIPE from an exiting
+        # child is how that reached the user the first time.
         run: |
           set -uo pipefail
           binary=target/${{ matrix.target }}/release/pi-desktop-host-core
-          status=0
-          out=$(node scripts/check-linux-host-static.mjs "$binary" 2>&1) || status=$?
-          printf '%s\n' "$out"
-          if [ "$status" -ne 0 ]; then
-            printf '::error title=static check::%s\n' "$(printf '%s' "$out" | head -c 1500 | tr '\n' ' ')"
-            printf '::error title=file::%s\n' "$(file -b "$binary" 2>&1 | tr '\n' ' ')"
+          node scripts/check-linux-host-static.mjs "$binary"
+          data=$(mktemp -d)
+          out=$(
+            printf '%s\n' '{"jsonrpc":"2.0","id":"1","method":"app.handshake","params":{"protocolVersion":1}}' \
+              | PI_DESKTOP_DATA_DIR="$data" timeout 30 "$binary" 2>&1
+          ); rc=$?
+          printf '%s\n' "$out" | head -20
+          if [ "$rc" -ne 0 ]; then
+            printf '::error title=host-core runtime::exited with %s\n' "$rc"
             exit 1
           fi
-
-      - name: Start the static binary where no glibc exists
-        # readelf proves the link; only a machine without glibc proves the
-        # process. This covers host-core alone: the bundle's Node runtime keeps
-        # Node's own requirement, so musl-only distributions stay unsupported.
-        run: |
-          set -euo pipefail
-          docker run --rm -i --volume "$PWD:/work:ro" --workdir /work alpine:3.20 sh -s <<'SMOKE'
-          set -u
-          log=$(mktemp)
-          status=0
-          timeout 20 ./target/${{ matrix.target }}/release/pi-desktop-host-core </dev/null >"$log" 2>&1 || status=$?
-          cat "$log"
-          if grep -Eq 'error while loading shared libraries|GLIBC_[0-9]' "$log"; then
-            echo "static host-core could not load under musl" >&2
+          if ! printf '%s' "$out" | grep -q '"jsonrpc"'; then
+            printf '::error title=host-core runtime::no JSON-RPC reply to app.handshake\n'
             exit 1
           fi
-          echo "static host-core started under musl (exit $status)"
-          SMOKE
+          echo "host-core answered app.handshake"
 
       - name: Assemble the pi-host bundle
         run: |
