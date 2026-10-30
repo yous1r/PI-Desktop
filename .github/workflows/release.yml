@@ -85,63 +85,23 @@ jobs:
   build:
     name: Build ${{ matrix.name }}
     needs: verify
-    # Only the desktop platforms named in the repository variable
-    # RELEASE_PLATFORMS are built. Unset means Windows only: a fork without
-    # Apple Developer ID credentials cannot finish the signed macOS lane, and
-    # one failing matrix row fails `build`, which then skips `publish` and every
-    # other platform's assets with it. Set RELEASE_PLATFORMS to
-    # `windows,linux,macos` to restore the full matrix.
-    if: ${{ contains(format(',{0},', vars.RELEASE_PLATFORMS || 'windows'), format(',{0},', matrix.platform)) }}
+    # The desktop rows come from the repository variable RELEASE_MATRIX, which
+    # defaults to Windows x64 alone. A fork without Apple Developer ID
+    # credentials cannot finish the signed macOS lane, and one failing matrix row
+    # fails `build` — which then skips `publish` and every other platform's
+    # assets with it. Provide a JSON array to build more:
+    #   [{"name":"Windows x64","os":"windows-latest","arch":"x64",
+    #     "artifact":"windows-x64","platform":"windows","dist":"dist:win"}, ...]
     env:
       # Tag pushes always sign. workflow_dispatch signs unless explicitly disabled.
       MACOS_SIGN_RELEASE: ${{ github.event_name != 'workflow_dispatch' || inputs.sign_macos == true }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: macOS arm64
-            os: macos-15
-            arch: arm64
-            runner_arch: arm64
-            artifact: mac-arm64
-            platform: macos
-            dist: dist:mac
-          - name: macOS Intel x64
-            os: macos-15-intel
-            arch: x64
-            runner_arch: x86_64
-            artifact: mac-x64
-            platform: macos
-            dist: dist:mac
-          - name: Windows x64
-            os: windows-latest
-            arch: x64
-            artifact: windows-x64
-            platform: windows
-            dist: dist:win
-          - name: Linux x64
-            # Ubuntu 22.04 keeps host-core at glibc 2.35 so Ubuntu 22.04,
-            # Debian 12, and Fedora 36+ can load the binary. ubuntu-latest
-            # (24.04) would raise the floor to 2.39.
-            os: ubuntu-22.04
-            arch: x64
-            runner_arch: x86_64
-            artifact: linux-x64
-            platform: linux
-            feed: latest-linux.yml
-            dist: dist:linux
-          - name: Linux arm64
-            # GitHub's native arm64 runner packages the Electron app and the
-            # host-core sidecar at the same architecture; the `-arm` image
-            # keeps the glibc 2.35 floor the x64 lane documents
-            # (ubuntu-24.04-arm would raise it to 2.39).
-            os: ubuntu-22.04-arm
-            arch: arm64
-            runner_arch: aarch64
-            artifact: linux-arm64
-            platform: linux
-            feed: latest-linux-arm64.yml
-            dist: dist:linux
+        # Default: Windows x64 only. Supply a JSON array in RELEASE_MATRIX to
+        # build more rows; each row needs name, os, arch, artifact, platform and
+        # dist, plus runner_arch and feed where the original rows had them.
+        include: ${{ fromJSON(vars.RELEASE_MATRIX || '[{"name":"Windows x64","os":"windows-latest","arch":"x64","artifact":"windows-x64","platform":"windows","dist":"dist:win"}]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     defaults:
@@ -612,8 +572,8 @@ jobs:
         run: ls -la dist/
 
       - name: Merge macOS updater metadata
-        # There are no macOS feeds to merge unless the macOS lanes ran.
-        if: ${{ contains(format(',{0},', vars.RELEASE_PLATFORMS || 'windows'), ',macos,') }}
+        # No macOS feeds exist unless the macOS rows were part of the matrix.
+        if: ${{ contains(vars.RELEASE_MATRIX || '', '"platform":"macos"') }}
         working-directory: dist
         run: |
           set -euo pipefail
