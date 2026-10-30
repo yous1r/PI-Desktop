@@ -31,8 +31,16 @@ const binary = path.resolve(
     ),
 );
 
-if (!existsSync(binary)) {
-  console.error(`host-core binary not found: ${binary}`);
+/**
+ * Report through a workflow annotation as well, so the reason is readable from
+ * the checks API without opening the job log.
+ */
+function fail(message) {
+  console.error(message);
+  if (process.env.GITHUB_ACTIONS) {
+    const oneLine = message.replace(/\r?\n/g, " | ");
+    process.stdout.write(`::error::${oneLine}\n`);
+  }
   process.exit(1);
 }
 
@@ -48,49 +56,47 @@ function inspect(tool, args) {
     stdio: ["ignore", "pipe", "pipe"],
   });
   if (result.error) {
-    console.error(
-      `${tool} could not be run: ${result.error.message}\n` +
-        "Install binutils before verifying the bundle's host-core.",
+    fail(
+      `${tool} could not be run: ${result.error.message} | Install binutils before verifying the bundle's host-core.`,
     );
-    process.exit(1);
   }
   return `${result.stdout ?? ""}${result.stderr ?? ""}`;
 }
 
+if (!existsSync(binary)) {
+  fail(`host-core binary not found: ${binary}`);
+}
+
 const fileReport = inspect("file", ["-b", binary]);
 if (!isStaticElfReport(fileReport)) {
-  console.error(
-    `${binary} is not statically linked: ${fileReport.trim()}\n` +
-      "Build it with --target x86_64-unknown-linux-musl (or the matching aarch64 target).",
+  fail(
+    `${binary} is not statically linked: ${fileReport.trim()} | Build it with --target x86_64-unknown-linux-musl (or the matching aarch64 target).`,
   );
-  process.exit(1);
 }
 
 const dynamicReport = inspect("readelf", ["-d", binary]);
 if (!/dynamic section/i.test(dynamicReport)) {
-  console.error(
-    `${binary} produced no readable dynamic-section report:\n${dynamicReport.trim()}`,
+  fail(
+    `${binary} produced no readable dynamic-section report: ${dynamicReport.trim()}`,
   );
-  process.exit(1);
 }
 if (!resolvesNoSharedLibrary(dynamicReport)) {
   const needed = dynamicReport
     .split(/\r?\n/)
     .filter((line) => line.includes("(NEEDED)"))
-    .map((line) => line.trim());
-  console.error(
-    `${binary} still resolves shared libraries: ${needed.join(", ")}`,
-  );
-  process.exit(1);
+    .map((line) => line.trim())
+    .join(", ");
+  fail(`${binary} still resolves shared libraries: ${needed}`);
 }
 
 const symbolReport = inspect("readelf", ["-W", "--dyn-syms", binary]);
 const neededGlibc = maxNeededGlibc(symbolReport);
 if (neededGlibc) {
-  console.error(
+  fail(
     `${binary} still imports glibc symbols up to GLIBC_${neededGlibc.major}.${neededGlibc.minor}; a static musl build must import none.`,
   );
-  process.exit(1);
 }
 
-console.log(`${binary} is statically linked with no shared-library dependency`);
+console.log(
+  `${binary} is statically linked with no shared-library dependency | ${fileReport.trim()}`,
+);
