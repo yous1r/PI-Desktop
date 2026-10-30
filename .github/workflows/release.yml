@@ -85,6 +85,13 @@ jobs:
   build:
     name: Build ${{ matrix.name }}
     needs: verify
+    # Only the desktop platforms named in the repository variable
+    # RELEASE_PLATFORMS are built. Unset means Windows only: a fork without
+    # Apple Developer ID credentials cannot finish the signed macOS lane, and
+    # one failing matrix row fails `build`, which then skips `publish` and every
+    # other platform's assets with it. Set RELEASE_PLATFORMS to
+    # `windows,linux,macos` to restore the full matrix.
+    if: ${{ contains(format(',{0},', vars.RELEASE_PLATFORMS || 'windows'), format(',{0},', matrix.platform)) }}
     env:
       # Tag pushes always sign. workflow_dispatch signs unless explicitly disabled.
       MACOS_SIGN_RELEASE: ${{ github.event_name != 'workflow_dispatch' || inputs.sign_macos == true }}
@@ -605,6 +612,8 @@ jobs:
         run: ls -la dist/
 
       - name: Merge macOS updater metadata
+        # There are no macOS feeds to merge unless the macOS lanes ran.
+        if: ${{ contains(format(',{0},', vars.RELEASE_PLATFORMS || 'windows'), ',macos,') }}
         working-directory: dist
         run: |
           set -euo pipefail
