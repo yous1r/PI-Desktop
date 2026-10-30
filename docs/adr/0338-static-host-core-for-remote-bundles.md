@@ -38,10 +38,11 @@ error path named glibc.
 
 1. The Linux `pi-host` bundle ships a host-core built for
    `x86_64-unknown-linux-musl` / `aarch64-unknown-linux-musl` and statically
-   linked (`-C target-feature=+crt-static`). `.cargo/config.toml` pins the
-   linker for both targets, so the build stays one `cargo build --target` call.
-   Rust emits a static PIE for these targets, so `file(1)` reports
-   `static-pie linked` rather than `statically linked`.
+   linked. `.cargo/config.toml` pins `musl-gcc` and `-C target-feature=+crt-static
+   -C link-args=-static` for both targets, so the build stays one `cargo build
+   --target` call. Both flags are needed: measured on the release runner, a musl
+   build defaults to a PIE that names `/lib/ld-musl-x86_64.so.1`, and
+   `+crt-static` on its own does not change the C link.
 2. A dedicated release job (`host-core-musl`) builds both architectures on
    native runners and uploads the binary; `pi-host-bundle` consumes that
    artifact through `bundle.mjs --host-core` and no longer compiles Rust.

@@ -61,26 +61,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y musl-tools
 
-      - name: Probe musl linkage options
-        # Temporary diagnostic: which rustc flags actually produce a static
-        # binary on this runner. Results arrive as annotations.
-        run: |
-          set -uo pipefail
-          work=$(mktemp -d)
-          printf 'fn main(){println!("hi");}\n' > "$work/main.rs"
-          probe() {
-            name=$1; shift
-            if rustc -O --target x86_64-unknown-linux-musl -C linker=musl-gcc "$@" "$work/main.rs" -o "$work/$name" 2>"$work/$name.err"; then
-              printf '::error title=probe %s::%s\n' "$name" "$(file -b "$work/$name" | tr '\n' ' ')"
-            else
-              printf '::error title=probe %s FAILED::%s\n' "$name" "$(tail -3 "$work/$name.err" | tr '\n' ' ')"
-            fi
-          }
-          probe A_default
-          probe B_crt -C target-feature=+crt-static
-          probe C_crt_linkstatic -C target-feature=+crt-static -C link-args=-static
-          probe D_linkstatic -C link-args=-static
-
       - name: Build static host-core
         # .cargo/config.toml already points this target at musl-gcc and the
         # static CRT, so the plain target build is what the bundle ships.

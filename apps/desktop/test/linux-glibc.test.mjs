@@ -91,8 +91,8 @@ test("assertLinuxGlibcSupported throws only below the floor on Linux", () => {
 });
 
 test("a static musl build names no interpreter and needs no shared library", () => {
-  // The Rust musl target emits a static PIE, so `file` says "static-pie
-  // linked" rather than "statically linked"; both forms must pass.
+  // A plain static executable and a static PIE both count; `file` spells them
+  // "statically linked" and "static-pie linked" respectively.
   assert.equal(
     isStaticElfReport(
       "ELF 64-bit LSB pie executable, x86-64, version 1 (GNU/Linux), static-pie linked, BuildID[sha1]=d7e50bd5, for GNU/Linux 3.2.0, not stripped",

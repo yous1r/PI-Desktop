@@ -3,14 +3,21 @@
 # Visual C++ Redistributable installation before the local service can boot.
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
+
 # The `pi-host` bundle a desktop installs over SSH ships a statically linked
 # host-core, so the remote machine needs no glibc for it at all (ADR 0338).
 # `musl-tools` provides `musl-gcc` for the runner's own architecture, which is
 # why both lanes build on a matching native runner instead of cross-linking.
+#
+# `+crt-static` alone is not enough on these targets: measured on the release
+# runner, a musl build defaults to a dynamic PIE that names
+# `/lib/ld-musl-x86_64.so.1`, and asking rustc for the static CRT changes
+# nothing about the C link. `-static` is what makes the artifact a plain static
+# executable, which is the property the bundle needs.
 [target.x86_64-unknown-linux-musl]
 linker = "musl-gcc"
-rustflags = ["-C", "target-feature=+crt-static"]
+rustflags = ["-C", "target-feature=+crt-static", "-C", "link-args=-static"]
 
 [target.aarch64-unknown-linux-musl]
 linker = "musl-gcc"
-rustflags = ["-C", "target-feature=+crt-static"]
+rustflags = ["-C", "target-feature=+crt-static", "-C", "link-args=-static"]
