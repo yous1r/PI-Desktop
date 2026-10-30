@@ -64,28 +64,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Probe link configurations
-        # Temporary diagnostic: only a configuration whose binary actually runs
-        # is usable. A static link that segfaults in libc init looks identical
-        # to a good one in `file` output, so each candidate is executed.
-        run: |
-          set -uo pipefail
-          work=$(mktemp -d)
-          printf 'fn main(){println!("alive");}\n' > "$work/main.rs"
-          probe() {
-            label="$1"; shift
-            if rustc -O --target "${{ matrix.target }}" "$@" "$work/main.rs" -o "$work/$label" 2>"$work/$label.err"; then
-              kind=$(file -b "$work/$label")
-              runout=$("$work/$label" 2>&1); runrc=$?
-              printf '::error title=probe %s::file= %s || run rc=%s out=%s\n' "$label" "$kind" "$runrc" "$(printf '%s' "$runout" | head -c 160 | tr '\n' ' ')"
-            else
-              printf '::error title=probe %s BUILD-FAILED::%s\n' "$label" "$(tail -3 "$work/$label.err" | tr '\n' ' ')"
-            fi
-          }
-          probe P1_default
-          probe P2_link_static -C link-args=-static
-          probe P3_lld_selfcontained -C linker-features=-lld -C link-args=-static
-
       - name: Build static host-core
         run: cargo build --release --locked -p host-core --target ${{ matrix.target }}
 

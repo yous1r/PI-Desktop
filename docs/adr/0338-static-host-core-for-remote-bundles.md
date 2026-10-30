@@ -37,15 +37,21 @@ error path named glibc.
 ## Decision
 
 1. The Linux `pi-host` bundle ships a host-core built for
-   `x86_64-unknown-linux-musl` / `aarch64-unknown-linux-musl` and statically
-   linked. `.cargo/config.toml` pins `musl-gcc` and `-C target-feature=+crt-static
-   -C link-args=-static` for both targets, so the build stays one `cargo build
-   --target` call. Both flags are needed: measured on the release runner, a musl
-   build defaults to a PIE that names `/lib/ld-musl-x86_64.so.1`, and
-   `+crt-static` on its own does not change the C link.
+   `x86_64-unknown-linux-musl` / `aarch64-unknown-linux-musl`. No linker or
+   rustflags entry is configured for those targets: rustc's bundled
+   self-contained musl already links them statically, as a static PIE on x64 and
+   a plain static executable on arm64.
+   Overriding the linker to the system `musl-gcc` was measured to produce a
+   binary that links and reports `statically linked` but segfaults inside libc
+   startup before `main`, so that override is deliberately absent.
 2. A dedicated release job (`host-core-musl`) builds both architectures on
    native runners and uploads the binary; `pi-host-bundle` consumes that
    artifact through `bundle.mjs --host-core` and no longer compiles Rust.
+3. `scripts/check-linux-host-static.mjs` fails a binary that `file(1)` calls
+   dynamically linked or that names an interpreter, that `readelf -d` shows
+   resolving a shared library, or that imports any `GLIBC_*` symbol. Because a
+   static report alone did not catch the broken link, every lane that ships the
+   binary also runs `app.handshake` against it and requires a JSON-RPC reply.
 3. `scripts/check-linux-host-static.mjs` fails a binary that `file(1)` calls
    dynamically linked or that names an interpreter, that `readelf -d` shows
    resolving a shared library, or that imports any `GLIBC_*` symbol. The
@@ -67,7 +73,8 @@ error path named glibc.
   extension and no NSS module, so nothing in its current surface depends on the
   dynamic loader. Name lookups use the local files only, which matters solely
   for users whose accounts live in a network directory.
-- The lanes gain a required `musl-tools` install on Ubuntu runners and roughly
-  four minutes of build time; the bundle grows by the static-link size delta.
-- A local `cargo build --target *-linux-musl` now needs `musl-gcc`. A plain
-  `cargo build` is unaffected and keeps using the host toolchain.
+- The musl lanes need no extra system package: rustc's bundled musl does the
+  static link, so `musl-tools` is not installed. The bundle grows by the
+  static-link size delta.
+- A static binary is a separate artifact from the desktop's glibc one, so the
+  two are built in different lanes from the same commit.

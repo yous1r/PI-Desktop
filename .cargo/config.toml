@@ -4,20 +4,13 @@
 [target.x86_64-pc-windows-msvc]
 rustflags = ["-C", "target-feature=+crt-static"]
 
-# The `pi-host` bundle a desktop installs over SSH ships a statically linked
-# host-core, so the remote machine needs no glibc for it at all (ADR 0338).
-# `musl-tools` provides `musl-gcc` for the runner's own architecture, which is
-# why both lanes build on a matching native runner instead of cross-linking.
+# The `pi-host` bundle a desktop installs on a remote machine ships a statically
+# linked musl host-core, so that machine needs no glibc for it at all (ADR 0338).
 #
-# `+crt-static` alone is not enough on these targets: measured on the release
-# runner, a musl build defaults to a dynamic PIE that names
-# `/lib/ld-musl-x86_64.so.1`, and asking rustc for the static CRT changes
-# nothing about the C link. `-static` is what makes the artifact a plain static
-# executable, which is the property the bundle needs.
-[target.x86_64-unknown-linux-musl]
-linker = "musl-gcc"
-rustflags = ["-C", "target-feature=+crt-static", "-C", "link-args=-static"]
-
-[target.aarch64-unknown-linux-musl]
-linker = "musl-gcc"
-rustflags = ["-C", "target-feature=+crt-static", "-C", "link-args=-static"]
+# No linker or rustflags entry is set for the musl targets on purpose. rustc's
+# bundled self-contained musl already links them statically, and pointing the
+# target at the system `musl-gcc` instead produced a binary that linked but
+# segfaulted inside libc startup before `main` ran: the measured result was
+# `segfault at 0` in `__init_libc` while walking the auxiliary vector. A static
+# ELF report does not catch that, so `scripts/check-linux-host-static.mjs` checks
+# the link and the packaging lane runs `app.handshake` against the binary.
