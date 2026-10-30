@@ -65,8 +65,16 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Build static host-core
-        run: cargo build --release --locked -p host-core --target ${{ matrix.target }}
-
+      - name: Build static host-core
+        run: |
+          set -uo pipefail
+          status=0
+          cargo build --release --locked -p host-core --target ${{ matrix.target }} 2>&1 | tee build.log || status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            grep -E '^(error|warning: unused)|^error\[' build.log | head -20 || true
+            printf '::error title=cargo build::%s\n' "$(grep -E '^error' -A3 build.log | head -c 1500 | tr '\n' ' ')"
+            exit "$status"
+          fi
       - name: Verify the binary is static and actually starts
         # `readelf` proves the link; a real request proves the runtime. A broken
         # link only shows up when the process runs, and EPIPE from an exiting
