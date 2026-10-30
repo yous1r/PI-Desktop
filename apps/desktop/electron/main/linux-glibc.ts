@@ -3,6 +3,11 @@
  * glibc can load that binary; older distros fail with
  * `version 'GLIBC_2.xx' not found`. Detect the floor before spawn so the
  * UI can name supported releases instead of looping restarts.
+ *
+ * The remote `pi-host` bundle is not subject to that floor: it ships a
+ * statically linked musl host-core (ADR 0338), and the predicate pair at the
+ * bottom of this module is what `scripts/check-linux-host-static.mjs` uses to
+ * refuse a dynamic build before it reaches a bundle.
  */
 
 export const MIN_LINUX_GLIBC = { major: 2, minor: 35 } as const;
@@ -60,6 +65,26 @@ export function maxNeededGlibc(text: string): GlibcVersion | null {
 export function hostGlibcWithinFloor(needed: GlibcVersion | null): boolean {
   if (!needed) return true;
   return glibcAtLeast(MIN_LINUX_GLIBC, needed);
+}
+
+/**
+ * `file(1)` report for a fully static executable. A dynamic or PIE binary names
+ * an interpreter and so reintroduces a glibc floor on the machine that runs it,
+ * which is exactly what the remote `pi-host` bundle must not have (ADR 0338).
+ */
+export function isStaticElfReport(output: string): boolean {
+  const text = String(output);
+  return (
+    /\bstatically linked\b/i.test(text) &&
+    !/dynamically linked/i.test(text) &&
+    !/\binterpreter\b/i.test(text)
+  );
+}
+
+/** `readelf -d` on a static executable has no dynamic section to resolve. */
+export function hasNoDynamicSection(output: string): boolean {
+  const text = String(output);
+  return /There is no dynamic section/i.test(text) && !/\(NEEDED\)/.test(text);
 }
 
 type ProcessReport = { header?: { glibcVersionRuntime?: unknown } };

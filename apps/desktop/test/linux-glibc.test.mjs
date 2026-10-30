@@ -8,8 +8,10 @@ import {
   formatGlibcVersion,
   glibcAtLeast,
   glibcMissingSymbol,
+  hasNoDynamicSection,
   hostGlibcWithinFloor,
   isGlibcUnsupportedError,
+  isStaticElfReport,
   maxNeededGlibc,
   parseGlibcVersion,
   readRuntimeGlibcVersion,
@@ -85,5 +87,34 @@ test("assertLinuxGlibcSupported throws only below the floor on Linux", () => {
   assert.deepEqual(
     readRuntimeGlibcVersion({ header: { glibcVersionRuntime: "2.41" } }),
     { major: 2, minor: 41 },
+  );
+});
+
+test("a static musl build imports nothing and names no interpreter", () => {
+  assert.equal(
+    isStaticElfReport(
+      "ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped",
+    ),
+    true,
+  );
+  assert.equal(
+    isStaticElfReport(
+      "ELF 64-bit LSB pie executable, ARM aarch64, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, for GNU/Linux 3.7.0, with debug_info, not stripped",
+    ),
+    false,
+  );
+  assert.equal(
+    hasNoDynamicSection("There is no dynamic section in this file.\n"),
+    true,
+  );
+  assert.equal(
+    hasNoDynamicSection(
+      [
+        "Dynamic section at offset 0x1a2b8 contains 27 entries:",
+        "  0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]",
+        "",
+      ].join("\n"),
+    ),
+    false,
   );
 });

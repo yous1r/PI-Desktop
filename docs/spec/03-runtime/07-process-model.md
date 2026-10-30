@@ -145,6 +145,13 @@ not a restart loop: the UI names those releases instead of "Can't reach the
 local service". The Linux tag job must not use a newer runner that would raise
 the needed glibc.
 
+The `pi-host` bundle a desktop installs on a remote machine is not subject to
+that floor: it carries a statically linked musl `host-core` (ADR 0338), so
+`host-core` itself needs no glibc there. Only the bundle's Node runtime keeps
+Node 24's own requirement, and a machine below that fails inside the bootstrap
+instead of at `host-core` startup. `scripts/check-linux-host-static.mjs` refuses
+a dynamically linked build in both the release lane and CI.
+
 Two more boot outcomes are named rather than left as a generic outage (D380):
 
 - **Downgraded build.** host-core refuses a data directory whose SQLite schema

@@ -99,6 +99,12 @@ Linux 打包的 host-core 在 Ubuntu 22.04 上构建，需要 glibc 2.35 或更�
 重启循环：界面会列出这些发行版，而不是只显示“无法连接本地服务”。Linux 标签
 作业不得换用会抬高所需 glibc 的更新 runner。
 
+桌面在远端机器上安装的 `pi-host` 包不受该下限约束：它携带静态链接的 musl
+`host-core`（ADR 0338），因此 `host-core` 本身不再要求该机器提供 glibc。只有包内
+的 Node 运行时仍受 Node 24 自身的要求约束，低于该要求的机器会在 bootstrap 阶段
+失败，而不是在 `host-core` 启动时失败。发布通道与 CI 均由
+`scripts/check-linux-host-static.mjs` 拒绝动态链接的构建。
+
 另有两种启动结果会被明确命名，而不是笼统地当作服务不可用（D380）：
 
 - **降级安装。** 当数据目录的 SQLite schema 比当前构建支持的更新时，host-core
