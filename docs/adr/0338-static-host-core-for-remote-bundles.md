@@ -40,10 +40,11 @@ error path named glibc.
    `x86_64-unknown-linux-musl` / `aarch64-unknown-linux-musl`. No linker or
    rustflags entry is configured for those targets: rustc's bundled
    self-contained musl already links them statically, as a static PIE on x64 and
-   a plain static executable on arm64.
-   Overriding the linker to the system `musl-gcc` was measured to produce a
-   binary that links and reports `statically linked` but segfaults inside libc
-   startup before `main`, so that override is deliberately absent.
+   a plain static executable on arm64. `musl-tools` supplies `musl-gcc` to build
+   mimalloc's C source; it is set as `CC`, not the Rust linker.
+   Overriding the Rust linker to the system `musl-gcc` was measured to produce
+   a binary that reports `statically linked` but segfaults inside libc startup
+   before `main`, so that override is deliberately absent.
 2. A dedicated release job (`host-core-musl`) builds both architectures on
    native runners and uploads the binary; `pi-host-bundle` consumes that
    artifact through `bundle.mjs --host-core` and no longer compiles Rust.
@@ -52,12 +53,6 @@ error path named glibc.
    resolving a shared library, or that imports any `GLIBC_*` symbol. Because a
    static report alone did not catch the broken link, every lane that ships the
    binary also runs `app.handshake` against it and requires a JSON-RPC reply.
-3. `scripts/check-linux-host-static.mjs` fails a binary that `file(1)` calls
-   dynamically linked or that names an interpreter, that `readelf -d` shows
-   resolving a shared library, or that imports any `GLIBC_*` symbol. The
-   release lane, the `Hotfix pi-host bundle` workflow (a `hotfix-*` branch push,
-   which also packages the archive) and a musl-only smoke run all execute it, so
-   a dynamic build fails before it reaches a machine.
 4. The desktop's own Linux package keeps the glibc 2.35 build. Its floor is
    Electron's, its JIT and GPU paths cannot live in a static musl process, and
    its local host-core is already bound to that floor.
@@ -73,8 +68,8 @@ error path named glibc.
   extension and no NSS module, so nothing in its current surface depends on the
   dynamic loader. Name lookups use the local files only, which matters solely
   for users whose accounts live in a network directory.
-- The musl lanes need no extra system package: rustc's bundled musl does the
-  static link, so `musl-tools` is not installed. The bundle grows by the
-  static-link size delta.
+- The musl lanes install `musl-tools` for mimalloc's C compilation and set
+  `CC=musl-gcc`; Rust still uses its bundled self-contained musl linker. The
+  bundle grows by the static-link size delta.
 - A static binary is a separate artifact from the desktop's glibc one, so the
   two are built in different lanes from the same commit.

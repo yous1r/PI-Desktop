@@ -64,11 +64,18 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Install the musl C toolchain
+        # mimalloc has a C source file. Use musl-gcc for that C compilation;
+        # leave Rust's linker at rustc's bundled, self-contained musl linker.
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y musl-tools
+
       - name: Build static host-core
         run: |
           set -uo pipefail
           status=0
-          cargo build --release --locked -p host-core --target "${{ matrix.target }}" 2>&1 | tee build.log || status="${PIPESTATUS[0]}"
+          CC=musl-gcc cargo build --release --locked -p host-core --target "${{ matrix.target }}" 2>&1 | tee build.log || status="${PIPESTATUS[0]}"
           if [ "$status" -ne 0 ]; then
             tail -40 build.log
             printf '::error title=cargo build::%s\n' "$(tail -c 1500 build.log | tr '\n' ' ')"
