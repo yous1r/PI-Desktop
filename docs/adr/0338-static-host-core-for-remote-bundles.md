@@ -45,9 +45,9 @@ error path named glibc.
    artifact through `bundle.mjs --host-core` and no longer compiles Rust.
 3. `scripts/check-linux-host-static.mjs` fails a binary that `file(1)` calls
    dynamically linked, that `readelf -d` reports a dynamic section for, or that
-   imports any `GLIBC_*` symbol. The release lane, the `ci.yml` `rust-musl` job
-   and a musl-only smoke run all execute it, so a dynamic build fails on the
-   pull request that introduces it.
+  imports any `GLIBC_*` symbol. The release lane, the path-filtered
+  `Host-core static build` workflow and a musl-only smoke run all execute it,
+  so a dynamic build fails on the change that introduces it.
 4. The desktop's own Linux package keeps the glibc 2.35 build. Its floor is
    Electron's, its JIT and GPU paths cannot live in a static musl process, and
    its local host-core is already bound to that floor.

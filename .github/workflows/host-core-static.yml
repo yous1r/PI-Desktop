@@ -1,0 +1,83 @@
+name: Host-core static build
+
+# The `pi-host` bundle a desktop installs on a remote machine ships this binary
+# instead of a glibc build, so a dynamic or broken static link must fail on the
+# change that introduces it rather than after a tag (ADR 0338). The path filters
+# keep a guest-architecture Rust build out of changes that cannot affect it.
+
+on:
+  push:
+    paths:
+      - 'crates/host-core/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.cargo/config.toml'
+      - 'apps/desktop/electron/main/linux-glibc.ts'
+      - 'scripts/check-linux-host-static.mjs'
+      - '.github/workflows/host-core-static.yml'
+  pull_request:
+    paths:
+      - 'crates/host-core/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.cargo/config.toml'
+      - 'apps/desktop/electron/main/linux-glibc.ts'
+      - 'scripts/check-linux-host-static.mjs'
+      - '.github/workflows/host-core-static.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: host-core-static-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Static host-core (musl x64)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install the musl toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y musl-tools
+
+      - name: Build static host-core
+        # .cargo/config.toml already points this target at musl-gcc and the
+        # static CRT, so the plain target build is what the bundle ships.
+        run: cargo build --release --locked -p host-core --target x86_64-unknown-linux-musl
+
+      - name: Verify the binary resolves nothing dynamically
+        run: node scripts/check-linux-host-static.mjs target/x86_64-unknown-linux-musl/release/pi-desktop-host-core
+
+      - name: Start the static binary where no glibc exists
+        # readelf proves the link; only a machine without glibc proves the
+        # process. This covers host-core alone: the bundle's Node runtime keeps
+        # Node's own requirement, so musl-only distributions stay unsupported.
+        run: |
+          set -euo pipefail
+          docker run --rm -i --volume "$PWD:/work:ro" --workdir /work alpine:3.20 sh -s <<'SMOKE'
+          set -u
+          log=$(mktemp)
+          status=0
+          timeout 20 ./target/x86_64-unknown-linux-musl/release/pi-desktop-host-core </dev/null >"$log" 2>&1 || status=$?
+          cat "$log"
+          if grep -Eq 'not found|GLIBC|error while loading' "$log"; then
+            echo "static host-core could not load under musl" >&2
+            exit 1
+          fi
+          echo "static host-core started under musl (exit $status)"
+          SMOKE
