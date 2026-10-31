@@ -99,6 +99,7 @@ pi.themes.list(): Promise<Array<{ id: string; themeId: string; label: string; ba
 ```ts
 pi.plugin.getId(): string
 pi.plugin.getManifest(): PluginManifest
+pi.plugin.getPermissions?(): Promise<string[]> // fresh copy of effective grants; feature-detect on older hosts
 pi.plugin.getSettings(): Promise<Record<string, unknown>>
 pi.plugin.setSettings(partial: Record<string, unknown>): Promise<void>
 pi.plugin.getDataPath(): Promise<string> // plugin-private directory
@@ -1486,7 +1487,7 @@ which handles these built-in channels before falling back to `onPanelInvoke`:
 | `ui.showToast`, `ui.closePanel` | None beyond the loaded panel |
 | `ui.notify` | `notify` |
 | `ui.getNotificationPermission`, `ui.requestNotificationPermission`, `ui.showNativeNotification` | `notify` |
-| `plugin.getSettings`, `workspace.get`, `app.getAppearance` | None |
+| `plugin.getSettings`, `plugin.getPermissions`, `workspace.get`, `app.getAppearance` | None |
 | `app.setTheme`, `themes.upsert`, `themes.remove`, `themes.list`, `themes.setVariables` | `ui.theme` |
 | `models.list` | `models.list` |
 | `fs.readText`, `fs.stat`, `fs.readRange`, `fs.readPreview`, `fs.openDefault`, `fs.openInBrowser`, `fs.reveal`, `fs.glob`, `fs.list`, `fs.requestDirectory`, `fs.registerDropped` | `fs.read` |

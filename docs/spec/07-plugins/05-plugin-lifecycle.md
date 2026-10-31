@@ -63,6 +63,20 @@ unload, and timeout.
   These are host budgets, not manifest-configurable timeouts
 - A hook exception must not crash the host
 - If `onLoad` fails, enter `load_error` and automatically roll back the contribution points already registered
+- After a successful package/directory install, enable, explicit reload, development
+  load, or marketplace install/update, Main re-reads user MCP records before
+  emitting `pluginChanged`. This happens after `onLoad` completes, so a record
+  provisioned there is immediately visible without restarting MCP. Connections
+  remain lazy at Test connection or the next Agent turn; no active Agent runtime
+  is forcibly restarted. Startup retains its existing restore-then-refresh pass.
+
+A plugin that maintains its own managed global instruction block must check
+`pi.plugin.getPermissions()` for the effective `agent.prompt.inject` grant, not
+its manifest declaration. The SuperClaude Workflow example synchronizes only
+its pristine marked region in `~/.pi/agent/AGENTS.md` on load and withdraws that
+region on unload, including clean app shutdown. User-edited blocks and text
+outside them are retained; an enabled next load reinstalls the pristine block.
+Older hosts without the permission query skip this optional provisioning.
 
 ## 3.1 Resident services
 

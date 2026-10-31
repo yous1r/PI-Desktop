@@ -67,13 +67,34 @@ const builtinSkill = {
   enabled: true,
 };
 let builtinSkillSetCall;
+let pluginSkills = [];
+const pluginSkill = {
+  id: "local.superclaude-workflow/implement",
+  name: "sc-implement",
+  description: "Implement scoped changes",
+  pluginId: "local.superclaude-workflow",
+  pluginName: "SuperClaude Workflow",
+};
+let instructionFile = { scope: "global", path: "/tmp/fixture-home/.pi/agent/AGENTS.md", content: "My rules", exists: true };
+let instructionReadHold = null;
+let instructionSaveHold = null;
+let instructionReadError = false;
+const listeners = new Map();
+function emit(channel, payload) {
+  for (const listener of listeners.get(channel) ?? []) listener(payload);
+}
 
 // Toast audio is optional feedback; this hidden fixture checks the visible
 // toast only and does not emit a sound during the automated UI run.
 Object.defineProperty(window, "AudioContext", { configurable: true, value: undefined });
 window.piDesktop = {
   platform: "darwin",
-  on() { return () => {}; },
+  on(channel, listener) {
+    const subscribers = listeners.get(channel) ?? new Set();
+    listeners.set(channel, subscribers);
+    subscribers.add(listener);
+    return () => subscribers.delete(listener);
+  },
   async invoke(channel, ...args) {
     const input = args[0];
     calls.push({ channel, input });
@@ -82,11 +103,35 @@ window.piDesktop = {
       case IPC.invoke.pluginScenicThemesDestinations:
         data = [];
         break;
+      case IPC.invoke.agentInstructionsGet: {
+        if (instructionReadError) return { ok: false, error: { code: "INSTRUCTION_READ", message: "Fixture read failed" } };
+        const snapshot = { ...instructionFile };
+        const hold = instructionReadHold;
+        instructionReadHold = null;
+        if (hold) { hold.entered.resolve(); await hold.release.promise; }
+        data = { global: snapshot };
+        break;
+      }
+      case IPC.invoke.agentInstructionsSave: {
+        if (input.expected && (input.expected.content !== instructionFile.content || input.expected.exists !== instructionFile.exists)) {
+          return { ok: false, error: { code: "CONFLICT", message: "Instructions changed" } };
+        }
+        const saved = { ...instructionFile, content: input.content, exists: true };
+        instructionFile = saved;
+        const hold = instructionSaveHold;
+        instructionSaveHold = null;
+        if (hold) { hold.entered.resolve(); await hold.release.promise; }
+        data = { file: saved };
+        break;
+      }
       case IPC.invoke.projectList:
         data = { projects: [project] };
         break;
       case IPC.invoke.skillList:
         data = { skills: [] };
+        break;
+      case "pi-desktop/skill/plugin/list":
+        data = { skills: pluginSkills };
         break;
       case IPC.invoke.skillBuiltinList:
         data = { builtins: [builtinSkill] };
@@ -164,6 +209,100 @@ async function waitFor(predicate, message) {
   throw new Error(message);
 }
 
+// Observe the actual state transition instead of waiting for hidden-window animation frames.
+function waitForDom(predicate, message) {
+  const ready = predicate();
+  if (ready) return Promise.resolve(ready);
+  return new Promise((resolve, reject) => {
+    const observer = new MutationObserver(() => {
+      const value = predicate();
+      if (value) { clearTimeout(timer); observer.disconnect(); resolve(value); }
+    });
+    const timer = setTimeout(() => { observer.disconnect(); reject(new Error(message)); }, 5000);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+  });
+}
+
+async function verifyInstructionUpdates() {
+  flushSync(() => requireNode(buttonByLabel("Instructions"), "Instructions navigation is missing").click());
+  const editor = await waitForDom(() => document.querySelector(".settings-instruction-editor"), "Instructions editor is missing");
+  await waitForDom(() => editor.value === instructionFile.content, "Initial instructions did not load");
+  instructionFile = { ...instructionFile, content: "My rules\n<!-- plugin block v1 -->\n" };
+  emit(IPC.event.pluginChanged, { reason: "install" });
+  await waitForDom(() => editor.value === instructionFile.content, "Plugin instructions did not refresh automatically");
+  const setText = (value) => flushSync(() => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(editor, value);
+    editor.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const draft = editor.value + "My unsaved rule";
+  setText(draft);
+  instructionFile = { ...instructionFile, content: "My rules\n<!-- plugin block v2 -->\n" };
+  emit(IPC.event.pluginChanged, { reason: "reload" });
+  await waitForDom(() => document.querySelector('[role="alert"]'), "Dirty instructions did not show an update warning");
+  if (editor.value !== draft) throw new Error("A plugin update overwrote the unsaved draft");
+  if (!buttonByLabel("Save instructions")?.disabled) throw new Error("A known stale draft is still savable");
+  flushSync(() => requireNode(buttonByLabel("Reload from disk (discard draft)"), "Explicit draft reload is missing").click());
+  await waitForDom(() => editor.value === instructionFile.content && !document.querySelector('[role="alert"]'), "Explicit reload did not adopt the plugin update");
+
+  // A delayed old read must not replace a newer notification's snapshot.
+  const oldRead = { entered: Promise.withResolvers(), release: Promise.withResolvers() };
+  instructionReadHold = oldRead;
+  emit(IPC.event.pluginChanged, { reason: "reload" });
+  await oldRead.entered.promise;
+  instructionFile = { ...instructionFile, content: "My rules\n<!-- plugin block v3 -->\n" };
+  emit(IPC.event.pluginChanged, { reason: "reload" });
+  await waitForDom(() => editor.value === instructionFile.content, "Newest instruction update did not load");
+  oldRead.release.resolve();
+  await settle();
+  if (editor.value !== instructionFile.content) throw new Error("An older read replaced the new instructions");
+
+  // Disk changes without a notification are still rejected at the save boundary.
+  const unsaved = editor.value + "Draft before unseen update";
+  setText(unsaved);
+  instructionFile = { ...instructionFile, content: "My rules\n<!-- plugin block v4 -->\n" };
+  flushSync(() => requireNode(buttonByLabel("Save instructions"), "Instruction save button is missing").click());
+  await waitForDom(() => document.querySelector('[role="alert"]'), "Stale instruction save did not show a conflict");
+  if (editor.value !== unsaved || !instructionFile.content.includes("v4")) throw new Error("Stale save erased a draft or plugin update");
+  flushSync(() => requireNode(buttonByLabel("Reload from disk (discard draft)"), "Conflict reload is missing").click());
+  await waitForDom(() => editor.value === instructionFile.content && !document.querySelector('[role="alert"]'), "Conflict reload failed");
+
+  // A user may type while saving; the response must not discard the new edit.
+  const submitted = editor.value + "Submitted rule";
+  setText(submitted);
+  const saveHold = { entered: Promise.withResolvers(), release: Promise.withResolvers() };
+  instructionSaveHold = saveHold;
+  flushSync(() => buttonByLabel("Save instructions").click());
+  await saveHold.entered.promise;
+  const continued = submitted + "\nTyped while saving";
+  setText(continued);
+  saveHold.release.resolve();
+  await waitForDom(() => buttonByLabel("Save instructions") && !buttonByLabel("Save instructions").disabled, "Later edit did not remain dirty after save");
+  if (editor.value !== continued || instructionFile.content !== submitted) throw new Error("Save response overwrote an in-flight edit");
+  flushSync(() => requireNode(buttonByLabel("Reload from disk (discard draft)"), "Draft reset is missing").click());
+  await waitForDom(() => editor.value === submitted, "Reload after saving failed");
+
+  instructionFile = { ...instructionFile, content: "My rules\n<!-- host restore -->\n" };
+  emit(IPC.event.hostStatus, { ok: true });
+  await waitForDom(() => editor.value === instructionFile.content, "Host restoration did not refresh instructions");
+  instructionReadError = true;
+  emit(IPC.event.pluginChanged, { reason: "reload" });
+  await waitForDom(() => document.querySelector('[role="alert"]'), "Instruction read failure was hidden");
+  if (editor.value !== instructionFile.content) throw new Error("Read failure erased the visible instructions");
+  instructionReadError = false;
+  flushSync(() => requireNode(buttonByLabel("Retry loading instructions"), "Instruction read retry is missing").click());
+  await waitForDom(() => !document.querySelector('[role="alert"]'), "Instruction read retry did not recover");
+
+  const finalRead = { entered: Promise.withResolvers(), release: Promise.withResolvers() };
+  instructionReadHold = finalRead;
+  emit(IPC.event.pluginChanged, { reason: "reload" });
+  await finalRead.entered.promise;
+  flushSync(() => requireNode(buttonByLabel("MCP"), "MCP navigation is missing").click());
+  finalRead.release.resolve();
+  await settle();
+  if (document.querySelector(".settings-instruction-editor")) throw new Error("Old instructions resurfaced after navigation");
+  return { autoRefresh: true, dirtyDraftKept: true, staleSaveRejected: true, latestReadWins: true, editDuringSaveKept: true, hostRestore: true, readRetry: true, unmountedReadIgnored: true };
+}
+
 window.settingsInlineMcpImportProbe = async () => {
   await waitFor(
     () => [...document.querySelectorAll(".agent-capability-row .agent-capability-name")]
@@ -194,6 +333,37 @@ window.settingsInlineMcpImportProbe = async () => {
     persisted: builtinSkillSetCall,
     visibleOff: builtinRow.classList.contains("is-off"),
   };
+
+  // Keep Skills open while plugin lifecycle notifications arrive: no refresh or restart.
+  pluginSkills = [pluginSkill];
+  emit(IPC.event.pluginChanged, { reason: "install", pluginId: pluginSkill.pluginId });
+  const findPluginRow = () => [...document.querySelectorAll(".agent-capability-row")]
+    .find((row) => row.querySelector(".agent-capability-name")?.textContent.trim() === pluginSkill.name);
+  const pluginRow = await waitForDom(findPluginRow, "Installing a plugin did not show its skill");
+  if (!pluginRow.textContent.includes(pluginSkill.pluginName)) throw new Error("Plugin owner is missing");
+  if (pluginRow.querySelector('button, [role="switch"]')) throw new Error("Plugin skills must not expose user-file actions");
+  const allFilter = document.querySelector('.agent-capability-segment [role="radio"]');
+  if (!allFilter?.textContent.includes("2")) throw new Error("Plugin skill was not included in the total");
+  const search = requireNode(document.querySelector('input[placeholder="Search skills"]'), "Skill search is missing");
+  const setSearch = (value) => flushSync(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(search, value);
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  setSearch("SuperClaude Workflow");
+  await waitForDom(() => findPluginRow()
+    && [...document.querySelectorAll(".agent-capability-name")].every((node) => node.textContent.trim() !== "imagegen"), "Search did not match plugin ownership");
+  setSearch("");
+  pluginSkills = [];
+  emit(IPC.event.pluginChanged, { reason: "disable", pluginId: pluginSkill.pluginId });
+  await waitForDom(() => !findPluginRow(), "Disabling a plugin did not withdraw its skill");
+  pluginSkills = [pluginSkill];
+  emit(IPC.event.pluginChanged, { reason: "enable", pluginId: pluginSkill.pluginId });
+  await waitForDom(findPluginRow, "Re-enabling a plugin did not restore its skill");
+  pluginSkills = [];
+  emit(IPC.event.pluginChanged, { reason: "uninstall", pluginId: pluginSkill.pluginId });
+  await waitForDom(() => !findPluginRow(), "Uninstalling a plugin left its skill visible");
+  const pluginLifecycle = { installed: true, searchable: true, readOnly: true, disabled: true, reenabled: true, uninstalled: true };
+  const instructionLifecycle = await verifyInstructionUpdates();
 
   await waitFor(() => buttonByLabel("MCP"), "MCP destination did not render");
   flushSync(() => requireNode(buttonByLabel("MCP"), "MCP navigation is missing").click());
@@ -280,6 +450,8 @@ window.settingsInlineMcpImportProbe = async () => {
     .find((row) => row.querySelector(".agent-capability-name")?.textContent.trim() === candidate.label);
   return {
     builtinToggleState,
+    pluginLifecycle,
+    instructionLifecycle,
     scanCountBeforeExplicitClick,
     scanCalls,
     runCall,
@@ -307,7 +479,7 @@ const urlAssets = {
 };
 
 test("Settings disables a bundled skill and imports an external MCP server into a project", {
-  timeout: 60_000,
+  timeout: 90_000,
   skip:
     process.platform === "linux" && !process.env.DISPLAY
       ? "Isolated Electron UI test requires a display"
@@ -384,7 +556,7 @@ app.whenReady().then(async () => {
       stream.setEncoding("utf8");
       stream.on("data", (chunk) => { output += chunk; });
     }
-    const timer = setTimeout(() => child.kill("SIGKILL"), 30_000);
+    const timer = setTimeout(() => child.kill("SIGKILL"), 60_000);
     let code;
     try {
       code = await new Promise((resolve, reject) => {
@@ -407,6 +579,8 @@ app.whenReady().then(async () => {
       },
       visibleOff: true,
     });
+    assert.deepEqual(result.pluginLifecycle, { installed: true, searchable: true, readOnly: true, disabled: true, reenabled: true, uninstalled: true });
+    assert.deepEqual(result.instructionLifecycle, { autoRefresh: true, dirtyDraftKept: true, staleSaveRejected: true, latestReadWins: true, editDuringSaveKept: true, hostRestore: true, readRetry: true, unmountedReadIgnored: true });
     assert.equal(result.scanCountBeforeExplicitClick, 0, "Expanding the inline panel must not scan");
     assert.equal(result.scanCalls.length, 2, "The explicit scan and post-import refresh should run");
     assert.deepEqual(result.scanCalls[0].input, {

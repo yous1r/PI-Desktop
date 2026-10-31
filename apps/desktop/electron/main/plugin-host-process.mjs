@@ -179,6 +179,7 @@ function buildApi() {
     plugin: {
       getId: () => pluginId,
       getManifest: () => manifest,
+      getPermissions: () => call("plugin.getPermissions"),
       getSettings: () => call("plugin.getSettings"),
       setSettings: (partial) => call("plugin.setSettings", [partial]),
       getDataPath: () => call("plugin.getDataPath"),

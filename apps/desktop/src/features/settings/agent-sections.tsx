@@ -1,10 +1,10 @@
-import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentInstructionFile, AppSettings, UpdatePreference } from "@pi-desktop/shared";
 import { api } from "../../lib/api";
 import { useAppStore } from "../../stores/app-store";
 import { useUpdateState } from "../../hooks/use-update-state";
-import { Button } from "../../components/ui";
+import { Button, Textarea } from "../../components/ui";
 import {
   IconCheck,
   IconDownload,
@@ -21,62 +21,130 @@ const ReleaseNotesDialog = lazy(() =>
   })),
 );
 
+type InstructionEditor = {
+  file: AgentInstructionFile | null;
+  draft: string;
+  incoming: AgentInstructionFile | null;
+};
+
 export function AgentInstructionsSection() {
   const { t } = useTranslation();
-  const [global, setGlobal] = useState<AgentInstructionFile | null>(null);
-  const [globalDraft, setGlobalDraft] = useState("");
+  const [editor, setEditor] = useState<InstructionEditor>({ file: null, draft: "", incoming: null });
+  const [reading, setReading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<"load" | "save" | "conflict" | null>(null);
+  const mounted = useRef(false);
+  const request = useRef(0);
+  const draftRevision = useRef(0);
+  const savingRef = useRef(false);
+  const reloadQueued = useRef(false);
+  const sameFile = (a: AgentInstructionFile, b: AgentInstructionFile) =>
+    a.path === b.path && a.content === b.content && a.exists === b.exists;
 
-  useEffect(() => {
-    let cancelled = false;
-    void api.getAgentInstructions().then((result) => {
-      if (cancelled) return;
-      setGlobal(result.global);
-      setGlobalDraft(result.global.content);
-    }).catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
+  const reload = useCallback(async (discardDraft = false) => {
+    if (savingRef.current) { reloadQueued.current = true; return; }
+    const id = ++request.current;
+    const revision = draftRevision.current;
+    setReading(true);
+    try {
+      const result = await api.getAgentInstructions();
+      if (!mounted.current || id !== request.current) return;
+      const next = result.global;
+      setEditor((current) => {
+        const dirty = current.file !== null && current.draft !== current.file.content;
+        if (dirty && !(discardDraft && revision === draftRevision.current)) {
+          return { ...current, incoming: current.file && !sameFile(current.file, next) ? next : null };
+        }
+        return { file: next, draft: next.content, incoming: null };
+      });
+      setError(null);
+    } catch {
+      if (mounted.current && id === request.current) setError("load");
+    } finally {
+      if (mounted.current && id === request.current) setReading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    mounted.current = true;
+    void reload();
+    const offPlugin = api.onPluginChanged(() => void reload());
+    const offHost = api.onHostStatus((status) => { if (status.ok) void reload(); });
+    return () => {
+      mounted.current = false;
+      request.current += 1;
+      offPlugin();
+      offHost();
+    };
+  }, [reload]);
+
   const save = async () => {
+    if (!editor.file || editor.incoming || savingRef.current) return;
+    const baseline = editor.file;
+    const submitted = editor.draft;
+    request.current += 1; // A pre-save read must not restore its old snapshot afterward.
+    savingRef.current = true;
+    setReading(false);
     setSaving(true);
+    setError(null);
     try {
-      const result = await api.saveAgentInstructions("global", globalDraft);
-      setGlobal(result.file);
+      const result = await api.saveAgentInstructions("global", submitted, undefined, {
+        content: baseline.content, exists: baseline.exists,
+      });
+      if (!mounted.current) return;
+      setEditor((current) => ({
+        file: result.file,
+        draft: current.draft === submitted ? result.file.content : current.draft,
+        incoming: null,
+      }));
+    } catch (failure) {
+      if (mounted.current) {
+        const code = (failure as { code?: string } | null)?.code;
+        setError(code === "CONFLICT" ? "conflict" : "save");
+        if (code === "CONFLICT") reloadQueued.current = true;
+      }
     } finally {
-      setSaving(false);
+      savingRef.current = false;
+      if (mounted.current) {
+        setSaving(false);
+        if (reloadQueued.current) { reloadQueued.current = false; void reload(); }
+      }
     }
   };
 
-  const globalDirty = global !== null && globalDraft !== global.content;
+  const dirty = editor.file !== null && editor.draft !== editor.file.content;
+  const warning = editor.incoming || error === "conflict"
+    ? "settings.instructionsConflict"
+    : error === "load" ? "settings.instructionsLoadFailed"
+      : error === "save" ? "settings.instructionsSaveFailed" : null;
   return (
-    <div className="settings-stack">
-      <SettingsCard
-        title={t("settings.instructionsGlobal")}
-        description={t("settings.instructionsGlobalDesc")}
-      >
+    <div className="settings-stack" aria-busy={reading || saving || undefined}>
+      <SettingsCard title={t("settings.instructionsGlobal")} description={t("settings.instructionsGlobalDesc")}>
         <div className="settings-form-grid">
           <div className="settings-row-copy">
-            <div className="settings-instruction-path">{global?.path ?? ""}</div>
+            <div className="settings-instruction-path">{editor.file?.path ?? ""}</div>
           </div>
-          <textarea
-            className="field-textarea settings-instruction-editor"
-            value={globalDraft}
-            onChange={(event) => setGlobalDraft(event.target.value)}
+          <Textarea
+            className="settings-instruction-editor"
+            value={editor.draft}
+            disabled={!editor.file}
+            onChange={(event) => {
+              const draft = event.target.value;
+              draftRevision.current += 1;
+              setEditor((current) => ({ ...current, draft }));
+            }}
             aria-label={t("settings.instructionsGlobal")}
-            spellCheck={false}
-            autoCorrect="off"
-            autoCapitalize="off"
           />
+          {reading && !editor.file ? <p role="status">{t("settings.instructionsLoading")}</p> : null}
+          {warning ? <p className="settings-row-description" role="alert">{t(warning)}</p> : null}
         </div>
         <div className="settings-panel-actions">
-          <Button
-            variant="primary"
-            disabled={!globalDirty || saving}
-            onClick={() => void save()}
-          >
+          <Button variant="primary" disabled={!dirty || saving || reading || Boolean(editor.incoming)} onClick={() => void save()}>
             {saving ? t("settings.saving") : t("settings.instructionsSave")}
+          </Button>
+          <Button variant="secondary" disabled={saving || reading} onClick={() => void reload(error === "load" ? false : true)}>
+            {error === "load" ? t("settings.instructionsRetry")
+              : dirty ? t("settings.instructionsDiscardReload") : t("settings.instructionsReload")}
           </Button>
         </div>
       </SettingsCard>

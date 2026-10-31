@@ -151,6 +151,16 @@ export type UserSkillRecord = {
   updatedAt: string;
 };
 
+/** Display metadata for a loaded plugin skill; its document and activation stay plugin-owned. */
+export type PluginSkillRecord = {
+  /** Namespaced ID used by the agent's Skill tool. */
+  id: string;
+  pluginId: string;
+  pluginName: string;
+  name: string;
+  description?: string;
+};
+
 /** A skill bundled with PI-Desktop and enabled globally by default. */
 export type BuiltinSkillRecord = {
   id: string;

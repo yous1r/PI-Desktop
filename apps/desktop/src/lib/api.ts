@@ -104,6 +104,7 @@ import type {
   TraySessionPreferences,
   ToolPermissionResolution,
   BuiltinSkillRecord,
+  PluginSkillRecord,
   UserSkillInput,
   UserSkillRecord,
   UserSubagentInput,
@@ -1187,11 +1188,13 @@ export const api = {
     scope: AgentInstructionFile["scope"],
     content: string,
     projectPath?: string,
+    expected?: Pick<AgentInstructionFile, "content" | "exists">,
   ) =>
     invoke<{ file: AgentInstructionFile }>(IPC.invoke.agentInstructionsSave, {
       scope,
       content,
       ...(projectPath === undefined ? {} : { projectPath }),
+      ...(expected === undefined ? {} : { expected }),
     }),
   resolvePermission: (resolution: ToolPermissionResolution) =>
     invoke(IPC.invoke.toolResolvePermission, resolution),
@@ -1358,6 +1361,8 @@ export const api = {
     ),
 
   // --- Skills the user owns -------------------------------------------------
+  listPluginSkills: (query: { projectPath?: string | null } = {}) =>
+    invoke<{ skills: PluginSkillRecord[] }>(IPC.invoke.skillPluginList, query),
   listBuiltinSkills: () =>
     invoke<{ builtins: BuiltinSkillRecord[] }>(IPC.invoke.skillBuiltinList),
   setBuiltinSkillEnabled: (id: string, enabled: boolean) =>

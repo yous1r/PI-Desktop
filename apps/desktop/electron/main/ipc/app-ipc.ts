@@ -1,5 +1,5 @@
 import { app, BrowserWindow } from "electron";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { existsSync, statSync } from "node:fs";
 import { listInstalledFonts } from "../system-fonts";
 import {
@@ -12,6 +12,7 @@ import {
   buildBugReportUrl,
 } from "@pi-desktop/shared";
 import { globalInstructionPath } from "@pi-desktop/agent-runtime";
+import { readInstructionFile, saveInstructionFile } from "../instruction-files";
 import type { HostProcess } from "../host-process";
 import type { AppUpdaterController } from "../updater";
 import type { IpcRegistrar } from "./types";
@@ -146,12 +147,7 @@ export function registerAppIpc({
         errorCode: ErrorCodes.INVALID_ARGUMENT,
       });
     }
-    const { readFile } = await import("node:fs/promises");
-    try {
-      return { scope, path, content: await readFile(path, "utf8"), exists: true };
-    } catch {
-      return { scope, path, content: "", exists: false };
-    }
+    return readInstructionFile(scope, path);
   };
 
   const managedProjectPath = async (input: unknown): Promise<string> => {
@@ -206,8 +202,10 @@ export function registerAppIpc({
       scope?: "global" | "project";
       content?: unknown;
       projectPath?: unknown;
+      expected?: unknown;
     } = {}) => {
-      if (input.scope !== "global" && input.scope !== "project") {
+      if (!input || typeof input !== "object" || Array.isArray(input)
+        || (input.scope !== "global" && input.scope !== "project")) {
         throw Object.assign(new Error("instruction scope required"), {
           errorCode: ErrorCodes.INVALID_ARGUMENT,
         });
@@ -216,11 +214,7 @@ export function registerAppIpc({
       const projectPath =
         scope === "project" ? await managedProjectPath(input.projectPath) : null;
       const file = await instructionFile(scope, projectPath);
-      const content = typeof input.content === "string" ? input.content : "";
-      const { mkdir, writeFile } = await import("node:fs/promises");
-      await mkdir(dirname(file.path), { recursive: true });
-      await writeFile(file.path, content, "utf8");
-      return { file: { ...file, content, exists: true } };
+      return { file: await saveInstructionFile(scope, file.path, input.content, input.expected) };
     },
   );
 

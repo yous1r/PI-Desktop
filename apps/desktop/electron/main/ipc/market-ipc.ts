@@ -13,6 +13,7 @@ export type MarketIpcDependencies = {
   agentExtensions: AgentExtensionBridge;
   optionalWorkspaceRoot: () => Promise<string | null>;
   pluginActiveInProject: (pluginId: string, projectPath: string | null | undefined) => boolean;
+  refreshUserMcp: () => Promise<unknown>;
   sendToRenderer: (channel: string, payload?: unknown) => void;
 };
 
@@ -24,6 +25,7 @@ export function registerMarketIpc({
   agentExtensions,
   optionalWorkspaceRoot,
   pluginActiveInProject,
+  refreshUserMcp,
   sendToRenderer,
 }: MarketIpcDependencies): void {
   let host: HostProcess | null = null;
@@ -63,6 +65,7 @@ export function registerMarketIpc({
     const plugin = installed.result?.plugin;
     if (plugin?.enabled && plugin?.path) {
       await plugins.loadFromPath(plugin.path, plugin.permissions ?? []);
+      await refreshUserMcp();
     }
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
@@ -90,6 +93,7 @@ export function registerMarketIpc({
       const plugin = item?.plugin;
       if (plugin?.enabled && plugin?.path) {
         await plugins.loadFromPath(plugin.path, plugin.permissions ?? []);
+        await refreshUserMcp();
       }
     }
     sendToRenderer(IPC.event.pluginChanged,{ reason: "market.applyUpdates" });
