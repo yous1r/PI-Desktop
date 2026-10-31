@@ -20,6 +20,7 @@ Each ADR includes:
 
 | ID | Title | Status |
 |---|---|---|
+| plugin-effective-permissions-query | [Plugin self-query for effective permission metadata](plugin-effective-permissions-query.md) | Accepted |
 | lossless-tool-image-storage | [Lossless tool-image storage and bounded history mutations](lossless-tool-image-storage.md) | Implemented candidate |
 | plugin-remote-workspace-reads | [Plugin reads in remote workspaces](plugin-remote-workspace-reads.md) | Implemented candidate |
 | browser-background-lifecycle | [Browser page execution outlives side-panel presentation](browser-background-lifecycle.md) | Accepted |
