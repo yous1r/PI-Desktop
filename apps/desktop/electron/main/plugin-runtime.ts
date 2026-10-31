@@ -568,6 +568,7 @@ const HOST_API_ALLOWLIST = new Set([
   "themes.list",
   "themes.setVariables",
   "plugin.getSettings",
+  "plugin.getPermissions",
   "plugin.setSettings",
   "plugin.getDataPath",
   "ui.revealView",
@@ -2549,6 +2550,8 @@ export class PluginRuntime {
         });
       case "plugin.getSettings":
         return api.plugin.getSettings();
+      case "plugin.getPermissions":
+        return api.plugin.getPermissions();
       case "app.getAppearance":
         return api.app.getAppearance();
       case "app.setTheme":
@@ -5530,6 +5533,7 @@ export class PluginRuntime {
       plugin: {
         getId: () => pluginId,
         getManifest: () => loaded.manifest,
+        getPermissions: async () => [...loaded.permissions].sort(),
         getSettings: async () => {
           const defaults: Record<string, unknown> = {};
           for (const s of loaded.manifest.contributes?.settings ?? []) {

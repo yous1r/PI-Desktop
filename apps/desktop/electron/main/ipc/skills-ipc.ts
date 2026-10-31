@@ -1,9 +1,10 @@
 import { app, dialog, shell } from "electron";
 import { importSkillFolders, readLastSkillImportDirectory, writeLastSkillImportDirectory } from "../skill-folder-import";
-import { ErrorCodes, IPC, type ActivationScope, type AgentCapabilityMove, type AgentCapabilityQuery, type BuiltinSkillRecord, type UserSkillRecord, type UserSubagentRecord } from "@pi-desktop/shared";
+import { ErrorCodes, IPC, type ActivationScope, type AgentCapabilityMove, type AgentCapabilityQuery, type BuiltinSkillRecord, type PluginSkillRecord, type UserSkillRecord, type UserSubagentRecord } from "@pi-desktop/shared";
 import { loadSubagentDefinitions, type UserSubagentDocument } from "@pi-desktop/agent-runtime";
 import { builtinSkillCatalog } from "../builtin-skills";
 import type { HostProcess } from "../host-process";
+import type { PluginRuntime } from "../plugin-runtime";
 import type { Logger } from "../logger";
 import type {
   SkillMarketDocument,
@@ -19,6 +20,8 @@ import type { IpcRegistrar } from "./types";
 export type SkillsIpcDependencies = {
   registrar: IpcRegistrar;
   getHost: () => HostProcess | null;
+  plugins: Pick<PluginRuntime, "getSkills" | "listLoaded">;
+  pluginActiveInProject: (pluginId: string, projectPath: string | null | undefined) => boolean;
   optionalWorkspaceRoot: () => Promise<string | null>;
   activeUserSubagentDocuments: (projectPath: string | undefined) => Promise<UserSubagentDocument[]>;
   /** Handles whose shipped definition the user turned off (builtin activation). */
@@ -36,6 +39,8 @@ export type SkillsIpcDependencies = {
 export function registerSkillsIpc({
   registrar,
   getHost,
+  plugins,
+  pluginActiveInProject,
   optionalWorkspaceRoot,
   activeUserSubagentDocuments,
   disabledBuiltinSubagents,
@@ -147,7 +152,26 @@ export function registerSkillsIpc({
     },
   );
 
-// --- Skills the user owns -------------------------------------------------
+// --- Skill catalogs and user-owned documents ------------------------------
+
+  registrar.handle(IPC.invoke.skillPluginList, async (query: { projectPath?: string | null } = {}) => {
+    if (!query || typeof query !== "object" || Array.isArray(query)
+      || (query.projectPath !== undefined && query.projectPath !== null && typeof query.projectPath !== "string")) {
+      throw new Error("invalid plugin skill query");
+    }
+    const root = query.projectPath === undefined ? await optionalWorkspaceRoot() : query.projectPath;
+    const names = new Map(plugins.listLoaded().map(({ manifest }) => [manifest.id, manifest.name]));
+    const skills: PluginSkillRecord[] = plugins.getSkills()
+      .filter((skill) => pluginActiveInProject(skill.pluginId, root))
+      .map((skill) => ({
+        id: skill.id,
+        pluginId: skill.pluginId,
+        pluginName: names.get(skill.pluginId) ?? skill.pluginId,
+        name: skill.name,
+        description: skill.description,
+      }));
+    return { skills };
+  });
 
   handle(IPC.invoke.skillList, async (query: Partial<AgentCapabilityQuery> = {}) => {
     if (!host) throw new Error("host unavailable");

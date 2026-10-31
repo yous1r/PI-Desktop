@@ -682,6 +682,17 @@ system while preserving their different data ownership:
   so the switch is still the way back on, and the next catalog load stops
   offering it to `Task`. Reveal and delete remain absent because a builtin is
   not a file.
+- Skills lists loaded plugin contributions in a read-only **Plugin skills**
+  group under All/Global, alongside built-in and user-owned skills. The owner
+  badge names the plugin; search includes that name and plugin ID, and the
+  counts include matching plugin entries. Entries are filtered by the selected
+  project's plugin activation scope. Enablement follows the plugin on the
+  Plugins page: no per-skill edit, import, move, delete, or toggle is offered.
+  Documents remain inside the plugin rather than being copied into `.agents`.
+  Install, enable, disable, reload, uninstall, and scope events reload the same
+  list with its existing stale-request protection. The metadata-only
+  `pi-desktop/skill/plugin/list` query returns id/name/description and plugin
+  ownership, not document bodies or filesystem paths.
 - The level filter narrows which groups the panel renders; it never hides the
   toolbar or moves the actions. New capabilities are created at the level the
   filter points at — Global under All or Global, Project under Project — and
@@ -821,6 +832,19 @@ system while preserving their different data ownership:
 
 ### Instructions (`instructions` tab)
 - Edit the global instruction Markdown used by every PI-Desktop Agent session.
+- Plugin lifecycle changes and Host restoration re-read the global file in place.
+  Clean drafts adopt the new snapshot; unsaved edits are retained and an external
+  change shows a localized conflict with an explicit discard-and-reload action.
+  Stale requests and responses after navigation never replace newer state. Edits
+  typed during an in-flight save remain dirty after its response. Read/save
+  failures are visible and a failed read can be retried without clearing drafts.
+- Current editors pass the last-read content/existence snapshot when saving.
+  The instruction API rejects a mismatch as `CONFLICT`, refuses unsafe linked or
+  non-text documents, and never treats an unexpected read failure as an empty
+  file. Existing callers may omit the optional snapshot for an explicit save.
+  Editing is capped at 1 MiB; the Agent's independent 32 KiB global context budget
+  is unchanged. Publishing rechecks identity and bytes immediately before atomic
+  replacement; it does not promise OS compare-and-swap against arbitrary writers.
 - Show the resolved instruction-file path and save through the host-backed
   instruction API; project instructions remain managed from the active project
   menu and are resolved after the global layer.

@@ -24,6 +24,8 @@ export type PluginIpcDependencies = {
   pluginViews: PluginViewHost;
   pluginScopes: Map<string, ActivationScope>;
   rememberPluginScopes: (list: any[]) => void;
+  /** Re-read user MCP records after onLoad has finished provisioning them. */
+  refreshUserMcp: () => Promise<unknown>;
   sendToRenderer: (channel: string, payload?: unknown) => void;
   logger: Pick<Logger, "app">;
 };
@@ -38,6 +40,7 @@ export function registerPluginIpc({
   pluginViews,
   pluginScopes,
   rememberPluginScopes,
+  refreshUserMcp,
   sendToRenderer,
   logger,
 }: PluginIpcDependencies): void {
@@ -65,6 +68,7 @@ export function registerPluginIpc({
     if (!host) throw new Error("host unavailable");
     const loaded = await host.call<{ plugin: any }>("plugins.loadDev", { path });
     await plugins.loadFromPath(path, grantedPermissions, { development: true });
+    await refreshUserMcp();
     if (loaded.plugin?.id) plugins.watchDevPlugin(loaded.plugin.id);
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
@@ -251,6 +255,7 @@ export function registerPluginIpc({
     await plugins.loadFromPath(plugin.path, plugin.permissions ?? [], {
       development: plugin.source === "dev",
     });
+    await refreshUserMcp();
     if (plugin.source === "dev") plugins.watchDevPlugin(id);
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
@@ -326,6 +331,7 @@ export function registerPluginIpc({
         installed.result.plugin.path,
         installed.result.plugin.permissions ?? [],
       );
+      await refreshUserMcp();
     }
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
@@ -358,6 +364,7 @@ export function registerPluginIpc({
         installed.result.plugin.path,
         installed.result.plugin.permissions ?? [],
       );
+      await refreshUserMcp();
     }
     for (const toast of plugins.drainToasts()) {
       sendToRenderer(IPC.event.toast, { message: toast });
@@ -376,6 +383,7 @@ export function registerPluginIpc({
       await plugins.loadFromPath(res.plugin.path, res.plugin.permissions ?? [], {
         development: res.plugin.source === "dev",
       });
+      await refreshUserMcp();
       if (res.plugin.source === "dev") plugins.watchDevPlugin(id);
     }
     logger.app("plugin", "info", "plugin enabled", { pluginId: id });

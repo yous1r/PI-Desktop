@@ -1251,6 +1251,8 @@ export type PluginHostApi = {
   plugin: {
     getId: () => string;
     getManifest: () => PluginManifest;
+    /** Effective host-approved permissions, not the manifest declaration. Feature-detect on older hosts. */
+    getPermissions?: () => Promise<string[]>;
     getSettings: () => Promise<Record<string, unknown>>;
     setSettings: (partial: Record<string, unknown>) => Promise<void>;
     getDataPath: () => Promise<string>;

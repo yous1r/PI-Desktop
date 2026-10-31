@@ -3293,6 +3293,18 @@ describe("DesktopAgentRuntime deferred tool catalog", () => {
     await runtime.dispose();
   });
 
+  it("refreshes a session when MCP tools appear after plugin install", async () => {
+    const runtime = createRuntime({ pluginTools: [] });
+    const pluginTools = [{
+      name: "mcp_fixture_lookup",
+      mcpServerId: "fixture",
+      description: "Memory fixture lookup",
+      parameters: { type: "object", properties: {} },
+    }];
+    expect(runtimeMatches(runtime, { pluginTools })).toBe(false);
+    await runtime.dispose();
+  });
+
   it("hides plugin tools without plan-safe actions in Plan mode", async () => {
     const runtime = createRuntime({
       mode: "plan",

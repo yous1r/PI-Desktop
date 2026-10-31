@@ -4,6 +4,7 @@ import {
   GLOBAL_SCOPE,
   type AgentCapabilityLevel,
   type BuiltinSkillRecord,
+  type PluginSkillRecord,
   type UserSkillRecord,
 } from "@pi-desktop/shared";
 import { api } from "../../lib/api";
@@ -48,7 +49,7 @@ import { SkillMarketPanel } from "./SkillMarketPanel";
 import { AgentSkillImportPanel } from "../../features/settings/imports/AgentSkillImportPanel";
 import { ImportToggleButton } from "../../features/settings/import-workbench";
 
-import { TooltipButton } from "../ui";
+import { Badge, TooltipButton } from "../ui";
 const GLOBAL_SKILLS_PATH = "~/.agents/skills";
 
 function projectSkillsPath(projectPath: string | null): string {
@@ -63,19 +64,21 @@ type SkillEditorState = {
 
 type SkillCollection = {
   builtins: BuiltinSkillRecord[];
+  plugins: PluginSkillRecord[];
   global: UserSkillRecord[];
   project: UserSkillRecord[];
 };
 
-const EMPTY_SKILL_COLLECTION: SkillCollection = { builtins: [], global: [], project: [] };
+const EMPTY_SKILL_COLLECTION: SkillCollection = { builtins: [], plugins: [], global: [], project: [] };
 
 export function AgentSkillsPage() {
   const { t } = useTranslation();
   const showToast = useAppStore((state) => state.showToast);
   const { selectedProjectPath, setSelectedProjectPath, options } = useAgentProjects();
   const fetchSkills = useCallback(async (): Promise<SkillCollection> => {
-    const [builtins, global, project] = await Promise.all([
+    const [builtins, plugins, global, project] = await Promise.all([
       api.listBuiltinSkills(),
+      api.listPluginSkills({ projectPath: selectedProjectPath }),
       api.listUserSkills({
         level: "global",
         ...(selectedProjectPath ? { projectPath: selectedProjectPath } : {}),
@@ -86,12 +89,13 @@ export function AgentSkillsPage() {
     ]);
     return {
       builtins: builtins.builtins ?? [],
+      plugins: plugins.skills ?? [],
       global: global.skills ?? [],
       project: project.skills ?? [],
     };
   }, [selectedProjectPath]);
   const {
-    data: { builtins: builtinSkills, global: globalSkills, project: projectSkills },
+    data: { builtins: builtinSkills, plugins: pluginSkills, global: globalSkills, project: projectSkills },
     setData: setSkills,
     loading,
     refreshing,
@@ -327,14 +331,16 @@ export function AgentSkillsPage() {
       matchesCapabilitySearch(search, skill.name, skill.id, skill.description);
     return {
       builtins: builtinSkills.filter(matchBuiltin),
+      plugins: pluginSkills.filter((skill) =>
+        matchesCapabilitySearch(search, skill.name, skill.id, skill.description, skill.pluginName, skill.pluginId)),
       global: globalSkills.filter(match),
       project: projectSkills.filter(match),
     };
-  }, [builtinSkills, globalSkills, projectSkills, search]);
+  }, [builtinSkills, pluginSkills, globalSkills, projectSkills, search]);
 
   const counts = {
-    all: visible.builtins.length + visible.global.length + visible.project.length,
-    global: visible.builtins.length + visible.global.length,
+    all: visible.builtins.length + visible.plugins.length + visible.global.length + visible.project.length,
+    global: visible.builtins.length + visible.plugins.length + visible.global.length,
     project: visible.project.length,
   };
 
@@ -532,6 +538,17 @@ export function AgentSkillsPage() {
     );
   };
 
+  const renderPluginRow = (skill: PluginSkillRecord) => (
+    <CapabilityRow
+      key={`plugin:${skill.id}`}
+      glyph={<IconBookOpen size={16} />}
+      name={skill.name}
+      badges={<Badge className="agent-capability-badge">{skill.pluginName}</Badge>}
+      description={skill.description || t("settings.noCapabilityDescription")}
+      actions={null}
+    />
+  );
+
   const showGlobal = filter !== "project";
   const showProject = filter !== "global";
   const newSkillTitle =
@@ -668,6 +685,16 @@ export function AgentSkillsPage() {
                   count={visible.builtins.length}
                 />
                 {visible.builtins.map(renderBuiltinRow)}
+                {visible.plugins.length > 0 ? (
+                  <>
+                    <CapabilityGroupHeader
+                      label={t("settings.pluginSkills")}
+                      count={visible.plugins.length}
+                      action={<Badge>{t("settings.pluginSkillsManaged")}</Badge>}
+                    />
+                    {visible.plugins.map(renderPluginRow)}
+                  </>
+                ) : null}
                 <CapabilityGroupHeader
                   label={t("settings.globalLevel")}
                   path={GLOBAL_SKILLS_PATH}
