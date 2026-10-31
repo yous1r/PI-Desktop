@@ -1,4 +1,4 @@
-# Plugin self-query for effective permission metadata
+# ADR: Plugin self-query for effective permission metadata
 
 - Status: Accepted
 - Scope: Additive plugin metadata contract; no new capability or grant

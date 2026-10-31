@@ -395,3 +395,4 @@ Each ADR includes:
 | 0338 | [The remote bundle ships a statically linked host-core](0338-static-host-core-for-remote-bundles.md) | Accepted (amends ADR 0326 decision 4) |
 
 | model-reasoning-effort-override | [Model reasoning effort override](model-reasoning-effort-override.md) | Proposed |
+| plugin-effective-permissions-query | [Plugin self-query for effective permission metadata](plugin-effective-permissions-query.md) | Accepted |
