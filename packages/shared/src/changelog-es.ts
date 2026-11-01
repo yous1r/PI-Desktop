@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const esEntries: ChangelogEntry[] = [
   {
+    version: "0.22.1",
+    date: "2026-11-01",
+    highlights: [
+      "Consulta las habilidades de los plugins instalados en Ajustes → Habilidades, agrupadas por plugin, con búsqueda y recuentos.",
+      "Instalar, activar o recargar un plugin actualiza sus servidores MCP sin reiniciar la aplicación; los turnos en curso no se interrumpen.",
+      "Los plugins pueden mantener un bloque gestionado en el AGENTS.md global mientras sigues editando todo lo que lo rodea.",
+      "El editor de instrucciones detecta cambios hechos fuera de la aplicación y conserva tu borrador sin guardar en lugar de sobrescribir cualquiera de las versiones.",
+      "Los hosts remotos por SSH instalan el pi-host enlazado estáticamente desde la propia versión de esta compilación, de modo que los hosts con una glibc más antigua se inician correctamente.",
+    ],
+  },
+  {
     version: "0.21.0",
     date: "2026-10-24",
     highlights: [

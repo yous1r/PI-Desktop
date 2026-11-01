@@ -88,6 +88,12 @@ jobs:
     env:
       # Tag pushes always sign. workflow_dispatch signs unless explicitly disabled.
       MACOS_SIGN_RELEASE: ${{ github.event_name != 'workflow_dispatch' || inputs.sign_macos == true }}
+      # Only vastsa/PI-Desktop holds the Developer ID secrets (ADR 0289). On any
+      # other repository a tag build skips its macOS rows instead of failing
+      # them, so its Windows, Linux and pi-host assets still publish (ADR 0339).
+      # GitHub rejects a job-level `if` that reads `matrix`, so each macOS step
+      # checks this flag; a manual run still builds unsigned macOS artifacts.
+      MACOS_LANE_ENABLED: ${{ github.repository == 'vastsa/PI-Desktop' || github.event_name == 'workflow_dispatch' }}
     strategy:
       fail-fast: false
       matrix:
@@ -195,6 +201,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Prepare package inputs
+        # A skipped macOS row (ADR 0339) has nothing to package.
+        if: matrix.platform != 'macos' || env.MACOS_LANE_ENABLED == 'true'
         run: |
           set -euo pipefail
           cargo build --release --locked -p host-core &
@@ -216,7 +224,7 @@ jobs:
         run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- --${{ matrix.arch }}
 
       - name: Package unsigned macOS installer
-        if: matrix.platform == 'macos' && env.MACOS_SIGN_RELEASE != 'true'
+        if: matrix.platform == 'macos' && env.MACOS_LANE_ENABLED == 'true' && env.MACOS_SIGN_RELEASE != 'true'
         env:
           # Debug-only lane: workflow_dispatch with sign_macos=false.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
@@ -231,11 +239,11 @@ jobs:
         # Xcode tools, Apple timestamp reachability) before electron-builder
         # imports the certificate. Informational: the Developer ID identity is
         # absent here by design and is imported from CSC_LINK during packaging.
-        if: matrix.platform == 'macos'
+        if: matrix.platform == 'macos' && env.MACOS_LANE_ENABLED == 'true'
         run: scripts/macos-signing-diagnostics.sh
 
       - name: Require macOS signing and notarization secrets
-        if: matrix.platform == 'macos' && env.MACOS_SIGN_RELEASE == 'true'
+        if: matrix.platform == 'macos' && env.MACOS_LANE_ENABLED == 'true' && env.MACOS_SIGN_RELEASE == 'true'
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -261,7 +269,7 @@ jobs:
           fi
 
       - name: Package signed and notarized macOS installer
-        if: matrix.platform == 'macos' && env.MACOS_SIGN_RELEASE == 'true'
+        if: matrix.platform == 'macos' && env.MACOS_LANE_ENABLED == 'true' && env.MACOS_SIGN_RELEASE == 'true'
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
@@ -311,12 +319,12 @@ jobs:
         # determine how much work the signing phase had, on the exact bundle the
         # release just produced. Diagnosis only: continue-on-error keeps a
         # surprising bundle layout from failing a release.
-        if: matrix.platform == 'macos'
+        if: matrix.platform == 'macos' && env.MACOS_LANE_ENABLED == 'true'
         continue-on-error: true
         run: node scripts/macos-bundle-inventory.mjs apps/desktop/release
 
       - name: Notarize and staple the macOS DMG
-        if: matrix.platform == 'macos' && env.MACOS_SIGN_RELEASE == 'true'
+        if: matrix.platform == 'macos' && env.MACOS_LANE_ENABLED == 'true' && env.MACOS_SIGN_RELEASE == 'true'
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
@@ -334,7 +342,7 @@ jobs:
             -- scripts/notarize-and-staple-macos-release-dmg.sh apps/desktop/release
 
       - name: Verify signed and notarized macOS installer
-        if: matrix.platform == 'macos' && env.MACOS_SIGN_RELEASE == 'true'
+        if: matrix.platform == 'macos' && env.MACOS_LANE_ENABLED == 'true' && env.MACOS_SIGN_RELEASE == 'true'
         run: scripts/verify-macos-release.sh apps/desktop/release
 
       - name: Verify Linux host-core glibc floor
@@ -362,7 +370,7 @@ jobs:
           fi
 
       - name: Verify macOS artifact names
-        if: matrix.platform == 'macos'
+        if: matrix.platform == 'macos' && env.MACOS_LANE_ENABLED == 'true'
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -386,10 +394,11 @@ jobs:
           done
 
       - name: Disambiguate macOS update metadata
-        if: matrix.platform == 'macos'
+        if: matrix.platform == 'macos' && env.MACOS_LANE_ENABLED == 'true'
         run: mv apps/desktop/release/latest-mac.yml apps/desktop/release/latest-mac-${{ matrix.arch }}.yml
 
       - name: Upload artifacts
+        if: matrix.platform != 'macos' || env.MACOS_LANE_ENABLED == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.artifact }}
@@ -605,6 +614,9 @@ jobs:
         run: ls -la dist/
 
       - name: Merge macOS updater metadata
+        # A fork's tag build skips the macOS lanes (ADR 0339) and has no macOS
+        # feed to merge.
+        if: github.repository == 'vastsa/PI-Desktop'
         working-directory: dist
         run: |
           set -euo pipefail

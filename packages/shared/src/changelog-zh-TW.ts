@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const zhTWEntries: ChangelogEntry[] = [
   {
+    version: "0.22.1",
+    date: "2026-11-01",
+    highlights: [
+      "在「設定 → 技能」中依外掛分組檢視已安裝外掛的技能，支援搜尋與計數。",
+      "安裝、啟用或重新載入外掛後，其 MCP 伺服器會自動重新整理，無需重新啟動應用程式，進行中的對話不會被中斷。",
+      "外掛可以在全域 AGENTS.md 中維護一個受管區塊，你仍可自由編輯區塊以外的內容。",
+      "指令編輯器會偵測應用程式外的修改，並保留你未儲存的草稿，不會覆寫任何一方。",
+      "SSH 遠端主機改為從本建置自己的發行版安裝靜態連結的 pi-host，glibc 較舊的主機也能正常啟動。",
+    ],
+  },
+  {
     version: "0.21.0",
     date: "2026-10-24",
     highlights: [

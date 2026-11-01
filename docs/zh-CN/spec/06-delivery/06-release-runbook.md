@@ -190,6 +190,8 @@ GitHub Release 工作流程启动所有本机平台运行程序，无需
 
 **macOS 默认发布策略：** GitHub tag 发布会在上传前对 macOS DMG/ZIP 做 Developer ID 签名、公证、装订和 Gatekeeper 校验（D450 / ADR 0289）。缺少签名或公证密钥则作业失败。`workflow_dispatch` 仅可把 `sign_macos: false` 用于未签名调试产物，不得用于 GitHub Release 标签。本地 `scripts/release-macos.sh` 仍是明确的本地签名通道；未配置证书时 `pnpm dist:mac` 保持未签名（D078）。
 
+只有 `vastsa/PI-Desktop` 持有这些签名密钥。在其他仓库上，tag 构建会跳过 macOS 行（`MACOS_LANE_ENABLED`），使 Windows、Linux、静态 host-core 与 `pi-host` 产物仍能发布到该仓库的 GitHub Release；macOS 更新源合并只在 `vastsa/PI-Desktop` 上运行。官方仓库的 tag 构建保持不变。在该仓库构建的桌面端，SSH 引导也从这个 Release 下载 `pi-host`（`PI_HOST_RELEASE_REPO`，[ADR 0339](../../../adr/0339-fork-release-pi-host-source.md)），因此必须先发布该 tag，再用桌面端配置远程主机。
+
 macOS 矩阵使用 arm64 的 `macos-15` 和 Intel x64 的
 `macos-15-intel`。每个作业验证 `uname -m`，向 electron-builder 传入匹配
 的 `--arm64` 或 `--x64`，并在同一本机运行器上构建

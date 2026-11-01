@@ -14,6 +14,7 @@ const {
   normalizeChecksum,
   parseChecksumFile,
   parseUnameOutput,
+  PI_HOST_RELEASE_REPO,
   piHostArtifactName,
   piHostArtifactUrls,
   piHostBundleDir,
@@ -26,7 +27,7 @@ const {
 const VERSION = "0.15.1-beta.5";
 const LINUX_X64 = { platform: "linux", arch: "x64" };
 const ARTIFACT_NAME = "pi-host-0.15.1-beta.5-linux-x64.tar.gz";
-const RELEASE_BASE = "https://github.com/vastsa/PI-Desktop/releases/download/v0.15.1-beta.5";
+const RELEASE_BASE = "https://github.com/yous1r/PI-Desktop/releases/download/v0.15.1-beta.5";
 /** 64 hex characters, so it passes `normalizeChecksum`. */
 const DIGEST = "0123456789abcdef".repeat(4);
 /** Same length as {@link DIGEST}, one nibble different: a tampered download. */
@@ -40,6 +41,17 @@ test("artifact name and URLs follow the release tag layout the desktop pins", ()
   // the desktop can derive them without an API call.
   assert.equal(urls.tarball, `${RELEASE_BASE}/${ARTIFACT_NAME}`);
   assert.equal(urls.checksum, `${RELEASE_BASE}/${ARTIFACT_NAME}.sha256`);
+});
+
+test("bundles download from the repository that builds this desktop release", () => {
+  // The bundle must come from the release this desktop was built beside: that
+  // release carries the static host-core (ADR 0338). Another repository's tag
+  // at the same version can ship a different, glibc-bound host-core (ADR 0339).
+  assert.equal(PI_HOST_RELEASE_REPO, "yous1r/PI-Desktop");
+  const urls = piHostArtifactUrls(VERSION, LINUX_X64);
+  assert.ok(urls.tarball.startsWith(`https://github.com/${PI_HOST_RELEASE_REPO}/releases/download/`));
+  assert.ok(urls.checksum.startsWith(`https://github.com/${PI_HOST_RELEASE_REPO}/releases/download/`));
+  assert.ok(!urls.tarball.includes("vastsa/"), "the bundle never resolves to the upstream repository");
 });
 
 test("resolveTarget maps uname output to a release target", () => {

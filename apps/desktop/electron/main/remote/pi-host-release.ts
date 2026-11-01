@@ -9,7 +9,14 @@
  * remote machine. Everything here is pure so the URL, target, and checksum
  * rules stay testable without a network or an SSH connection.
  */
-import { GITHUB_REPO } from "@pi-desktop/shared";
+/**
+ * Repository whose GitHub Releases publish the `pi-host` bundles this desktop
+ * installs. It is the repository that builds this desktop's release: its
+ * `release.yml` uploads the bundles with their static host-core (ADR 0338) to
+ * the same `v<version>` tag. Feedback issues keep `GITHUB_REPO`; only the
+ * bundle source follows the building repository (ADR 0339).
+ */
+export const PI_HOST_RELEASE_REPO = "yous1r/PI-Desktop";
 
 /** Platforms the bootstrap can classify from `uname -s`. */
 export type PiHostPlatform = "linux" | "darwin";
@@ -92,7 +99,7 @@ export function piHostArtifactUrls(
   target: PiHostTarget,
 ): { tarball: string; checksum: string } {
   const name = piHostArtifactName(version, target);
-  const base = `https://github.com/${GITHUB_REPO}/releases/download/v${version}`;
+  const base = `https://github.com/${PI_HOST_RELEASE_REPO}/releases/download/v${version}`;
   return { tarball: `${base}/${name}`, checksum: `${base}/${name}.sha256` };
 }
 

@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const trEntries: ChangelogEntry[] = [
   {
+    version: "0.22.1",
+    date: "2026-11-01",
+    highlights: [
+      "Yüklü eklenti becerilerini Ayarlar → Beceriler bölümünde arama ve sayılarla eklentiye göre gruplanmış olarak görün.",
+      "Bir eklentiyi yüklemek, etkinleştirmek veya yeniden yüklemek, uygulamayı yeniden başlatmadan MCP sunucularını yeniler; çalışan turlar kesilmez.",
+      "Eklentiler genel AGENTS.md içinde yönetilen bir blok tutabilir; çevresindeki her şeyi düzenlemeye devam edebilirsiniz.",
+      "Talimat düzenleyici uygulama dışında yapılan değişiklikleri algılar ve iki sürümün de üzerine yazmak yerine kaydedilmemiş taslağınızı korur.",
+      "SSH uzak ana bilgisayarları statik bağlantılı pi-host'u bu derlemenin kendi sürümünden kurar; eski glibc kullanan ana bilgisayarlar da doğru şekilde başlar.",
+    ],
+  },
+  {
     version: "0.21.0",
     date: "2026-10-24",
     highlights: [
