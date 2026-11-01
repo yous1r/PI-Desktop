@@ -226,6 +226,15 @@ debug artifacts; that path must not be used for a GitHub Release tag. Local
 `scripts/release-macos.sh` remains the explicit signed local lane; `pnpm dist:mac`
 stays unsigned without a configured certificate (D078).
 
+Only `vastsa/PI-Desktop` holds those signing secrets. A tag build on any other
+repository skips its macOS rows (`MACOS_LANE_ENABLED`) so the Windows, Linux,
+static host-core and `pi-host` assets still reach its GitHub Release, and the
+macOS feed merge runs only on `vastsa/PI-Desktop`. The official repository's
+tag builds are unchanged. That release is also where the SSH bootstrap of a
+desktop built in that repository downloads `pi-host` (`PI_HOST_RELEASE_REPO`,
+[ADR 0339](../../adr/0339-fork-release-pi-host-source.md)), so its tag must be
+published before the desktop sets up a remote host.
+
 The macOS matrix uses `macos-15` for arm64 and `macos-15-intel` for Intel x64.
 Each job verifies `uname -m`, passes the matching `--arm64` or `--x64` flag to
 electron-builder, and builds `pi-desktop-host-core` on that same native

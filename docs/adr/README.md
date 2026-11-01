@@ -394,5 +394,6 @@ Each ADR includes:
 | gen-ui-inline-visualization | [Inline generative UI visualizations](gen-ui-inline-visualization.md) | Accepted (D671) |
 | 0337 | [Keep the request prefix stable across delegation settlements](0337-stable-prompt-prefix-across-delegation.md) | Accepted (supersedes ADR 0279 §9) |
 | 0338 | [The remote bundle ships a statically linked host-core](0338-static-host-core-for-remote-bundles.md) | Accepted (amends ADR 0326 decision 4) |
+| 0339 | [The remote bundle comes from the repository that builds the desktop](0339-fork-release-pi-host-source.md) | Accepted (amends ADR 0326 decision 2) |
 
 | model-reasoning-effort-override | [Model reasoning effort override](model-reasoning-effort-override.md) | Proposed |

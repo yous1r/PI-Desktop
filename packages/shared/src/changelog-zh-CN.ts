@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const zhCNEntries: ChangelogEntry[] = [
   {
+    version: "0.22.1",
+    date: "2026-11-01",
+    highlights: [
+      "在“设置 → 技能”中按插件分组查看已安装插件的技能，支持搜索和计数。",
+      "安装、启用或重新加载插件后，其 MCP 服务器会自动刷新，无需重启应用，进行中的对话不会被打断。",
+      "插件可以在全局 AGENTS.md 中维护一个受管区块，你仍可自由编辑区块之外的内容。",
+      "指令编辑器会检测应用外的修改，并保留你未保存的草稿，不会覆盖任何一方。",
+      "SSH 远程主机改为从本构建自己的发布中安装静态链接的 pi-host，glibc 较旧的主机也能正常启动。",
+    ],
+  },
+  {
     version: "0.21.0",
     date: "2026-10-24",
     highlights: [

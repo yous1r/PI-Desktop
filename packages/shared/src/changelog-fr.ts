@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const frEntries: ChangelogEntry[] = [
   {
+    version: "0.22.1",
+    date: "2026-11-01",
+    highlights: [
+      "Consultez les compétences des plugins installés dans Réglages → Compétences, groupées par plugin, avec recherche et compteurs.",
+      "Installer, activer ou recharger un plugin actualise ses serveurs MCP sans redémarrer l'application ; les tours en cours ne sont pas interrompus.",
+      "Les plugins peuvent maintenir un bloc géré dans le AGENTS.md global pendant que vous continuez à modifier tout ce qui l'entoure.",
+      "L'éditeur d'instructions détecte les modifications faites hors de l'application et conserve votre brouillon non enregistré au lieu d'écraser l'une ou l'autre version.",
+      "Les hôtes distants SSH installent le pi-host lié statiquement depuis la version propre à cette build, si bien que les hôtes dotés d'une glibc plus ancienne démarrent correctement.",
+    ],
+  },
+  {
     version: "0.21.0",
     date: "2026-10-24",
     highlights: [

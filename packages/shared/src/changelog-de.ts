@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const deEntries: ChangelogEntry[] = [
   {
+    version: "0.22.1",
+    date: "2026-11-01",
+    highlights: [
+      "Installierte Plugin-Skills unter Einstellungen → Skills ansehen, nach Plugin gruppiert, mit Suche und Anzahl.",
+      "Das Installieren, Aktivieren oder Neuladen eines Plugins aktualisiert seine MCP-Server ohne Neustart der App; laufende Turns werden nicht unterbrochen.",
+      "Plugins können einen verwalteten Block in der globalen AGENTS.md pflegen, während du alles drumherum weiter bearbeitest.",
+      "Der Anweisungseditor erkennt Änderungen außerhalb der App und behält deinen ungespeicherten Entwurf, statt eine der beiden Fassungen zu überschreiben.",
+      "SSH-Remote-Hosts installieren das statisch gelinkte pi-host aus dem eigenen Release dieses Builds, sodass auch Hosts mit älterer glibc korrekt starten.",
+    ],
+  },
+  {
     version: "0.21.0",
     date: "2026-10-24",
     highlights: [

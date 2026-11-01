@@ -171,6 +171,10 @@ Bootstrap runs over the user's own SSH session, never over RACP:
    [ADR 0326](../../adr/0326-verified-ssh-host-installation.md) explicitly amends
    the original no-executable-upload and remote-only-download restrictions.
    Trust is release SHA-256 over HTTPS, not independent signature verification.
+   The release is the one published by the repository that builds the desktop
+   (`PI_HOST_RELEASE_REPO`,
+   [ADR 0339](../../adr/0339-fork-release-pi-host-source.md)), so the bundle
+   carries that build's static host-core.
 3. It starts `pi-host` bound to loopback and receives a single-use pairing
    token over the SSH channel.
 4. It forwards a local port to the Host's loopback port and connects

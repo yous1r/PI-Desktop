@@ -77,7 +77,7 @@ PI-Desktop (Remote Client)              Remote machine
 ```
 
 引导只走用户自己的 SSH 会话，不走 RACP：桌面用现有 SSH 配置登录，上传一段引导脚本，由它从
-GitHub Releases 下载与桌面同版本的 `pi-host` 包并校验公布的 SHA-256，启动它并绑定 loopback，经 SSH 通道拿到一次性
+构建该桌面端的仓库的 GitHub Releases（`PI_HOST_RELEASE_REPO`，[ADR 0339](../../../adr/0339-fork-release-pi-host-source.md)）下载与桌面同版本的 `pi-host` 包并校验公布的 SHA-256，启动它并绑定 loopback，经 SSH 通道拿到一次性
 配对 token，转发本地端口后以 header profile 连接 `RACP-WS`，用配对 token 换取
 设备 token 存入桌面安全存储；Host 把该桌面设备记为 `owner`。远端 Host 的
 provider 配置由引导步骤经 SSH 通道写入，是 Host 本地配置，绝不经过 RACP。

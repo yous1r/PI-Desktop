@@ -357,9 +357,65 @@ test("macOS release signing is required on tag pushes", () => {
   );
   assert.match(
     releaseWorkflowSource,
-    /Notarize and staple the macOS DMG[\s\S]*?if: matrix\.platform == 'macos' && env\.MACOS_SIGN_RELEASE == 'true'[\s\S]*?Verify signed and notarized macOS installer/,
+    /Notarize and staple the macOS DMG[\s\S]*?if: matrix\.platform == 'macos' && env\.MACOS_LANE_ENABLED == 'true' && env\.MACOS_SIGN_RELEASE == 'true'[\s\S]*?Verify signed and notarized macOS installer/,
   );
   assert.doesNotMatch(releaseWorkflowSource, /scripts\/staple-macos-release-dmg\.sh/);
+});
+
+test("a fork tag build skips only the macOS rows and still publishes", () => {
+  const buildJob = releaseWorkflowSource.match(/^  build:\n[\s\S]*?(?=^  host-core-musl:)/m)?.[0];
+  assert.ok(buildJob, "release build job is missing");
+  // GitHub rejects a job-level `if` that reads `matrix`; the lane flag is a
+  // job env value that every macOS step reads instead (ADR 0339).
+  assert.doesNotMatch(buildJob, /^    if:/m);
+  assert.ok(
+    buildJob.includes(
+      "MACOS_LANE_ENABLED: ${{ github.repository == 'vastsa/PI-Desktop' || github.event_name == 'workflow_dispatch' }}",
+    ),
+  );
+  // The official repository keeps signing every tag build (ADR 0289).
+  assert.ok(
+    buildJob.includes(
+      "MACOS_SIGN_RELEASE: ${{ github.event_name != 'workflow_dispatch' || inputs.sign_macos == true }}",
+    ),
+  );
+  const steps = buildJob.split(/\n(?=      - )/);
+  const named = (name) => steps.find((step) => step.startsWith(`      - name: ${name}`));
+  for (const name of [
+    "Package unsigned macOS installer",
+    "Diagnose macOS signing environment",
+    "Require macOS signing and notarization secrets",
+    "Package signed and notarized macOS installer",
+    "Analyze the packaged macOS app bundle",
+    "Notarize and staple the macOS DMG",
+    "Verify signed and notarized macOS installer",
+    "Verify macOS artifact names",
+    "Disambiguate macOS update metadata",
+  ]) {
+    const step = named(name);
+    assert.ok(step, `${name} step is missing`);
+    assert.match(step, /^        if: matrix\.platform == 'macos' && env\.MACOS_LANE_ENABLED == 'true'/m, name);
+  }
+  // A skipped macOS row neither builds package inputs nor uploads an empty
+  // artifact, which `if-no-files-found: error` would turn into a failure.
+  for (const name of ["Prepare package inputs", "Upload artifacts"]) {
+    assert.match(
+      named(name) ?? "",
+      /^        if: matrix\.platform != 'macos' \|\| env\.MACOS_LANE_ENABLED == 'true'$/m,
+      name,
+    );
+  }
+  // Windows and Linux packaging is not gated by the macOS lane flag.
+  assert.doesNotMatch(named("Package installers") ?? "", /MACOS_LANE_ENABLED/);
+  // Publication still waits for every lane and both pi-host bundles, and only
+  // the official repository has macOS feeds to merge.
+  const publishJob = releaseWorkflowSource.match(/^  publish:\n[\s\S]*$/m)?.[0];
+  assert.ok(publishJob, "release publish job is missing");
+  assert.match(publishJob, /^    needs: \[build, pi-host-bundle\]$/m);
+  assert.match(
+    publishJob,
+    /- name: Merge macOS updater metadata\n(?:        #.*\n)*        if: github\.repository == 'vastsa\/PI-Desktop'\n        working-directory: dist/,
+  );
 });
 
 test("the signed local macOS lane selects the native runner architecture", () => {
