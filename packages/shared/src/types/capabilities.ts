@@ -62,6 +62,16 @@ export type McpServerRecord = {
   /** http: absolute endpoint; HTTP is allowed for local and LAN servers. */
   url?: string;
   headers?: Record<string, string>;
+  /** Host-managed HTTP authentication; no token is present on this record. */
+  authType?: "bearer";
+  /** Opaque Host-generated reference, retained when the document is moved. */
+  credentialRef?: string;
+  /** Settings-only existence indicator, never the stored credential. */
+  hasBearerToken?: boolean;
+  /** Public CA PEM added only to this client's HTTPS trust. */
+  caCertificate?: string;
+  /** Exact PI project identity -> existing central-memory project ID. */
+  memoryProjectBindings?: Record<string, string>;
   /** Handshake/connection timeout in seconds (optional override). */
   timeoutSeconds?: number;
   enabled: boolean;
@@ -83,6 +93,14 @@ export type McpServerInput = {
   env?: Record<string, string>;
   url?: string;
   headers?: Record<string, string>;
+  /** Undefined preserves; null clears Host-managed authentication. */
+  authType?: "bearer" | null;
+  /** Transient native settings input only. Undefined keeps; null clears. Never serialized into MCP configuration. */
+  bearerToken?: string | null;
+  /** Undefined keeps; null clears the public per-client CA. */
+  caCertificate?: string | null;
+  /** Empty object clears explicit central project bindings. */
+  memoryProjectBindings?: Record<string, string>;
   /** Set to null to clear an existing server-specific timeout override. */
   timeoutSeconds?: number | null;
   enabled?: boolean;
@@ -102,6 +120,12 @@ export type McpServerStatus = {
   updatedAt: number;
   hasOauth?: boolean;
   authRequired?: boolean;
+  /** Non-secret connection diagnostic code. */
+  errorCode?: string;
+  /** The connection is made on Desktop, even for a remote repository. */
+  connectionLocation?: "desktop";
+  authorizedProjects?: string[];
+  authorizationPatterns?: string[];
 };
 
 /** A user MCP server plus whatever the runtime knows about its connection. */

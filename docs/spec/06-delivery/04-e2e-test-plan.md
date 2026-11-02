@@ -7,6 +7,58 @@
 ---
 
 
+### E2E-MCP-desktop-managed-memory-center
+
+- Preconditions/entry: `pnpm --filter @pi-desktop/desktop test:mcp-security`
+  (or `npm --prefix apps/desktop run test:mcp-security`) after building
+  shared, i18n, Plugin SDK/DevKit, host-runtime and the candidate Host. Supply
+  `PI_TEST_HOST_BINARY` and, when not on PATH, `PI_TEST_OPENSSL`. All mutable
+  state is isolated; do not use the installed app or real credentials.
+- Editor user path: open the existing Memory center, migrate only on Save,
+  select Bearer, retain/replace/clear, import public CA, add exact project
+  bindings, reopen and change transport. The masked field and CA file input
+  keep accessible semantics; cancel/stale file reads cannot persist secrets.
+- Real native lifecycle: save via McpSecurityService and Host RPC, check ordinary
+  servers JSON versus encrypted storage, retain/rotate/clear, restart the real
+  Host, transfer with collision rename, remove and verify endpoint tampering
+  fails closed. No production HOME/data/agents directories are used.
+- Real HTTPS: selected CA succeeds; default/incorrect CA and hostname mismatch
+  fail without changing default roots. Managed redirects and cancellation fail
+  before a second credential-bearing request or resource resurrection.
+- Races/error coverage: delayed secret reads, scope/binding edits, disposal and
+  obsolete authorization probes cannot dispatch stale writes or discard a new
+  connection. Peer tool/JSON-RPC errors, malformed JSON and excessive nesting
+  are bounded/redacted; recovery never replays writes or trusts old tool names.
+- Cross-engine acceptance lives in the companion memory-service repository:
+  `npm run test:e2e:http-mcp`, with `PI_DESKTOP_ROOT` pointing here and the same
+  candidate Host binary. Real PI runtime/native secrets call a temporary TLS
+  Python/SQLite center: initialization, discovery, retrieval, CAS conflict,
+  reader denial, project/tenant isolation, logical remote context, multipart
+  snapshot invisibility, rotation and clear. No online-center writes occur.
+- Qualification boundaries: editor/model and process tests are not installed-GUI
+  or physical SSH/Linux acceptance. Do not run `verify:ui:*` without a current
+  explicit request. Real-center deployment and writes need separate authority
+  and a designated test project. Remote CBM collection is a later phase, after
+  verifying the actual target's installation/calling contract. Plan/Goal and
+  legacy headless remote-agent catalogs are unchanged.
+- Expected: Credentials stay encrypted and device-local; only the explicit
+  current project/credential/catalog can dispatch. TLS/grant/CAS failures remain
+  observable without secrets, partial snapshots or automatic write replay.
+- Specs: Host RPC, Secrets Storage, Security, Plugin Security; ADR
+  `desktop-managed-memory-mcp`.
+- Acceptance/milestone: Additive memory-center maintenance; native/process and
+  logical-remote acceptance, not installed-GUI or physical-SSH qualification.
+- Status: Implemented candidate; 89 focused MCP/native/editor cases, 81 adjacent
+  OAuth/control cases, and 5 companion HTTPS-center cases passed in isolation.
+  The requested SDK completion installed patched Pi 1.4.0 from the frozen lock;
+  complete JS build, Runtime bundle and 1563 Runtime tests pass (one existing
+  skip) in isolated test state. All 29 Rust MCP tests also pass after fetching
+  locked dev dependencies and splitting the security test module. Broader
+  Windows suites retain platform/environment failures, and the Desktop whole
+  suite hit a local timeout; no tests were weakened or skipped. The candidate
+  branch now triggers unsigned GitHub Actions artifacts after Ubuntu verification.
+  See `docs/project/memory-http-ci-candidate.md` for scope and environment details.
+
 ### E2E-TRANSCRIPT-lossless-tool-images
 
 - Entry: `PI_DESKTOP_HOST_BIN=<candidate-host> pnpm test:e2e:tool-result-persistence`
@@ -10699,6 +10751,7 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 
 | Acceptance | Scenarios |
 |---|---|
+| E / F / Security / Quality — Desktop-managed memory center | E2E-MCP-desktop-managed-memory-center |
 | C / E / Security / Quality — Gemini work setup | E2E-LIVE-VOICE-gemini-work-schema |
 | C / Quality — Continue after malformed tool output | E2E-RUNTIME-malformed-tool-call-continue-recovery |
 | B / Security / Quality — Optional provider client certificate requests | E2E-PROVIDER-optional-client-certificate |

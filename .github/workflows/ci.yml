@@ -53,8 +53,15 @@ jobs:
           ARCHITECTURE_BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}
         run: node scripts/check-architecture.mjs
 
-      - name: Unit-test the Pi patch checks
-        run: node --test scripts/pi-patch-hash.test.mjs
+      - name: Unit-test the Pi patch and candidate workflow checks
+        run: node --test scripts/pi-patch-hash.test.mjs scripts/memory-candidate-ci.test.mjs
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build host-core for native integration tests
+        run: cargo build -p host-core --locked
 
       - name: Unit tests
         run: pnpm -r --if-present test

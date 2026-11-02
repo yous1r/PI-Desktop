@@ -100,6 +100,29 @@ storage, Target and network-interception methods remain denied.
   audit writes; verified by the no-secret-leak smoke check
 - Error messages must not echo full keys
 
+### 3.1 Desktop-managed user HTTP MCP
+
+Static Bearer is native settings input, not an ordinary MCP header or plugin
+secret setting. Host generates an opaque `secret:mcp:bearer:<UUID>` reference;
+Main stores a versioned endpoint-bound token encrypted in the existing Host
+store and returns only existence metadata to renderer. Managed endpoint edits
+require credential re-entry. Missing, corrupt or externally changed credential
+configuration fails closed. Plugin secret/control permissions are not widened.
+
+Public CA PEM applies to one HTTPS client, appended to default trust with
+verification enabled. Private keys, CA paths, non-HTTPS custom-CA configuration
+and managed-connection redirects are refused. Known transport tokens are removed
+from peer results and parser/network errors before model context, audit and UI
+status; safe structured TLS/auth error codes remain diagnosable.
+
+MCP requests stay on Desktop even for a new remote workspace. Exact project
+bindings supply defaults and reject conflicting explicit arguments but never
+replace activation or center grants. Opaque remote identities are not local
+paths; repository evidence is checked on its owning Host. Credential updates
+invalidate connections and stale async work; fresh discovery authorizes retained
+routing names. Failed writes are never automatically replayed. Existing
+headless remote-agent and Plan/Goal restrictions remain unchanged.
+
 ## 4. Workspace sandbox
 
 - File tools are restricted to the project root by default; an explicit path

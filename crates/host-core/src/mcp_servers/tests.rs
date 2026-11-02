@@ -53,7 +53,24 @@ fn config_round_trips_without_activation_fields() {
     };
     let raw = serde_json::to_string(&config).unwrap();
     assert!(!raw.contains("enabled"));
-    assert_eq!(serde_json::from_str::<McpConfig>(&raw).unwrap().id, "files");
+    let restored = serde_json::from_str::<McpConfig>(&raw).unwrap();
+    assert_eq!(restored.id, "files");
+    assert_eq!(restored.auth_type, None);
+    assert_eq!(restored.credential_ref, None);
+    assert_eq!(restored.ca_certificate, None);
+    assert!(restored.memory_project_bindings.is_empty());
+    let serialized: serde_json::Value = serde_json::from_str(&raw).unwrap();
+    for field in [
+        "authType",
+        "credentialRef",
+        "caCertificate",
+        "memoryProjectBindings",
+    ] {
+        assert!(
+            serialized.get(field).is_none(),
+            "legacy config gained {field}"
+        );
+    }
 }
 
 #[test]
@@ -100,6 +117,10 @@ fn disabled_project_server_shadows_global_server() {
         env: BTreeMap::new(),
         url: None,
         headers: BTreeMap::new(),
+        auth_type: None,
+        credential_ref: None,
+        ca_certificate: None,
+        memory_project_bindings: BTreeMap::new(),
         timeout_seconds: None,
         enabled: true,
         scope: ActivationScope::default(),
@@ -469,3 +490,5 @@ fn moving_one_projects_server_to_global_keeps_another_projects_state() {
             .enabled(MCP_KIND, CapabilityLevel::Global, "files", None));
     });
 }
+
+mod security;

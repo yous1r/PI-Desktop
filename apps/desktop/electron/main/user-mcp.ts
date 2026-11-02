@@ -8,6 +8,9 @@ import {
 import { userMcpToolName } from "@pi-desktop/plugin-sdk";
 import type { McpServerClient, McpTool } from "./plugin-mcp";
 import { McpCallRegistry } from "./mcp-call-registry.ts";
+import type { McpSecurityService } from "./mcp-security.ts";
+import { createMcpTlsFetch } from "./mcp-tls.ts";
+import { boundMemoryArguments, memoryToolDescription } from "./mcp-memory-bindings.ts";
 
 /**
  * MCP servers the user configured directly, with no plugin around them.
@@ -54,6 +57,7 @@ export type UserMcpRuntimeOptions = {
    */
   createClient: (config: UserMcpClientConfig) => UserMcpClient;
   oauth?: UserMcpOAuthHandler;
+  security?: McpSecurityService;
   audit?: (entry: Record<string, unknown>) => void;
   log?: (level: "info" | "warn" | "error", message: string, data?: unknown) => void;
   connectTimeoutMs?: number;
@@ -91,6 +95,9 @@ export class UserMcpRuntime {
   private discoveredTools = new Map<string, Set<string>>();
   private records: McpServerRecord[] = [];
   private options: UserMcpRuntimeOptions;
+  private generations = new Map<string, number>();
+  private lifecycleGeneration = 0;
+  private connectionFailures = new Map<string, McpServerStatus>();
 
   // Spelled out rather than a constructor parameter property, because the test
   // runner loads this file with Node's type-stripping loader, which rejects them.
@@ -106,6 +113,7 @@ export class UserMcpRuntime {
   setRecords(records: McpServerRecord[]): void {
     this.records = records.map((record) => ({ ...record }));
     const byId = new Map(this.records.map((record) => [record.id, record]));
+    for (const id of this.connectionFailures.keys()) if (!byId.has(id)) this.connectionFailures.delete(id);
     for (const id of this.discoveredTools.keys()) {
       if (!byId.has(id)) this.discoveredTools.delete(id);
     }
@@ -118,6 +126,10 @@ export class UserMcpRuntime {
       }
       entry.record = next;
     }
+  }
+
+  getSecurityService(): McpSecurityService | undefined {
+    return this.options.security;
   }
 
   listRecords(): McpServerRecord[] {
@@ -164,6 +176,8 @@ export class UserMcpRuntime {
   }
 
   statusFor(serverId: string): McpServerStatus {
+    const failure = this.connectionFailures.get(serverId);
+    if (failure) return { ...failure };
     const entry = [...this.entries.values()]
       .filter((candidate) => candidate.record.id === serverId)
       .sort((left, right) => right.status.updatedAt - left.status.updatedAt)[0];
@@ -198,12 +212,14 @@ export class UserMcpRuntime {
     }));
     const out: UserMcpToolDescriptor[] = [];
     admitted.forEach((record, index) => {
+      const current = this.records.find((item) => item.id === record.id);
+      if (!current || !isActiveInProject(current, projectPath) || configurationChanged(record, current)) return;
       for (const tool of lists[index]) {
         out.push({
           fullName: userMcpToolName(record.id, tool.name),
           serverId: record.id,
           toolName: tool.name,
-          description: tool.description ?? `${record.label} tool "${tool.name}" (MCP)`,
+          description: memoryToolDescription(record, tool.name, tool.description ?? `${record.label} tool "${tool.name}" (MCP)`, projectPath),
           schema: tool.inputSchema,
         });
       }
@@ -280,7 +296,7 @@ export class UserMcpRuntime {
       }
       // Do not retry tools/call: a failed response may have followed a mutation.
       try {
-        return await entry.client.callTool(found.toolName, args, signal);
+        return await entry.client.callTool(found.toolName, boundMemoryArguments(current, found.toolName, args, projectPath), signal);
       } catch (error) {
         const msg = (error as Error).message || "";
         if (msg.includes("401") || (error as { status?: number }).status === 401) {
@@ -320,23 +336,50 @@ export class UserMcpRuntime {
     const key = connectionKey(record, null);
     this.entries.get(key)?.client.close();
     this.entries.delete(key);
-    await this.connect(record, null);
+    const { entry } = await this.connect(record, null);
+    if (entry?.status.state === "ready" && record.id === "superclaude-memory" && entry.client.getTools().some((tool) => tool.name === "sc_memory_projects")) {
+      try {
+        const result = await entry.client.callTool("sc_memory_projects", {});
+        if (this.entries.get(key) !== entry) return this.statusFor(serverId);
+        const wrapped = result && typeof result === "object" ? result as Record<string, unknown> : {};
+        let grants = wrapped.structuredContent;
+        if (!grants && Array.isArray(wrapped.content)) {
+          const text = wrapped.content.find((part) => part?.type === "text" && typeof part.text === "string");
+          if (text) grants = JSON.parse(text.text);
+        }
+        if (grants && typeof grants === "object" && !Array.isArray(grants)) {
+          const value = grants as Record<string, unknown>;
+          const projects = Array.isArray(value.projects) ? value.projects : [];
+          entry.status = { ...entry.status, connectionLocation: "desktop",
+            authorizedProjects: projects.flatMap((item) => item && typeof item === "object" && typeof item.id === "string" ? [item.id] : []).slice(0, 200),
+            authorizationPatterns: Array.isArray(value.patterns) ? value.patterns.filter((item): item is string => typeof item === "string").slice(0, 200) : [],
+          };
+        }
+      } catch (error) {
+        if (this.entries.get(key) === entry) this.recordFailure(record, error);
+      }
+    }
     return this.statusFor(serverId);
   }
 
-  /** Drop a cached connection and tools for a server. */
-  invalidate(serverId: string): void {
+  /** Drop a connection. Credential edits may retain routing hints; fresh discovery still authorizes every call. */
+  invalidate(serverId: string, keepRoutingHints = false): void {
+    this.generations.set(serverId, (this.generations.get(serverId) ?? 0) + 1);
+    this.connectionFailures.delete(serverId);
     for (const [key, entry] of [...this.entries]) {
       if (entry.record.id === serverId) {
         entry.client.close();
         this.entries.delete(key);
       }
     }
-    this.discoveredTools.delete(serverId);
+    if (!keepRoutingHints) this.discoveredTools.delete(serverId);
   }
 
   /** Drop every connection, e.g. on quit. */
   disposeAll(): void {
+    this.lifecycleGeneration += 1;
+    this.generations.clear();
+    this.connectionFailures.clear();
     this.calls.cancelAll();
     for (const entry of this.entries.values()) entry.client.close();
     this.entries.clear();
@@ -364,14 +407,26 @@ export class UserMcpRuntime {
     projectPath: string | null | undefined = null,
     pin = false,
   ): Promise<{ tools: McpTool[]; entry?: Entry }> {
+    const generation = this.generations.get(record.id) ?? 0;
+    const lifecycle = this.lifecycleGeneration;
     let oauthToken: string | null = null;
-    if (record.transport === "http" && this.options.oauth) {
+    if (record.transport === "http") {
       try {
-        oauthToken = await this.options.oauth.getValidAccessToken(record.id);
-      } catch {
-        oauthToken = null;
+        if (record.authType === "bearer") {
+          if (!this.options.security) throw Object.assign(new Error("Managed MCP credentials are unavailable. Configure the server in settings."), { errorCode: "MCP_AUTH_REQUIRED" });
+          oauthToken = await this.options.security.getBearerToken(record);
+        } else if (this.options.oauth) {
+          try { oauthToken = await this.options.oauth.getValidAccessToken(record.id); } catch { oauthToken = null; }
+        }
+      } catch (error) {
+        const current = this.records.find((item) => item.id === record.id);
+        if (lifecycle !== this.lifecycleGeneration || generation !== (this.generations.get(record.id) ?? 0) || !current || configurationChanged(record, current)) return { tools: [] };
+        return this.recordFailure(record, error);
       }
     }
+    const current = this.records.find((item) => item.id === record.id);
+    if (lifecycle !== this.lifecycleGeneration || generation !== (this.generations.get(record.id) ?? 0) || !current || configurationChanged(record, current)) return { tools: [] };
+    this.connectionFailures.delete(record.id);
 
     const key = connectionKey(record, projectPath);
     let existing = this.entries.get(key);
@@ -408,13 +463,27 @@ export class UserMcpRuntime {
       return { tools: [], entry: existing };
     }
 
-    const entry = existing ?? this.createEntry(record, oauthToken, key, projectPath);
+    let entry: Entry;
+    try { entry = existing ?? this.createEntry(record, oauthToken, key, projectPath); }
+    catch (error) { return this.recordFailure(record, error); }
     if (pin) entry.activeCalls += 1;
     entry.lastUsedAt = Date.now();
     entry.connecting = this.handshake(record, entry).finally(() => {
       entry.connecting = undefined;
     });
     return { tools: await entry.connecting, entry };
+  }
+
+  private recordFailure(record: McpServerRecord, error: unknown): { tools: McpTool[] } {
+    this.invalidate(record.id, true);
+    const coded = error && typeof error === "object" ? error as { errorCode?: string; code?: string } : {};
+    const errorCode = coded.errorCode ?? coded.code ?? "MCP_CONNECTION_FAILED";
+    const message = error instanceof Error ? error.message.slice(0, 500) : "MCP connection failed.";
+    const status: McpServerStatus = { serverId: record.id, state: "failed", toolCount: 0, message, errorCode,
+      connectionLocation: "desktop", updatedAt: Date.now(), authRequired: errorCode.startsWith("MCP_AUTH_") || message.includes("401") };
+    this.connectionFailures.set(record.id, status);
+    this.options.log?.("warn", "user mcp connection configuration failed", { serverId: record.id, errorCode });
+    return { tools: [] };
   }
 
   private async handshake(record: McpServerRecord, entry: Entry): Promise<McpTool[]> {
@@ -443,18 +512,24 @@ export class UserMcpRuntime {
       };
       return tools;
     } catch (error) {
-      const msg = (error as Error).message || "";
-      const is401 = msg.includes("401");
+      if (this.entries.get(entry.key) !== entry) return [];
+      const msg = error instanceof Error ? error.message : "MCP connection failed.";
+      const coded = error && typeof error === "object" ? error as { errorCode?: unknown; code?: unknown } : {};
+      const errorCode = typeof coded.errorCode === "string" ? coded.errorCode
+        : typeof coded.code === "string" ? coded.code : "MCP_CONNECTION_FAILED";
       entry.status = {
         serverId: record.id,
         state: "failed",
         toolCount: 0,
         message: msg.slice(0, 500),
+        errorCode,
+        connectionLocation: "desktop",
         updatedAt: Date.now(),
-        authRequired: is401,
+        authRequired: errorCode.startsWith("MCP_AUTH_") || msg.includes("401"),
       };
       this.options.log?.("warn", "user mcp server failed to connect", {
         serverId: record.id,
+        errorCode,
         message: entry.status.message,
       });
       return [];
@@ -491,8 +566,17 @@ export class UserMcpRuntime {
         headers,
       },
       values: record.transport === "stdio" ? (record.env ?? {}) : headers,
+      ...(oauthToken ? { redactValues: [oauthToken] } : {}),
       audit: this.options.audit,
       auditScope: "mcp",
+      ...(record.caCertificate ? { fetchImpl: createMcpTlsFetch(record.caCertificate) } : {}),
+      ...(record.authType === "bearer" || record.caCertificate ? {
+        assertUrlAllowed: (url: string) => {
+          if (new URL(url).toString() !== new URL(record.url ?? "").toString()) {
+            throw Object.assign(new Error("Redirects are refused for managed MCP credentials and CA settings."), { errorCode: "MCP_HTTP_REDIRECT" });
+          }
+        },
+      } : {}),
       connectTimeoutMs: customTimeoutMs ?? this.options.connectTimeoutMs,
       callTimeoutMs: customTimeoutMs ? Math.max(customTimeoutMs, this.options.callTimeoutMs ?? 0) : this.options.callTimeoutMs,
       discoveryTimeoutMs: customTimeoutMs ? Math.max(customTimeoutMs, this.options.discoveryTimeoutMs ?? 0) : this.options.discoveryTimeoutMs,
@@ -554,6 +638,10 @@ export function configurationChanged(before: McpServerRecord, after: McpServerRe
     JSON.stringify(before.args ?? []) !== JSON.stringify(after.args ?? []) ||
     JSON.stringify(before.env ?? {}) !== JSON.stringify(after.env ?? {}) ||
     before.url !== after.url ||
+    before.authType !== after.authType ||
+    before.credentialRef !== after.credentialRef ||
+    before.caCertificate !== after.caCertificate ||
+    JSON.stringify(before.memoryProjectBindings ?? {}) !== JSON.stringify(after.memoryProjectBindings ?? {}) ||
     JSON.stringify(before.headers ?? {}) !== JSON.stringify(after.headers ?? {}) ||
     before.timeoutSeconds !== after.timeoutSeconds
   );

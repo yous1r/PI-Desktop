@@ -20,6 +20,7 @@ Each ADR includes:
 
 | ID | Title | Status |
 |---|---|---|
+| desktop-managed-memory-mcp | [Desktop-owned managed HTTP MCP for a memory center](desktop-managed-memory-mcp.md) | Implemented candidate |
 | plugin-effective-permissions-query | [Plugin self-query for effective permission metadata](plugin-effective-permissions-query.md) | Accepted |
 | lossless-tool-image-storage | [Lossless tool-image storage and bounded history mutations](lossless-tool-image-storage.md) | Implemented candidate |
 | plugin-remote-workspace-reads | [Plugin reads in remote workspaces](plugin-remote-workspace-reads.md) | Implemented candidate |

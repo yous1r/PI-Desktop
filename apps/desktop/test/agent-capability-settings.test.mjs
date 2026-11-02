@@ -25,6 +25,7 @@ const subagents = read("../src/components/settings/AgentSubagentsPage.tsx");
 const subagentSettings = read("../src/components/settings/subagent-settings.ts");
 const hostCollection = read("../src/hooks/use-host-collection.ts");
 const mcpEditor = read("../src/components/extensions/McpEditorSheet.tsx");
+const mcpEditorModel = read("../src/components/extensions/mcp-editor-model.ts");
 const electron = readMainSourceSync();
 const skillImport = readMainModuleSync("ipc/skills-ipc.ts");
 const styles = await loadStyles();
@@ -322,7 +323,8 @@ test("MCP management reuses the validated modal and blocks same-level duplicates
   assert.match(mcp, /settings\.mcpDuplicate/);
   assert.match(mcpEditor, /role="dialog"/);
   assert.match(mcpEditor, /disabled=\{!!editing\}/);
-  assert.match(mcpEditor, /\^\[a-zA-Z\]\[a-zA-Z0-9_-\]\{0,63\}\$/);
+  assert.match(mcpEditor, /mcpDraftError/);
+  assert.match(mcpEditorModel, /\^\[a-zA-Z\]\[a-zA-Z0-9_-\]\{0,63\}\$/);
   assert.match(mcp, /api\.testMcpServer/);
 });
 
@@ -346,7 +348,7 @@ test("capability state stays outside capability files and active merge shadows d
 });
 
 test("all capability paths are agents roots, not legacy capability directories", () => {
-  for (const source of [layout, skills, mcp, subagents, subagentSettings, mcpEditor, electron]) {
+  for (const source of [layout, skills, mcp, subagents, subagentSettings, mcpEditor, mcpEditorModel, electron]) {
     assert.doesNotMatch(source, /\.pi\/(?:agents|skills|mcp)/);
   }
 });
@@ -412,7 +414,9 @@ test("a capability can be moved between the global and a project level", () => {
   assert.match(protocol, /skillTransfer: "pi-desktop\/skill\/transfer"/);
   assert.match(api, /transferMcpServer: \(move: AgentCapabilityMove\) =>/);
   assert.match(api, /transferUserSkill: \(move: AgentCapabilityMove\) =>/);
-  assert.match(mcpIpc, /host\.call<\{ server: McpServerRecord \}>\("mcp\.transfer", payload\)/);
+  assert.match(mcpIpc, /security\.transfer\(payload\)/);
+  const mcpSecurity = readMainModuleSync("mcp-security.ts");
+  assert.match(mcpSecurity, /host\.call<\{ server: McpServerRecord \}>\("mcp\.transfer", input\)/);
   assert.match(
     skillImport,
     /host\.call<\{ skill: UserSkillRecord \}>\("skills\.transfer", payload\)/,

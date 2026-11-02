@@ -9,6 +9,31 @@
 
 ---
 
+### E2E-MCP-desktop-managed-memory-center
+
+- **Preconditions/entry:** Build candidate Host, shared/i18n, SDK/DevKit and
+  host-runtime; run `pnpm --filter @pi-desktop/desktop test:mcp-security` or
+  `npm --prefix apps/desktop run test:mcp-security`. Set `PI_TEST_HOST_BINARY`
+  and an existing `PI_TEST_OPENSSL` where needed; use scratch-only state.
+- **Sequence:** Explicit editor migration/save/reopen; keep/rotate/clear token;
+  public CA import and exact project binding; real native encrypted storage,
+  restart, collision transfer and removal; HTTPS trust/hostname/redirect errors;
+  async scope/credential races, peer error redaction and no write replay.
+- **Cross-engine:** The companion memory-service `test:e2e:http-mcp` calls a
+  temporary TLS Python/SQLite center through actual PI runtime/native secrets.
+  Verify MCP initialization/discovery, retrieval, CAS, reader/project/tenant
+  denials, logical remote context and invisible failed multipart snapshots.
+- **Expected/status:** 89 focused MCP/native/editor, 81 OAuth/control and
+  5 companion HTTPS-center cases passed. Installed GUI, physical SSH/Linux,
+  real-center deployment/writes and remote CBM collection remain separate gates.
+  SDK follow-up installed locked patched Pi 1.4.0; JS/Runtime bundle and
+  1563 Runtime tests pass (one existing skip) with isolated test state. All
+  29 Rust MCP tests pass. Broader Windows failures and a local Desktop timeout
+  remain recorded, not skipped. The candidate branch builds unsigned Actions
+  artifacts only after Ubuntu verification; see the English candidate record.
+- **Specs:** Host RPC, Secrets Storage, Security, Plugin Security; ADR
+  `desktop-managed-memory-mcp`. The English source is authoritative.
+
 ### E2E-PI-130-kernel-upgrade
 
 - **Preconditions:** Pi 1.3.0 with migrated patches, isolated fixture state, and
@@ -5920,6 +5945,7 @@ eleven-tool-round desktop paths are verified by
 ## 8. 可追溯性矩阵
 | 验收 | 应用场景 |
 |---|---|
+| E / F / Security / Quality — Desktop-managed memory center | E2E-MCP-desktop-managed-memory-center |
 | C / E / Security / Quality — Gemini work setup | E2E-LIVE-VOICE-gemini-work-schema |
 | C / Quality — Continue after malformed tool output | E2E-RUNTIME-malformed-tool-call-continue-recovery |
 | B / Security / Quality — Optional provider client certificate requests | E2E-PROVIDER-optional-client-certificate |

@@ -1,21 +1,13 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  GLOBAL_SCOPE,
-  isNonLoopbackHttpMcpUrl,
-  type AgentCapabilityLevel,
-  resolveScope,
-  type ActivationScope,
-  type McpServerInput,
-  type McpServerRecord,
-  type McpServerStatus,
-  type McpTransport,
-  type ProjectRecord,
-} from "@pi-desktop/shared";
+import { isNonLoopbackHttpMcpUrl, type AgentCapabilityLevel, type McpServerRecord, type McpServerStatus, type McpTransport, type ProjectRecord } from "@pi-desktop/shared";
 import { Button, Field, HelpIcon, Input, SettingsToggle, TooltipButton, cx, portalOverlay } from "../ui";
 import { IconPlay, IconServer, IconTerminal, IconX } from "../icons";
 import { ScopeControl } from "./ScopeControl";
-import { KeyValueRows, pairsToRecord, recordToPairs, type KeyValuePair } from "./KeyValueRows";
+import { KeyValueRows } from "./KeyValueRows";
+import { mcpDraftError, mcpIdFromLabel, mcpDraftForTransport, type McpDraft } from "./mcp-editor-model";
+import { McpHttpSecurityFields } from "./McpHttpSecurityFields";
+export { draftFromRecord, draftToInput, emptyMcpDraft, splitArgs, mcpIdFromLabel, mcpDraftError, memoryCenterDraft, type McpDraft } from "./mcp-editor-model";
 import {
   MCP_STDIO_LAUNCHER_PRESETS,
   mcpStdioLauncherChoice,
@@ -37,139 +29,6 @@ const MCP_TEST_TOOL_NAME_LIMIT = 24;
  * even means, and the two branches never both show: a form that asks for a URL
  * and a command at the same time invites a config that is half of each.
  */
-export type McpDraft = {
-  id: string;
-  label: string;
-  description: string;
-  transport: McpTransport;
-  command: string;
-  args: string;
-  env: KeyValuePair[];
-  url: string;
-  headers: KeyValuePair[];
-  enabled: boolean;
-  scope: ActivationScope;
-  timeoutSeconds: string;
-};
-
-export function emptyMcpDraft(): McpDraft {
-  return {
-    id: "",
-    label: "",
-    description: "",
-    transport: "stdio",
-    command: "npx",
-    args: "",
-    env: [],
-    url: "",
-    headers: [],
-    enabled: true,
-    scope: GLOBAL_SCOPE,
-    timeoutSeconds: "",
-  };
-}
-
-export function draftFromRecord(record: McpServerRecord): McpDraft {
-  return {
-    id: record.id,
-    label: record.label ?? "",
-    description: record.description ?? "",
-    transport: record.transport,
-    command: record.command ?? "",
-    args: (record.args ?? []).join(" "),
-    env: recordToPairs(record.env),
-    url: record.url ?? "",
-    headers: recordToPairs(record.headers),
-    enabled: record.enabled,
-    scope: resolveScope(record.scope),
-    timeoutSeconds: record.timeoutSeconds !== undefined ? String(record.timeoutSeconds) : "",
-  };
-}
-
-/**
- * Split a command line into arguments, honouring quotes.
- *
- * The field takes one line because that is how every MCP README prints the
- * command, and asking the user to re-key `npx -y pkg` as three rows would be
- * hostile. Quoted segments survive so a path with a space still arrives as one
- * argument.
- */
-export function splitArgs(value: string): string[] {
-  const out: string[] = [];
-  let current = "";
-  let quote: '"' | "'" | null = null;
-  for (const char of value) {
-    if (quote) {
-      if (char === quote) quote = null;
-      else current += char;
-      continue;
-    }
-    if (char === '"' || char === "'") {
-      quote = char;
-      continue;
-    }
-    if (/\s/.test(char)) {
-      if (current) out.push(current);
-      current = "";
-      continue;
-    }
-    current += char;
-  }
-  if (current) out.push(current);
-  return out;
-}
-
-/** Slug host-core will accept: starts with a letter, `[A-Za-z0-9_-]` after. */
-export function mcpIdFromLabel(label: string): string {
-  const cleaned = label
-    .trim()
-    .toLocaleLowerCase()
-    .replace(/[^a-z0-9_-]+/g, "-")
-    .replace(/^-+/, "")
-    .replace(/-+$/, "")
-    .slice(0, 64);
-  return /^[a-z]/.test(cleaned) ? cleaned : "";
-}
-
-export function draftToInput(
-  draft: McpDraft,
-  context?: { level?: AgentCapabilityLevel; projectPath?: string },
-): McpServerInput {
-  const parsedTimeout = draft.timeoutSeconds.trim()
-    ? Number.parseInt(draft.timeoutSeconds.trim(), 10)
-    : undefined;
-  const timeoutInput: { timeoutSeconds?: number | null } = {};
-  if (!draft.timeoutSeconds.trim()) timeoutInput.timeoutSeconds = null;
-  else if (typeof parsedTimeout === "number" && !Number.isNaN(parsedTimeout)) {
-    timeoutInput.timeoutSeconds = parsedTimeout;
-  }
-  const base = {
-    id: draft.id.trim(),
-    ...(context?.level ? { level: context.level } : {}),
-    ...(context?.projectPath ? { projectPath: context.projectPath } : {}),
-    label: draft.label.trim() || draft.id.trim(),
-    description: draft.description.trim() || undefined,
-    ...timeoutInput,
-    enabled: draft.enabled,
-    scope: draft.scope,
-  };
-  if (draft.transport === "http") {
-    return {
-      ...base,
-      transport: "http",
-      url: draft.url.trim(),
-      headers: pairsToRecord(draft.headers),
-    };
-  }
-  return {
-    ...base,
-    transport: "stdio",
-    command: draft.command.trim(),
-    args: splitArgs(draft.args),
-    env: pairsToRecord(draft.env),
-  };
-}
-
 function ManagementScope({
   draft,
   setDraft,
@@ -209,33 +68,6 @@ function ManagementScope({
       />
     </div>
   );
-}
-
-/** Client-side mirror of host-core's rules, so the form can explain itself. */
-export function mcpDraftError(draft: McpDraft): string | null {
-  if (!draft.id.trim()) return "extensions.mcp.errorId";
-  if (!/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(draft.id.trim())) return "extensions.mcp.errorIdShape";
-  if (draft.timeoutSeconds.trim()) {
-    const parsed = Number(draft.timeoutSeconds.trim());
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 600) {
-      return "extensions.mcp.errorTimeoutRange";
-    }
-  }
-  if (draft.transport === "stdio") {
-    if (!draft.command.trim()) return "extensions.mcp.errorCommand";
-    if (draft.command.includes("..")) return "extensions.mcp.errorCommandDots";
-    return null;
-  }
-  const url = draft.url.trim();
-  if (!url) return "extensions.mcp.errorUrl";
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    return "extensions.mcp.errorUrlShape";
-  }
-  if (parsed.protocol === "http:" || parsed.protocol === "https:") return null;
-  return "extensions.mcp.errorUrlScheme";
 }
 
 export function McpEditorSheet({
@@ -367,7 +199,7 @@ export function McpEditorSheet({
                   role="radio"
                   aria-checked={draft.transport === option.id}
                   className={cx("ext-transport-card", draft.transport === option.id && "is-active")}
-                  onClick={() => set("transport", option.id)}
+                  onClick={() => setDraft(mcpDraftForTransport(draft, option.id))}
                 >
                   <span className="ext-transport-icon" aria-hidden>
                     {option.icon}
@@ -478,7 +310,7 @@ export function McpEditorSheet({
               <Field label={t("extensions.mcp.url")} hint={t("extensions.mcp.urlHint")}>
                 <Input
                   value={draft.url}
-                  placeholder="https://mcp.example.com/sse"
+                  placeholder={t("mcpSecurity.endpointPlaceholder")}
                   onChange={(event) => set("url", event.target.value)}
                 />
               </Field>
@@ -500,6 +332,8 @@ export function McpEditorSheet({
                   addLabel={t("extensions.mcp.addHeader")}
                 />
               </div>
+              <McpHttpSecurityFields draft={draft} setDraft={setDraft} currentProjectPath={currentProjectPath} busy={saving || testing} />
+              {editing?.transport === "stdio" ? <p role="note" className="ext-sheet-note">{t("mcpSecurity.migrationHint")}</p> : null}
             </>
           )}
 
@@ -563,6 +397,9 @@ export function McpEditorSheet({
                   {status.toolNames.slice(0, MCP_TEST_TOOL_NAME_LIMIT).join(" · ")}
                   {status.toolNames.length > MCP_TEST_TOOL_NAME_LIMIT ? " …" : ""}
                 </span>
+              ) : null}
+              {status.state === "ready" && (status.authorizedProjects?.length || status.authorizationPatterns?.length) ? (
+                <span className="ext-test-tools">{t("mcpSecurity.authorizedProjects")}: {[...(status.authorizedProjects ?? []), ...(status.authorizationPatterns ?? [])].slice(0, 24).join(" · ")}</span>
               ) : null}
             </div>
           ) : null}

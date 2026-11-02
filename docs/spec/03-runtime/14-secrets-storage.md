@@ -52,6 +52,7 @@ type SecretMeta = {
 secret:provider:<providerId>:api_key
 secret:provider:<providerId>:oauth
 secret:app:typesafe-jev
+secret:mcp:bearer:<host-generated-UUID>
 ```
 
 The two refs are independent, so one provider row may hold an API key, a vendor
@@ -81,7 +82,7 @@ hiding the API key input on a vendor row.
 
 - `secrets.set` `{ secretRef, value, meta }`
 - `secrets.delete` `{ secretRef }`
-- `secrets.has` `{ secretRef } -> boolean`
+- `secrets.has` `{ secretRef } -> { has: boolean }`
 - `secrets.getForRuntime` `{ secretRef, reason, runId }` **internal only** (main/host → not exposed to renderer)
 
 ### Renderer-facing surface
@@ -91,7 +92,7 @@ Renderer uses provider methods that accept optional `secretValue` on create/upda
 
 1. Renderer cannot list raw secrets
 2. Logs redaction: mask values matching secret patterns / known secret refs
-3. `getForRuntime` requires active run context and is audited
+3. `getForRuntime` is an internal trusted Main/Host runtime read, never a renderer/plugin secret-read API; native MCP discovery and explicit connection tests also use this channel
 4. Export excludes secrets by default
 5. Uninstall/reset app deletes secrets unless future explicit migrate tool says otherwise
 6. Provider delete defaults to deleting linked secret — both the API key and the OAuth credential
@@ -185,3 +186,36 @@ Request auth flows one way only:
 The sidecar therefore holds a revocable, roughly hour-long token scoped to the
 one provider its session is bound to — strictly less than the long-lived API
 key it receives for a keyed row.
+
+## 11. Managed static Bearer credentials for user HTTP MCP
+
+Native MCP settings accept `bearerToken` only as transient, masked input. Main
+removes it before `mcp.upsert`; Host Core creates `secret:mcp:bearer:<UUID>` and
+persists only that reference in ordinary MCP JSON. Main stores the encrypted
+secret as `{version:1, endpoint:<canonical exact URL>, token:<value>}` through
+the existing Host SecretStore. A plugin cannot select a reference or acquire
+generic secret permissions.
+
+Renderer list/save responses expose `hasBearerToken`, not a raw read. Keeping an
+existing token omits `bearerToken`; a string replaces it and `null` explicitly
+clears it. Main's runtime-only read also serves native discovery and explicit
+connection tests, without exposing `secrets.getForRuntime` to renderer/plugin
+settings. Missing/corrupt references or endpoint mismatch fail closed; changing
+the endpoint without re-entering a credential fails before a managed save.
+
+Transfer and collision rename preserve the reference. Remove verifies the
+configuration is gone before deleting its secret; a failed removal retains the
+credential. Serial configuration operations and runtime invalidation prevent
+stale reads/connections from restoring old work. There is no automatic write
+replay, live-center write on save/test, or credential forwarding to an SSH Host.
+
+Public `caCertificate` PEM is ordinary non-secret configuration, not a private
+key or filesystem path. Main bounds and validates it, adds it to default trust
+for one HTTPS client, and never disables verification or changes global roots.
+Known transport credentials are redacted from peer results and parser/network
+errors, including their error stacks/causes, before model/audit surfaces.
+
+Portable configuration capture does not read this device-local token, even
+when ordinary MCP env/header credential export is opted in. A receiving device
+configures its own credential. Legacy unmanaged headers and OAuth retain their
+existing contracts. See ADR `desktop-managed-memory-mcp`.

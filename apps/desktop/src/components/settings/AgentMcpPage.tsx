@@ -33,6 +33,7 @@ import {
   draftFromRecord,
   draftToInput,
   emptyMcpDraft,
+  memoryCenterDraft,
   McpEditorSheet,
   type McpDraft,
 } from "../extensions/McpEditorSheet";
@@ -173,6 +174,13 @@ export function AgentMcpPage() {
   const openEdit = (server: McpServerRecord, level: AgentCapabilityLevel) => {
     setMenuFor(null);
     setEditor({ draft: draftFromRecord(server), editing: server, level });
+  };
+
+  const openMemoryCenter = () => {
+    const project = projectServers.find((server) => server.id === "superclaude-memory");
+    const global = globalServers.find((server) => server.id === "superclaude-memory");
+    const existing = project ?? global;
+    setEditor({ draft: memoryCenterDraft(t("mcpSecurity.memoryCenter"), existing), editing: existing ?? null, level: project ? "project" : "global" });
   };
 
   const save = async () => {
@@ -437,9 +445,9 @@ export function AgentMcpPage() {
       server.headers &&
       Object.keys(server.headers).some((k) => k.toLowerCase() === "authorization"),
     );
-    const isOAuth = isHttp && (Boolean(status?.hasOauth) || !hasAuthHeader);
+    const isOAuth = isHttp && server.authType !== "bearer" && (Boolean(status?.hasOauth) || !hasAuthHeader);
     const needsAuth =
-      isHttp &&
+      isHttp && server.authType !== "bearer" &&
       !hasAuthHeader &&
       Boolean(status?.authRequired);
     const items: CapabilityMenuItem[] = [
@@ -664,6 +672,7 @@ export function AgentMcpPage() {
                 onClick={() => setImportOpen((current) => !current)}
               />
               {addButton}
+              <CapabilityButton onClick={openMemoryCenter}><IconServer size={14} />{t("mcpSecurity.memoryCenter")}</CapabilityButton>
               {marketButton}
             </>
           }

@@ -41,6 +41,7 @@ import { PluginShortcutRegistry } from "../plugin-shortcut-registry";
 import { PluginWebSocketRegistry } from "../plugin-websocket";
 import { hostGlobalShortcutBindings } from "../bootstrap/launcher";
 import { UserMcpRuntime } from "../user-mcp";
+import { McpSecurityService } from "../mcp-security.ts";
 import {
   MCP_CALL_TIMEOUT_MS,
   MCP_CONNECT_TIMEOUT_MS,
@@ -543,7 +544,9 @@ export function createPluginServices({
       return status;
     },
   });
+  const mcpSecurity = new McpSecurityService({ getHost, invalidate: (id) => userMcp.invalidate(id, true) });
   userMcp = new UserMcpRuntime({
+    security: mcpSecurity,
     createClient: (config) => new McpServerClient(config),
     oauth: mcpOAuth,
     connectTimeoutMs: MCP_CONNECT_TIMEOUT_MS,

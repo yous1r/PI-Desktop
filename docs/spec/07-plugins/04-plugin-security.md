@@ -423,6 +423,15 @@ manifest did not name:
   calls owned by other sessions remain active. A request that times out is
   cancelled the same way; `initialize` is never cancelled.
 
+User-owned HTTP MCP may separately use native managed Bearer/CA settings
+(ADR `desktop-managed-memory-mcp`). These are not new plugin capabilities:
+plugins still cannot declare `secret: true` ordinary settings, select credential
+references or bypass `mcpUpsert`/secret-write restrictions through desktop
+control. Host owns references and encryption; Main alone resolves the token.
+The shared MCP client redacts known resolved credentials from responses and
+transport/parser errors before tool context and audit. Plugin-declared MCP,
+stdio, OAuth and their existing permission gates retain the above contracts.
+
 ## 8.2 Desktop control and device access
 
 `desktop.control` hands a plugin the reviewed operation catalog the local MCP

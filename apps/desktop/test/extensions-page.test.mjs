@@ -182,14 +182,15 @@ test("skill import is one native file and physically targets the selected level"
 test("MCP management reuses the modal and validates its locked id and transport branches", () => {
   const page = settingsComponents.get("AgentMcpPage.tsx");
   const sheet = components.get("McpEditorSheet.tsx");
+  const model = readFileSync(new URL("../src/components/extensions/mcp-editor-model.ts", import.meta.url), "utf8");
   assert.match(page, /<McpEditorSheet/);
   assert.match(page, /draftFromRecord/);
   assert.match(page, /sameLevel/);
   assert.match(sheet, /disabled=\{!!editing\}/);
   assert.match(sheet, /mcpDraftError/);
   assert.match(sheet, /draft\.timeoutSeconds/);
-  assert.match(sheet, /errorTimeoutRange/);
-  assert.match(sheet, /command\.includes\("\.\."\)/);
+  assert.match(model, /errorTimeoutRange/);
+  assert.match(model, /command\.includes\("\.\."\)/);
   assert.match(sheet, /isNonLoopbackHttpMcpUrl/);
   assert.match(sheet, /role="dialog" aria-modal/);
   assert.match(sheet, /MCP_STDIO_LAUNCHER_PRESETS/);

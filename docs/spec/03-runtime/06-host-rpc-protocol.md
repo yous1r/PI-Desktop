@@ -842,6 +842,30 @@ against a live host, and replaying one after the final row would be wrong.
   `mcp.setEnabled` / `mcp.setScope` / `mcp.transfer` — user MCP server
   definitions (`MCP_INVALID`)
 
+Managed user HTTP MCP adds optional `authType: "bearer"`, a Host-generated
+`credentialRef`, public `caCertificate` PEM and `memoryProjectBindings` on
+records. The native settings input accepts transient `bearerToken` (omitted to
+keep, string to replace, null to clear); Main strips it before registry RPC and
+uses the existing encrypted SecretStore. Host registry input cannot choose a
+credential reference. `authType`/`caCertificate` distinguish omitted keep from
+null clear; an empty bindings map clears bindings. Stdio rejects security-only
+settings; legacy unmanaged HTTP/OAuth configurations remain compatible.
+
+Managed endpoints require HTTPS, with literal loopback HTTP allowed for local
+services/tests; URL credentials, query/fragment and mixed Authorization headers
+are refused. Public CA PEM is limited to 64 KiB/16 certificates and requires
+HTTPS. Bindings are limited to 64 exact absolute-local or opaque remote-project
+identities mapped to existing center IDs, not filesystem paths or authorization.
+
+Native list/upsert responses may add `hasBearerToken`; never a raw token.
+Connection status may include `errorCode`, `connectionLocation: "desktop"`,
+`authorizedProjects` and `authorizationPatterns`. The Memory center connection
+test performs MCP initialization/discovery and a read-only projects call, never
+a memory write. Main-only failures include `MCP_AUTH_REQUIRED`,
+`MCP_AUTH_TARGET_CHANGED`, `MCP_CA_INVALID`, `MCP_TLS_FAILED`,
+`MCP_HTTP_REDIRECT` and `MCP_PROJECT_BINDING_MISMATCH`; Host validation continues
+to use `MCP_INVALID`. Plugin/MCP-control mutation restrictions are unchanged.
+
 `skills.transfer` and `mcp.transfer` take `{ id, from, to }`, each end a
 `{ level, projectPath? }` target (`projectPath` is required for the project
 level), and return `{ skill }` / `{ server }` for the document where it landed.

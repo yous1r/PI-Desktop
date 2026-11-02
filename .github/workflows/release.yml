@@ -1,6 +1,8 @@
 # Release pipeline
 #
 # Trigger: push a tag `vX.Y.Z` (must match apps/desktop/package.json version).
+# The exact memory HTTP candidate branch also builds unsigned Actions artifacts;
+# its push never creates a tag, publishes a Release, or invokes macOS signing.
 # The easiest way to cut a release:
 #
 #   node scripts/release.mjs 0.2.0 --tag   # bump versions + commit + create tag v0.2.0
@@ -27,6 +29,7 @@ name: Release
 on:
   push:
     tags: ['v*.*.*']
+    branches: ['feat/memory-http-config']
   workflow_dispatch:
     inputs:
       sign_macos:
@@ -76,6 +79,12 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Verify candidate workflow boundaries
+        run: node --test scripts/memory-candidate-ci.test.mjs
+
+      - name: Build host-core for native integration tests
+        run: cargo build -p host-core --locked
+
       - name: Unit tests
         run: pnpm -r --if-present test
 
@@ -86,14 +95,14 @@ jobs:
     name: Build ${{ matrix.name }}
     needs: verify
     env:
-      # Tag pushes always sign. workflow_dispatch signs unless explicitly disabled.
-      MACOS_SIGN_RELEASE: ${{ github.event_name != 'workflow_dispatch' || inputs.sign_macos == true }}
+      # Tags always sign; manual runs opt in. Candidate branch pushes never sign.
+      MACOS_SIGN_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.sign_macos == true) }}
       # Only vastsa/PI-Desktop holds the Developer ID secrets (ADR 0289). On any
       # other repository a tag build skips its macOS rows instead of failing
       # them, so its Windows, Linux and pi-host assets still publish (ADR 0339).
       # GitHub rejects a job-level `if` that reads `matrix`, so each macOS step
       # checks this flag; a manual run still builds unsigned macOS artifacts.
-      MACOS_LANE_ENABLED: ${{ github.repository == 'vastsa/PI-Desktop' || github.event_name == 'workflow_dispatch' }}
+      MACOS_LANE_ENABLED: ${{ github.repository == 'vastsa/PI-Desktop' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/feat/memory-http-config' }}
     strategy:
       fail-fast: false
       matrix:

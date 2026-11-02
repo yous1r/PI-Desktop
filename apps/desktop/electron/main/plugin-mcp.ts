@@ -8,6 +8,7 @@ import {
   resolveMcpStdioLaunch,
 } from "./mcp-stdio-launch.ts";
 import { userLookupPath } from "./user-login-path.ts";
+import { redactMcpCredentials, redactMcpError } from "./mcp-credential-redaction.ts";
 
 /** MCP revision we advertise during the handshake. */
 export const MCP_PROTOCOL_VERSION = "2025-06-18";
@@ -523,6 +524,8 @@ export type McpServerClientOptions = {
   server: PluginMcpServerContrib;
   /** Resolved env (stdio) or headers (http); never inherited from the host. */
   values: Record<string, string>;
+  /** Runtime-only values to remove from peer responses; never HTTP headers or tool parameters. */
+  redactValues?: readonly string[];
   audit?: (entry: Record<string, unknown>) => void;
   /** Audit `api` namespace: `plugin.mcp` for plugins, `mcp` for user servers. */
   auditScope?: string;
@@ -809,7 +812,7 @@ export class McpServerClient {
       }, timeoutMs);
       this.pending.set(id, {
         resolve: (value) => { removeAbort(); resolvePromise(value); },
-        reject: (error) => { removeAbort(); rejectPromise(error); },
+        reject: (error) => { removeAbort(); rejectPromise(redactMcpError(error, this.opts.redactValues)); },
         timer,
       });
       signal?.addEventListener("abort", abort, { once: true });
@@ -842,13 +845,17 @@ export class McpServerClient {
     if (!entry) return;
     this.pending.delete(message.id);
     clearTimeout(entry.timer);
-    if (message.error) {
-      entry.reject(
-        mcpError("MCP_ERROR", message.error.message || `mcp error ${message.error.code ?? ""}`),
-      );
-      return;
+    try {
+      if (message.error) {
+        const text = message.error.message || `mcp error ${message.error.code ?? ""}`;
+        const safe = redactMcpCredentials(text, this.opts.redactValues);
+        entry.reject(mcpError("MCP_ERROR", typeof safe === "string" ? safe : "MCP request failed."));
+        return;
+      }
+      entry.resolve(redactMcpCredentials(message.result ?? null, this.opts.redactValues));
+    } catch {
+      entry.reject(mcpError("INVALID_RESPONSE", "MCP response could not be processed safely."));
     }
-    entry.resolve(message.result ?? null);
   }
 
   private failPending(error: Error): void {

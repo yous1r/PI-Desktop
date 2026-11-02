@@ -4,6 +4,7 @@ import type { HostProcess } from "../host-process";
 import type { McpRegistrySearchResult } from "../mcp-registry-catalog";
 import type { UserMcpRuntime } from "../user-mcp";
 import type { IpcRegistrar } from "./types";
+import { McpSecurityService } from "../mcp-security.ts";
 
 export type McpIpcDependencies = {
   registrar: IpcRegistrar;
@@ -33,6 +34,7 @@ export function registerMcpIpc({
   sendToRenderer,
   searchMcpMarket,
 }: McpIpcDependencies): void {
+  const security = userMcp.getSecurityService?.() ?? new McpSecurityService({ getHost, invalidate: (id) => userMcp.invalidate(id, true) });
   let host: HostProcess | null = null;
   const handle = (channel: string, fn: (...args: any[]) => Promise<any>) => {
     registrar.handle(channel, async (...args) => {
@@ -68,12 +70,12 @@ handle(IPC.invoke.mcpList, async (query: Partial<AgentCapabilityQuery> = {}) => 
         hasOauth: oauth ? await oauth.hasOAuth(status.serverId) : false,
       })),
     );
-    return { servers: result.servers ?? [], statuses };
+    return { servers: await security.describe(result.servers ?? []), statuses };
   });
 
   handle(IPC.invoke.mcpUpsert, async (server: McpServerInput) => {
     if (!host) throw new Error("host unavailable");
-    const res = await host.call<{ server: McpServerRecord }>("mcp.upsert", { server });
+    const res = await security.upsert(server);
     await refreshUserMcp(currentWorkspacePath());
     sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: res.server?.id });
     if (res.server && res.server.enabled !== false) {
@@ -91,7 +93,7 @@ handle(IPC.invoke.mcpList, async (query: Partial<AgentCapabilityQuery> = {}) => 
     IPC.invoke.mcpRemove,
     async (payload: { id: string } & Partial<AgentCapabilityQuery>) => {
       if (!host) throw new Error("host unavailable");
-      const res = await host.call("mcp.remove", payload);
+      const res = await security.remove(payload);
       await oauth?.deleteOAuth(payload.id);
       await refreshUserMcp(currentWorkspacePath());
       sendToRenderer(IPC.event.pluginChanged,{ reason: "mcp", pluginId: payload.id });
@@ -130,7 +132,7 @@ handle(IPC.invoke.mcpList, async (query: Partial<AgentCapabilityQuery> = {}) => 
    */
   handle(IPC.invoke.mcpTransfer, async (payload: AgentCapabilityMove) => {
     if (!host) throw new Error("host unavailable");
-    const res = await host.call<{ server: McpServerRecord }>("mcp.transfer", payload);
+    const res = await security.transfer(payload);
     if (res.server?.id && payload.id && payload.id !== res.server.id) {
       await oauth?.transferOAuth(payload.id, res.server.id);
     }
@@ -175,6 +177,7 @@ handle(IPC.invoke.mcpList, async (query: Partial<AgentCapabilityQuery> = {}) => 
       const listed = await host.call<{ servers: McpServerRecord[] }>("mcp.list", query);
       const server = listed.servers.find((item) => item.id === payload.id);
       if (!server) throw new Error(`MCP server not found: ${payload.id}`);
+      if (server.authType === "bearer") throw new Error("This MCP server uses a managed Bearer credential, not OAuth.");
       if (server.transport !== "http" || !server.url) {
         throw new Error(`MCP server ${payload.id} is not an HTTP transport server`);
       }

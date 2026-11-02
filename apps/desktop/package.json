@@ -20,6 +20,7 @@
     "postinstall": "electron-builder install-app-deps",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test test/*.test.mjs",
+    "test:mcp-security": "node --test test/mcp-security.test.mjs test/mcp-security-races.test.mjs test/mcp-native-credentials.test.mjs test/mcp-tls.test.mjs test/mcp-credential-redaction.test.mjs test/mcp-http-editor.test.mjs test/user-mcp.test.mjs test/plugin-mcp.test.mjs test/mcp-editor-timeout.test.mjs",
     "lint": "node ../../scripts/check-style-tokens.mjs",
     "clean": "node -e \"fs.rmSync('out',{recursive:true,force:true});fs.rmSync('dist',{recursive:true,force:true})\"",
     "build:host-release": "cargo build --release --manifest-path ../../Cargo.toml -p host-core",

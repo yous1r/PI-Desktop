@@ -10,6 +10,8 @@ use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::Path;
 
+mod security;
+
 const MAX_SERVERS: usize = 128;
 const MAX_ARGS: usize = 64;
 const MAX_ENV_ENTRIES: usize = 64;
@@ -42,6 +44,14 @@ pub struct McpServerRecord {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub headers: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ca_certificate: Option<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub memory_project_bindings: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_seconds: Option<u64>,
     pub enabled: bool,
     #[serde(default)]
@@ -71,6 +81,14 @@ struct McpConfig {
     #[serde(default)]
     headers: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    auth_type: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    credential_ref: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    ca_certificate: Option<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    memory_project_bindings: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     timeout_seconds: Option<u64>,
 }
 
@@ -88,12 +106,26 @@ pub struct McpServerInput {
     pub env: Option<BTreeMap<String, String>>,
     pub url: Option<String>,
     pub headers: Option<BTreeMap<String, String>>,
+    #[serde(default, deserialize_with = "deserialize_string_override")]
+    pub auth_type: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_string_override")]
+    pub ca_certificate: Option<Option<String>>,
+    pub memory_project_bindings: Option<BTreeMap<String, String>>,
     #[serde(default, deserialize_with = "deserialize_timeout_override")]
     pub timeout_seconds: Option<Option<u64>>,
     pub enabled: Option<bool>,
     /// Kept for protocol compatibility; capability state is app-local instead.
     #[allow(dead_code)]
     pub scope: Option<ActivationScope>,
+}
+
+fn deserialize_string_override<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Option<Option<String>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Option::<String>::deserialize(deserializer).map(Some)
 }
 
 fn deserialize_timeout_override<'de, D>(
@@ -237,7 +269,10 @@ impl McpServerRegistry {
                 Ok(config) => config,
                 Err(_) => continue,
             };
-            if !valid_id(&config.id) || !seen.insert(config.id.clone()) {
+            if security::validate(&config).is_err()
+                || !valid_id(&config.id)
+                || !seen.insert(config.id.clone())
+            {
                 continue;
             }
             let updated_at = file_timestamp(&path);
@@ -257,6 +292,10 @@ impl McpServerRegistry {
                 env: config.env,
                 url: config.url,
                 headers: config.headers,
+                auth_type: config.auth_type,
+                credential_ref: config.credential_ref,
+                ca_certificate: config.ca_certificate,
+                memory_project_bindings: config.memory_project_bindings,
                 timeout_seconds: config.timeout_seconds,
                 enabled,
                 scope: scope_for(level, owner_project_path.as_deref()),
@@ -395,7 +434,7 @@ impl McpServerRegistry {
             }
             _ => bail!("MCP_INVALID: transport must be \"stdio\" or \"http\""),
         }
-        Ok(())
+        security::validate(config)
     }
 
     pub fn upsert(&mut self, input: McpServerInput) -> Result<McpServerRecord> {
@@ -441,6 +480,15 @@ impl McpServerRegistry {
             if input.url.is_some() || input.headers.is_some() {
                 bail!("MCP_INVALID: a stdio server must not set url or headers");
             }
+            if input.auth_type.as_ref().is_some_and(Option::is_some)
+                || input.ca_certificate.as_ref().is_some_and(Option::is_some)
+                || input
+                    .memory_project_bindings
+                    .as_ref()
+                    .is_some_and(|bindings| !bindings.is_empty())
+            {
+                bail!("MCP_INVALID: authentication, CA and memory bindings require HTTP transport");
+            }
             config.command = input
                 .command
                 .map(|value| value.trim().to_string())
@@ -467,6 +515,27 @@ impl McpServerRegistry {
                 .headers
                 .or_else(|| previous_same_transport.map(|record| record.headers.clone()))
                 .unwrap_or_default();
+            config.auth_type = input.auth_type.unwrap_or_else(|| {
+                previous_same_transport.and_then(|record| record.auth_type.clone())
+            });
+            config.ca_certificate = input.ca_certificate.unwrap_or_else(|| {
+                previous_same_transport.and_then(|record| record.ca_certificate.clone())
+            });
+            config.memory_project_bindings = input
+                .memory_project_bindings
+                .or_else(|| {
+                    previous_same_transport.map(|record| record.memory_project_bindings.clone())
+                })
+                .unwrap_or_default();
+            // References are host-owned opaque identifiers, never caller inputs.
+            // Main owns endpoint-pinned secret contents and their cleanup.
+            config.credential_ref = (config.auth_type.as_deref() == Some("bearer")).then(|| {
+                previous_same_transport
+                    .filter(|record| record.auth_type.as_deref() == Some("bearer"))
+                    .and_then(|record| record.credential_ref.clone())
+                    .filter(|reference| security::valid_credential_ref(reference))
+                    .unwrap_or_else(security::new_credential_ref)
+            });
         }
         Self::validate_config(&config)?;
         if same_level.len() >= MAX_SERVERS && existing.is_none() {
@@ -597,6 +666,7 @@ impl McpServerRegistry {
             &fs::read_to_string(&source_path).with_context(|| format!("read {source_path}"))?,
         )
         .with_context(|| format!("parse {source_path}"))?;
+        security::validate(&config)?;
         let rename = config.id != target_id || config.label != target_label;
         if rename {
             config.id = target_id.clone();
