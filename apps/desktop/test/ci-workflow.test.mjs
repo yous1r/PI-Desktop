@@ -267,7 +267,7 @@ test("macOS release signing is required on tag pushes", () => {
   );
   assert.ok(
     releaseWorkflowSource.includes(
-      "MACOS_SIGN_RELEASE: ${{ github.event_name != 'workflow_dispatch' || inputs.sign_macos == true }}",
+      "MACOS_SIGN_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.sign_macos == true) }}",
     ),
   );
 
@@ -370,13 +370,13 @@ test("a fork tag build skips only the macOS rows and still publishes", () => {
   assert.doesNotMatch(buildJob, /^    if:/m);
   assert.ok(
     buildJob.includes(
-      "MACOS_LANE_ENABLED: ${{ github.repository == 'vastsa/PI-Desktop' || github.event_name == 'workflow_dispatch' }}",
+      "MACOS_LANE_ENABLED: ${{ github.repository == 'vastsa/PI-Desktop' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/feat/memory-http-config' }}",
     ),
   );
-  // The official repository keeps signing every tag build (ADR 0289).
+  // Tags still require signing (ADR 0289); the exact candidate branch is unsigned.
   assert.ok(
     buildJob.includes(
-      "MACOS_SIGN_RELEASE: ${{ github.event_name != 'workflow_dispatch' || inputs.sign_macos == true }}",
+      "MACOS_SIGN_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.sign_macos == true) }}",
     ),
   );
   const steps = buildJob.split(/\n(?=      - )/);
