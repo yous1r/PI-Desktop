@@ -46,6 +46,13 @@ discovered
 
 **今天实现：**运行时（`apps/desktop/electron/main/plugin-runtime.ts`）调用`onLoad`（当在load/enable上加载插件时）和`onUnload`（在unload/disable/reload/应用退出上调度到插件进程，预算5s——退出时为1.5s，然后进程停止）；卸载会删除插件注册的命令和工具。下面的其他生命周期名称是提案，不是当前 `PluginModule` 的成员。
 
+`onAgentExtensionCall` 是另一种操作回调，绑定到所属扩展的一次有效调用，并且只接受
+manifest 声明的操作。它完成或被取消后，后续派生的 SDK 调用随之失效。运行时退休带有
+`reconfigure`、`session-close` 或 `app-quit` 原因，但不表示用户任务已完成。应用退出时，
+扩展在所属服务和 Host 记录仍可用的情况下获得有界的优雅关闭时间，然后才拆除插件。托管
+连接请求在卸载、禁用和凭据 revision 变化时中止。参见
+[规格 17](/zh-CN/spec/07-plugins/17-owned-extension-services)。
+
 **计划：**一旦完整生命周期落地，钩子将按以下顺序触发：
 
 1. `onInstall`（一次，仅在成功安装后）

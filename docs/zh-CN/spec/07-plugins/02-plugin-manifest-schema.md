@@ -158,6 +158,7 @@ type PluginContributes = {
  agentTools?: PluginAgentToolContrib[];
  skills?: Array<string | PluginSkillContrib>; // relative paths, or metadata overrides
  agentExtensions?: string[]; // ExtensionAPI modules run in the agent sidecar; needs `agent.extension` (spec 16)
+ agentExtensionOperations?: Array<{ name: string; readOnly: boolean }>; // up to 32 unique owner operations; requires agent.extension and agentExtensions (spec 17)
 providers?: PluginProviderContrib[]; // Host-owned provider rows; needs `provider.register`; OAuth also needs `provider.oauth` (spec 13)
  settings?: PluginSettingContrib[];
  themes?: PluginThemeContrib[];
@@ -667,3 +668,10 @@ OAuth 登录使用宿主自有的账号界面和加密凭据存储。宿主通�
 - 未来的 `schemaVersion: 2` 需要迁移器
 - 主机应拒绝过高的主要版本
 - 未知的可选字段可能会被忽略；未知所需的权限必须失败
+
+## 托管连接
+
+`net.connection` 是 `pi.connections` 的附加权限。端点、路由/方法组合、HTTP
+明文许可和凭据由原生设置授权，而不是由 manifest 或插件设置授权。它不会扩大
+`net.fetch` 的范围，也不提供读取凭据的接口。准入和 revision 契约见
+[规格 17](/zh-CN/spec/07-plugins/17-owned-extension-services)。
