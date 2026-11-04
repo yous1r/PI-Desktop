@@ -190,6 +190,7 @@ type PluginContributes = {
  agentTools?: PluginAgentToolContrib[];
  skills?: Array<string | PluginSkillContrib>; // relative paths, or metadata overrides
  agentExtensions?: string[]; // ExtensionAPI modules run in the agent sidecar; needs `agent.extension` (spec 16)
+ agentExtensionOperations?: Array<{ name: string; readOnly: boolean }>; // up to 32 unique owner operations; requires agent.extension and agentExtensions (spec 17)
 providers?: PluginProviderContrib[]; // Host-owned provider rows; needs `provider.register`; OAuth also needs `provider.oauth` (spec 13)
  settings?: PluginSettingContrib[];
  themes?: PluginThemeContrib[];
@@ -749,3 +750,11 @@ never passed through (D018).
 - A future `schemaVersion: 2` needs a migrator
 - The host should reject a too-high major version
 - Unknown optional fields may be ignored; unknown required permissions must fail
+
+## Managed connections
+
+`net.connection` is an additive permission for `pi.connections`. Native settings,
+not the manifest or plugin settings, authorize the endpoint, route/method pairs,
+HTTP consent and credentials. It does not widen `net.fetch` or grant a secret
+getter. See [spec 17](17-owned-extension-services.md) for the admission and
+revision contract.

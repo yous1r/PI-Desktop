@@ -8,6 +8,16 @@ in private plugin settings, and refreshes an active theme without selecting a
 new theme or reloading the renderer. It never accepts stylesheet text, URLs,
 selectors, images, fonts, or arbitrary property names.
 
+## Owned services and managed connections
+
+`pi.connections.getCapabilities/list/request/cancel` provides authenticated,
+bounded HTTP using native user-configured connection IDs under `net.connection`.
+`onAgentExtensionCall` receives manifest-declared calls from the owning agent
+extension, with Host-authenticated session/generation context and cancellation.
+Owner-callback file previews resolve the session's actual worktree or remote
+root. The complete additive contract and examples are in
+[spec 17](17-owned-extension-services.md); capability detection is required.
+
 ## 1. Design principles
 
 1. Small and stable

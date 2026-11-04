@@ -554,3 +554,14 @@ runtime, main, and renderer tracks in parallel.
 | Should v2 custom entries persist to host-core and take part in compaction? | Persist; excluded from compaction summaries |
 | Should v3 read the pi CLI's `settings.json` enabled paths as discovery hints? | Read-only hints, never written |
 | Should extension tools be selectable per project like plugin tools? | Scope from §3.2 is the only gate |
+
+## 15. Owned resident services
+
+Plugin extensions may declare `contributes.agentExtensionOperations` and await
+`ctx.owner.call` inside active callbacks. Additive context includes stable
+session/turn identities, an independent runtime generation and retirement
+reason. The Host validates the owning plugin and current launch/session scope;
+Plan/Goal refuse write operations, and cancellation retires downstream SDK
+authority. This does not relax the existing expired-callback guard or expose
+arbitrary Host RPC. Details, limits and capability detection are specified in
+[spec 17](17-owned-extension-services.md).

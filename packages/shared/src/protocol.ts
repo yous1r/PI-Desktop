@@ -336,6 +336,10 @@ export const IPC = {
     pluginSetAutoUpdate: "pi-desktop/plugin/setAutoUpdate",
     pluginSettingsGet: "pi-desktop/plugin/settings/get",
     pluginSettingsSet: "pi-desktop/plugin/settings/set",
+    /** Native-only connection configuration; never in the desktop-control catalog. */
+    pluginConnectionsList: "pi-desktop/plugins/connections/list",
+    pluginConnectionsSave: "pi-desktop/plugins/connections/save",
+    pluginConnectionsDelete: "pi-desktop/plugins/connections/delete",
     pluginOpenPanel: "pi-desktop/plugin/openPanel",
     pluginLauncherToggle: "pi-desktop/pluginLauncher/toggle",
     pluginLauncherDismiss: "pi-desktop/pluginLauncher/dismiss",

@@ -31,6 +31,7 @@ Provide a permission–capability–risk–default-policy reference table for re
 | `provider.register` | high | `contributes.providers` become rows in the native provider list, owned by the plugin and refreshed from the manifest on load; unconfigured API-key rows with an endpoint also appear in Add Service, grouped by optional `category` and with optional hover/focus `description` | Explicit confirmation; local imports and development plugins only in v1.1, matching `agent.extension` | The user path refuses edits to the row (`PROVIDER_OWNED_BY_PLUGIN`); Add Service saves the key through the existing Host secret path. Only loaded plugins with this grant contribute entries; the chooser does not expose secrets or run plugin code. An empty API-key model list discovers models after key save. |
 | `provider.oauth` | high | `onProviderOAuth`; host-rendered `pi.providers.oauth.prompt` / `notify` for a declared OAuth provider | Explicit confirmation | Required with `provider.register` for `authKind: "oauth"`. The callback can read and refresh only that contribution's encrypted credential. The Host keeps refresh tokens out of the renderer and Agent Runtime. Host-mediated callback egress still needs `net.fetch` and `manifest.net.domains`; plugin entry code itself is not an OS sandbox. One account is stored per provider contribution; sign out clears it |
 | `net.fetch` | high | `net.fetch` | Deny by default | Confined to `manifest.net.domains`; an empty or malformed list means no egress (§2A) |
+| `net.connection` | high | `pi.connections.getCapabilities/list/request/cancel` | Explicit install grant and native connection setup | Only the calling plugin's user-configured connection, current revision and exact route/method grant; no credential getter, redirects or configuration through plugin/agent APIs ([spec 17](17-owned-extension-services.md)) |
 | `net.websocket` | high | `pi.net.websocket.connect` / `send` / `close` (host-owned sockets; at most 4 per plugin, 1 MiB frames) | Deny by default | Confined to `manifest.net.domains` like `net.fetch`; a refused host never reaches the transport, and every socket is closed when the plugin unloads, is disabled, or crashes |
 | `net.anyHost` | high | Any host-owned egress path (`net.fetch`, `net.websocket`, panel session, remote HTTP MCP) | Confirm at install | Lifts the `manifest.net.domains` allowlist for user-typed endpoints (self-hosted servers); cloud metadata endpoints stay refused; nothing prompts at request time |
 | `shell.openExternal` | medium | Open external link | Confirm on first use | Prevents phishing links |
@@ -66,7 +67,7 @@ install time.
 
 | Field | Bounds | Absent or empty means |
 |---|---|---|
-| `net.domains` | Every host-owned egress path: the panel session, `pi.net.fetch`, remote HTTP MCP endpoints | No egress at all, whatever `net.fetch` says |
+| `net.domains` | The panel session, `pi.net.fetch`, WebSockets and remote HTTP MCP endpoints | No egress through those APIs, whatever `net.fetch` says; managed connections instead require a separate native endpoint/route grant (spec 17) |
 | `fs.read` / `fs.write` / `fs.delete` | Which paths that file mode may touch | No standing reach; every access falls to a confirmation |
 
 Failing closed on an absent field is what makes the two safe to omit: a

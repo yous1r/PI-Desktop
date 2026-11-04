@@ -1,0 +1,1408 @@
+{
+  "provenance": {
+    "release": "v3.3.2",
+    "binaryVerified": true,
+    "platform": "win32",
+    "binarySha256": "a20f08b9efef1f5e8635373eca44b9d59eb36d899097e3634e409c109c59414b",
+    "selectedSchemasSha256": "464095b0099d510b539d524829f6733846344fe7c4c1a9fa37ac1b52a3262f95",
+    "source": "Parent isolated loopback binary contract probe; synthetic data; no paid providers."
+  },
+  "initialize": {
+    "protocolVersion": "2025-03-26",
+    "capabilities": {
+      "tools": {}
+    },
+    "serverInfo": {
+      "name": "ai-memory",
+      "version": "3.3.2"
+    }
+  },
+  "tools": [
+    {
+      "name": "memory_briefing",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "recent_pages_limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0,
+            "default": null
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "workspace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "settled_first": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "memory_handoff_accept",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "cwd": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "any_owner": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "default": null
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "workspace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "handoff_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "memory_handoff_begin",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "required": [
+          "summary"
+        ],
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string"
+          },
+          "open_questions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "next_steps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "files_touched": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "cwd": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "shared": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "default": null
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "workspace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "memory_handoff_cancel",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "required": [
+          "handoff_id"
+        ],
+        "type": "object",
+        "properties": {
+          "any_owner": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "default": null
+          },
+          "handoff_id": {
+            "type": "string"
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "workspace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        }
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "memory_handoff_list",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "any_owner": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "default": null
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0,
+            "default": null
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "workspace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "memory_patch_page",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$defs": {
+          "PagePatchEdit": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "target": {
+                    "$ref": "#/$defs/AppendTarget"
+                  },
+                  "anchor": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "default": null
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "op": {
+                    "type": "string",
+                    "const": "append"
+                  }
+                },
+                "required": [
+                  "op",
+                  "target",
+                  "content"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "anchor": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "op": {
+                    "type": "string",
+                    "const": "add_section"
+                  }
+                },
+                "required": [
+                  "op",
+                  "anchor",
+                  "content"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "anchor": {
+                    "type": "string"
+                  },
+                  "section_sha256": {
+                    "type": "string"
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "op": {
+                    "type": "string",
+                    "const": "replace_section"
+                  }
+                },
+                "required": [
+                  "op",
+                  "anchor",
+                  "section_sha256",
+                  "content"
+                ]
+              }
+            ]
+          },
+          "AppendTarget": {
+            "type": "string",
+            "enum": [
+              "section",
+              "end_of_page"
+            ]
+          }
+        },
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "expected_page_id": {
+            "type": "string"
+          },
+          "edits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/PagePatchEdit"
+            }
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "workspace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "path",
+          "expected_page_id",
+          "edits"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "memory_query",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "$defs": {
+          "MemoryScopeArg": {
+            "type": "object",
+            "properties": {
+              "project": {
+                "type": "string"
+              },
+              "workspace": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "project",
+              "workspace"
+            ]
+          },
+          "ReasoningTier": {
+            "oneOf": [
+              {
+                "type": "string",
+                "const": "minimal"
+              },
+              {
+                "type": "string",
+                "const": "low"
+              },
+              {
+                "type": "string",
+                "const": "medium"
+              },
+              {
+                "type": "string",
+                "const": "high"
+              },
+              {
+                "type": "string",
+                "const": "max"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0,
+            "default": null
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "tier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "path_prefix": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "tag": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "workspace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/MemoryScopeArg"
+            },
+            "default": []
+          },
+          "global": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "default": null
+          },
+          "include_expired": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "default": null
+          },
+          "include_superseded": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "default": null
+          },
+          "pin_first": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "default": null
+          },
+          "explain": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "default": null
+          },
+          "as_of": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "answer": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "default": null
+          },
+          "reasoning": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ReasoningTier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true
+      }
+    },
+    {
+      "name": "memory_read_page",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "query": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "path": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "workspace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "scope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "include_related": {
+            "type": "boolean",
+            "default": false
+          },
+          "related_depth": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint8",
+            "minimum": 0,
+            "maximum": 255,
+            "default": null
+          },
+          "max_chars": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0,
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "memory_read_session_observations",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "session_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0,
+            "default": null
+          },
+          "offset": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0,
+            "default": null
+          },
+          "order": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "kinds": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "default": null
+          },
+          "query": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "body_max_chars": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0,
+            "default": null
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "workspace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "memory_status",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "properties": {
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "workspace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "memory_write_page",
+      "inputSchema": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "required": [
+          "path",
+          "body"
+        ],
+        "properties": {
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10
+          },
+          "abstract": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 1024
+          },
+          "relations": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "applies_to": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 16
+          },
+          "enforced_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 256
+          },
+          "path": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "tier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "pinned": {
+            "type": "boolean",
+            "default": false
+          },
+          "project": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "workspace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "scope": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "session_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "expected_page_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "default": null
+          },
+          "create_only": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "type": "object"
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true
+      }
+    }
+  ],
+  "records": [
+    {
+      "label": "write-create",
+      "input": {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "tools/call",
+        "params": {
+          "name": "memory_write_page",
+          "arguments": {
+            "workspace": "contract",
+            "project": "synthetic-pages",
+            "path": "notes/contract.md",
+            "body": "# Synthetic contract\n\n## State\nAlpha fact.\n",
+            "create_only": true
+          }
+        }
+      },
+      "wire": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 8,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"page_id\": \"01a1a716-0e53-7f01-af7c-721076ec9a02\",\n  \"path\": \"notes/contract.md\",\n  \"checkpoint\": \"06c2470bde544926918921cafdd71a8aabb202e3\"\n}"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    },
+    {
+      "label": "read-page",
+      "input": {
+        "jsonrpc": "2.0",
+        "id": 11,
+        "method": "tools/call",
+        "params": {
+          "name": "memory_read_page",
+          "arguments": {
+            "workspace": "contract",
+            "project": "synthetic-pages",
+            "path": "notes/contract.md",
+            "max_chars": 1000,
+            "include_related": false
+          }
+        }
+      },
+      "wire": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 11,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"path\": \"notes/contract.md\",\n  \"page_id\": \"01a1a716-0e53-7f01-af7c-721076ec9a02\",\n  \"title\": \"Synthetic contract\",\n  \"body\": \"# Synthetic contract\\n\\n## State\\nAlpha fact.\\n\",\n  \"frontmatter\": {\n    \"tier\": \"semantic\",\n    \"type\": \"Note\",\n    \"generated\": {\n      \"by\": \"process:ai-memory/3.3.2\",\n      \"at\": \"2026-11-04T15:03:22Z\"\n    }\n  },\n  \"sections\": [\n    {\n      \"anchor\": \"Synthetic contract\",\n      \"level\": 1,\n      \"sha256\": \"a295fe1709afc8ab9ab78781df22fd3562990a539d58f71b65827288f1b5dbf8\"\n    },\n    {\n      \"anchor\": \"State\",\n      \"level\": 2,\n      \"sha256\": \"0bb45515b90573e28f68d73643861bc381bcc512f35ac06ee4d564a5d8813be7\"\n    }\n  ],\n  \"sections_truncated\": false,\n  \"truncated\": false,\n  \"total_chars\": 43\n}"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    },
+    {
+      "label": "write-stale",
+      "input": {
+        "jsonrpc": "2.0",
+        "id": 16,
+        "method": "tools/call",
+        "params": {
+          "name": "memory_write_page",
+          "arguments": {
+            "workspace": "contract",
+            "project": "synthetic-pages",
+            "path": "notes/contract.md",
+            "body": "# Stale must fail",
+            "expected_page_id": "01a1a716-0e53-7f01-af7c-721076ec9a02"
+          }
+        }
+      },
+      "wire": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 16,
+          "error": {
+            "code": -32600,
+            "message": "precondition failed for notes/contract.md: expected 01a1a716-0e53-7f01-af7c-721076ec9a02, latest is 01a1a716-0ebe-7143-907f-4593f99e064d; nothing was changed",
+            "data": {
+              "reason": "precondition_failed",
+              "path": "notes/contract.md",
+              "expected_page_id": "01a1a716-0e53-7f01-af7c-721076ec9a02",
+              "current_page_id": "01a1a716-0ebe-7143-907f-4593f99e064d"
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "handoff-begin",
+      "input": {
+        "jsonrpc": "2.0",
+        "id": 25,
+        "method": "tools/call",
+        "params": {
+          "name": "memory_handoff_begin",
+          "arguments": {
+            "workspace": "contract",
+            "project": "synthetic-handoffs",
+            "summary": "Synthetic handoff one",
+            "next_steps": [
+              "Check fixture"
+            ],
+            "shared": false
+          }
+        }
+      },
+      "wire": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 25,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"handoff_id\": \"01a1a716-0f8f-79a0-bba1-edab2495e869\"\n}"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    },
+    {
+      "label": "handoff-list",
+      "input": {
+        "jsonrpc": "2.0",
+        "id": 27,
+        "method": "tools/call",
+        "params": {
+          "name": "memory_handoff_list",
+          "arguments": {
+            "workspace": "contract",
+            "project": "synthetic-handoffs",
+            "limit": 5
+          }
+        }
+      },
+      "wire": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 27,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"handoffs\": [\n    {\n      \"id\": \"01a1a716-0f90-7040-872e-24deb0f8b2d5\",\n      \"workspace_id\": \"01a1a716-0e29-7d92-bb80-72bc8a759e0e\",\n      \"project_id\": \"01a1a716-0f8f-79a0-bba1-ed973c2508c3\",\n      \"from_session_id\": null,\n      \"from_agent\": \"other\",\n      \"to_agent\": null,\n      \"cwd\": null,\n      \"owner_user\": null,\n      \"summary\": \"Synthetic handoff two\",\n      \"open_questions\": [],\n      \"next_steps\": [],\n      \"files_touched\": [],\n      \"state\": \"open\",\n      \"created_at\": \"2026-11-04T15:03:23.280935Z\",\n      \"accepted_by\": null,\n      \"accepted_at\": null,\n      \"accepted_by_session\": null,\n      \"accepted_by_user\": null\n    },\n    {\n      \"id\": \"01a1a716-0f8f-79a0-bba1-edab2495e869\",\n      \"workspace_id\": \"01a1a716-0e29-7d92-bb80-72bc8a759e0e\",\n      \"project_id\": \"01a1a716-0f8f-79a0-bba1-ed973c2508c3\",\n      \"from_session_id\": null,\n      \"from_agent\": \"other\",\n      \"to_agent\": null,\n      \"cwd\": null,\n      \"owner_user\": null,\n      \"summary\": \"Synthetic handoff one\",\n      \"open_questions\": [],\n      \"next_steps\": [\n        \"Check fixture\"\n      ],\n      \"files_touched\": [],\n      \"state\": \"open\",\n      \"created_at\": \"2026-11-04T15:03:23.279391Z\",\n      \"accepted_by\": null,\n      \"accepted_at\": null,\n      \"accepted_by_session\": null,\n      \"accepted_by_user\": null\n    }\n  ]\n}"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    },
+    {
+      "label": "handoff-accept-exact",
+      "input": {
+        "jsonrpc": "2.0",
+        "id": 28,
+        "method": "tools/call",
+        "params": {
+          "name": "memory_handoff_accept",
+          "arguments": {
+            "workspace": "contract",
+            "project": "synthetic-handoffs",
+            "handoff_id": "01a1a716-0f8f-79a0-bba1-edab2495e869"
+          }
+        }
+      },
+      "wire": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 28,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"handoff\": {\n    \"id\": \"01a1a716-0f8f-79a0-bba1-edab2495e869\",\n    \"workspace_id\": \"01a1a716-0e29-7d92-bb80-72bc8a759e0e\",\n    \"project_id\": \"01a1a716-0f8f-79a0-bba1-ed973c2508c3\",\n    \"from_session_id\": null,\n    \"from_agent\": \"other\",\n    \"to_agent\": null,\n    \"cwd\": null,\n    \"owner_user\": null,\n    \"summary\": \"Synthetic handoff one\",\n    \"open_questions\": [],\n    \"next_steps\": [\n      \"Check fixture\"\n    ],\n    \"files_touched\": [],\n    \"state\": \"open\",\n    \"created_at\": \"2026-11-04T15:03:23.279391Z\",\n    \"accepted_by\": null,\n    \"accepted_at\": null,\n    \"accepted_by_session\": null,\n    \"accepted_by_user\": null\n  },\n  \"status\": \"claimed\"\n}"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    },
+    {
+      "label": "hook-session-start",
+      "input": {
+        "sessionID": "synthetic-pi-session",
+        "cwd": "<CASE>"
+      },
+      "wire": {
+        "status": 202,
+        "headers": {
+          "content-type": "text/plain; charset=utf-8"
+        },
+        "body": "queued"
+      }
+    },
+    {
+      "label": "hook-pre",
+      "input": {
+        "sessionID": "synthetic-pi-session",
+        "cwd": "<CASE>",
+        "tool": "Bash",
+        "callID": "synthetic-call",
+        "args": {
+          "command": "echo synthetic"
+        }
+      },
+      "wire": {
+        "status": 202,
+        "headers": {
+          "content-type": "text/plain; charset=utf-8"
+        },
+        "body": "queued"
+      }
+    },
+    {
+      "label": "hook-post-error",
+      "input": {
+        "sessionID": "synthetic-pi-session",
+        "cwd": "<CASE>",
+        "tool": "Bash",
+        "callID": "synthetic-call",
+        "args": {
+          "command": "echo synthetic"
+        },
+        "output": "Synthetic failure E_TEST",
+        "details": {
+          "exitCode": 2
+        },
+        "isError": true
+      },
+      "wire": {
+        "status": 202,
+        "headers": {
+          "content-type": "text/plain; charset=utf-8"
+        },
+        "body": "queued"
+      }
+    },
+    {
+      "label": "hook-stop",
+      "input": {
+        "sessionID": "synthetic-pi-session",
+        "cwd": "<CASE>",
+        "response": "Synthetic turn completed"
+      },
+      "wire": {
+        "status": 202,
+        "headers": {
+          "content-type": "text/plain; charset=utf-8"
+        },
+        "body": "queued"
+      }
+    },
+    {
+      "label": "observations-before-end",
+      "input": {
+        "jsonrpc": "2.0",
+        "id": 35,
+        "method": "tools/call",
+        "params": {
+          "name": "memory_read_session_observations",
+          "arguments": {
+            "workspace": "contract",
+            "project": "synthetic-hooks",
+            "session_id": "synthetic-pi-session",
+            "limit": 30,
+            "body_max_chars": 2000
+          }
+        }
+      },
+      "wire": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 35,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"session\": {\n    \"session_id\": \"343e0b43-44fe-51e7-8e77-907742a13e3c\",\n    \"cwd\": \"<CASE>\",\n    \"agent_kind\": \"pi\",\n    \"started_at\": \"2026-11-04T15:03:23.294372Z\",\n    \"ended_at\": null,\n    \"observation_count\": 7,\n    \"actor_user\": null,\n    \"consolidation\": null,\n    \"usage\": null\n  },\n  \"observations\": [\n    {\n      \"id\": \"01a1a716-0f9e-7893-8d52-db92d4dcb958\",\n      \"session_id\": \"343e0b43-44fe-51e7-8e77-907742a13e3c\",\n      \"kind\": \"session-start\",\n      \"title\": \"session-start\",\n      \"body\": \"\",\n      \"importance\": 7,\n      \"created_at\": \"2026-11-04T15:03:23.294517Z\",\n      \"extension\": null,\n      \"source_event\": null\n    },\n    {\n      \"id\": \"01a1a716-0f9e-7893-8d52-dba02dede45a\",\n      \"session_id\": \"343e0b43-44fe-51e7-8e77-907742a13e3c\",\n      \"kind\": \"pre-tool-use\",\n      \"title\": \"tool non-file\",\n      \"body\": \"tool_family: non-file\\ntool_call_id: synthetic-call\",\n      \"importance\": 5,\n      \"created_at\": \"2026-11-04T15:03:23.294809Z\",\n      \"extension\": null,\n      \"source_event\": null\n    },\n    {\n      \"id\": \"01a1a716-0f9f-7f62-9f6b-73d68a1a51b9\",\n      \"session_id\": \"343e0b43-44fe-51e7-8e77-907742a13e3c\",\n      \"kind\": \"user-prompt\",\n      \"title\": \"Synthetic prompt delta\",\n      \"body\": \"Synthetic prompt delta\",\n      \"importance\": 8,\n      \"created_at\": \"2026-11-04T15:03:23.295094Z\",\n      \"extension\": null,\n      \"source_event\": null\n    },\n    {\n      \"id\": \"01a1a716-0f9f-7f62-9f6b-73e6e2df2dec\",\n      \"session_id\": \"343e0b43-44fe-51e7-8e77-907742a13e3c\",\n      \"kind\": \"user-prompt\",\n      \"title\": \"Synthetic prompt delta\",\n      \"body\": \"Synthetic prompt delta\",\n      \"importance\": 8,\n      \"created_at\": \"2026-11-04T15:03:23.295493Z\",\n      \"extension\": null,\n      \"source_event\": null\n    },\n    {\n      \"id\": \"01a1a716-0f9f-7f62-9f6b-73f8f149b47a\",\n      \"session_id\": \"343e0b43-44fe-51e7-8e77-907742a13e3c\",\n      \"kind\": \"post-tool-use\",\n      \"title\": \"tool non-file\",\n      \"body\": \"tool_family: non-file\\ntool_call_id: synthetic-call\\noutcome: error\\n---\\nSynthetic failure E_TEST\",\n      \"importance\": 5,\n      \"created_at\": \"2026-11-04T15:03:23.295716Z\",\n      \"extension\": null,\n      \"source_event\": null\n    },\n    {\n      \"id\": \"01a1a716-0fa0-7802-9042-1a46efc23466\",\n      \"session_id\": \"343e0b43-44fe-51e7-8e77-907742a13e3c\",\n      \"kind\": \"post-tool-use\",\n      \"title\": \"tool file\",\n      \"body\": \"tool_family: file\\ntool_call_id: synthetic-call-success\\noutcome: success\\n---\\nSynthetic success\",\n      \"importance\": 5,\n      \"created_at\": \"2026-11-04T15:03:23.29606Z\",\n      \"extension\": null,\n      \"source_event\": null\n    },\n    {\n      \"id\": \"01a1a716-0faa-7f72-a279-46f39e17a4e4\",\n      \"session_id\": \"343e0b43-44fe-51e7-8e77-907742a13e3c\",\n      \"kind\": \"stop\",\n      \"title\": \"stop\",\n      \"body\": \"\",\n      \"importance\": 6,\n      \"created_at\": \"2026-11-04T15:03:23.30691Z\",\n      \"extension\": null,\n      \"source_event\": null\n    }\n  ],\n  \"total\": 7,\n  \"offset\": 0,\n  \"limit\": 30,\n  \"order\": \"asc\",\n  \"elided_other_scope\": 0,\n  \"body_max_chars\": 2000\n}"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    }
+  ],
+  "advanced": [
+    {
+      "label": "query-valid",
+      "input": {
+        "jsonrpc": "2.0",
+        "id": 11,
+        "method": "tools/call",
+        "params": {
+          "name": "memory_query",
+          "arguments": {
+            "workspace": "contract",
+            "project": "query",
+            "query": "Zephyrcontract",
+            "limit": 3,
+            "answer": false
+          }
+        }
+      },
+      "wire": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 11,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"hits\": [\n    {\n      \"id\": \"01a1a71a-68a4-7fd0-98d8-b063161b2af4\",\n      \"path\": \"notes/query.md\",\n      \"title\": \"Synthetic retrieval\",\n      \"snippet\": \"# Synthetic retrieval\\n<mark>Zephyrcontract</mark> fact.\",\n      \"rank\": -0.018032786885245903\n    }\n  ]\n}"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    },
+    {
+      "label": "key-prompt",
+      "input": {
+        "sessionID": "synthetic-keys",
+        "cwd": "<CASE>",
+        "prompt": "Synthetic keyed prompt",
+        "occurred_at": "2026-11-01T00:00:00Z"
+      },
+      "wire": {
+        "status": 202,
+        "headers": {
+          "content-type": "text/plain; charset=utf-8"
+        },
+        "body": "queued"
+      }
+    },
+    {
+      "label": "key-prompt-repeat",
+      "input": {
+        "sessionID": "synthetic-keys",
+        "cwd": "<CASE>",
+        "prompt": "Synthetic keyed prompt",
+        "occurred_at": "2026-11-01T00:00:00Z"
+      },
+      "wire": {
+        "status": 202,
+        "headers": {
+          "content-type": "text/plain; charset=utf-8"
+        },
+        "body": "queued"
+      }
+    },
+    {
+      "label": "keys-visible-1",
+      "input": {
+        "jsonrpc": "2.0",
+        "id": 16,
+        "method": "tools/call",
+        "params": {
+          "name": "memory_read_session_observations",
+          "arguments": {
+            "workspace": "contract",
+            "project": "keys",
+            "session_id": "synthetic-keys",
+            "limit": 200,
+            "body_max_chars": 2000
+          }
+        }
+      },
+      "wire": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 16,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"session\": {\n    \"session_id\": \"10725f49-d47e-5c94-b777-834dfeab2280\",\n    \"cwd\": \"<CASE>\",\n    \"agent_kind\": \"pi\",\n    \"started_at\": \"2026-11-04T15:08:08.288546Z\",\n    \"ended_at\": null,\n    \"observation_count\": 5,\n    \"actor_user\": null,\n    \"consolidation\": null,\n    \"usage\": null\n  },\n  \"observations\": [\n    {\n      \"id\": \"01a1a71a-6915-72d3-95f3-0a1684eb2397\",\n      \"session_id\": \"10725f49-d47e-5c94-b777-834dfeab2280\",\n      \"kind\": \"user-prompt\",\n      \"title\": \"Synthetic keyed prompt\",\n      \"body\": \"Synthetic keyed prompt\",\n      \"importance\": 8,\n      \"created_at\": \"2026-11-01T00:00:00Z\",\n      \"extension\": null,\n      \"source_event\": null\n    },\n    {\n      \"id\": \"01a1a71a-68e0-7163-bfc0-9a052c3e6a1d\",\n      \"session_id\": \"10725f49-d47e-5c94-b777-834dfeab2280\",\n      \"kind\": \"session-start\",\n      \"title\": \"session-start\",\n      \"body\": \"\",\n      \"importance\": 7,\n      \"created_at\": \"2026-11-04T15:08:08.288784Z\",\n      \"extension\": null,\n      \"source_event\": null\n    },\n    {\n      \"id\": \"01a1a71a-6918-7223-a1ec-7c2d625366a2\",\n      \"session_id\": \"10725f49-d47e-5c94-b777-834dfeab2280\",\n      \"kind\": \"user-prompt\",\n      \"title\": \"Synthetic invalid key\",\n      \"body\": \"Synthetic invalid key\",\n      \"importance\": 8,\n      \"created_at\": \"2026-11-04T15:08:08.344877Z\",\n      \"extension\": null,\n      \"source_event\": null\n    },\n    {\n      \"id\": \"01a1a71a-6919-7131-82a7-97df41eff044\",\n      \"session_id\": \"10725f49-d47e-5c94-b777-834dfeab2280\",\n      \"kind\": \"user-prompt\",\n      \"title\": \"Synthetic invalid key\",\n      \"body\": \"Synthetic invalid key\",\n      \"importance\": 8,\n      \"created_at\": \"2026-11-04T15:08:08.3456Z\",\n      \"extension\": null,\n      \"source_event\": null\n    },\n    {\n      \"id\": \"01a1a71a-691a-7a23-88ac-0639881efeb4\",\n      \"session_id\": \"10725f49-d47e-5c94-b777-834dfeab2280\",\n      \"kind\": \"stop\",\n      \"title\": \"stop\",\n      \"body\": \"\",\n      \"importance\": 6,\n      \"created_at\": \"2026-11-04T15:08:08.346488Z\",\n      \"extension\": null,\n      \"source_event\": null\n    }\n  ],\n  \"total\": 5,\n  \"offset\": 0,\n  \"limit\": 200,\n  \"order\": \"asc\",\n  \"elided_other_scope\": 0,\n  \"body_max_chars\": 2000\n}"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    }
+  ],
+  "noClaim": [
+    {
+      "label": "session-start-false",
+      "wire": {
+        "status": 202,
+        "headers": {
+          "content-type": "text/plain; charset=utf-8"
+        },
+        "body": "queued"
+      }
+    },
+    {
+      "label": "handoff-after-start-false",
+      "wire": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json"
+        },
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 5,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"handoffs\": [\n    {\n      \"id\": \"01a1a71a-6b5d-75d2-8fc3-bf3091fcb2ce\",\n      \"workspace_id\": \"01a1a71a-6abb-7ce2-9d39-8193258c1ca8\",\n      \"project_id\": \"01a1a71a-6abb-7ce2-9d39-81abaec2b7ec\",\n      \"from_session_id\": null,\n      \"from_agent\": \"other\",\n      \"to_agent\": null,\n      \"cwd\": null,\n      \"owner_user\": null,\n      \"summary\": \"Synthetic pending explicit continuation\",\n      \"open_questions\": [],\n      \"next_steps\": [],\n      \"files_touched\": [],\n      \"state\": \"open\",\n      \"created_at\": \"2026-11-04T15:08:08.925957Z\",\n      \"accepted_by\": null,\n      \"accepted_at\": null,\n      \"accepted_by_session\": null,\n      \"accepted_by_user\": null\n    }\n  ]\n}"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    }
+  ],
+  "restart": [
+    {
+      "label": "restart-keyed-replay",
+      "wire": {
+        "status": 202,
+        "body": "queued"
+      }
+    },
+    {
+      "label": "restart-observations",
+      "wire": {
+        "status": 200,
+        "json": {
+          "jsonrpc": "2.0",
+          "id": 5,
+          "result": {
+            "content": [
+              {
+                "type": "text",
+                "text": "{\n  \"session\": {\n    \"session_id\": \"d7a354ce-65e0-53dd-9da8-63cc02f912c6\",\n    \"cwd\": null,\n    \"agent_kind\": \"pi\",\n    \"started_at\": \"2026-11-04T15:10:37.244859Z\",\n    \"ended_at\": null,\n    \"observation_count\": 2,\n    \"actor_user\": null,\n    \"consolidation\": null,\n    \"usage\": null\n  },\n  \"observations\": [\n    {\n      \"id\": \"01a1a71c-aebd-7f13-90a6-d09cebef871a\",\n      \"session_id\": \"d7a354ce-65e0-53dd-9da8-63cc02f912c6\",\n      \"kind\": \"user-prompt\",\n      \"title\": \"Synthetic restart event\",\n      \"body\": \"Synthetic restart event\",\n      \"importance\": 8,\n      \"created_at\": \"2026-11-04T15:10:37.245142Z\",\n      \"extension\": null,\n      \"source_event\": null\n    },\n    {\n      \"id\": \"01a1a71c-af71-7a92-a370-26b6e02f7e06\",\n      \"session_id\": \"d7a354ce-65e0-53dd-9da8-63cc02f912c6\",\n      \"kind\": \"user-prompt\",\n      \"title\": \"Synthetic restart barrier\",\n      \"body\": \"Synthetic restart barrier\",\n      \"importance\": 8,\n      \"created_at\": \"2026-11-04T15:10:37.425108Z\",\n      \"extension\": null,\n      \"source_event\": null\n    }\n  ],\n  \"total\": 2,\n  \"offset\": 0,\n  \"limit\": 20,\n  \"order\": \"asc\",\n  \"elided_other_scope\": 0,\n  \"body_max_chars\": 1000\n}"
+              }
+            ],
+            "isError": false
+          }
+        }
+      }
+    }
+  ]
+}

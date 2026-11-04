@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "file": "v3.3.2.json",
+      "sha256": "23402497f8e13de3ef3c6e4b94386c889d1feaec197ff0592a06a05b0c5ea47d",
+      "release": "v3.3.2",
+      "binaryVerified": false
+    },
+    {
+      "file": "v3.3.2-binary.json",
+      "sha256": "e41a1a17de4313a303c76156ed08befcbbea946d27c9ea641f7de5a0ed159561",
+      "release": "v3.3.2",
+      "binaryVerified": true
+    },
+    {
+      "file": "v3.3.3-binary.json",
+      "sha256": "df65ed21bcb063fd4f8ed1823ed98f4b8b794f32030b7e4c1962ecfcc95517de",
+      "release": "v3.3.3",
+      "binaryVerified": true
+    },
+    {
+      "file": "v3.3.2-plugin.json",
+      "sha256": "1cd1ca0a0cc56d632880da46ec0d8a9e433fefd47de6645d83d9b1d8a3aeb7fe",
+      "release": "v3.3.2",
+      "binaryVerified": true
+    },
+    {
+      "file": "v3.3.3-plugin.json",
+      "sha256": "4fc2b4c75612e254b4dafde285c86e7e462da1804ed70e9231263c2847369e8e",
+      "release": "v3.3.3",
+      "binaryVerified": true
+    },
+    {
+      "file": "v3-all-tools.json",
+      "sha256": "eaf4e6e436921d14f53e3c7e6936ad27dd4b9b9e1e3a900e55b0a3b6400c6ce6",
+      "release": "v3.3.2,v3.3.3",
+      "binaryVerified": true
+    }
+  ]
+}

@@ -213,7 +213,7 @@ export function InstalledPluginsPanel({
                                 {t("plugins.openPanel")}
                               </Button>
                             ) : null}
-                            {plugin.enabled && plugin.settings?.length ? (
+                            {plugin.enabled && (plugin.settings?.length || plugin.permissions?.includes("net.connection")) ? (
                               <TooltipButton
                                 type="button"
                                 className="plugins-icon-btn"

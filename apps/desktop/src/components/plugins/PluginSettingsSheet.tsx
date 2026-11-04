@@ -28,6 +28,7 @@ import {
 } from "../ui";
 import { IconKeyboard, IconSettings, IconX } from "../icons";
 import { SettingsMenuSelect } from "../settings/SettingsMenuSelect";
+import { PluginConnectionsSection } from "../../features/settings/PluginConnectionsSection";
 
 type Props = {
   plugin: PluginSummary;
@@ -259,14 +260,24 @@ export function PluginSettingsSheet({ plugin, platform, onClose, onSaved }: Prop
               </div>
             );
           })}
+          {/* Host-managed credentials for this plugin. The section decides
+              whether the plugin may configure connections at all. */}
+          <PluginConnectionsSection
+            pluginId={plugin.id}
+            permissions={plugin.permissions}
+          />
         </div>
 
         {error ? <p className="plugins-settings-error" role="alert">{error}</p> : null}
         <div className="plugins-modal-actions">
           <Button variant="secondary" onClick={onClose}>{t("plugins.cancel")}</Button>
-          <Button variant="primary" disabled={saving} onClick={() => void save()}>
-            {saving ? t("settings.saving") : t("plugins.settingsSave")}
-          </Button>
+          {/* A plugin that only configures host-managed connections declares no
+              settings, so there is nothing for this footer to save. */}
+          {settings.length > 0 ? (
+            <Button variant="primary" disabled={saving} onClick={() => void save()}>
+              {saving ? t("settings.saving") : t("plugins.settingsSave")}
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>,
