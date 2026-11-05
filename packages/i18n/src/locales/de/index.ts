@@ -124,6 +124,8 @@ export const de = {
     "confirmQuitBody": "Sind Sie sicher, dass Sie beenden möchten? Alle laufenden Sitzungen werden gestoppt und nicht gespeicherte Änderungen gehen möglicherweise verloren.",
     "confirmQuit": "Beenden"
   },
+  pluginWorkspaceResource: en.pluginWorkspaceResource,
+  pluginWorkspaceConsent: en.pluginWorkspaceConsent,
   "pluginDesktopConsent": {
     "message": "{name} möchte {operation} ausführen",
     "arguments": "Argumente: {args}",
@@ -2136,7 +2138,24 @@ sklm: {
       "browser": "Browser",
       "file": "Dateien",
       "plugin": "Plugin-Ansicht",
-      "subagent": "Subagent"
+      "subagent": "Subagent",
+      "terminal": "Terminal",
+    },
+    "terminal": {
+      "title": "Terminal",
+      "shell": "Shell",
+      "hostLabel": "Host",
+      "localHost": "Lokal",
+      "connecting": "Shell wird gestartet…",
+      "restart": "Terminal neu starten",
+      "exited": "Terminal beendet",
+      "exitedWithCode": "Terminal beendet (Code {{code}})",
+      "failed": "Terminal nicht verfügbar",
+      "noShells": "Auf diesem Host wurde keine Shell gefunden.",
+      "offline": "Host offline",
+      "offlineHint": "Der Verlauf bleibt erhalten. Host neu verbinden und dann „Neu starten“ drücken, um eine neue Shell zu öffnen.",
+      "reconnect": "Erneut verbinden",
+      "bufferOverflow": "Die Terminal-Ausgabe war schneller als der Puffer. Verbinde erneut, um den Verlauf neu zu laden.",
     },
     "pluginView": {
       "failed": "Diese Ansicht konnte nicht geladen werden. Laden Sie das Plugin neu und versuchen Sie es erneut."
@@ -2581,6 +2600,8 @@ sklm: {
       "ui.window.appearance": "Fensterdarstellung anpassen",
       "mcp.server.local": "Einen lokalen MCP-Server ausführen",
       "mcp.server.remote": "Einen Remote-MCP-Server erreichen",
+      "workspace.exec": en.plugins.permissions["workspace.exec"],
+      "workspace.terminal": en.plugins.permissions["workspace.terminal"],
       "background.service": "Einen Hintergrunddienst laufen lassen",
       "audio.capture.background": "Das Mikrofon im Hintergrund nutzen",
       "audio.playback.background": "Audio im Hintergrund wiedergeben",
@@ -2625,6 +2646,8 @@ sklm: {
       "ui.window.appearance": "Passt den nativen Fensterhintergrund und die Windows-Ecken an das Theme dieses Plugins an. Nur Styling, keine Daten.",
       "mcp.server.local": "Startet ein Programm auf diesem Computer, um zusätzliche Agent-Tools bereitzustellen.",
       "mcp.server.remote": "Sendet Toolaufrufe an einen Remote-MCP-Endpunkt, den das Plugin deklariert hat. Der Endpunkt verwendet möglicherweise unverschlüsseltes HTTP.",
+      "workspace.exec": en.plugins.permissionHelp["workspace.exec"],
+      "workspace.terminal": en.plugins.permissionHelp["workspace.terminal"],
       "background.service": "Hält einen Worker am Laufen, während das Plugin aktiviert ist.",
       "audio.capture.background": "Erfasst das Mikrofon, während das Plugin im Hintergrund läuft und kein Panel geöffnet ist.",
       "audio.playback.background": "Gibt Audio wieder, das das Plugin streamt, auch wenn kein Panel geöffnet ist.",

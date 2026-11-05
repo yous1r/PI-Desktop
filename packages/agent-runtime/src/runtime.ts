@@ -22,6 +22,7 @@ import { createJevClassifierTool } from "./jev-classifier-tool.js";
 import { scheduledToolParameters, scheduledToolDescriptions } from "./scheduled-tools.js";
 import { withPiFileOpToolNames } from "./pi-file-ops.js";
 import { remoteMutationIdentity } from "./remote-workspace.js";
+import { remoteExtensionExec } from "./extensions/remote-exec.js";
 import { ExtensionOwnerRuntime, trustedExtensionIdentity } from "./extensions/owner-runtime.js";
 import type { PluginExtensionRetirementReason } from "@pi-desktop/shared";
 import { randomUUID } from "node:crypto";
@@ -2981,6 +2982,9 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
       sessionId: this.sessionId,
       cwd: extensionWorkingDirectory(this.workspaceRoot, this.projectPath, this.scratchDir),
       remoteWorkspace: Boolean(this.remoteWorkspace),
+      execWorkspace: (extensionId,command,args,owner,options) => remoteExtensionExec(
+        request => runtime.host.call("extensions.workspaceProcess", {sessionId:runtime.sessionId,extensionId,workspace:runtime.remoteWorkspace,request}),
+        command,args,owner,options),
       getOwnerContext: () => runtime.extensionOwner.context(),
       callOwner: (spec, operation, payload, signal) => runtime.extensionOwner.call(spec, operation, payload, signal),
       getModel: () => runtime.model,

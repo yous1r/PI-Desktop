@@ -30,6 +30,18 @@ function legacyBridge(): TrustedExtensionSidecarBridge {
     queuePrioritize: vi.fn(async () => ({ ok: true })) };
 }
 describe("owner stdio routing", () => {
+  it("routes workspace processes alongside owner operations without falling back to UI", async () => {
+    const bridge = legacyBridge();
+    const client = sidecar(bridge);
+    await expect(client.call("proxy", { method: "extensions.workspaceProcess", params: {} }))
+      .rejects.toThrow(/Workspace processes are unavailable/);
+    bridge.workspaceProcess = vi.fn(async (params) => ({ processId: params.processId }));
+    const params = { sessionId: "s1", extensionId: "e1", processId: "p1" };
+    expect(await client.call("proxy", { method: "extensions.workspaceProcess", params }))
+      .toEqual({ processId: "p1" });
+    expect(bridge.workspaceProcess).toHaveBeenCalledWith(params);
+    expect(bridge.requestUi).not.toHaveBeenCalled();
+  });
   it("routes declared owner endpoints through the embedding bridge", async () => {
     const bridge = legacyBridge();
     const operations = ["callOwner", "cancelOwner", "registerRuntime", "retireRuntime"] as const;

@@ -8102,3 +8102,12 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   check `pnpm test:e2e:radial-menu`, and capture scenes `pi-radial` /
   `pi-radial-dark`. See `04-ux/09-interaction-patterns.md` §1.11 and
   E2E-CHAT-radial-background-menu.
+
+## 2026-11-04 — Local and SSH workspace plugin execution (D680)
+
+D680 / [ADR 0340](../../adr/0340-workspace-plugin-execution.md) adds optional
+workspace backends, explicit Desktop companions, owner-scoped process/terminal
+services and resource bridging over the existing SSH/RACP Host connection.
+Native authorization stays in Rust; UI, models, credentials and session storage
+stay on Desktop. [Spec 18](../07-plugins/18-workspace-execution.md) records
+compatibility, limits, no-replay semantics and the remaining release gates.

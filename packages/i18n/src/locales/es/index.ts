@@ -124,6 +124,8 @@ export const es = {
     "confirmQuitBody": "¿Está seguro de que desea salir? Se detendrán todas las sesiones en ejecución y es posible que se pierdan los cambios no guardados.",
     "confirmQuit": "Salir"
   },
+  pluginWorkspaceResource: en.pluginWorkspaceResource,
+  pluginWorkspaceConsent: en.pluginWorkspaceConsent,
   "pluginDesktopConsent": {
     "message": "{name} quiere ejecutar {operation}",
     "arguments": "Argumentos: {args}",
@@ -2136,7 +2138,24 @@ sklm: {
       "browser": "Navegador",
       "file": "Archivos",
       "plugin": "Vista de complemento",
-      "subagent": "Subagente"
+      "subagent": "Subagente",
+      "terminal": "Terminal",
+    },
+    "terminal": {
+      "title": "Terminal",
+      "shell": "Shell",
+      "hostLabel": "Host",
+      "localHost": "Local",
+      "connecting": "Iniciando el shell…",
+      "restart": "Reiniciar terminal",
+      "exited": "Terminal finalizado",
+      "exitedWithCode": "Terminal finalizado (código {{code}})",
+      "failed": "Terminal no disponible",
+      "noShells": "No se encontró ningún shell en este host.",
+      "offline": "Host sin conexión",
+      "offlineHint": "El historial se conserva. Vuelve a conectar el host y pulsa Reiniciar para abrir un shell nuevo.",
+      "reconnect": "Reintentar conexión",
+      "bufferOverflow": "La salida del terminal superó el búfer. Reintenta la conexión para recargar el historial.",
     },
     "pluginView": {
       "failed": "Esta vista no se pudo cargar. Vuelva a cargar el complemento e inténtelo de nuevo."
@@ -2581,6 +2600,8 @@ sklm: {
       "ui.window.appearance": "Personalizar la apariencia de la ventana",
       "mcp.server.local": "Ejecutar un servidor MCP local",
       "mcp.server.remote": "Llegar a un servidor MCP remoto",
+      "workspace.exec": en.plugins.permissions["workspace.exec"],
+      "workspace.terminal": en.plugins.permissions["workspace.terminal"],
       "background.service": "Mantener un servicio en segundo plano en ejecución",
       "audio.capture.background": "Usar el micrófono en segundo plano",
       "audio.playback.background": "Reproducir audio en segundo plano",
@@ -2625,6 +2646,8 @@ sklm: {
       "ui.window.appearance": "Ajusta el fondo nativo de la ventana y las esquinas en Windows al tema de este plugin. Solo estilo, sin datos.",
       "mcp.server.local": "Inicia un programa en esta computadora para ofrecer herramientas adicionales al agente.",
       "mcp.server.remote": "Envía llamadas a herramientas a un punto final MCP remoto que el complemento declaró. El punto final puede utilizar HTTP sin cifrar.",
+      "workspace.exec": en.plugins.permissionHelp["workspace.exec"],
+      "workspace.terminal": en.plugins.permissionHelp["workspace.terminal"],
       "background.service": "Mantiene a un trabajador en ejecución mientras el complemento está habilitado.",
       "audio.capture.background": "Captura el micrófono mientras el complemento se ejecuta en segundo plano, sin ningún panel abierto.",
       "audio.playback.background": "Reproduce el audio que transmite el complemento, incluso cuando no hay ningún panel abierto.",

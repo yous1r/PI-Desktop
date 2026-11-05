@@ -27,10 +27,13 @@ const pluginPanelPreloadSource = await readFile(
   "utf8",
 );
 
-test("packaging keeps native voice modules as runtime dependencies", () => {
+test("packaging keeps native voice and terminal modules as runtime dependencies", () => {
   assert.deepEqual(Object.keys(packageJson.dependencies).sort(), [
     "@picovoice/pvrecorder-node",
     "electron-updater",
+    // The workspace terminal forks a PTY from Main through createRequire, so
+    // the addon resolves from packaged node_modules and is never bundled.
+    "node-pty",
     "transcribe-cpp",
   ]);
 
@@ -39,6 +42,10 @@ test("packaging keeps native voice modules as runtime dependencies", () => {
     "@pi-desktop/i18n",
     "@pi-desktop/plugin-sdk",
     "@pi-desktop/shared",
+    // xterm is renderer-only and vite bundles it, so its package tree must not
+    // ship: the terminal tab imports it lazily from the renderer chunk.
+    "@xterm/addon-fit",
+    "@xterm/xterm",
     "mermaid",
     "pinyin-pro",
     "react",
@@ -115,11 +122,18 @@ test("main bundles JavaScript dependencies and externalizes runtime modules", ()
   // jiti is listed so the trusted-extension loader's lazy import never
   // enters the main bundle; main itself never loads it (spec 16 §4.2).
   assert.match(viteConfigSource, /external:\s*\[/);
-  for (const moduleName of ["@picovoice/pvrecorder-node", "transcribe-cpp"]) {
-    assert.match(viteConfigSource, new RegExp(`"${moduleName.replaceAll("/", "\\/")}"`));
+  // Native modules stay external so their loaders resolve platform libraries
+  // from packaged node_modules: the voice engines, and node-pty for the
+  // workspace terminal Main forks through createRequire.
+  for (const moduleName of [
+    "node-pty",
+    "@picovoice/pvrecorder-node",
+    "transcribe-cpp",
+  ]) {
+    const specifier = new RegExp(`"${moduleName.replaceAll("/", "\\/")}"`);
+    assert.match(viteConfigSource, specifier);
+    assert.match(JSON.stringify(packageJson.dependencies), specifier);
   }
-  assert.doesNotMatch(viteConfigSource, /node-pty/);
-  assert.doesNotMatch(JSON.stringify(packageJson.dependencies), /node-pty/);
 });
 
 test("sandbox preload entries use standalone shared subpath bundles", () => {
@@ -220,7 +234,12 @@ test("packaging keeps only shipped locales and excludes non-runtime artifacts", 
       to: "models.dev",
     },
   ]);
-  assert.doesNotMatch(JSON.stringify(packageJson.build), /node-pty/);
+  // node-pty ships only as an unpacked native payload (asarUnpack, asserted in
+  // the payload contract below); it must not leak into the file list, the
+  // extraResources copies, or any other build section.
+  const packagedBuild = { ...packageJson.build };
+  delete packagedBuild.asarUnpack;
+  assert.doesNotMatch(JSON.stringify(packagedBuild), /node-pty/);
 });
 
 test("macOS targets follow the native architecture selected by the runner", () => {
@@ -269,14 +288,19 @@ test("macOS DMG remains a two-icon install and artifacts omit first-launch guida
   assert.equal(dmgBackgroundRetina.readUInt32BE(20), 880);
 });
 
-test("packaging keeps voice native payloads unpacked and excludes removed PTY payloads", () => {
+test("packaging keeps native voice and terminal payloads unpacked", () => {
   assert.deepEqual(packageJson.build.asar, { smartUnpack: false });
+  // All three carry prebuilt .node binaries, which cannot load from inside the
+  // asar: the voice engines, and the PTY addon the workspace terminal forks.
   assert.deepEqual(packageJson.build.asarUnpack, [
+    "node_modules/node-pty/**",
     "node_modules/transcribe-cpp/**/*.node",
     "node_modules/transcribe-cpp/**/bin/**",
     "node_modules/@picovoice/pvrecorder-node/**/*.node",
     "node_modules/@picovoice/pvrecorder-node/**/lib/**",
   ]);
+  // The PTY payload ships from node_modules only: no loose copy in the file
+  // list, and no duplicate extraResources tree.
   assert.doesNotMatch(JSON.stringify(packageJson.build.files), /node-pty/);
   assert.doesNotMatch(JSON.stringify(packageJson.build.extraResources), /node-pty/);
 });

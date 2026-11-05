@@ -65,19 +65,20 @@ export function createPluginSessionContext({
   /** The last payload delivered, so identical snapshots stay silent. */
   let announced: string | null = null;
 
-  const snapshot = (): PluginActiveSession | null => {
-    if (!selection) return null;
-    const turnId = getActiveTurn(selection.sessionId);
-    const started = turnStarts.get(selection.sessionId);
+  const snapshotFor = (owner: PluginActiveSessionSelection): PluginActiveSession => {
+    const turnId = getActiveTurn(owner.sessionId);
+    const started = turnStarts.get(owner.sessionId);
     return {
-      sessionId: selection.sessionId,
-      projectPath: selection.projectPath,
+      sessionId: owner.sessionId,
+      projectPath: owner.projectPath,
       activeTurn:
         turnId && started?.turnId === turnId
           ? { turnId, startedAt: started.startedAt }
           : null,
     };
   };
+
+  const snapshot = (): PluginActiveSession | null => selection ? snapshotFor(selection) : null;
 
   const publish = (): void => {
     const next = snapshot();
@@ -100,6 +101,7 @@ export function createPluginSessionContext({
   return {
     /** The current snapshot, for `pi.session.getActive` and stale checks. */
     snapshot,
+    snapshotFor,
     /**
      * The renderer reported a different selection, or none. Keeping the start
      * times of turns it already reported is deliberate: switching away and back

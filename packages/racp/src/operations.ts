@@ -3,7 +3,7 @@ import { RacpError } from "@pi-desktop/agent-host";
 import {
   RacpApprovalResponseSchema,
   WorkspaceToolExecuteSchema, WorkspaceToolAbortSchema, WorkspaceFilesRequestSchema,
-  WorkspacePluginFilesRequestSchema,
+  WorkspacePluginFilesRequestSchema, WorkspaceTerminalRequestSchema, WorkspacePluginRequestSchema, WorkspaceProcessRequestSchema,
   RacpCursorSchema,
   RacpInputResponseSchema,
   RacpRequestContextSchema,
@@ -176,6 +176,40 @@ export function createOperations(): Map<RacpOperation, OperationHandler> {
       throw new RacpError("CAPABILITY_UNAVAILABLE", "this Host does not offer plugin workspace reads");
     }
     return context.operations.workspacePluginFiles.read(check(WorkspacePluginFilesRequestSchema, params));
+  });
+  handlers.set("workspace/process", async (context, params) => {
+    const processes = context.operations.workspaceProcesses;
+    if (!processes || context.capabilities.workspaceProcesses !== 1) throw new RacpError("CAPABILITY_UNAVAILABLE", "Update the Host to execute structured workspace commands");
+    try { return await processes.handle(check(WorkspaceProcessRequestSchema, params), toolOwner(context)); }
+    catch (error) {
+      if (error instanceof RacpError) throw error;
+      const record = error as {code?:string;message?:string};
+      throw new RacpError(record.code ?? "INTERNAL", record.message ?? "Workspace process failed");
+    }
+  });
+  handlers.set("workspace/plugin", async (context, params) => {
+    const plugins = context.operations.workspacePlugins;
+    if (!plugins || context.capabilities.workspacePlugins !== 1) throw new RacpError("CAPABILITY_UNAVAILABLE", "Update the Host to run workspace plugins");
+    try {
+      return await plugins.handle(check(WorkspacePluginRequestSchema, params), toolOwner(context),
+        event => context.connection.request("workspace/pluginEvent", event, 30_000));
+    } catch (error) {
+      if (error instanceof RacpError) throw error;
+      const record = error as { code?: string; message?: string };
+      throw new RacpError(record.code ?? "INTERNAL", record.message ?? "Workspace plugin failed");
+    }
+  });
+  handlers.set("workspace/terminal", async (context, params) => {
+    const terminal = context.operations.workspaceTerminal;
+    if (!terminal || !context.capabilities.workspaceTerminal) throw new RacpError("CAPABILITY_UNAVAILABLE", "This Host does not offer workspace terminals");
+    try {
+      return await terminal.handle(check(WorkspaceTerminalRequestSchema, params), toolOwner(context),
+        event => context.connection.request("workspace/terminalEvent", event, 10_000));
+    } catch (error) {
+      if (error instanceof RacpError) throw error;
+      const record = error as { code?: string; message?: string };
+      throw new RacpError(record.code ?? "INTERNAL", record.message ?? "Workspace terminal failed");
+    }
   });
   handlers.set("workspace/toolExecute", async (context, params) =>
     requireWorkspaceTools(context).execute(check(WorkspaceToolExecuteSchema, params), toolOwner(context)));

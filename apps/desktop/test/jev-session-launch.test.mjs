@@ -76,7 +76,7 @@ test("session launch resolves Jev credentials only for opted-in Agent mode", asy
       logger: { app(...args) { logs.push(args); } },
       userMcp: { setRecords() {}, async toolsForProject() { return []; } },
       plugins: {
-        getTools: () => [],
+        getToolsForSession: async () => [],
         getSkills: () => [],
         listLoaded: () => [],
         getAgentExtensions: () => [],

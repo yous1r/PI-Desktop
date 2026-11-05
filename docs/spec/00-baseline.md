@@ -245,3 +245,11 @@ relevant decision record before changing the contract.
 > D623 / ADR 0064 amends the inline automatic compaction trigger to 90% of
 > the derived hard budget. The hard limit remains the final provider-request
 > guard; no background compaction or storage/protocol change is introduced.
+
+## Candidate workspace execution amendment
+
+[ADR 0340](../adr/0340-workspace-plugin-execution.md) adds optional native workspace
+plugin backends and structured workspace services while preserving the local
+Agent/model boundary. [Spec 18](07-plugins/18-workspace-execution.md) is the contract.
+This is a candidate implementation; native Linux SSH and mounted Desktop release
+acceptance are not implied by local process/protocol test results.

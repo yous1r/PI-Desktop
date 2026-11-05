@@ -183,9 +183,14 @@ export function createHostRuntime({
         const projectPath = q.sessionId
           ? (sessionProjects.get(q.sessionId) ?? null)
           : null;
-        const tool = plugins.getTools().find((t) => t.fullName === q.toolName);
+        const cancelled = !q.toolName.startsWith("mcp_") && !isTurnDispatchable(q.sessionId ?? "",q.turnId);
+        const catalog = q.toolName.startsWith("mcp_") || cancelled ? []
+          : await plugins.getToolsForSession(q.sessionId!, id => pluginActiveInProject(id,projectPath));
+        const tool = catalog.find((t) => t.fullName === q.toolName);
         let payload: Record<string, unknown>;
-        if (q.toolName.startsWith("mcp_")) {
+        if (cancelled) {
+          payload = {executionId:q.executionId,ok:false,errorCode:"TOOL_TURN_CANCELLED",content:{error:"The originating turn is no longer dispatchable"}};
+        } else if (q.toolName.startsWith("mcp_")) {
           try {
             const result = await userMcp.callTool(q.toolName, q.args, projectPath, q.sessionId);
             payload = { executionId: q.executionId, ok: true, content: result ?? null };
@@ -267,7 +272,7 @@ export function createHostRuntime({
             // `tools.execute`, so a call without one is not a supported shape; a
             // standalone caller that ever needs the channel must be distinguished
             // by an explicit origin instead of by an absent identity.
-            if (!isTurnDispatchable(q.sessionId ?? "", q.turnId)) {
+            if (runtimeState.host !== h || !isTurnDispatchable(q.sessionId ?? "", q.turnId)) {
               payload = {
                 executionId: q.executionId,
                 ok: false,

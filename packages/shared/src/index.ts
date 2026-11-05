@@ -1,5 +1,7 @@
 export * from "./plugin-extension-owner.js";
 export * from "./activation.js";
+export * from "./workspace-execution.js";
+export * from "./workspace-terminal.js";
 export * from "./protocol.js";
 export * from "./errors.js";
 export * from "./rpc-error.js";
@@ -82,3 +84,6 @@ export * from "./session-todos.js";
 export * from "./tool-call-lineage.js";
 export * from "./event-usage.js";
 export * from "./storage.js";
+
+export * from "./workspace-plugin.js";
+export * from "./workspace-process.js";

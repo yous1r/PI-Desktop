@@ -2225,6 +2225,19 @@
           "workspacePluginFiles": {
             "type": "boolean"
           },
+          "workspaceTerminal": {
+            "type": "boolean"
+          },
+          "workspaceProcesses": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1
+          },
+          "workspacePlugins": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1
+          },
           "notifications": {
             "type": "boolean"
           },

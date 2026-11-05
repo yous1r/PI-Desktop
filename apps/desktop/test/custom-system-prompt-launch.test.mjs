@@ -43,7 +43,7 @@ function launchRuntime() {
       },
     } },
     logger: { app() {} }, userMcp: { setRecords() {}, toolsForProject: async () => [] },
-    plugins: { listLoaded: () => [], getSkills: () => [], getTools: () => [], getAgentExtensions: () => [] },
+    plugins: { listLoaded: () => [], getSkills: () => [], getToolsForSession: async () => [], getAgentExtensions: () => [] },
     sessionProjects: new Map(), dataDir: workspace, vendorOAuth: {},
     modelsDevCatalog: { configureAccount: () => {}, ensureLoaded: async () => {}, findModel: () => undefined },
     getWorkspacePath: () => workspace, pluginActiveInProject: () => true,

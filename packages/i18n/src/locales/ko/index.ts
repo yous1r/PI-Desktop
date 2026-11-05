@@ -132,6 +132,8 @@ export const ko = {
    * declare. Lives here rather than in the renderer because the dialog is a
    * main-process `showMessageBox` — it has to block the plugin's call.
    */
+  pluginWorkspaceResource: en.pluginWorkspaceResource,
+  pluginWorkspaceConsent: en.pluginWorkspaceConsent,
   pluginDesktopConsent: {
     message: "{name}이(가) {operation}을(를) 실행하려고 합니다",
     arguments: "인수: {args}",
@@ -2153,6 +2155,23 @@ sklm: {
       file: "파일",
       plugin: "플러그인 화면",
       subagent: "서브에이전트",
+      terminal: "터미널",
+    },
+    terminal: {
+      title: "터미널",
+      shell: "셸",
+      hostLabel: "호스트",
+      localHost: "로컬",
+      connecting: "셸을 시작하는 중…",
+      restart: "터미널 다시 시작",
+      exited: "터미널이 종료됨",
+      exitedWithCode: "터미널이 종료됨 (코드 {{code}})",
+      failed: "터미널을 사용할 수 없음",
+      noShells: "이 호스트에서 셸을 찾지 못했습니다.",
+      offline: "호스트 오프라인",
+      offlineHint: "스크롤백은 그대로 유지됩니다. 호스트를 다시 연결한 뒤 다시 시작을 눌러 새 셸을 여세요.",
+      reconnect: "다시 연결",
+      bufferOverflow: "터미널 출력이 버퍼 한도를 넘었습니다. 다시 연결을 눌러 스크롤백을 새로 읽어 오세요.",
     },
     pluginView: {
       failed: "이 화면을 불러올 수 없습니다. 플러그인을 새로 고친 후 다시 시도하세요.",
@@ -2588,6 +2607,8 @@ importConfirm: "가져온 확장은 에이전트 프로세스 안에서 에이�
       "ui.window.appearance": "창 모양 사용자 지정",
       "mcp.server.local": "로컬 MCP 서버 실행",
       "mcp.server.remote": "원격 MCP 서버에 연결",
+      "workspace.exec": en.plugins.permissions["workspace.exec"],
+      "workspace.terminal": en.plugins.permissions["workspace.terminal"],
       "background.service": "백그라운드 서비스 계속 실행",
       "audio.capture.background": "백그라운드에서 마이크 사용",
       "audio.playback.background": "백그라운드 오디오 재생",
@@ -2644,6 +2665,8 @@ importConfirm: "가져온 확장은 에이전트 프로세스 안에서 에이�
       "mcp.server.local": "이 컴퓨터에서 프로그램을 시작해 추가 에이전트 도구를 제공합니다.",
       "mcp.server.remote":
         "플러그인이 선언한 원격 MCP 엔드포인트로 도구 호출을 보냅니다. 엔드포인트가 암호화되지 않은 HTTP를 사용할 수 있습니다.",
+      "workspace.exec": en.plugins.permissionHelp["workspace.exec"],
+      "workspace.terminal": en.plugins.permissionHelp["workspace.terminal"],
       "background.service": "플러그인이 활성화된 동안 작업자를 계속 실행합니다.",
       "audio.capture.background": "플러그인이 백그라운드에서 실행되는 동안 패널이 열려 있지 않아도 마이크를 캡처합니다.",
       "audio.playback.background": "패널이 열려 있지 않아도 플러그인이 스트리밍하는 오디오를 재생합니다.",

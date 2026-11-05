@@ -70,6 +70,9 @@ export function validateMcpServer(raw: unknown): McpValidationResult {
     return { ok: false, error: `mcp server "${server.id}" transport must be "stdio" or "http"` };
   }
   const label = `mcp server "${server.id}"`;
+  if (server.execution !== undefined && server.execution !== "desktop" && server.execution !== "workspace") {
+    return { ok: false, error: `${label} execution must be desktop or workspace` };
+  }
 
   if (server.transport === "stdio") {
     if (server.url !== undefined || server.headers !== undefined) {

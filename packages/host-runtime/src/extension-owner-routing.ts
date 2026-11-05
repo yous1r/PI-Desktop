@@ -1,5 +1,6 @@
 /** Embedding-host endpoints. Optional owner members preserve existing clients. */
 export type TrustedExtensionSidecarBridge = {
+  workspaceProcess?: (params: Record<string, unknown>) => Promise<unknown>;
   publishCommands: (params: Record<string, unknown>) => void;
   publishDiagnostics: (params: Record<string, unknown>) => void;
   requestUi: (params: Record<string, unknown>) => Promise<unknown>;
@@ -21,6 +22,9 @@ export async function routeExtensionRequest(bridge: TrustedExtensionSidecarBridg
     case "extensions.commands.publish": bridge.publishCommands(params); return { ok: true };
     case "extensions.diagnostics.publish": bridge.publishDiagnostics(params); return { ok: true };
     case "extensions.model.configure": return bridge.configureModel(params);
+    case "extensions.workspaceProcess":
+      if (bridge.workspaceProcess) return bridge.workspaceProcess(params);
+      throw Object.assign(new Error("Workspace processes are unavailable"), { errorCode: "CAPABILITY_UNAVAILABLE" });
     case "extensions.ui.request": return bridge.requestUi(params);
     case "session.queuePush": return bridge.queuePush(params);
     case "session.queuePrioritize": return bridge.queuePrioritize(params);

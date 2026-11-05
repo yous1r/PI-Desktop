@@ -204,6 +204,10 @@ export async function check(dirInput: string): Promise<CheckResult> {
     });
   }
 
+  const workspaceMain = manifest.execution?.workspaceMain;
+  if (workspaceMain && !(await fileExists(join(dir, workspaceMain)))) {
+    errors.push({ code: "workspace-main.missing", message: `manifest.execution.workspaceMain "${workspaceMain}" does not exist` });
+  }
   if (!(await fileExists(join(dir, manifest.main)))) {
     errors.push({
       code: "main.missing",
@@ -430,7 +434,8 @@ export async function check(dirInput: string): Promise<CheckResult> {
 
   // Entry-source hints: a declared permission that the code never exercises is
   // a needless prompt for the user, and the reverse is a runtime denial.
-  const mainSource = await readFile(join(dir, manifest.main), "utf8").catch(() => "");
+  const entries = [...new Set([manifest.main, ...(workspaceMain ? [workspaceMain] : [])])];
+  const mainSource = (await Promise.all(entries.map(entry => readFile(join(dir, entry), "utf8").catch(() => "")))).join(" ");
   if (mainSource) {
     for (const permission of permissions) {
       const apis = PERMISSION_API_HINTS[permission];
@@ -438,7 +443,7 @@ export async function check(dirInput: string): Promise<CheckResult> {
       if (!apis.some((api) => mainSource.includes(api))) {
         warnings.push({
           code: "permission.unused",
-          message: `permission "${permission}" is declared but ${manifest.main} never calls ${apis.join(" / ")}`,
+          message: `permission "${permission}" is declared but ${entries.join(" / ")} never calls ${apis.join(" / ")}`,
         });
       }
     }

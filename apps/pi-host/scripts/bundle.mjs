@@ -77,6 +77,7 @@ execFileSync(
   ],
   { stdio: "inherit", cwd: app },
 );
+cpSync(join(root, "packages/host-runtime/plugin-host-process.mjs"), join(out, "plugin-host-process.mjs"));
 cpSync(hostCore, join(out, `bin/pi-desktop-host-core${exe}`));
 chmodSync(join(out, `bin/pi-desktop-host-core${exe}`), 0o755);
 let ptyPackageDir;

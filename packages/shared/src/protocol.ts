@@ -2,7 +2,7 @@ export const PROTOCOL_VERSION = 11 as const;
 export const SCHEMA_VERSION = 16 as const;
 export const APP_ID = "net.aiuo.pi-desktop";
 export const APP_NAME = "PI-Desktop";
-export const APP_VERSION = "0.22.1-beta.5";
+export const APP_VERSION = "0.22.1-beta.6";
 
 export const APP_MENU_COMMANDS = [
   "newTask",
@@ -67,6 +67,14 @@ export type LifecycleDialogRequest = {
 export type LifecycleDialogDismiss = { requestId: string };
 export const IPC = {
   invoke: {
+    terminalListShells: "pi-desktop/terminal/listShells",
+    terminalCreate: "pi-desktop/terminal/create",
+    terminalWrite: "pi-desktop/terminal/write",
+    terminalResize: "pi-desktop/terminal/resize",
+    terminalClose: "pi-desktop/terminal/close",
+    terminalReplay: "pi-desktop/terminal/replay",
+    terminalGetBuffer: "pi-desktop/terminal/getBuffer",
+
     storageGet: "pi-desktop/storage/get",
     storageChoose: "pi-desktop/storage/choose",
     storageMigrate: "pi-desktop/storage/migrate",
@@ -458,6 +466,8 @@ export const IPC = {
     nativeMenuAction: "pi-desktop/menu/nativeAction",
   },
   event: {
+    terminalData: "pi-desktop/terminal/event/data",
+    terminalExit: "pi-desktop/terminal/event/exit",
     pluginChanged: "pi-desktop/event/pluginChanged",
     /** Progress of an install or update, while it is still running. */
     pluginInstallProgress: "pi-desktop/plugin/event/installProgress",

@@ -341,7 +341,7 @@ const pluginServices = createPluginServices({
    */
   getActiveTurn: (sessionId) => activeTurns.get(sessionId) ?? null,
   /** The same scope lookup every plugin view IPC consults. */
-  isPluginActiveInProject: (pluginId) => pluginActiveInProject(pluginId, currentWorkspacePath()),
+  isPluginActiveInProject: (pluginId, projectPath) => pluginActiveInProject(pluginId, projectPath === undefined ? currentWorkspacePath() : projectPath),
   vendorOAuth,
 });
 const {

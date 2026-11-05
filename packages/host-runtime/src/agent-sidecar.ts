@@ -73,6 +73,7 @@ const HOST_PROXY_ALLOWED = new Set([
   "extensions.ui.request",
   "extensions.diagnostics.publish",
   "extensions.model.configure",
+  "extensions.workspaceProcess",
   ...EXTENSION_OWNER_PROXY_METHODS,
   "session.rename",
   "session.create",

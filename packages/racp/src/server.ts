@@ -181,6 +181,9 @@ export class RacpServer {
       workspaceTools: Boolean(options.operations.workspaceTools),
       workspaceFiles: Boolean(options.operations.workspaceFiles),
       workspacePluginFiles: Boolean(options.operations.workspacePluginFiles),
+      workspaceTerminal: Boolean(options.operations.workspaceTerminal),
+      ...(options.operations.workspaceProcesses ? {workspaceProcesses:1 as const} : {}),
+      ...(options.operations.workspacePlugins ? { workspacePlugins: 1 as const } : {}),
       notifications: false,
       bindings: ["RACP-WS"],
     };
@@ -265,6 +268,9 @@ export class RacpServer {
       this.options.operations.terminal?.detach(terminalId);
     }
     connection.terminals.clear();
+    this.options.operations.workspaceTerminal?.disconnect(connection.id);
+    this.options.operations.workspacePlugins?.disconnect(connection.id);
+    this.options.operations.workspaceProcesses?.disconnect(connection.id);
     void this.options.operations.workspaceTools?.disconnect(connection.id).catch(() => {
       this.options.log("warn", "workspace tool disconnect cleanup failed", { connectionId: connection.id });
     });

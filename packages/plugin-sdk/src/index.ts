@@ -1,3 +1,7 @@
+import { pluginExecutionError, type PluginExecution, type PluginWorkspaceContext } from "./plugin-execution.js";
+export { pluginWorkspaceEntry, pluginExecutionError, type PluginExecution, type PluginWorkspaceContext } from "./plugin-execution.js";
+import type { PluginWorkspaceExecutionApi } from "./workspace-execution-api.js";
+export type * from "./workspace-execution-api.js";
 import type { PluginConnectionsApi } from "./plugin-connections.js";
 export * from "./plugin-connections.js";
 import { validateAgentExtensionOperations, type PluginExtensionOperation, type PluginAgentExtensionHandler } from "./plugin-extension-owner.js";
@@ -103,6 +107,8 @@ export type PluginManifest = {
    */
   rendererCallMethods?: string[];
   main: string;
+  /** Backend placement; omission retains desktop execution. */
+  execution?: PluginExecution;
   icon?: string;
   /**
    * First-registration default for bundled plugins. Omitted means enabled.
@@ -723,6 +729,8 @@ export function isWindowBackgroundColor(value: unknown): value is string {
 
 export type PluginMcpServerContrib = {
   id: string;
+  /** Defaults to the main backend placement; companions opt in per server. */
+  execution?: "desktop" | "workspace";
   label?: string;
   transport: "stdio" | "http";
   /** stdio only: bare PATH name or plugin-relative executable. */
@@ -1321,8 +1329,10 @@ export type PluginHostApi = {
       notify: (loginId: string, event: PluginProviderOAuthEvent) => Promise<void>;
     };
   };
-  workspace: {
-    get: () => Promise<{ path: string; name: string; remote?: { path: string; readOnly: true } } | null>;
+  workspace: PluginWorkspaceExecutionApi & {
+    get: () => Promise<{ path: string; name: string; remote?: { path: string; readOnly: true }; executionContext?: PluginWorkspaceContext } | null>;
+    /** Workspace processes receive real execution-host paths, never Desktop aliases. */
+    getContext: () => Promise<PluginWorkspaceContext | null>;
   };
   /** Reviewed host operations shared with the local MCP control plane. */
   desktop: {
@@ -1555,6 +1565,8 @@ export type PluginModule = {
   ) => Promise<PluginProviderOAuthCredential> | PluginProviderOAuthCredential;
   /** Optional fixed-channel operations for an isolated plugin panel. */
   onPanelInvoke?: (channel: string, payload: unknown) => Promise<unknown> | unknown;
+  /** Handles explicit workspace.invoke calls in a declared workspace entry. */
+  onWorkspaceInvoke?: (channel: string, payload: unknown) => Promise<unknown> | unknown;
   /**
    * Answers the renderer entry's `plugin.call` for a method listed in
    * `manifest.rendererCallMethods`. `args` defaults to `{}`; the answer must
@@ -1622,6 +1634,8 @@ export const PLUGIN_PERMISSIONS = [
   "mcp.server.local",
   "mcp.server.remote",
   "background.service",
+  "workspace.exec",
+  "workspace.terminal",
   "bus.publish",
   "bus.subscribe",
   "browser.cdp",
@@ -1659,6 +1673,13 @@ export function validateManifest(raw: unknown): {
   }
   const mainError = relativePathError(m.main, "manifest.main");
   if (mainError) return { ok: false, error: mainError };
+  const executionError = pluginExecutionError(m.execution);
+  if (executionError) return { ok: false, error: executionError };
+  if (m.execution?.main === "workspace" && (m.renderer || (m.contributes?.providers?.length ?? 0) > 0
+    || (m.contributes?.composerTransforms?.length ?? 0) > 0 || (m.contributes?.agentExtensions?.length ?? 0) > 0
+    || (m.permissions ?? []).some(permission => ["provider.register", "provider.oauth", "speech.provider", "renderer.extension", "composer.transform", "audio.capture.background", "audio.playback.background"].includes(permission)))) {
+    return {ok:false,error:"Model, device, Agent extension and renderer contributions require a desktop main; use a workspace companion"};
+  }
   const rendererError = manifestRendererError(m);
   if (rendererError) return { ok: false, error: rendererError };
   if (typeof m.schemaVersion !== "number") {
@@ -1711,6 +1732,10 @@ export function validateManifest(raw: unknown): {
     }
   }
   const contributesError = validateContributions(m.contributes);
+  if (!contributesError && m.contributes?.mcpServers?.some(server => server.execution === "workspace")
+    && m.execution?.main !== "workspace" && !m.execution?.workspaceMain) {
+    return {ok:false,error:"workspace MCP requires a workspace backend entry"};
+  }
   if (
     !contributesError &&
     (m.contributes?.agentExtensions?.length ?? 0) > 0 &&

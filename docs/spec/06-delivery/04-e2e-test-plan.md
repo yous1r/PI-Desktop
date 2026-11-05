@@ -19261,3 +19261,21 @@ Contract and component tests cover controls and security boundaries; targeted
 process tests cover IPC and real HTTP. `verify:ui:*` remains separately opt-in.
 See [owned extension services](../07-plugins/17-owned-extension-services.md) and
 the reference plugin's requirements/compatibility docs for the R1–R12 mapping.
+
+## Workspace plugin candidate acceptance (ADR 0340)
+
+[ADR 0340](../../adr/0340-workspace-plugin-execution.md) and
+[spec 18](../07-plugins/18-workspace-execution.md) require both local and SSH
+workspace journeys. `scripts/e2e-remote-plugins.mjs --git-plugin <candidate>` runs
+the actual plugin/Broker/filesystem/Git workflow using local and direct remote
+service transports, plus MCP, PTY and RACP regressions. It neither launches the
+Desktop UI nor claims an SSH connection.
+
+For release, use complete matching Desktop/pi-host candidates on Linux x64 and
+arm64 and two distinct same-named workspaces. Exercise edit/save/conflict → hunk
+stage/commit → terminal log, bare-remote network Git, previews/downloads, local
+attachments, localhost forwarding, Ctrl-C/resize/replay, project switches,
+revocation and disconnect before/during/after mutations. Record base/head,
+artifact digests and target Node/PTY ABI. Verify no other workspace changed.
+Mounted Desktop checks require task authorization. A Windows-native build cannot
+substitute for native Linux packaging or SSH acceptance.

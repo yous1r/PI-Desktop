@@ -20,6 +20,11 @@ const imports = {
   "../../lib/remote-session-safety": { isRemoteSession: () => false },
   "../../lib/work-panel-tabs": workPanelTabs,
   "../../lib/work-panel-resize": workPanelResize,
+  // Terminal shells live in main; closing a tab reaches them through this module.
+  "../../lib/terminal-sessions": {
+    closeTerminalForTab: () => {},
+    closeTerminalForTabs: () => {},
+  },
 };
 const module = { exports: {} };
 new Function("require", "exports", "module", outputText)((id) => {

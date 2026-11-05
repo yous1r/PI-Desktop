@@ -1,3 +1,5 @@
+import type { LocalResourceGrant } from "./local-resource-grant";
+import type { WorkspaceExecutionContext } from "@pi-desktop/shared";
 import { BrowserWindow, ipcMain, Menu, session, systemPreferences } from "electron";
 import { pathToFileURL } from "node:url";
 import { join, resolve } from "node:path";
@@ -24,6 +26,8 @@ import {
 } from "../shared/plugin-panel-chrome";
 
 export type PluginPanelOpenRequest = {
+  context?: WorkspaceExecutionContext;
+  sessionId?: string;
   pluginId: string;
   title: string;
   locale: string;
@@ -83,7 +87,7 @@ type BridgeHandler = (
   pluginId: string,
   channel: string,
   payload?: Record<string, unknown>,
-  context?: { droppedPath?: string },
+  context?: { droppedPath?: string; context?: WorkspaceExecutionContext; sessionId?: string; localResource?: LocalResourceGrant },
 ) => Promise<unknown>;
 
 /** Reports an egress attempt a panel was not allowed to make. */
@@ -205,6 +209,16 @@ export class PluginPanelHost {
    * while the host is closing that surface is still the panel's own call.
    */
   private senders = new PanelSenders();
+  private readonly contexts = new Map<number, { context: WorkspaceExecutionContext; sessionId?: string; localResource?: LocalResourceGrant }>();
+  private readonly contextResolvers: Array<(senderId: number) => { context: WorkspaceExecutionContext; sessionId?: string; localResource?: LocalResourceGrant } | undefined> = [];
+
+  addContextResolver(resolve: (senderId: number) => { context: WorkspaceExecutionContext; sessionId?: string; localResource?: LocalResourceGrant } | undefined): void {
+    this.contextResolvers.push(resolve);
+  }
+
+  private contextForSender(senderId: number): { context: WorkspaceExecutionContext; sessionId?: string; localResource?: LocalResourceGrant } | undefined {
+    return this.contexts.get(senderId) ?? this.contextResolvers.map(resolve => resolve(senderId)).find(Boolean);
+  }
 
   constructor(
     bridge: BridgeHandler,
@@ -248,7 +262,7 @@ export class PluginPanelHost {
           channel === "fs.registerDropped"
             ? this.consumeDroppedPath(event.sender.id, payload?.path)
             : undefined;
-        return this.bridge(pluginId, channel, payload, droppedPath ? { droppedPath } : undefined);
+        return this.bridge(pluginId, channel, payload, { ...this.contextForSender(event.sender.id), ...(droppedPath ? { droppedPath } : {}) });
       },
     );
 
@@ -282,7 +296,7 @@ export class PluginPanelHost {
         // rejects when the plugin is unloaded or times out, and a panel page
         // can call this at will, so the rejection must be observed here
         // rather than surfacing as an unhandled rejection in main.
-        this.bridge(pluginId, channel, payload).catch((error) => {
+        this.bridge(pluginId, channel, payload, this.contextForSender(event.sender.id)).catch((error) => {
           this.onBridgeError?.(pluginId, channel, error);
         });
         event.returnValue = { ok: true, accepted: true };
@@ -543,6 +557,7 @@ export class PluginPanelHost {
         this.pendingDrops.delete(webContentsId);
         this.widgetLocales.delete(webContentsId);
         this.senders.release(webContentsId);
+        this.contexts.delete(webContentsId);
         // Only when this window is still the registered one: a page that closes
         // slowly can already have been replaced by a newer panel window for the
         // plugin, and that newer entry has to survive the predecessor's teardown.
@@ -556,6 +571,7 @@ export class PluginPanelHost {
       // registered before the document loads and released only when the page is
       // gone (see the `closed` handler above).
       this.senders.register(webContentsId, request.pluginId);
+      if (request.context) this.contexts.set(webContentsId, { context: request.context, sessionId: request.sessionId });
       try {
         // The window stays hidden until this settles, so a load that never
         // settles has to end the request as an error (#998 item 5): the page
@@ -627,6 +643,7 @@ export class PluginPanelHost {
     const channel = `pi-plugin-panel-event:${event}`;
     for (const win of this.windows.values()) {
       if (win.isDestroyed() || win.webContents.isDestroyed()) continue;
+      if (this.contexts.has(win.webContents.id) && (event === "workspace:changed" || event === "session:activated")) continue;
       try {
         win.webContents.send(channel, payload);
       } catch {

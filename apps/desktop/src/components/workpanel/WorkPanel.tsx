@@ -23,9 +23,11 @@ import {
   parsePluginViewRef,
   pluginWorkPanelTab,
   subagentTabDisplayLabels,
+  terminalWorkPanelTab,
   toolWorkPanelTab,
 } from "../../lib/work-panel-tabs";
 import type { PluginViewMeta } from "@pi-desktop/shared";
+import { parseTerminalWorkspaceId, terminalWorkspaceId } from "@pi-desktop/shared";
 import { api } from "../../lib/api";
 import { pluginViewIcon, pluginViewInitial } from "../../lib/plugin-view-icons";
 import { useAppStore } from "../../stores/app-store";
@@ -47,11 +49,13 @@ import {
   IconPanelRestore,
   IconPlug,
   IconPlus,
+  IconTerminal,
 } from "../icons";
 import { ReviewTab } from "./ReviewTab";
 import { FilesTab } from "./FilesTab";
 import { PluginViewTab } from "./PluginViewTab";
 import { SubagentTranscriptTab } from "./SubagentTranscriptTab";
+import { TerminalTab } from "./TerminalTab";
 import {
   MAIN_PANE_MIN_WIDTH,
   WORK_PANEL_COMPACT_MIN_WIDTH,
@@ -69,6 +73,7 @@ const TAB_ICONS = {
   file: IconFileText,
   plugin: IconPlug,
   subagent: IconBot,
+  terminal: IconTerminal,
 } as const;
 
 type WorkPanelResizeState = {
@@ -101,7 +106,10 @@ type WorkPanelTabReorderState = {
 
 type WorkPanelTool = {
   id: string;
-  tab: WorkPanelTab;
+  /** The tab this launcher opens; omitted when `createTab` builds a new one. */
+  tab?: WorkPanelTab;
+  /** Builds a fresh tab per click: each terminal click is its own shell. */
+  createTab?: () => WorkPanelTab;
   label: string;
   icon: ComponentType<IconProps> | null;
   initial?: string;
@@ -123,6 +131,9 @@ function tabLabel(
   }
   if (tab.kind === "new") return t("panel.new.title");
   if (tab.kind === "subagent") return tab.label ?? t("panel.tabs.subagent");
+  // A terminal tab captured the host it belongs to, so a remote shell is named
+  // where it runs; two local terminals stay "Terminal".
+  if (tab.kind === "terminal") return tab.label ?? t("panel.tabs.terminal");
   if (tab.kind !== "file") return t(`panel.tabs.${tab.kind}`);
   const path = tab.resource ?? "";
   return path.split("/").filter(Boolean).pop() || t("panel.tabs.file");
@@ -153,6 +164,26 @@ function workPanelTools(
       };
     }),
   ];
+}
+
+/**
+ * The terminal launcher.
+ *
+ * Kept beside `workPanelTools` rather than inside it because a terminal is not a
+ * resource: every click opens its own shell, and the tab stores the
+ * creation-time target so the shell keeps running in the workspace that opened
+ * it after a project switch.
+ */
+function terminalTool(
+  t: (key: string) => string,
+  target: { sessionId?: string; workspaceId?: string; hostLabel?: string },
+): WorkPanelTool {
+  return {
+    id: "terminal",
+    createTab: () => terminalWorkPanelTab(target),
+    label: t("panel.tabs.terminal"),
+    icon: IconTerminal,
+  };
 }
 
 function ToolIcon({ item, size = 15 }: { item: WorkPanelTool; size?: number }) {
@@ -235,7 +266,20 @@ function LocalWorkPanel({
   const replaceWorkPanelTab = useAppStore((s) => s.replaceWorkPanelTab);
   const setWidth = useAppStore((s) => s.setWorkPanelWidth);
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? null;
-  const tools = workPanelTools(t, pluginViews);
+  const workspace = useAppStore((s) => s.workspace ?? null);
+  // The terminal target is what the panel is looking at right now, captured
+  // when the tab is created. It is never re-read later: a terminal opened in
+  // project A must keep addressing project A after the user switches to B.
+  const terminalWorkspace = workspace
+    ? terminalWorkspaceId({ hostKey: workspace.remote?.hostKey, path: workspace.path })
+    : undefined;
+  const tools = [
+    ...workPanelTools(t, pluginViews),
+    terminalTool(t, {
+      ...(activeSessionId ? { sessionId: activeSessionId } : {}),
+      ...(terminalWorkspace ? { workspaceId: terminalWorkspace } : {}),
+    }),
+  ];
   const tabSignature = JSON.stringify(
     tabs.map(({ id, kind, resource, location }) => [id, kind, resource, location]),
   );
@@ -636,13 +680,15 @@ function LocalWorkPanel({
 
   const selectTool = useCallback(
     (item: WorkPanelTool, sourceTabId?: string) => {
+      const tab = item.tab ?? item.createTab?.();
+      if (!tab) return;
       if (sourceTabId) {
-        replaceWorkPanelTab(sourceTabId, item.tab);
+        replaceWorkPanelTab(sourceTabId, tab);
         return;
       }
-      const existing = tabs.find((tab) => tab.id === item.tab.id);
+      const existing = tabs.find((candidate) => candidate.id === tab.id);
       if (existing) activateTab(existing.id);
-      else openWorkPanelTab(item.tab);
+      else openWorkPanelTab(tab);
     },
     [activateTab, openWorkPanelTab, replaceWorkPanelTab, tabs],
   );
@@ -1107,6 +1153,35 @@ function LocalWorkPanel({
               <ReviewTab />
             </div>
           )}
+          {activeTab?.kind === "terminal" &&
+            (() => {
+              // Display-only: the tab's own target says which host and root the
+              // shell belongs to, not the workspace that is active now.
+              const bound = activeTab.terminal?.workspaceId
+                ? parseTerminalWorkspaceId(activeTab.terminal.workspaceId)
+                : null;
+              return (
+                <div
+                  key={activeTab.id}
+                  id={`work-panel-surface-${activeTab.id}`}
+                  className="work-panel-tabpane"
+                  role="tabpanel"
+                  aria-labelledby={`work-panel-tab-${activeTab.id}`}
+                >
+                  <TerminalTab
+                    tabId={activeTab.id}
+                    target={
+                      activeTab.terminal ?? {
+                        ...(activeSessionId ? { sessionId: activeSessionId } : {}),
+                        tabId: activeTab.id,
+                      }
+                    }
+                    {...(bound?.hostKey ? { hostKey: bound.hostKey } : {})}
+                    {...(bound?.path ? { workspacePath: bound.path } : {})}
+                  />
+                </div>
+              );
+            })()}
           {activeTab?.kind === "file" && (
             <div
               key={activeTab.id}

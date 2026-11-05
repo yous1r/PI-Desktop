@@ -132,6 +132,8 @@ export const tr = {
    * declare. Lives here rather than in the renderer because the dialog is a
    * main-process `showMessageBox` — it has to block the plugin's call.
    */
+  pluginWorkspaceResource: en.pluginWorkspaceResource,
+  pluginWorkspaceConsent: en.pluginWorkspaceConsent,
   pluginDesktopConsent: {
     message: "{name}, {operation} işlemini çalıştırmak istiyor",
     arguments: "Bağımsız değişkenler: {args}",
@@ -2147,6 +2149,23 @@ sklm: {
       file: "Dosyalar",
       plugin: "Eklenti görünümü",
       subagent: "Alt ajan",
+      terminal: "Terminal",
+    },
+    terminal: {
+      title: "Terminal",
+      shell: "Kabuk",
+      hostLabel: "Ana makine",
+      localHost: "Yerel",
+      connecting: "Kabuk başlatılıyor…",
+      restart: "Terminali yeniden başlat",
+      exited: "Terminal kapandı",
+      exitedWithCode: "Terminal kapandı (kod {{code}})",
+      failed: "Terminal kullanılamıyor",
+      noShells: "Bu ana makinede kabuk bulunamadı.",
+      offline: "Ana makine çevrimdışı",
+      offlineHint: "Geçmiş korunur. Ana makineyi yeniden bağlayıp yeni bir kabuk açmak için Yeniden başlat’a basın.",
+      reconnect: "Bağlantıyı yeniden dene",
+      bufferOverflow: "Terminal çıktısı ara bellek sınırını aştı. Geçmişi yeniden yüklemek için bağlantıyı yeniden deneyin.",
     },
     pluginView: {
       failed: "Bu görünüm yüklenemedi. Eklentiyi yeniden yükleyip deneyin.",
@@ -2589,6 +2608,8 @@ importConfirm: "İçe aktarılan uzantılar ajan sürecinde, ajanın kendi araç
       "ui.window.appearance": "Pencere görünümünü özelleştir",
       "mcp.server.local": "Yerel bir MCP sunucusu çalıştır",
       "mcp.server.remote": "Uzak bir MCP sunucusuna ulaş",
+      "workspace.exec": en.plugins.permissions["workspace.exec"],
+      "workspace.terminal": en.plugins.permissions["workspace.terminal"],
       "background.service": "Arka plan servisini çalışır tut",
       "audio.capture.background": "Mikrofonu arka planda kullan",
       "audio.playback.background": "Sesi arka planda çal",
@@ -2645,6 +2666,8 @@ importConfirm: "İçe aktarılan uzantılar ajan sürecinde, ajanın kendi araç
       "mcp.server.local": "Ek ajan araçları sunmak için bu bilgisayarda bir program başlatır.",
       "mcp.server.remote":
         "Eklentinin bildirdiği uzak bir MCP uç noktasına araç çağrıları gönderir. Uç nokta şifresiz HTTP kullanabilir.",
+      "workspace.exec": en.plugins.permissionHelp["workspace.exec"],
+      "workspace.terminal": en.plugins.permissionHelp["workspace.terminal"],
       "background.service": "Eklenti açıkken bir işçiyi çalışır tutar.",
       "audio.capture.background": "Eklenti arka planda çalışırken, hiçbir panel açık olmadan mikrofonu yakalar.",
       "audio.playback.background": "Hiçbir panel açık olmasa bile eklentinin akışa verdiği sesi çalar.",

@@ -1353,3 +1353,17 @@ D375 (2026-09-10) re-sequenced the deployments and extended the catalog:
 - queued turns persisted by host-core and held after a restart, the
   30-minute default approval lifetime for remote subscribers, and the
   `applyCeilingToPairedDevices` policy.
+
+## Workspace service profile (ADR 0340)
+
+The owner-only `workspace/plugin`, `workspace/process` and `workspace/terminal`
+operations add versioned workspace capabilities independent of remote Agent
+sessions. Reverse plugin/terminal events remain tied to the authenticated
+connection. This profile explicitly adds structured native workspace execution
+to the earlier remote-control subset; it does not expose Rust RPC, model secrets
+or arbitrary Electron IPC. Native plugin admission requires Desktop-owned
+Host/package consent and retains the SSH account trust boundary.
+
+[Spec 18](../07-plugins/18-workspace-execution.md) defines schemas, ownership,
+limits, package compatibility, cancellation, file resources and no-replay behavior.
+See [ADR 0340](../../adr/0340-workspace-plugin-execution.md).

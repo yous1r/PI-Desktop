@@ -1,9 +1,12 @@
+import type { TerminalTargetContext } from "@pi-desktop/shared";
+
 export type WorkPanelTabKind =
   | "new"
   | "review"
   | "file"
   | "plugin"
-  | "subagent";
+  | "subagent"
+  | "terminal";
 
 export type WorkPanelTab = {
   id: string;
@@ -18,6 +21,14 @@ export type WorkPanelTab = {
   /** Optional 1-based line/column for host file tabs (chat `path:line` refs). */
   line?: number;
   column?: number;
+  /**
+   * Target a terminal tab was opened for (`kind === "terminal"`).
+   *
+   * Captured at open time and carried on the tab, so a request made after a
+   * project or session switch still addresses the workspace the terminal
+   * belongs to instead of whichever workspace is active by then.
+   */
+  terminal?: TerminalTargetContext;
 };
 
 export type WorkPanelTabsState = {
@@ -139,6 +150,31 @@ export function subagentWorkPanelTab(
   };
 }
 
+/**
+ * A work-panel terminal tab, local or remote.
+ *
+ * Each tab owns one shell, so the id must be unique per tab rather than keyed
+ * by shell: two terminals may run the same shell. `target` is captured here
+ * because the tab outlives the workspace selection that created it, and
+ * `hostLabel` names a remote host in the tab strip so a terminal never looks
+ * like it runs on this machine.
+ */
+export function terminalWorkPanelTab(
+  target: { sessionId?: string; workspaceId?: string; hostLabel?: string } = {},
+): WorkPanelTab {
+  const id = `terminal:${Date.now().toString(36)}-${++newWorkPanelTabSequence}`;
+  return {
+    id,
+    kind: "terminal",
+    ...(target.hostLabel ? { label: target.hostLabel } : {}),
+    terminal: {
+      ...(target.sessionId ? { sessionId: target.sessionId } : {}),
+      ...(target.workspaceId ? { workspaceId: target.workspaceId } : {}),
+      tabId: id,
+    },
+  };
+}
+
 export const BROWSER_PLUGIN_TAB = {
   pluginId: "pi.browser",
   viewId: "browser",
@@ -248,7 +284,7 @@ export function isKnownWorkPanelTab(tab: WorkPanelTab): boolean {
     Boolean(tab) &&
     (tab.kind === "new" || tab.kind === "review" ||
       tab.kind === "file" || tab.kind === "plugin" ||
-      tab.kind === "subagent")
+      tab.kind === "subagent" || tab.kind === "terminal")
   );
 }
 

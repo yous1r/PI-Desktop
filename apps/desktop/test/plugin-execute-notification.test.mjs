@@ -83,6 +83,7 @@ const TOOL_NAME = VALUE_BY_FIELD.toolName;
 function fixture({ activeTurn } = {}) {
   const calls = [];
   const invocations = [];
+  const catalogs = [];
   let notification = null;
 
   const activeTurns = new Map();
@@ -115,7 +116,10 @@ function fixture({ activeTurn } = {}) {
     activeToolCallKey: (sessionId, toolCallId) => `${sessionId}:${toolCallId}`,
     sessionProjects: new Map(),
     plugins: {
-      getTools: () => [
+      getTools: () => { throw Error("Global catalog must not dispatch workspace tools"); },
+      getToolsForSession: async (sessionId, active) => {
+        catalogs.push(sessionId);assert.equal(active("demo"),true);
+        return [
         {
           fullName: TOOL_NAME,
           pluginId: "demo",
@@ -124,7 +128,7 @@ function fixture({ activeTurn } = {}) {
             return { echoed: true };
           },
         },
-      ],
+      ]; },
       drainToasts: () => [],
     },
     userMcp: { callTool: async () => null },
@@ -148,6 +152,7 @@ function fixture({ activeTurn } = {}) {
   return {
     calls,
     invocations,
+    catalogs,
     notify: (method, params) => notification(method, params),
   };
 }
@@ -201,6 +206,7 @@ test("the live turn's payload runs the plugin tool and is answered", async () =>
   );
   assert.equal(resolved[0].params.executionId, payload.executionId);
 
+  assert.deepEqual(f.catalogs,[SESSION_ID]);
   assert.equal(f.invocations.length, 1, "the plugin tool must be executed once");
   assert.deepEqual(f.invocations[0].args, payload.args);
   // The turn identity travels with the call, so a plugin can scope the work it

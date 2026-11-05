@@ -57,7 +57,7 @@ test("session launch sends Fast mode only for a model the user allowed it on (AD
       runtimeState: { host, sidecar: { setVendorAuthBindings() {} }, agentHostBridge: null },
       logger: { app() {} },
       userMcp: { setRecords() {}, async toolsForProject() { return []; } },
-      plugins: { getTools: () => [], getSkills: () => [], listLoaded: () => [], getAgentExtensions: () => [] },
+      plugins: { getToolsForSession: async () => [], getSkills: () => [], listLoaded: () => [], getAgentExtensions: () => [] },
       sessionProjects: new Map(),
       dataDir: temp,
       vendorOAuth: { async bindingFor() { return undefined; } },

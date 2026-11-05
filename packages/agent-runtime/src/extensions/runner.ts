@@ -10,6 +10,7 @@
  * never throws into extension code.
  */
 import { managedExec } from "./managed-exec.js";
+import { posix } from "node:path";
 import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import {
   createAssistantMessageEventStream,
@@ -91,6 +92,8 @@ const INERT_UI_MEMBERS = [
 ] as const;
 
 export type ExtensionExecOptions = {
+  /** Explicit local helpers remain on Desktop; workspace commands follow the session. */
+  target?: "local" | "workspace";
   cwd?: string;
   env?: Record<string, string>;
   timeout?: number;
@@ -144,6 +147,7 @@ export interface TrustedExtensionBridge {
   cwd: string;
   /** Workspace is remote; implicit workspace exec must never spawn locally. */
   remoteWorkspace?: boolean;
+  execWorkspace?: (extensionId:string,command:string,args:string[],owner:AbortSignal,options?:ExtensionExecOptions)=>Promise<ExtensionExecResult>;
   getOwnerContext?(): PluginExtensionCallContext;
   callOwner?(extension: TrustedExtensionSpec, operation: string, payload: unknown, signal: AbortSignal): Promise<unknown>;
   getModel(): unknown;
@@ -684,10 +688,18 @@ export class TrustedExtensionRunner {
     options?: ExtensionExecOptions,
   ): Promise<ExtensionExecResult> {
     if (this.disposed) return Promise.reject(new DOMException("Extension disposed", "AbortError"));
-    if (this.bridge.remoteWorkspace && (!options?.cwd || options.cwd === this.bridge.cwd)) {
+    const cwd = options?.cwd;
+    const relative = cwd ? posix.relative(this.bridge.cwd, cwd.replace(/\\/g, "/")) : "";
+    // Preserve explicitly local absolute helper directories accepted by older hosts.
+    const legacyLocal = options?.target === undefined && cwd && (posix.isAbsolute(cwd) || /^[A-Za-z]:[\\/]/.test(cwd))
+      && (relative.startsWith("../") || posix.isAbsolute(relative));
+    const workspace = this.bridge.remoteWorkspace && options?.target !== "local" && !legacyLocal;
+    if (workspace && !this.bridge.execWorkspace) {
       return Promise.reject(Object.assign(new Error("extension workspace exec is unavailable for a remote workspace"), { errorCode: "CAPABILITY_UNAVAILABLE" }));
     }
-    const pending = managedExec(command, args, this.bridge.cwd, this.lifecycle.operationSignal, options);
+    const pending = workspace
+      ? this.bridge.execWorkspace!(extension.spec.id,command,args,this.lifecycle.operationSignal,options)
+      : managedExec(command, args, this.bridge.cwd, this.lifecycle.operationSignal, options);
     this.processes.add(pending);
     void pending.then(() => this.processes.delete(pending), (error: unknown) => {
       this.processes.delete(pending);

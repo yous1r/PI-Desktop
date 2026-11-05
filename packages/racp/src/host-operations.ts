@@ -6,6 +6,9 @@ import type {
   WorkspaceDiff,
   WorkspaceToolExecute, WorkspaceToolAbort, WorkspaceToolResult, CommandShellOption, WorkspaceFilesRequest,
   WorkspacePluginFilesRequest, WorkspacePluginFilesResult,
+  WorkspaceTerminalRequest, WorkspaceTerminalOwner, WorkspaceTerminalEvent,
+  WorkspacePluginRequest, WorkspacePluginOwner, WorkspacePluginEvent,
+  WorkspaceProcessRequest, WorkspaceProcessOwner,
 } from "@pi-desktop/shared";
 
 /**
@@ -88,6 +91,21 @@ export type RacpHostOperations = {
   projects: RacpProjectCatalog;
   workspace: RacpWorkspaceAccess;
   terminal?: RacpTerminalAccess;
+  workspaceProcesses?: {
+    handle(input:WorkspaceProcessRequest,owner:WorkspaceProcessOwner):Promise<unknown>;
+    disconnect(connectionId:string):void;
+    revoke(deviceId:string):void;
+  };
+  workspacePlugins?: {
+    handle(input: WorkspacePluginRequest, owner: WorkspacePluginOwner, sink: (event: WorkspacePluginEvent) => Promise<void>): Promise<unknown>;
+    disconnect(connectionId: string): void;
+    revoke(deviceId: string): void;
+  };
+  workspaceTerminal?: {
+    handle(input: WorkspaceTerminalRequest, owner: WorkspaceTerminalOwner, sink: (event: WorkspaceTerminalEvent) => Promise<void>): Promise<unknown>;
+    disconnect(connectionId: string): void;
+    revoke(deviceId: string): void;
+  };
   workspaceFiles?: { read(input: WorkspaceFilesRequest): Promise<unknown> };
   workspacePluginFiles?: { read(input: WorkspacePluginFilesRequest): Promise<WorkspacePluginFilesResult> };
   workspaceTools?: {

@@ -13,7 +13,17 @@ const runtimeSrc = readFileSync(join(desktopRoot, "electron/main/plugin-runtime.
 const viteConfigSrc = readFileSync(join(desktopRoot, "electron.vite.config.ts"), "utf8");
 
 test("plugin runtime never loads plugin code inside the Electron main process", () => {
-  assert.doesNotMatch(runtimeSrc, /createRequire/);
+  // Main may require host-owned native modules from its own bundle — node-pty
+  // for the workspace terminal — but nothing a plugin supplies: plugin code
+  // only ever runs in the forked host process.
+  const requiredSpecifiers = [
+    ...runtimeSrc.matchAll(/createRequire\([^)]*\)\(\s*"([^"]+)"\s*\)/g),
+  ].map((match) => match[1]);
+  assert.deepEqual(requiredSpecifiers, ["node-pty"]);
+  assert.doesNotMatch(
+    runtimeSrc.replace('createRequire(import.meta.url)("node-pty")', "hostOwnedPty"),
+    /createRequire\s*\(/,
+  );
   assert.doesNotMatch(runtimeSrc, /globalThis as any\)\.pi/);
   assert.match(runtimeSrc, /utilityProcess\.fork/);
   assert.match(runtimeSrc, /plugin-host-process\.js/);

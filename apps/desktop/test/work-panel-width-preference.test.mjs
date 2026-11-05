@@ -22,6 +22,10 @@ function loadSlice() {
     "../../lib/api": { api: {} },
     "../../lib/remote-session-safety": { isRemoteSession: () => false },
     "../../lib/work-panel-tabs": workPanelTabs,
+    "../../lib/terminal-sessions": {
+      closeTerminalForTab: () => assert.fail("width changes must not close terminals"),
+      closeTerminalForTabs: () => assert.fail("width changes must not close terminals"),
+    },
     "../../lib/work-panel-resize": workPanelResize,
   };
   const module = { exports: {} };

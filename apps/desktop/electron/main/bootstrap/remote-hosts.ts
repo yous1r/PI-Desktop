@@ -18,7 +18,7 @@ import { createRacpRemoteHostClient, exchangePairingToken, type RacpRemoteHostCl
 import { createRemoteHostRealigner, type RemoteHostRealignResult } from "../remote/remote-host-realign.js";
 import { createSshBootstrap, type SshBootstrapDeps } from "../remote/ssh-bootstrap.js";
 import { createSshTunnelManager, type SshTunnelManager } from "../remote/ssh-tunnel.js";
-import { createRemoteHostConnection, type RemoteHostConnection } from "../remote/remote-host-connection.js";
+import { createRemoteHostConnection, type RemoteHostConnection, type RemoteHostClient } from "../remote/remote-host-connection.js";
 import { createRemoteHostRegistry, type EncryptionPort, type RemoteHostRecord, type RemoteHostRegistry } from "../remote/remote-host-registry.js";
 import { sshMetadataOf, sshHostRecord, transportOf } from "../remote/remote-host-metadata.js";
 import { createRemoteSessionCatalog } from "../remote/remote-session-catalog.js";
@@ -72,6 +72,8 @@ export interface RemoteHostsBoot {
   workspaceCommandShell(hostKey: string): Promise<CommandShellOption>;
   workspaceFiles(hostKey: string, input: WorkspaceFilesRequest): Promise<unknown>;
   workspacePluginFiles(hostKey: string, input: WorkspacePluginFilesRequest): Promise<unknown>;
+  /** Existing live connection only: never reconnect/replay a mutation implicitly. */
+  workspaceClient(hostKey: string): RemoteHostClient;
   readonly registry: RemoteHostRegistry;
 }
 let activeRemoteHostsBoot: RemoteHostsBoot | null = null;
@@ -417,6 +419,11 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       return catalog.browseProjects(hostKey, path);
     },
     registerProject: catalog.registerProject,
+    workspaceClient(hostKey) {
+      const host = connectedHost(hostKey);
+      if (!host) throw Object.assign(new Error("Remote workspace is disconnected"), { errorCode: "TERMINAL_HOST_OFFLINE", code: "HOST_DISCONNECTED" });
+      return host.adapter.client;
+    },
     async workspaceFiles(hostKey, input) {
       await ensureReady(hostKey);
       const host = connectedHost(hostKey);

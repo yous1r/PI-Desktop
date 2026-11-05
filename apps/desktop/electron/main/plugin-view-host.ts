@@ -1,3 +1,5 @@
+import type { LocalResourceGrant } from "./local-resource-grant";
+import type { WorkspaceExecutionContext } from "@pi-desktop/shared";
 import {
   session,
   shell,
@@ -6,6 +8,7 @@ import {
   type WebContents,
 } from "electron";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
 import { getModuleDirectory } from "./module-path";
 import { parseAllowedExternalUrl } from "./safe-open-external";
 import { PanelSenders, pageGoneWithin } from "./plugin-panel-senders";
@@ -59,6 +62,10 @@ export { PLUGIN_VIEW_LOCATION_EVENT, PLUGIN_VIEW_LOCATION_PARAM, viewEntryUrl };
 const MAX_LIVE_VIEWS = 4;
 
 export type PluginViewOpenRequest = {
+  localResource?: LocalResourceGrant;
+  context?: WorkspaceExecutionContext;
+  sessionId?: string;
+  tabId?: string;
   pluginId: string;
   viewId: string;
   locale: string;
@@ -88,6 +95,8 @@ export type { PluginViewBounds };
 
 type LiveView = {
   key: string;
+  surfaceId: string;
+  viewId: string;
   pluginId: string;
   view: WebContentsView;
   /** Absolute path to this view's HTML entry; its URL is rebuilt from it. */
@@ -110,6 +119,24 @@ export function pluginViewKey(pluginId: string, viewId: string): string {
 
 export class PluginViewHost {
   private views = new Map<string, LiveView>();
+  private readonly selected = new Map<string, string>();
+  private readonly contexts = new Map<number, { context: WorkspaceExecutionContext; sessionId?: string; localResource?: LocalResourceGrant }>();
+
+  contextForSender(senderId: number): { context: WorkspaceExecutionContext; sessionId?: string; localResource?: LocalResourceGrant } | undefined {
+    return this.contexts.get(senderId);
+  }
+
+  private selectedKey(pluginId: string, viewId: string): string {
+    const publicKey = pluginViewKey(pluginId, viewId);
+    return this.selected.get(publicKey) ?? publicKey;
+  }
+  private surfaceKey(pluginId: string, viewId: string, surfaceId?: string): string | undefined {
+    if (surfaceId) return [...this.views.values()].find(entry => entry.surfaceId === surfaceId && entry.pluginId === pluginId && entry.viewId === viewId)?.key;
+    const key = this.selectedKey(pluginId, viewId);
+    const entry = this.views.get(key);
+    // Legacy callers may only address an unbound desktop surface.
+    return entry && !this.contexts.has(entry.view.webContents.id) ? key : undefined;
+  }
   private window: BrowserWindow | null = null;
   /** The one view currently attached to the window, if any. */
   private visibleKey: string | null = null;
@@ -165,6 +192,7 @@ export class PluginViewHost {
     const channel = `pi-plugin-panel-event:${event}`;
     for (const entry of this.views.values()) {
       if (filter && !filter(entry.pluginId)) continue;
+      if (this.contexts.has(entry.view.webContents.id) && (event === "workspace:changed" || event === "session:activated")) continue;
       const wc = entry.view.webContents;
       if (wc.isDestroyed()) continue;
       try {
@@ -218,8 +246,9 @@ export class PluginViewHost {
   }
 
   /** Whether a live web contents exists for this view. */
-  has(pluginId: string, viewId: string): boolean {
-    return this.views.has(pluginViewKey(pluginId, viewId));
+  has(pluginId: string, viewId: string, surfaceId?: string): boolean {
+    const key = this.surfaceKey(pluginId, viewId, surfaceId);
+    return key !== undefined && this.views.has(key);
   }
 
   /**
@@ -240,19 +269,25 @@ export class PluginViewHost {
    * hit — and never tears the view down, so unsaved work inside a plugin is
    * not discarded by navigation.
    */
-  open(request: PluginViewOpenRequest): void {
-    const key = pluginViewKey(request.pluginId, request.viewId);
+  open(request: PluginViewOpenRequest): string {
+    const publicKey = pluginViewKey(request.pluginId, request.viewId);
+    const context = request.context;
+    const key = context ? JSON.stringify([publicKey, context.authority, context.workspaceId, context.generation, request.sessionId, request.tabId]) : publicKey;
+    this.selected.set(publicKey, key);
     const location = normalizeLocation(request.location);
     const existing = this.views.get(key);
     if (existing) {
+      if(context) this.contexts.set(existing.view.webContents.id,{context,sessionId:request.sessionId,...(request.localResource ? {localResource:request.localResource} : {})});
       existing.usedAt = ++this.clock;
       this.deliverLocation(existing, location);
-      return;
+      return existing.surfaceId;
     }
     const view = this.createView(request);
     const entry: LiveView = {
       key,
+      surfaceId: randomUUID(),
       pluginId: request.pluginId,
+      viewId: request.viewId,
       view,
       htmlPath: request.htmlPath,
       usedAt: ++this.clock,
@@ -265,12 +300,17 @@ export class PluginViewHost {
     // gone — never when the host merely drops the cached surface around it.
     const senderId = view.webContents.id;
     this.senders.register(senderId, request.pluginId);
-    view.webContents.once("destroyed", () => this.senders.release(senderId));
+    if (context) this.contexts.set(senderId, { context, sessionId: request.sessionId, ...(request.localResource ? {localResource:request.localResource} : {}) });
+    view.webContents.once("destroyed", () => {
+      this.senders.release(senderId);
+      this.contexts.delete(senderId);
+    });
     view.webContents.once("did-finish-load", () => {
       entry.loaded = true;
     });
     this.load(entry);
     this.evictBeyondLimit();
+    return entry.surfaceId;
   }
 
   /**
@@ -392,8 +432,9 @@ export class PluginViewHost {
    * implicitly detaches whichever was attached before. That keeps a stale view
    * from lingering above the renderer when the user switches tabs quickly.
    */
-  setVisible(pluginId: string, viewId: string, visible: boolean): void {
-    const key = pluginViewKey(pluginId, viewId);
+  setVisible(pluginId: string, viewId: string, visible: boolean, surfaceId?: string): void {
+    const key = this.surfaceKey(pluginId, viewId, surfaceId);
+    if (!key) return;
     if (!visible) {
       if (this.visibleKey === key) this.detachVisible();
       return;
@@ -412,8 +453,9 @@ export class PluginViewHost {
     this.emitSurface();
   }
 
-  close(pluginId: string, viewId: string): void {
-    this.destroy(pluginViewKey(pluginId, viewId));
+  close(pluginId: string, viewId: string, surfaceId?: string): void {
+    const key = this.surfaceKey(pluginId, viewId, surfaceId);
+    if (key) this.destroy(key);
   }
 
   /** Drop every view a plugin owns — disable, uninstall, reload, or crash. */
@@ -444,6 +486,8 @@ export class PluginViewHost {
     if (!entry) return;
     if (this.visibleKey === key) this.detachVisible();
     this.views.delete(key);
+    const publicKey = pluginViewKey(entry.pluginId, entry.viewId);
+    if (this.selected.get(publicKey) === key) this.selected.delete(publicKey);
     if (!entry.view.webContents.isDestroyed()) entry.view.webContents.close();
   }
 
@@ -479,14 +523,14 @@ export class PluginViewHost {
       this.onSurface(null);
       return;
     }
-    const separator = this.visibleKey.indexOf("/");
-    if (separator <= 0) {
+    const entry = this.views.get(this.visibleKey);
+    if (!entry) {
       this.onSurface(null);
       return;
     }
     this.onSurface({
-      pluginId: this.visibleKey.slice(0, separator),
-      viewId: this.visibleKey.slice(separator + 1),
+      pluginId: entry.pluginId,
+      viewId: entry.viewId,
       visible: true,
       bounds: this.bounds,
       scale: this.viewZoom(),

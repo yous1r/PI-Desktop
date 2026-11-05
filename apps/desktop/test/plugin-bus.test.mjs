@@ -9,12 +9,18 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = join(here, "..");
+const repoRoot = join(desktopRoot, "../..");
 const hostProcessEntry = join(desktopRoot, "electron/main/plugin-host-process.mjs");
 
 register(pathToFileURL(join(here, "helpers/ts-import-hooks.mjs")));
 const { PluginRuntime } = await import("../electron/main/plugin-runtime.ts");
 
-const hostSrc = readFileSync(hostProcessEntry, "utf8");
+// The Desktop entry is a thin import of the shared Node/Electron runner, so the
+// child half of every contract lives in packages/host-runtime.
+const hostSrc = readFileSync(
+  join(repoRoot, "packages/host-runtime/plugin-host-process.mjs"),
+  "utf8",
+);
 const runtimeSrc = readFileSync(join(desktopRoot, "electron/main/plugin-runtime.ts"), "utf8");
 
 /** Real host process, forked instead of Electron's utilityProcess. */

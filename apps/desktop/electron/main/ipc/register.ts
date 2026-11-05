@@ -9,6 +9,7 @@ import { registerAgentExtensionIpc } from "../agent-extensions-ipc";
 import { readNpmPath, writeNpmPath } from "../npm-preferences";
 import { registerAgentIpc } from "./agent-ipc";
 import { registerAppIpc } from "./app-ipc";
+import { registerWorkspaceTerminals } from "../bootstrap/workspace-terminals";
 import { registerDiagnosticsIpc } from "./diagnostics-ipc";
 import { registerMarketIpc } from "./market-ipc";
 import { registerMcpIpc } from "./mcp-ipc";
@@ -258,6 +259,7 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     assertMainWindowSender,
   };
 
+  registerWorkspaceTerminals({ registrar, getMainWindow, getHost, currentWorkspacePath });
   registerAppIpc({
     registrar,
     getHost,

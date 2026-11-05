@@ -1,0 +1,112 @@
+/*
+ * Work-panel terminal (local and remote).
+ *
+ * The pane hosts a real shell, so it owns its own scroll surface: xterm keeps
+ * the scrollback, the tab must never grow a document scrollbar, and the
+ * surface fills whatever height the tab gives it. Colors come from the `--ds-*`
+ * surface tokens (the xterm ANSI palette is set from CSS in
+ * `lib/terminal-pane.ts`), so both app themes keep the terminal on the panel's
+ * own surface.
+ */
+
+.terminal-tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.terminal-tab__bar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ds-border-subtle);
+  color: var(--ds-text-muted);
+  font-size: var(--text-xs);
+}
+
+.terminal-tab__host {
+  flex: 0 0 auto;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The bound workspace root: display only, never a navigation target. */
+.terminal-tab__path {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ds-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-tab__shell {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 8rem;
+  max-width: 14rem;
+  padding-block: 2px;
+  font-size: var(--text-xs);
+}
+
+.terminal-tab__status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ds-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-tab__restart {
+  display: inline-flex;
+  flex: 0 0 var(--ds-work-panel-toggle-size);
+  align-items: center;
+  justify-content: center;
+  width: var(--ds-work-panel-toggle-size);
+  height: var(--ds-work-panel-toggle-size);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ds-text-secondary);
+  cursor: pointer;
+}
+
+.terminal-tab__restart:hover:not(:disabled) {
+  background: var(--ds-bg-hover);
+  color: var(--ds-text-primary);
+}
+
+.terminal-tab__restart:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.terminal-tab__restart:focus-visible {
+  outline: 2px solid var(--ds-focus);
+  outline-offset: 1px;
+}
+
+.terminal-tab__surface {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 4px 6px;
+  background: var(--ds-bg-elevated-opaque);
+}
+
+.terminal-tab__surface .xterm {
+  height: 100%;
+}
+
+.terminal-tab__surface .xterm-viewport {
+  background: transparent !important;
+}

@@ -1,8 +1,11 @@
+import { WorkspaceProcessService } from "@pi-desktop/host-runtime";
 import { mkdir } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 import { AgentHost, type ApprovalPort } from "@pi-desktop/agent-host";
 import {
-  AgentSidecar,
+  AgentSidecar, WorkspaceTerminalService, ShellRegistry, WorkspacePluginService,
   HostProcess,
   PlanExecutionDispatcher,
   RuntimeService,
@@ -242,6 +245,13 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     : undefined;
   if (!pty) log("warn", "node-pty is not installed; terminals are disabled");
 
+  const shellRegistry = new ShellRegistry();
+  const workspaceTerminal = pty ? new WorkspaceTerminalService({ pty, shells: refresh => shellRegistry.listShells(refresh), onError: message => log("warn", message) }) : undefined;
+  const runner = [new URL("./plugin-host-process.mjs", import.meta.url), new URL("../../../packages/host-runtime/plugin-host-process.mjs", import.meta.url)]
+    .map(url => fileURLToPath(url)).find(path => existsSync(path));
+  const workspaceProcesses = new WorkspaceProcessService();
+  const workspacePlugins = runner ? new WorkspacePluginService({ dataDir: config.dataDir, runner, pty: () => pty }) : undefined;
+  if (!runner) log("warn", "Workspace plugin runner is missing; workspace plugins are disabled");
   const operations: RacpHostOperations = {
     ...createHostOperations({
       getHost,
@@ -254,9 +264,16 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
         sidecar.clearProjectInstructionRoot(sessionId);
         await sidecar.call("agent.disposeSession", { sessionId }).catch(() => undefined);
       },
-      revokeDevice: (deviceId) => store.revokeDevice(deviceId, new Date().toISOString()),
+      revokeDevice: async (deviceId) => {
+        const revoked = await store.revokeDevice(deviceId, new Date().toISOString());
+        if (revoked) { workspaceTerminal?.revoke(deviceId); workspacePlugins?.revoke(deviceId); workspaceProcesses.revoke(deviceId); }
+        return revoked;
+      },
     }),
     ...(terminal ? { terminal } : {}),
+    ...(workspaceTerminal ? { workspaceTerminal } : {}),
+    ...(workspacePlugins ? { workspacePlugins } : {}),
+    workspaceProcesses,
   };
   const server = new RacpServer({ agentHost, operations, authenticator, hostId, serverVersion: APP_VERSION, log });
   let binding: WsBinding;
@@ -266,6 +283,8 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     state.stopping = true;
     await admin?.close();
     server.close();
+    workspaceTerminal?.dispose();
+    workspacePlugins?.dispose(); workspaceProcesses.dispose();
     await terminal?.closeAll();
     plans.dispose();
     await runtime.dispose();
@@ -291,6 +310,8 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
       await admin?.close();
       server.close();
       await binding.close();
+      workspaceTerminal?.dispose();
+      workspacePlugins?.dispose(); workspaceProcesses.dispose();
       await terminal?.closeAll();
       plans.dispose();
       await runtime.dispose();

@@ -20,6 +20,7 @@ import {
   type WorkPanelContext,
   type WorkPanelTab,
 } from "../../lib/work-panel-tabs";
+import { closeTerminalForTab, closeTerminalForTabs } from "../../lib/terminal-sessions";
 import {
   WORK_PANEL_COMPACT_MIN_WIDTH,
   WORK_PANEL_DEFAULT_WIDTH,
@@ -307,6 +308,10 @@ export function createWorkPanelSlice({
     });
   },
   closeWorkPanelTab: (tabId) => {
+    // Closing a tab is an explicit end for its terminal. A view that merely
+    // unmounts only detaches, so this is the one place that stops a shell the
+    // user deliberately closed.
+    closeTerminalForTab(tabId);
     const current = get();
     const browserTab = current.workPanelTabs.find(
       (tab) => tab.id === tabId && tab.resource === "pi.browser/browser",
@@ -356,6 +361,9 @@ export function createWorkPanelSlice({
     };
     const next = closeOtherWorkPanelTabsState(state, tabId);
     if (next === state) return;
+    closeTerminalForTabs(
+      state.tabs.filter((tab) => tab.id !== tabId).map((tab) => tab.id),
+    );
     for (const tab of state.tabs) {
       if (tab.id !== tabId && tab.resource === "pi.browser/browser") {
         closeBrowserWorkPanelTab(sessionId, tab.id);
@@ -389,6 +397,7 @@ export function createWorkPanelSlice({
     };
     const next = closeAllWorkPanelTabsState(state);
     if (next === state) return;
+    closeTerminalForTabs(state.tabs.map((tab) => tab.id));
     for (const tab of state.tabs) {
       if (tab.resource === "pi.browser/browser") {
         closeBrowserWorkPanelTab(sessionId, tab.id);

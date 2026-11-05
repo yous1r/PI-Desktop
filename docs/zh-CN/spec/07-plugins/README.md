@@ -28,6 +28,7 @@
 | [15-plugin-center.md](/zh-CN/spec/07-plugins/15-plugin-center) | 插件中心（发布侧） |
 | [16-trusted-extensions.md](/zh-CN/spec/07-plugins/16-trusted-extensions) | 受信任扩展（sidecar 内扩展面） |
 | [17-owned-extension-services.md](/zh-CN/spec/07-plugins/17-owned-extension-services) | 所属插件回调、运行时身份、会话文件预览与托管连接 |
+| [18-workspace-execution.md](/zh-CN/spec/07-plugins/18-workspace-execution) | 本地/SSH 放置、服务、资源与迁移 |
 
 ## 从契约回查代码
 

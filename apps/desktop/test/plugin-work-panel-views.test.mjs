@@ -108,10 +108,12 @@ test("the native surface stays visible while a plugin tab uses the native menu",
   assert.match(viewTabSource, /height: rect\.height/);
   // Visibility and bounds are separate effects: blocking controls attachment,
   // while renderer layout commits and element resizes keep the complete native
-  // rectangle current without changing the active tab.
+  // rectangle current without changing the active tab. Each call names the
+  // surface this tab opened, so a stale tab cannot show or hide a surface that
+  // a newer open now owns.
   assert.match(
     viewTabSource,
-    /pluginViewSetVisible\(pluginId, viewId, !blocked, sessionId\)/,
+    /pluginViewSetVisible\(pluginId, viewId, !blocked, sessionId, surfaceId\)/,
   );
   assert.match(
     viewTabSource,

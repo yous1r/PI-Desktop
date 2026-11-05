@@ -130,6 +130,18 @@ export const en = {
    * declare. Lives here rather than in the renderer because the dialog is a
    * main-process `showMessageBox` — it has to block the plugin's call.
    */
+  pluginWorkspaceResource: {
+    "message": "Download a copy from {host} for {name}?",
+    "detail": "The selected remote file will be downloaded and opened on this computer. Changes to this copy are not sent back to the remote workspace. Choose a new filename; existing files are never replaced.",
+    "cancel": "Cancel",
+    "download": "Download and open copy"
+  },
+  pluginWorkspaceConsent: {
+    message: "Allow {name} to run on {host}?",
+    detail: "This plugin runs native Node code with the SSH user's permissions. It can read files, change files, and start programs on that Host. This approval applies only to this plugin package and Host. Plugin updates require approval again.",
+    deny: "Deny",
+    allow: "Allow on this Host",
+  },
   pluginDesktopConsent: {
     message: "{name} wants to run {operation}",
     arguments: "Arguments: {args}",
@@ -2157,6 +2169,23 @@ sklm: {
       file: "Files",
       plugin: "Plugin view",
       subagent: "Subagent",
+      terminal: "Terminal",
+    },
+    terminal: {
+      title: "Terminal",
+      shell: "Shell",
+      hostLabel: "Host",
+      localHost: "Local",
+      connecting: "Starting shell…",
+      restart: "Restart terminal",
+      exited: "Terminal exited",
+      exitedWithCode: "Terminal exited (code {{code}})",
+      failed: "Terminal unavailable",
+      noShells: "No shell was found on this host.",
+      offline: "Host offline",
+      offlineHint: "The shell keeps its scrollback. Reconnect the host, then press Restart to open a new shell.",
+      reconnect: "Retry attachment",
+      bufferOverflow: "Terminal output arrived faster than it could be buffered. Retry attachment to reload the scrollback.",
     },
     pluginView: {
       failed: "This view could not be loaded. Reload the plugin and try again.",
@@ -2600,6 +2629,8 @@ importConfirm: "Imported extensions run inside the agent process with the same a
       "ui.window.appearance": "Customize window appearance",
       "mcp.server.local": "Run a local MCP server",
       "mcp.server.remote": "Reach a remote MCP server",
+      "workspace.exec": "Run workspace commands",
+      "workspace.terminal": "Control workspace terminals",
       "background.service": "Keep a background service running",
       "audio.capture.background": "Use the microphone in the background",
       "audio.playback.background": "Play audio in the background",
@@ -2660,6 +2691,8 @@ importConfirm: "Imported extensions run inside the agent process with the same a
       "mcp.server.local": "Starts a program on this computer to serve extra agent tools.",
       "mcp.server.remote":
         "Sends tool calls to a remote MCP endpoint the plugin declared. The endpoint may use unencrypted HTTP.",
+      "workspace.exec": "Starts programs with the workspace host account and can modify workspace files.",
+      "workspace.terminal": "Starts and controls shells on the workspace host with that account’s privileges.",
       "background.service": "Keeps a worker running while the plugin is enabled.",
       "audio.capture.background": "Captures the microphone while the plugin runs in the background, with no panel open.",
       "audio.playback.background": "Plays audio the plugin streams, even when no panel is open.",

@@ -1,4 +1,6 @@
 export * from "./host-process.js";
+export * from "./workspace-terminal-service.js";
+export * from "./terminal-shell-registry.js";
 export * from "./agent-sidecar.js";
 export * from "./runtime-supervisor.js";
 export * from "./host-ports.js";
@@ -21,3 +23,10 @@ export * from "./live-work/result-summary.js";
 export * from "./fs-index.js";
 export * from "./chat-ref-resolve.js";
 export * from "./binary-storage.js";
+
+export * from "./plugin-wire.js";
+export * from "./plugin-packages.js";
+export * from "./workspace-plugin-service.js";
+export * from "./workspace-process-service.js";
+export * from "./workspace-plugin-execution.js";
+export * from "./workspace-plugin-mcp.js";
