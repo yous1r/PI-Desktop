@@ -28,6 +28,9 @@ import type { RuntimeState } from "./context";
 import type { FinishTurn } from "./plans";
 import { formatSkillToolContent, type LoadedSkillDocument } from "../skill-document";
 import { currentSystemProxyRelayUrl } from "../network-proxy";
+import { ExtensionWorkspaceProcesses } from "../remote/extension-workspace-processes";
+import { createWorkspaceExecutionResolver } from "../workspace-execution-context";
+import { getActiveRemoteHostsBoot } from "../bootstrap/remote-hosts";
 
 export type SidecarRuntimeDependencies = {
   runtimeState: RuntimeState;
@@ -185,6 +188,7 @@ export function createSidecarRuntime({
     }
   };
   const wireSidecar = (s: AgentSidecar) => {
+
 
   s.onNotification((method, params) => {
     if (method === "native.agent.event") {
@@ -364,6 +368,23 @@ export function createSidecarRuntime({
 
   const s = new AgentSidecar((text) => logger.child("agent", text));
   wireSidecar(s);
+  const processClient = (hostKey: string) => {
+    const boot = getActiveRemoteHostsBoot();
+    if (!boot) throw Object.assign(new Error("Workspace Host is unavailable"), {errorCode:"HOST_UNAVAILABLE"});
+    return boot.workspaceClient(hostKey);
+  };
+  const extensionProcesses = new ExtensionWorkspaceProcesses({
+    current: () => runtimeState.sidecar === s,
+    client: processClient,
+    resolve: createWorkspaceExecutionResolver({getHost:()=>runtimeState.host,currentWorkspacePath:()=>null,
+      remoteState:async hostKey=>{const client=processClient(hostKey);return{connected:client.state?.()==="connected",generation:client.generation?.()??1,platform:"linux"};}}),
+    allowed: (extensionId, context) => {
+      const extension = plugins.getAgentExtensions().find(entry=>entry.id===extensionId);
+      const projectPath = context.authority.kind === "remote" ? `remote-project:${context.projectId}` : context.roots.find(root=>root.primary)!.path;
+      return Boolean(extension && pluginActiveInProject(extension.pluginId,projectPath));
+    },
+  });
+  s.onExit(() => extensionProcesses.dispose());
   // The directory a session's file tools work in: its isolated worktree
   // (ADR 0329), resolved by host-core from its own registry, or its project.
   const sessionFileRoot = async (sessionId: string): Promise<string | null> => {
@@ -425,6 +446,7 @@ export function createSidecarRuntime({
   // row it was launched with; main resolves that row's account and returns a
   // short-lived `ModelAuth`. The refresh token never crosses this boundary.
   s.setTrustedExtensionBridge({
+    workspaceProcess: params => extensionProcesses.handle(params),
     publishCommands: (params) =>
       agentExtensions.publishCommands(
         String(params.sessionId ?? ""),

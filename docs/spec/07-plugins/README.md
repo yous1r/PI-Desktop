@@ -8,6 +8,7 @@ this directory define the normative contracts and implementation boundaries.
 
 | Document | Description |
 |---|---|
+| [17-workspace-execution.md](17-workspace-execution.md) | Local/SSH placement, services, resources and migration |
 | [01-plugin-system.md](01-plugin-system.md) | Plugin system overview |
 | [02-plugin-manifest-schema.md](02-plugin-manifest-schema.md) | Manifest schema |
 | [03-plugin-api.md](03-plugin-api.md) | Plugin API |

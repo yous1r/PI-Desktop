@@ -29,6 +29,7 @@ function fixture() {
   cpSync(scripts, join(app, "scripts"), { recursive: true });
   write(join(app, "package.json"), JSON.stringify({ version: "0.0.0-test", type: "module" }));
   write(join(app, "src/cli.ts"), 'console.log("fixture CLI");\n');
+  write(join(root, "packages/host-runtime/plugin-host-process.mjs"), 'export const runner = true;\n');
   write(join(root, "target/release/pi-desktop-host-core"), "fixture host-core\n");
   write(join(runtime, "package.json"), JSON.stringify(runtimeManifest));
   write(join(runtime, "sidecar.js"), `
@@ -73,6 +74,7 @@ describe("pi-host packaging", () => {
     const f = fixture();
     const packaged = bundle(f);
     expect(packaged.status, packaged.stderr).toBe(0);
+    expect(readFileSync(join(f.out,"plugin-host-process.mjs"),"utf8")).toContain("export const runner");
     // Remove build inputs and dependency links before starting isolated Node.
     rmSync(join(f.root, "packages"), { recursive: true });
     rmSync(join(f.root, "apps"), { recursive: true });

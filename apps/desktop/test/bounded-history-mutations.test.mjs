@@ -177,6 +177,9 @@ test("the real store/API/preload/IPC path uploads bounded ids with more than 64 
   });
   const { api } = load("../src/lib/api.ts", {
     "@pi-desktop/shared": shared, "./plan-history": {}, "./remote-session-safety": safety,
+    // The terminal transport only routes protocol channel names; this test
+    // exercises the history upload path.
+    "./terminal-channels": { TERMINAL_IPC: {} },
     "./remote-ipc-safety": { guardRemoteInvocation() {} },
   }, { window: { piDesktop: bridge } });
   const h = harness({ state: { messages: huge }, runtime: { loadFullSessionMessages: async () => huge }, api });

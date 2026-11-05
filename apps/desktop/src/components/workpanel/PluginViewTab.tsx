@@ -41,6 +41,7 @@ export function PluginViewTab({
   locationRef.current = location;
   const viewLocation = pluginId === "pi.browser" && viewId === "browser" ? undefined : location;
   const [failed, setFailed] = useState(false);
+  const [surfaceId, setSurfaceId] = useState<string>();
   const boundsFrameRef = useRef(0);
   const reportBounds = useCallback(() => {
     // Replacing a pending frame on every commit can starve bounds updates.
@@ -70,13 +71,16 @@ export function PluginViewTab({
   // the previous web contents while this tab stays open.
   useEffect(() => {
     let current = true;
+    let revision = 0;
+    setSurfaceId(undefined);
     const open = () => {
+      const requested = ++revision;
       void api.pluginViewOpen(pluginId, viewId, { sessionId, location: locationRef.current, tabId }).then(
-        () => {
-          if (current) setFailed(false);
+        (result) => {
+          if (current && requested === revision) { setSurfaceId(result.surfaceId); setFailed(false); }
         },
         () => {
-          if (current) setFailed(true);
+          if (current && requested === revision) setFailed(true);
         },
       );
     };
@@ -93,12 +97,12 @@ export function PluginViewTab({
 
   useEffect(() => {
     const surface = surfaceRef.current;
-    if (!surface || failed) return;
-    void api.pluginViewSetVisible(pluginId, viewId, !blocked, sessionId);
+    if (!surface || failed || !surfaceId) return;
+    void api.pluginViewSetVisible(pluginId, viewId, !blocked, sessionId, surfaceId);
     return () => {
-      void api.pluginViewSetVisible(pluginId, viewId, false);
+      void api.pluginViewSetVisible(pluginId, viewId, false, sessionId, surfaceId);
     };
-  }, [pluginId, viewId, blocked, failed, sessionId]);
+  }, [pluginId, viewId, blocked, failed, sessionId, surfaceId]);
 
   useEffect(() => {
     const surface = surfaceRef.current;

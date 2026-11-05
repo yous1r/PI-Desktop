@@ -31,6 +31,7 @@
     "dist:linux": "pnpm run build:deps && pnpm run build:host-release && pnpm run bundle:runtime && electron-vite build && electron-builder --linux --publish never"
   },
   "dependencies": {
+    "node-pty": "1.1.0",
     "@picovoice/pvrecorder-node": "1.2.9",
     "transcribe-cpp": "0.2.2",
     "electron-updater": "^6.8.9"
@@ -52,6 +53,8 @@
     "@types/react-dom": "^19.2.4",
     "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.6.0",
+    "@xterm/addon-fit": "0.10.0",
+    "@xterm/xterm": "5.5.0",
     "dompurify": "^3.4.17",
     "electron": "^43.4.1",
     "electron-builder": "^26.15.3",
@@ -288,6 +291,7 @@
       ]
     },
     "asarUnpack": [
+      "node_modules/node-pty/**",
       "node_modules/transcribe-cpp/**/*.node",
       "node_modules/transcribe-cpp/**/bin/**",
       "node_modules/@picovoice/pvrecorder-node/**/*.node",

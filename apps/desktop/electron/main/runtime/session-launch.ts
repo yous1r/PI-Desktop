@@ -778,9 +778,7 @@ export function createSessionLaunchRuntime({
           ...(modelConfig ? { modelConfig } : {}),
         },
         pluginTools: [
-          ...plugins
-            .getTools()
-            .filter((tool) => pluginActiveInProject(tool.pluginId, projectPath))
+          ...(await plugins.getToolsForSession(sessionId, id => pluginActiveInProject(id, projectPath)))
             .map((tool) => ({
               name: tool.fullName,
               description: tool.description,

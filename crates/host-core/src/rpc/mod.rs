@@ -5141,6 +5141,35 @@ async fn handle_request(
                 .map_err(plugin_err)?;
             Ok(json!({ "result": result }))
         }
+        "plugins.workspaceExecution.get" | "plugins.workspaceExecution.set" => {
+            let id = params
+                .get("id")
+                .and_then(Value::as_str)
+                .ok_or_else(|| rpc_err(1002, "id required", "INVALID_PARAMS"))?;
+            let host_key = params
+                .get("hostKey")
+                .and_then(Value::as_str)
+                .ok_or_else(|| rpc_err(1002, "hostKey required", "INVALID_PARAMS"))?;
+            let digest = params
+                .get("digest")
+                .and_then(Value::as_str)
+                .ok_or_else(|| rpc_err(1002, "digest required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            if method == "plugins.workspaceExecution.set" {
+                let allowed = params
+                    .get("allowed")
+                    .and_then(Value::as_bool)
+                    .ok_or_else(|| rpc_err(1002, "allowed required", "INVALID_PARAMS"))?;
+                st.plugins
+                    .set_workspace_execution(id, host_key, digest, allowed)
+                    .map_err(plugin_err)?;
+            }
+            let allowed = st
+                .plugins
+                .workspace_execution_allowed(id, host_key, digest)
+                .map_err(plugin_err)?;
+            Ok(json!({ "allowed": allowed }))
+        }
         "plugins.grantPermissions" => {
             let id = params
                 .get("id")

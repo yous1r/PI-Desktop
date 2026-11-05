@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import {
   readFileSync,
   existsSync,
@@ -9,8 +10,16 @@ import {
   rmSync,
 } from "node:fs";
 import type { Stats } from "node:fs";
+import type { WorkspaceExecutionContext } from "@pi-desktop/shared";
+import { WorkspacePluginInstances } from "./workspace-plugin-instances";
 import { open as openFile } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
+import { WorkspacePluginExecution, WorkspacePluginMcp, workspaceMcpServer, type WorkspacePtyModule } from "@pi-desktop/host-runtime";
+import { workspaceFileApi } from "./plugin-workspace-api";
+import type { WorkspaceResourceRequest } from "./remote/workspace-resources";
+import type { WorkspacePortRequest } from "./remote/workspace-ports";
+import { localResourceGrant, resolveLocalResource, type LocalResourceGrant } from "./local-resource-grant";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pluginNetFetch, parseFetchRedirect, type PluginFetchTransport } from "./plugin-net-fetch";
 import type { LoadedSkillDocument } from "./skill-document";
@@ -237,6 +246,8 @@ export type RegisteredPluginTheme = {
 };
 
 export type PluginPanelRequest = {
+  context?: WorkspaceExecutionContext;
+  sessionId?: string;
   pluginId: string;
   title: string;
   width: number;
@@ -265,8 +276,12 @@ export type PluginPanelRequest = {
 };
 
 export type PluginPanelBridgeContext = {
+  localResource?: LocalResourceGrant;
   /** Absolute path recorded by the panel preload for a real drop gesture. */
   droppedPath?: string;
+  sessionId?: string;
+  workspacePath?: string;
+  context?: WorkspaceExecutionContext;
 };
 
 /** Transport to one plugin host process (ADR 0008). */
@@ -282,6 +297,7 @@ export type PluginProcessSpawner = (options: {
   pluginId: string;
   entry: string;
   pluginPath: string;
+  cwd?: string;
 }) => PluginProcessHandle | Promise<PluginProcessHandle>;
 
 /** One file access the plugin asked for and the manifest does not cover. */
@@ -317,6 +333,12 @@ export type PluginDesktopConsentRequest = {
 
 export type PluginHostServices = {
   getWorkspacePath: () => string | null;
+  resolveWorkspaceExecution?: (owner?: {sessionId?:string;workspacePath?:string;context?:WorkspaceExecutionContext}) => Promise<WorkspaceExecutionContext | null>;
+  spawnWorkspaceProcess?: (input: {pluginPath:string;entry:string;context:WorkspaceExecutionContext;permissions:string[]}) => Promise<PluginProcessHandle>;
+  /** Capability/existing-grant probe; never prompts or starts plugin code. */
+  isWorkspaceExecutionAvailable?: (input: {pluginId:string;pluginPath:string;context:WorkspaceExecutionContext}) => Promise<boolean>;
+  forgetWorkspacePluginDecisions?: (pluginId: string) => void;
+  disposeWorkspaceProcesses?: () => void;
   /**
    * The workspace plus the project group behind it, when the caller can supply
    * it. Additive: `workspace.get` falls back to `getWorkspacePath` alone.
@@ -381,6 +403,10 @@ export type PluginHostServices = {
   openPath: (fullPath: string) => Promise<void>;
   /** Open one already-authorized HTML file in the bundled work-panel Browser. */
   openInBrowser?: (fullPath: string) => Promise<void>;
+  openWorkspaceResource?: (input: WorkspaceResourceRequest) => Promise<void>;
+  openWorkspacePort?: (input: WorkspacePortRequest) => Promise<{url:string}>;
+  closeWorkspaceResources?: (ownerId: string) => void;
+  disposeWorkspaceResources?: () => void;
   /** Reveal one already-authorized file in the OS file manager. */
   revealPath?: (fullPath: string) => Promise<void>;
   readClipboard: () => Promise<string>;
@@ -514,6 +540,7 @@ export type PluginHostServices = {
    * host's own selection and turn maps, so a plugin never infers it.
    */
   getActiveSession?: () => PluginActiveSession | null;
+  getSessionSnapshot?: (pluginId: string, sessionId: string) => Promise<PluginActiveSession | null>;
   /**
    * Whether a plugin's contributions still apply to the shell's current
    * project. The same scope check every view IPC applies, so a project-scoped
@@ -584,6 +611,8 @@ const HOST_API_ALLOWLIST = new Set([
   "desktop.listOperations",
   "desktop.invoke",
   "workspace.get",
+  "workspace.getContext",
+  "workspace.isAvailable",
   "fs.readText",
   "fs.stat",
   "fs.readRange",
@@ -820,6 +849,9 @@ const MAX_WRITE_LEDGER_ENTRIES = 2000;
 const WRITE_LEDGER_FILE = "fs-write-ledger.json";
 
 type PendingCall = {
+  teardown: boolean;
+  signal: AbortSignal;
+  owner?: PluginPanelBridgeContext;
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
@@ -828,6 +860,12 @@ type PendingCall = {
 type LoadedPlugin = {
   manifest: PluginManifest;
   runtimeId: string;
+  workspaceContext?: WorkspaceExecutionContext;
+  workspaceExecution?: WorkspacePluginExecution;
+  workspaceMcp?: WorkspacePluginMcp;
+  workspaceTools?: Map<string, RegisteredPluginTool>;
+  processAbortCleanup?: Map<string, () => void>;
+  installation?: LoadedPlugin;
   path: string;
   development: boolean;
   permissions: Set<string>;
@@ -1161,6 +1199,10 @@ function normalizePluginUsageListTurnsInput(input: unknown): Record<string, unkn
 }
 
 /** Key for the per-service supervision map. */
+function workspaceFallbackError(error: unknown): boolean {
+  return ["CAPABILITY_UNAVAILABLE","PERMISSION_DENIED","HOST_VERSION_MISMATCH"].includes(String((error as {code?:unknown;errorCode?:unknown})?.code ?? (error as {errorCode?:unknown})?.errorCode ?? ""));
+}
+
 function serviceStateKey(pluginId: string, serviceId: string): string {
   return `${pluginId}:${serviceId}`;
 }
@@ -1355,12 +1397,13 @@ function resolveWindowCornerRadius(value: unknown): number | undefined {
 }
 
 /** Default spawner: an Electron utilityProcess per plugin. */
-const spawnUtilityProcess: PluginProcessSpawner = async ({ pluginId, entry }) => {
+const spawnUtilityProcess: PluginProcessSpawner = async ({ pluginId, entry, cwd }) => {
   const { utilityProcess } = await import("electron");
   const child = utilityProcess.fork(entry, [], {
     serviceName: `pi-plugin-${pluginId.replace(/[^a-zA-Z0-9._-]/g, "_")}`,
     stdio: "pipe",
     env: pluginChildEnv(pluginId),
+    ...(cwd ? { cwd } : {}),
   });
   return {
     postMessage: (message) => child.postMessage(message),
@@ -1452,6 +1495,8 @@ export class PluginRuntime {
   private busSubscriptions = new Map<string, BusSubscription>();
   private busRate = new Map<string, { windowStart: number; count: number }>();
   private readonly toolInvocations = new PluginToolInvocations();
+  private readonly surfaceInvocation = new AsyncLocalStorage<PluginPanelBridgeContext | undefined>();
+  private readonly callbackSignal = new AsyncLocalStorage<AbortSignal | undefined>();
   private readonly rendererCalls = new RendererCallRelay();
   private completeRate = new Map<string, { windowStart: number; count: number }>();
   /**
@@ -1466,6 +1511,14 @@ export class PluginRuntime {
   /** Plugins being reloaded by the supervisor; their backoff must survive. */
   private restarting = new Set<string>();
   private loaded = new Map<string, LoadedPlugin>();
+  private readonly workspaceInstances = new WorkspacePluginInstances<LoadedPlugin>(
+    (installation, context) => this.createWorkspaceInstance(installation, context),
+    async instance => {
+      instance.disposing = true;
+      this.disposeWorkspaceResources(instance);
+      try { await this.disposePlugin(instance); } finally { instance.child?.kill(); }
+    },
+  );
   private toasts: Array<{ message: string; level?: string }> = [];
   private services: PluginHostServices;
   /**
@@ -1542,6 +1595,30 @@ export class PluginRuntime {
 
   getTools(): RegisteredPluginTool[] {
     return [...this.tools.values()];
+  }
+
+  async getToolsForSession(sessionId: string, active: (pluginId: string) => boolean): Promise<RegisteredPluginTool[]> {
+    const ready = new Set<string>();
+    const scoped: RegisteredPluginTool[] = [];
+    for (const installation of this.loaded.values()) {
+      const id = installation.manifest.id;
+      if (!active(id)) continue;
+      const workspaceMain = installation.manifest.execution?.main === "workspace";
+      const workspaceMcp = installation.manifest.contributes?.mcpServers?.some(server => workspaceMcpServer(installation.manifest, server));
+      if (!workspaceMain) ready.add(id);
+      if (!workspaceMcp && !((workspaceMain || installation.manifest.execution?.workspaceMain) && installation.permissions.has("agent.tool.register"))) continue;
+      try {
+        const target = await this.workspaceTarget(installation,{sessionId},true);
+        if (!target.workspaceContext) throw apiError("WORKSPACE_REQUIRED", "Workspace MCP requires a workspace backend");
+        scoped.push(...(target.workspaceTools?.values() ?? []));
+        ready.add(id);
+      }
+      catch (error) {
+        this.services.audit?.({pluginId:id,api:"plugin.workspace.activation",ok:false,code:(error as {code?:string}).code,ts:Date.now()});
+      }
+    }
+    const scopedNames=new Set(scoped.map(tool=>JSON.stringify([tool.pluginId,tool.name])));
+    return [...this.getTools().filter(tool => ready.has(tool.pluginId) && !scopedNames.has(JSON.stringify([tool.pluginId,tool.name]))), ...scoped];
   }
 
   getSpeechAdapter(protocol: string) {
@@ -2048,8 +2125,10 @@ export class PluginRuntime {
    * half (spec 07 §5).
    */
   broadcastEvent(event: string, args: unknown[] = [], filter?: (pluginId: string) => boolean): void {
-    for (const loaded of this.loaded.values()) {
+    const recipients = [...this.loaded.values(), ...this.workspaceInstances.values()];
+    for (const loaded of recipients) {
       if (filter && !filter(loaded.manifest.id)) continue;
+      if (loaded.workspaceContext && (event === "workspace:changed" || event === "session:activated")) continue;
       try {
         loaded.child?.postMessage({ t: "event", event, args });
       } catch (error) {
@@ -2153,7 +2232,8 @@ export class PluginRuntime {
       this.services.hostEntry ??
       join(getModuleDirectory(import.meta.url), "plugin-host-process.js");
     const spawn = this.services.spawnProcess ?? spawnUtilityProcess;
-    const child = await spawn({ pluginId: manifest.id, entry, pluginPath });
+    const workspaceOnly = manifest.execution?.main === "workspace" && Boolean(this.services.resolveWorkspaceExecution);
+    const child = workspaceOnly ? undefined : await spawn({ pluginId: manifest.id, entry, pluginPath });
 
     const loaded: LoadedPlugin = {
       manifest,
@@ -2172,9 +2252,9 @@ export class PluginRuntime {
     };
     this.loaded.set(manifest.id, loaded);
 
-    child.onMessage((message) => this.handleChildMessage(loaded, message));
-    child.onExit((code) => this.handleChildExit(loaded, code));
-    child.onLog?.((level, message) => {
+    child?.onMessage((message) => this.handleChildMessage(loaded, message));
+    child?.onExit((code) => this.handleChildExit(loaded, code));
+    child?.onLog?.((level, message) => {
       if (!message) return;
       this.services.audit?.({
         pluginId: manifest.id,
@@ -2186,7 +2266,7 @@ export class PluginRuntime {
     });
 
     try {
-      await this.sendToChild(
+      if (child) await this.sendToChild(
         loaded,
         {
           t: "init",
@@ -2209,11 +2289,14 @@ export class PluginRuntime {
       throw error;
     }
 
+    if (workspaceOnly) {
+      for (const command of manifest.contributes?.commands ?? []) await this.dispatchHostCall(loaded, "commands.register", [command]);
+    }
     this.registerSkills(loaded);
     this.registerAgentExtensions(loaded);
     this.registerThemes(loaded);
     await this.registerMcpServers(loaded);
-    await this.startServices(loaded);
+    if (child) await this.startServices(loaded);
     // After the child's `onLoad`, so the plugin's commands already exist: a
     // declared shortcut whose command was never registered is reported and
     // skipped rather than held against a command that cannot run.
@@ -2238,6 +2321,7 @@ export class PluginRuntime {
     const loaded = this.loaded.get(pluginId);
     if (loaded) {
       loaded.disposing = true;
+      await this.workspaceInstances.disposeOwner(loaded);
       this.toolInvocations.cancelOwner(loaded, "Plugin unloaded");
       // An explicit stop ends supervision; a supervisor-driven reload keeps it.
       if (!this.restarting.has(pluginId)) this.cancelRestarts(pluginId);
@@ -2270,6 +2354,7 @@ export class PluginRuntime {
       this.devPlugins.delete(pluginId);
     }
     await this.services.closePanel(pluginId);
+    this.services.forgetWorkspacePluginDecisions?.(pluginId);
     this.services.onPluginUnload?.(pluginId);
     if (loaded) {
       this.services.audit?.({ pluginId, api: "plugin.unload", ok: true, ts: Date.now() });
@@ -2340,7 +2425,7 @@ export class PluginRuntime {
     }
     this.disposeWatchers();
     await Promise.race([
-      Promise.allSettled(loadedPlugins.map((loaded) => this.disposePlugin(loaded))),
+      Promise.allSettled(loadedPlugins.map(async loaded => {await this.workspaceInstances.disposeOwner(loaded);await this.disposePlugin(loaded);})),
       new Promise((resolve) => setTimeout(resolve, PLUGIN_DISPOSE_ALL_TIMEOUT_MS).unref?.()),
     ]);
     // Whatever survived the budget is killed outright; the app is going away.
@@ -2352,6 +2437,8 @@ export class PluginRuntime {
       }
     }
     this.loaded.clear();
+    this.services.disposeWorkspaceProcesses?.();
+    this.services.disposeWorkspaceResources?.();
     this.serviceStates.clear();
   }
 
@@ -2370,7 +2457,7 @@ export class PluginRuntime {
       // A stuck or already-dead child must never block quit.
     }
     this.rejectPending(loaded, apiError("PLUGIN_UNLOADED", `plugin unloaded: ${pluginId}`));
-    this.clearContributions(pluginId);
+    if (!loaded.installation) this.clearContributions(pluginId);
   }
 
   /**
@@ -2433,7 +2520,7 @@ export class PluginRuntime {
     payload?: Record<string, unknown>,
     context?: PluginPanelBridgeContext,
   ): Promise<unknown> {
-    return this.toolInvocations.withoutContext(() => this.invokePanelWithoutToolContext(pluginId, channel, payload, context));
+    return this.toolInvocations.withoutContext(() => this.surfaceInvocation.run(context, () => this.invokePanelWithoutToolContext(pluginId, channel, payload, context)));
   }
 
   private async invokePanelWithoutToolContext(
@@ -2442,8 +2529,17 @@ export class PluginRuntime {
     payload?: Record<string, unknown>,
     context?: PluginPanelBridgeContext,
   ): Promise<unknown> {
-    const loaded = this.loaded.get(pluginId);
-    if (!loaded) throw apiError("NOT_FOUND", `plugin not loaded: ${pluginId}`);
+    const installed = this.loaded.get(pluginId);
+    if (!installed) throw apiError("NOT_FOUND", `plugin not loaded: ${pluginId}`);
+    const remoteFiles = channel.startsWith("fs.") && context?.context?.authority.kind === "remote" &&
+      !resolveLocalResource(context.localResource,String(payload?.path ?? ""));
+    let loaded: LoadedPlugin;
+    try { loaded = await this.workspaceTarget(installed, context, remoteFiles || (channel === "workspace.get" && Boolean(context?.context))); }
+    catch (error) {
+      if (channel !== "workspace.get" || !workspaceFallbackError(error)) throw error;
+      loaded = installed;
+    }
+    if (channel === "workspace.invoke") return this.workspaceInvoke(installed, [payload?.channel, payload?.payload]);
     if (PANEL_SKILL_CHANNELS.has(channel)) {
       return this.sendToChild(
         loaded,
@@ -2578,6 +2674,8 @@ export class PluginRuntime {
         return { ok: true };
       case "workspace.get":
         return api.workspace.get();
+      case "workspace.getContext":
+        return api.workspace.getContext();
       case "models.list":
         this.assertPermission(loaded, "models.list");
         return this.dispatchHostCall(loaded, "models.list", []);
@@ -2624,14 +2722,103 @@ export class PluginRuntime {
     }
   }
 
+  createLocalResourceGrant(path: string, sessionId?: string): LocalResourceGrant | undefined {
+    return localResourceGrant(desktopDataDir(),path,sessionId);
+  }
+
+  async captureWorkspaceContext(pluginId: string, sessionId?: string): Promise<WorkspaceExecutionContext | undefined> {
+    const installation = this.loaded.get(pluginId);
+    if (!installation) throw apiError("NOT_FOUND", "Plugin is not loaded");
+    const execution = installation.manifest.execution;
+    if (execution?.main !== "workspace" && !execution?.workspaceMain) return undefined;
+    const context = await this.services.resolveWorkspaceExecution?.({sessionId});
+    if (!context) throw apiError("WORKSPACE_REQUIRED", "Open a workspace to run this plugin");
+    return context;
+  }
+
+  private disposeWorkspaceResources(loaded: LoadedPlugin): void {
+    this.services.closeWorkspaceResources?.(loaded.runtimeId);
+    loaded.workspaceExecution?.dispose();loaded.workspaceMcp?.dispose();loaded.workspaceTools?.clear();
+    for (const detach of loaded.processAbortCleanup?.values() ?? []) detach();
+    loaded.processAbortCleanup?.clear();
+  }
+
+  private async validateWorkspaceInstance(loaded: LoadedPlugin): Promise<void> {
+    if (!loaded.workspaceContext || !this.services.resolveWorkspaceExecution) return;
+    try {
+      await this.services.resolveWorkspaceExecution({context:loaded.workspaceContext});
+    } catch (error) {
+      this.workspaceInstances.remove(loaded);
+      this.disposeWorkspaceResources(loaded);
+      loaded.disposing = true;
+      this.rejectPending(loaded, apiError("WORKSPACE_CHANGED", "Workspace binding is no longer valid"));
+      loaded.child?.kill();
+      throw error;
+    }
+  }
+
+  private async workspaceTarget(installation: LoadedPlugin, owner?: PluginPanelBridgeContext, companion = false): Promise<LoadedPlugin> {
+    if (installation.workspaceContext) { await this.validateWorkspaceInstance(installation); return installation; }
+    if (!this.services.resolveWorkspaceExecution) return installation;
+    const execution = installation.manifest.execution;
+    if (execution?.main !== "workspace" && !(companion && execution?.workspaceMain)) return installation;
+    const context = await this.services.resolveWorkspaceExecution(owner);
+    if (!context) throw apiError("WORKSPACE_REQUIRED", "Open a workspace to run this plugin");
+    if (installation.disposing || this.loaded.get(installation.manifest.id) !== installation) throw apiError("PLUGIN_UNLOADED", "Plugin was unloaded");
+    return this.workspaceInstances.get(installation, installation.manifest.id, context);
+  }
+
+  private async createWorkspaceInstance(installation: LoadedPlugin, context: WorkspaceExecutionContext): Promise<LoadedPlugin> {
+    const entry = installation.manifest.execution?.main === "workspace" ? installation.manifest.main : installation.manifest.execution?.workspaceMain;
+    if (!entry) throw apiError("PLUGIN_INVALID", "Workspace entry is missing");
+    const child = context.authority.kind === "remote"
+      ? await this.services.spawnWorkspaceProcess?.({pluginPath:installation.path,entry,context,permissions:[...installation.permissions]})
+      : await (this.services.spawnProcess ?? spawnUtilityProcess)({pluginId:installation.manifest.id,
+          entry:this.services.hostEntry ?? join(getModuleDirectory(import.meta.url), "plugin-host-process.js"),pluginPath:installation.path,cwd:context.roots.find(root=>root.primary)!.path});
+    if (!child) throw apiError("CAPABILITY_UNAVAILABLE", "Workspace plugin execution is unavailable");
+    const loaded: LoadedPlugin = {...installation,installation,workspaceContext:context,runtimeId:randomUUID(),child,
+      workspaceExecution:undefined,workspaceMcp:undefined,workspaceTools:new Map(),
+      pending:new Map(),nextCallId:1,disposing:false,deletes:[],dropGrants:new Map()};
+    child.onMessage(message=>this.handleChildMessage(loaded,message));
+    child.onExit(code=>{
+      for(const [key,status] of this.serviceStates) if(status.instanceId===loaded.runtimeId) {
+        this.serviceStates.delete(key);this.services.onServiceChange?.({...status,state:"stopped",updatedAt:Date.now()});
+      }
+      this.disposeWorkspaceResources(loaded);
+      this.rejectPending(loaded,apiError("PLUGIN_GONE", `Workspace plugin stopped (${code}); an in-flight operation may have completed`));
+      this.toolInvocations.cancelOwner(installation,"Workspace plugin stopped");
+      loaded.disposing=true;this.workspaceInstances.remove(loaded);
+    });
+    try {
+      await this.sendToChild(loaded,{t:"init",pluginId:loaded.manifest.id,pluginPath:loaded.path,main:entry,manifest:loaded.manifest},PLUGIN_LOAD_TIMEOUT_MS);
+      if (installation.disposing || loaded.disposing || this.loaded.get(installation.manifest.id) !== installation) {
+        throw apiError("PLUGIN_UNLOADED", "Plugin was unloaded or exited during startup");
+      }
+      await this.validateWorkspaceInstance(loaded);
+      await this.startServices(loaded);
+      await this.registerMcpServers(loaded);
+      await this.validateWorkspaceInstance(loaded);
+      if (loaded.disposing) throw apiError("PLUGIN_GONE", "Plugin exited during MCP discovery");
+      return loaded;
+    } catch(error) {loaded.disposing=true;this.disposeWorkspaceResources(loaded);child.kill();throw error;}
+  }
+
   // --- plugin host process plumbing -------------------------------------
 
-  private sendToChild(
+  private async sendToChild(
     loaded: LoadedPlugin,
     message: Record<string, unknown>,
     timeoutMs: number,
     signal?: AbortSignal,
   ): Promise<unknown> {
+    if (!loaded.workspaceContext && loaded.manifest.execution?.main === "workspace" && this.services.resolveWorkspaceExecution && message.t === "call" && message.method !== "lifecycle.unload") {
+      const payload = message.payload as {sessionId?:string} | undefined;
+      return this.workspaceTarget(loaded,{sessionId:payload?.sessionId}).then(target=>this.sendToChild(target,message,timeoutMs,signal));
+    }
+    if (loaded.workspaceContext && message.t === "call" && message.method !== "lifecycle.unload" && message.method !== "service.stop") {
+      await this.validateWorkspaceInstance(loaded);
+      if (loaded.disposing) throw apiError("PLUGIN_GONE", "Workspace plugin process is no longer active");
+    }
     const child = loaded.child;
     if (!child) {
       return Promise.reject(apiError("NOT_FOUND", `plugin host process gone: ${loaded.manifest.id}`));
@@ -2639,6 +2826,7 @@ export class PluginRuntime {
     if (signal?.aborted) return Promise.reject(signal.reason);
     const id = `h${loaded.nextCallId++}`;
     return new Promise((resolvePromise, rejectPromise) => {
+      const controller = new AbortController();
       const cancelChild = (error: Error) => {
         const cancellation = typeof message.invocationId === "string"
           ? { invocationId: message.invocationId }
@@ -2667,8 +2855,11 @@ export class PluginRuntime {
         cancelChild(error);
       }, timeoutMs);
       loaded.pending.set(id, {
+        teardown: message.t === "call" && (message.method === "lifecycle.unload" || message.method === "service.stop"),
+        signal: controller.signal,
+        owner: this.surfaceInvocation.getStore(),
         resolve: (value) => { cleanup(); resolvePromise(value); },
-        reject: (error) => { cleanup(); rejectPromise(error); },
+        reject: (error) => { controller.abort(error); cleanup(); rejectPromise(error); },
         timer,
       });
       signal?.addEventListener("abort", abort, { once: true });
@@ -2702,11 +2893,15 @@ export class PluginRuntime {
       return;
     }
     if (message.t === "call") {
-      void this.toolInvocations.run(loaded, message.invocationId, async () => {
-        if (this.loaded.get(loaded.manifest.id) !== loaded) {
+      void this.toolInvocations.run(loaded.installation ?? loaded, message.invocationId, async () => {
+        const parent = typeof message.parentCallId === "string" ? loaded.pending.get(message.parentCallId) : undefined;
+        if ((loaded.disposing && !parent?.teardown) || this.loaded.get(loaded.manifest.id) !== (loaded.installation ?? loaded)) {
           throw apiError("PLUGIN_UNLOADED", "Plugin host process is no longer active");
         }
-        return this.dispatchHostCall(loaded, String(message.api ?? ""), message.args ?? []);
+        await this.validateWorkspaceInstance(loaded);
+        if (message.parentCallId !== undefined && !parent) throw apiError("PLUGIN_CALL_EXPIRED", "The originating call has ended");
+        if (parent?.owner) await this.services.resolveWorkspaceExecution?.(parent.owner);
+        return this.callbackSignal.run(parent?.signal, () => this.surfaceInvocation.run(parent?.owner, () => this.dispatchHostCall(loaded, String(message.api ?? ""), message.args ?? [])));
       })
         .then((value) =>
           loaded.child?.postMessage({ t: "res", id: message.id, ok: true, value: value ?? null }),
@@ -2736,6 +2931,32 @@ export class PluginRuntime {
   ): Promise<unknown> {
     const pluginId = loaded.manifest.id;
     switch (api) {
+      case "workspace.openPort": {
+        this.assertPermission(loaded,"workspace.exec");this.assertPermission(loaded,"browser.cdp");
+        const value=args[0] as {port?:unknown;path?:unknown}|undefined;
+        if(!value || typeof value.port!=="number" || (value.path!==undefined && typeof value.path!=="string")) throw apiError("INVALID_ARGUMENT","Invalid workspace port preview");
+        const owner=this.surfaceInvocation.getStore() ?? {sessionId:this.inFlightTool(pluginId)?.sessionId};
+        if(!owner.sessionId)throw apiError("WORKSPACE_REQUIRED","Port preview requires an originating session");
+        const target=await this.workspaceTarget(loaded,owner,true);
+        if(!target.workspaceContext || !this.services.openWorkspacePort)throw apiError("CAPABILITY_UNAVAILABLE","Workspace port preview is unavailable");
+        return this.services.openWorkspacePort({ownerId:target.runtimeId,context:target.workspaceContext,sessionId:owner.sessionId,port:value.port,path:value.path,
+          validate:async()=>{if(target.disposing)throw apiError("PLUGIN_GONE","Workspace plugin is closed");await this.validateWorkspaceInstance(target);await this.services.resolveWorkspaceExecution?.({context:target.workspaceContext,sessionId:owner.sessionId});}});
+      }
+      case "workspace.isAvailable": {
+        const installation=loaded.installation ?? loaded;
+        if(loaded.workspaceContext) return true;
+        if(!installation.manifest.execution?.workspaceMain && installation.manifest.execution?.main!=="workspace") return false;
+        const owner=this.surfaceInvocation.getStore() ?? {sessionId:this.inFlightTool(pluginId)?.sessionId};
+        const context=await this.services.resolveWorkspaceExecution?.(owner).catch(()=>null);
+        if(!context) return false;
+        if(context.authority.kind==="local") return true;
+        return await this.services.isWorkspaceExecutionAvailable?.({pluginId,pluginPath:installation.path,context}) ?? false;
+      }
+      case "workspace.invoke":
+        return this.workspaceInvoke(loaded, args);
+      case "workspace.process":
+      case "workspace.terminal":
+        return this.workspaceExecutionCall(loaded, api, args);
       case "commands.register": {
         const descriptor = (args[0] ?? {}) as {
           id?: string;
@@ -2752,8 +2973,9 @@ export class PluginRuntime {
           keywords: descriptor.keywords,
           pluginId,
           run: async () => {
-            const target = this.loaded.get(pluginId);
-            if (!target?.child) throw apiError("NOT_FOUND", `plugin not loaded: ${pluginId}`);
+            const installation = this.loaded.get(pluginId);
+            if (!installation) throw apiError("NOT_FOUND", `plugin not loaded: ${pluginId}`);
+            const target = await this.workspaceTarget(installation, undefined, Boolean(loaded.installation));
             await this.sendToChild(
               target,
               { t: "call", method: "command.run", payload: { id } },
@@ -2945,7 +3167,7 @@ export class PluginRuntime {
           descriptor.schema,
           name,
         );
-        this.tools.set(fullName, {
+        (loaded.workspaceTools ?? this.tools).set(fullName, {
           fullName,
           pluginId,
           name,
@@ -2976,12 +3198,13 @@ export class PluginRuntime {
                 );
               }
             }
-            const target = this.loaded.get(pluginId);
-            if (!target?.child || target !== loaded || target.disposing) {
+            const installed = this.loaded.get(pluginId);
+            if (!installed || installed !== (loaded.installation ?? loaded) || installed.disposing) {
               throw apiError("NOT_FOUND", `plugin not loaded: ${pluginId}`);
             }
             const sessionId = String(ctx?.sessionId ?? "");
-            const invocation = this.toolInvocations.begin(target, {
+            const target = await this.workspaceTarget(installed,{sessionId},Boolean(loaded.installation));
+            const invocation = this.toolInvocations.begin(installed, {
               pluginId,
               sessionId,
               toolName: name,
@@ -3980,7 +4203,8 @@ export class PluginRuntime {
    * plugin still loads, and the next tool call retries the handshake.
    */
   private async registerMcpServers(loaded: LoadedPlugin): Promise<void> {
-    const declared = loaded.manifest.contributes?.mcpServers ?? [];
+    const declared = (loaded.manifest.contributes?.mcpServers ?? []).filter(server =>
+      workspaceMcpServer(loaded.manifest, server) === Boolean(loaded.workspaceContext));
     if (!declared.length) return;
     const pluginId = loaded.manifest.id;
     // Credentials come from the plugin's own settings, never from host env.
@@ -3992,8 +4216,10 @@ export class PluginRuntime {
     }
 
     const clients: McpServerClient[] = [];
+    if (!loaded.workspaceContext) this.mcpClients.set(pluginId, clients);
     for (const raw of declared) {
-      if (clients.length >= MAX_MCP_SERVERS_PER_PLUGIN) {
+      if (loaded.disposing) break;
+      if (declared.indexOf(raw) >= MAX_MCP_SERVERS_PER_PLUGIN) {
         this.services.audit?.({
           pluginId,
           api: "plugin.mcp.skipped",
@@ -4040,7 +4266,10 @@ export class PluginRuntime {
         continue;
       }
 
-      const client = new McpServerClient({
+      const client = loaded.workspaceContext ? {
+        connect: () => this.workspaceMcpCall(loaded, "mcp.connect", [server.id, this.mcpSettings(server, settings)]) as Promise<Awaited<ReturnType<McpServerClient["connect"]>>>,
+        callTool: (tool: string, args: unknown, signal?: AbortSignal) => this.workspaceMcpCall(loaded, "mcp.call", [server.id, tool, args], signal),
+      } : new McpServerClient({
         pluginId,
         rootPath: loaded.path,
         server,
@@ -4050,18 +4279,20 @@ export class PluginRuntime {
         // Re-check every redirect, not only the manifest's initial endpoint.
         assertUrlAllowed: (url) => this.assertEgress(loaded, url, "plugin.mcp.redirect"),
       });
-      clients.push(client);
+      if (client instanceof McpServerClient) clients.push(client);
       let tools: Awaited<ReturnType<McpServerClient["connect"]>> = [];
       try {
         tools = await client.connect();
-      } catch {
-        // The client already audited the failure; leave the server toolless.
+      } catch (error) {
+        this.skipMcpServer(pluginId, server.id, (error as PluginApiError).code ?? "MCP_CONNECT_FAILED", (error as Error).message);
         continue;
       }
+      if (loaded.disposing) break;
       for (const tool of tools) {
         const name = pluginMcpToolKey(server.id, tool.name);
         const fullName = pluginToolName(pluginId, name);
-        this.tools.set(fullName, {
+        const catalog = loaded.workspaceTools ?? this.tools;
+        catalog.set(fullName, {
           fullName,
           pluginId,
           name,
@@ -4072,13 +4303,39 @@ export class PluginRuntime {
           schema: tool.inputSchema,
           execute: async (toolArgs, ctx) => this.mcpCalls.run(
             ctx?.sessionId,
-            (signal) => client.callTool(tool.name, toolArgs, signal),
+            async (signal) => {
+              const installation = loaded.installation ?? loaded;
+              if (installation.disposing || this.loaded.get(pluginId) !== installation) throw apiError("PLUGIN_UNLOADED", "Plugin was unloaded");
+              if (!loaded.workspaceContext) return client.callTool(tool.name, toolArgs, signal);
+              if (!ctx?.sessionId) throw apiError("WORKSPACE_REQUIRED", "Workspace MCP requires an invoking session");
+              const target = await this.workspaceTarget(installation, {sessionId:ctx.sessionId}, true);
+              if (!target.workspaceTools?.has(fullName)) throw apiError("NOT_FOUND", "Tool is not available in this workspace");
+              return this.workspaceMcpCall(target, "mcp.call", [server.id, tool.name, toolArgs], signal);
+            },
             ctx?.signal,
           ),
         });
       }
     }
-    if (clients.length) this.mcpClients.set(pluginId, clients);
+
+  }
+
+  /** Transfer only settings referenced by this declaration, never the whole settings store. */
+  private mcpSettings(server: import("@pi-desktop/plugin-sdk").PluginMcpServerContrib, settings: Record<string, unknown>): Record<string, unknown> {
+    const selected: Record<string, unknown> = {};
+    for (const ref of Object.values(server.transport === "stdio" ? server.env ?? {} : server.headers ?? {})) {
+      if (typeof ref === "object" && ref) selected[ref.setting] = settings[ref.setting];
+    }
+    return selected;
+  }
+
+  private async workspaceMcpCall(loaded: LoadedPlugin, api: string, args: unknown[], signal?: AbortSignal): Promise<unknown> {
+    await this.validateWorkspaceInstance(loaded);
+    if (!loaded.workspaceContext || loaded.disposing) throw apiError("PLUGIN_GONE", "Workspace MCP instance is unavailable");
+    if (loaded.workspaceContext.authority.kind === "remote") return this.sendToChild(loaded, {t:"workspaceApi",api,args}, PLUGIN_TOOL_TIMEOUT_MS, signal);
+    loaded.workspaceMcp ??= new WorkspacePluginMcp({manifest:loaded.manifest,permissions:[...loaded.permissions],packagePath:loaded.path,
+      context:loaded.workspaceContext,clientOptions:{...this.services.mcp,audit:this.services.audit}});
+    return loaded.workspaceMcp.call(api,args,signal);
   }
 
   private skipMcpServer(
@@ -4100,6 +4357,8 @@ export class PluginRuntime {
 
   /** Declared resident services, capped so one plugin cannot hold many workers. */
   private declaredServices(loaded: LoadedPlugin): PluginServiceContrib[] {
+    const workspaceMain=loaded.manifest.execution?.main === "workspace";
+    if (this.services.resolveWorkspaceExecution && Boolean(loaded.workspaceContext) !== workspaceMain) return [];
     const declared = loaded.manifest.contributes?.services ?? [];
     return declared.slice(0, MAX_SERVICES_PER_PLUGIN);
   }
@@ -4112,7 +4371,7 @@ export class PluginRuntime {
    * itself stays loaded, because its commands and tools may still work.
    */
   private async startServices(loaded: LoadedPlugin): Promise<void> {
-    const all = loaded.manifest.contributes?.services ?? [];
+    const all = this.declaredServices(loaded);
     if (!all.length) return;
     const pluginId = loaded.manifest.id;
     if (!loaded.permissions.has("background.service")) {
@@ -4139,7 +4398,7 @@ export class PluginRuntime {
     const restarts = this.restarts.get(pluginId)?.attempts ?? 0;
     for (const service of this.declaredServices(loaded)) {
       const label = service.label || service.id;
-      this.setServiceState({
+      this.setServiceState(loaded, {
         pluginId,
         serviceId: service.id,
         label,
@@ -4152,7 +4411,7 @@ export class PluginRuntime {
           { t: "call", method: "service.start", payload: { id: service.id } },
           SERVICE_START_TIMEOUT_MS,
         );
-        this.setServiceState({
+        this.setServiceState(loaded, {
           pluginId,
           serviceId: service.id,
           label,
@@ -4167,7 +4426,7 @@ export class PluginRuntime {
           ts: Date.now(),
         });
       } catch (error) {
-        this.setServiceState({
+        this.setServiceState(loaded, {
           pluginId,
           serviceId: service.id,
           label,
@@ -4194,7 +4453,7 @@ export class PluginRuntime {
   private async stopServices(loaded: LoadedPlugin): Promise<void> {
     const pluginId = loaded.manifest.id;
     for (const service of this.declaredServices(loaded)) {
-      const key = serviceStateKey(pluginId, service.id);
+      const key = serviceStateKey(loaded.workspaceContext ? loaded.runtimeId : pluginId, service.id);
       const current = this.serviceStates.get(key);
       if (!current) continue;
       if (current.state === "running" || current.state === "starting") {
@@ -4227,7 +4486,7 @@ export class PluginRuntime {
     message?: string,
   ): void {
     for (const service of this.declaredServices(loaded)) {
-      this.setServiceState({
+      this.setServiceState(loaded, {
         pluginId: loaded.manifest.id,
         serviceId: service.id,
         label: service.label || service.id,
@@ -4238,9 +4497,9 @@ export class PluginRuntime {
     }
   }
 
-  private setServiceState(status: Omit<PluginServiceStatus, "updatedAt">): void {
-    const next: PluginServiceStatus = { ...status, updatedAt: Date.now() };
-    this.serviceStates.set(serviceStateKey(status.pluginId, status.serviceId), next);
+  private setServiceState(loaded: LoadedPlugin, status: Omit<PluginServiceStatus, "updatedAt">): void {
+    const next: PluginServiceStatus = { ...status, ...(loaded.workspaceContext ? {instanceId:loaded.runtimeId,workspaceId:loaded.workspaceContext.workspaceId} : {}), updatedAt: Date.now() };
+    this.serviceStates.set(serviceStateKey(loaded.workspaceContext ? loaded.runtimeId : status.pluginId, status.serviceId), next);
     this.services.onServiceChange?.(next);
   }
 
@@ -4536,12 +4795,23 @@ export class PluginRuntime {
     if (!this.services.getActiveSession) {
       throw apiError("UNSUPPORTED", "host api not available: session.getActive");
     }
+    const owner = this.surfaceInvocation.getStore();
+    const sessionId = owner?.sessionId ?? this.inFlightTool(loaded.manifest.id)?.sessionId;
+    if (sessionId && this.services.getSessionSnapshot) {
+      await this.services.resolveWorkspaceExecution?.({context:loaded.workspaceContext ?? owner?.context,sessionId});
+      return this.services.getSessionSnapshot(loaded.manifest.id,sessionId);
+    }
     // A project-scoped plugin is not part of another project's conversation, so
     // it does not get to read which session that project has open.
     if (!this.services.isPluginActiveInProject?.(loaded.manifest.id)) {
       throw apiError("PERMISSION_DENIED", "plugin is not active in this project");
     }
     const snapshot = this.services.getActiveSession();
+    if (loaded.workspaceContext) {
+      await this.services.resolveWorkspaceExecution?.({ context: loaded.workspaceContext, sessionId });
+      // A workspace process never observes another workspace's selected session.
+      if (!sessionId || snapshot?.sessionId !== sessionId) return null;
+    }
     this.services.audit?.({
       pluginId: loaded.manifest.id,
       api: "session.getActive",
@@ -4894,7 +5164,7 @@ export class PluginRuntime {
   }
 
   private assertPermission(loaded: LoadedPlugin, perm: string): void {
-    this.toolInvocations.current(loaded);
+    this.toolInvocations.current(loaded.installation ?? loaded);
     if (!loaded.permissions.has(perm)) {
       this.services.audit?.({
         pluginId: loaded.manifest.id,
@@ -4981,7 +5251,11 @@ export class PluginRuntime {
    */
   private fsRoot(loaded: LoadedPlugin, rule: PluginFsRule): string | null {
     if (rule.root === "userSelected") return loaded.userRoot ?? null;
-    const sessionId = this.inFlightTool(loaded.manifest.id)?.sessionId.trim() || undefined;
+    if (loaded.workspaceContext) return loaded.workspaceContext.authority.kind === "remote"
+      ? `remote-project:${loaded.workspaceContext.projectId}` : loaded.workspaceContext.roots.find(root=>root.primary)!.path;
+    const owner=this.surfaceInvocation.getStore();
+    if(owner?.context) return owner.context.authority.kind==="remote" ? `remote-project:${owner.context.projectId}` : owner.context.roots.find(root=>root.primary)!.path;
+    const sessionId = owner?.sessionId ?? (this.inFlightTool(loaded.manifest.id)?.sessionId.trim() || undefined);
     const scoped = sessionId
       ? (this.services.getWorkspacePathForSession?.(sessionId) ?? null)
       : null;
@@ -5031,6 +5305,15 @@ export class PluginRuntime {
     options: { create?: boolean; dropGrantId?: string } = {},
   ): Promise<{ full: string; rel: string; root: string }> {
     this.assertPermission(loaded, `fs.${mode}`);
+    const owner=this.surfaceInvocation.getStore();
+    if (!loaded.workspaceContext && owner?.localResource && mode==="read") {
+      const full=resolveLocalResource(owner.localResource,requestPath);
+      if (full) {
+        await this.services.resolveWorkspaceExecution?.({context:owner.context,sessionId:owner.sessionId});
+        return {full,rel:basename(full),root:dirname(full)};
+      }
+      throw apiError("PERMISSION_DENIED", "Local file does not match the host-selected resource");
+    }
     if (typeof options.dropGrantId === "string") {
       if (mode !== "read") {
         throw apiError("PERMISSION_DENIED", "dropped-file grants are read-only");
@@ -5152,7 +5435,7 @@ export class PluginRuntime {
     if (!isAbsolute(String(requestPath ?? ""))) return null;
     const rule: PluginFsRule = loaded.fsPolicy.read ?? { root: "workspace", scope: [] };
     if (rule.root !== "workspace") return null;
-    const roots = (this.services.getWorkspaceInfo?.()?.roots ?? [])
+    const roots = (loaded.workspaceContext?.roots ?? this.services.getWorkspaceInfo?.()?.roots ?? [])
       .map((entry) => entry?.path)
       .filter((path): path is string => Boolean(path));
     if (roots.length === 0) return null;
@@ -5369,12 +5652,105 @@ export class PluginRuntime {
     throw apiError("UNSUPPORTED", `host api not available: ${api}`);
   }
 
+  private async workspaceInvoke(loaded: LoadedPlugin, args: unknown[]): Promise<unknown> {
+    const channel = args[0];
+    if (typeof channel !== "string" || !channel.trim() || channel.length > 256) throw apiError("INVALID_ARGUMENT", "Workspace invocation requires a channel");
+    const installation = loaded.installation ?? loaded;
+    if (!installation.manifest.execution?.workspaceMain && installation.manifest.execution?.main !== "workspace") {
+      throw apiError("CAPABILITY_UNAVAILABLE", "Plugin does not declare a workspace backend");
+    }
+    if (loaded.workspaceContext) throw apiError("INVALID_ARGUMENT", "Workspace backends cannot recursively invoke themselves");
+    const owner = this.surfaceInvocation.getStore() ?? {sessionId:this.inFlightTool(loaded.manifest.id)?.sessionId};
+    const target = await this.workspaceTarget(installation, owner, true);
+    if (!target.workspaceContext) throw apiError("WORKSPACE_REQUIRED", "Workspace execution is unavailable");
+    return this.surfaceInvocation.run(owner, () => this.sendToChild(target,{t:"call",method:"workspace.invoke",payload:{channel,payload:args[1]}},PLUGIN_PANEL_TIMEOUT_MS,this.callbackSignal.getStore()));
+  }
+
+  private async workspaceExecutionCall(loaded: LoadedPlugin, api: string, args: unknown[]): Promise<unknown> {
+    this.assertPermission(loaded, api === "workspace.process" ? "workspace.exec" : "workspace.terminal");
+    const owner = this.surfaceInvocation.getStore() ?? {sessionId:this.inFlightTool(loaded.manifest.id)?.sessionId};
+    const target = await this.workspaceTarget(loaded, owner, true);
+    if (!target.workspaceContext) throw apiError("WORKSPACE_REQUIRED", "Declare a workspace backend to use workspace execution");
+    await this.validateWorkspaceInstance(target);
+    const signal = this.callbackSignal.getStore();
+    signal?.throwIfAborted();
+    const invoke = (values: unknown[], cancellation?: AbortSignal): Promise<unknown> => {
+      if (target.workspaceContext!.authority.kind === "remote") return this.sendToChild(target, {t:"workspaceApi",api,args:values},PLUGIN_PANEL_TIMEOUT_MS,cancellation);
+      target.workspaceExecution ??= new WorkspacePluginExecution({context:target.workspaceContext!,
+        permissions:[...target.permissions],manifestPermissions:target.manifest.permissions ?? [],
+        pty:()=>{try {return createRequire(import.meta.url)("node-pty") as WorkspacePtyModule;} catch {return null;}}});
+      return target.workspaceExecution.call(api,values);
+    };
+    const request = args[0] as {action?:string;processId?:string} | undefined;
+    if (api === "workspace.process" && request?.action === "start" && (target.processAbortCleanup?.size ?? 0) >= 64) {
+      throw apiError("LIMIT_EXCEEDED", "Too many retained plugin process handles; close completed handles");
+    }
+    // Receive a start handle even if the caller cancelled during admission, then close it.
+    const result = await invoke(args, request?.action === "start" ? undefined : signal);
+    if (api === "workspace.process" && request?.action === "start" && signal) {
+      const processId = (result as {processId:string}).processId;
+      const release = () => {
+        clearTimeout(expiry);signal.removeEventListener("abort",abort);target.processAbortCleanup?.delete(processId);
+      };
+      const abort = () => {
+        release();void invoke([{action:"close",processId}]).catch(() => undefined);
+      };
+      // ProcessService expires completed handles; retained cancellation listeners have the same upper bound.
+      const input = (request as {input?:{timeoutMs?:number}}).input;
+      const expiry = setTimeout(release,(input?.timeoutMs ?? 120000)+60000);expiry.unref();
+      target.processAbortCleanup ??= new Map();
+      target.processAbortCleanup.set(processId,release);
+      if (signal.aborted) abort();
+      else signal.addEventListener("abort",abort,{once:true});
+    }
+    if (api === "workspace.process" && request?.action === "close" && request.processId) {
+      target.processAbortCleanup?.get(request.processId)?.();target.processAbortCleanup?.delete(request.processId);
+    }
+    return result;
+  }
+
+  private async workspaceFileCall<T>(loaded: LoadedPlugin, api: string, args: unknown[]): Promise<T> {
+    await this.validateWorkspaceInstance(loaded);
+    const mode = api === "fs.writeText" ? "write" : api === "fs.remove" ? "delete" : "read";
+    this.assertPermission(loaded, `fs.${mode}`);
+    if (api === "fs.openDefault" || api === "fs.openInBrowser" || api === "fs.reveal") {
+      if (!this.services.openWorkspaceResource) throw apiError("CAPABILITY_UNAVAILABLE", "Workspace resource service is unavailable");
+      const owner = this.surfaceInvocation.getStore() ?? {sessionId:this.inFlightTool(loaded.manifest.id)?.sessionId};
+      const context = loaded.workspaceContext!;
+      await this.services.openWorkspaceResource({ownerId:loaded.runtimeId,pluginName:loaded.manifest.name,
+        context,sessionId:owner.sessionId,path:String(args[0] ?? ""),api,
+        validate:async()=>{
+          if (loaded.disposing) throw apiError("PLUGIN_GONE", "Workspace plugin was closed");
+          await this.validateWorkspaceInstance(loaded);
+          await this.services.resolveWorkspaceExecution?.({context,sessionId:owner.sessionId});
+          this.assertPermission(loaded,"fs.read");
+        },
+        read:<R>(operation:string,values:unknown[])=>this.workspaceFileCall<R>(loaded,operation,values)});
+      return undefined as T;
+    }
+    const key = JSON.stringify([mode,args[0]]);
+    const grants = this.fsConsent.get(loaded.runtimeId) ?? new Set<string>();
+    const invoke = (consent: boolean) => this.sendToChild(loaded,{t:"workspaceApi",api,args,consent},PLUGIN_PANEL_TIMEOUT_MS) as Promise<T>;
+    try { return await invoke(grants.has(key)); }
+    catch (error) {
+      if ((error as {code?:string}).code !== "FS_CONSENT_REQUIRED") throw error;
+      const ask = this.services.confirmFsAccess;
+      if (!ask) throw apiError("PERMISSION_DENIED", "File is outside the declared workspace scope");
+      const answer = await ask({pluginId:loaded.manifest.id,pluginName:loaded.manifest.name,mode,
+        path:String(args[0] ?? ""), fullPath:`${JSON.stringify(loaded.workspaceContext!.authority)}:${String(args[0] ?? "")}`,reason:"scope"});
+      if (answer === "deny") throw apiError("PERMISSION_DENIED", "Workspace file access was denied");
+      await this.validateWorkspaceInstance(loaded);
+      if (answer === "session" && grants.size < 1000) {grants.add(key);this.fsConsent.set(loaded.runtimeId,grants);}
+      return invoke(true);
+    }
+  }
+
   private hostApi(loaded: LoadedPlugin, browserContext?: { sessionId: string; tabId: string }) {
     const pluginId = loaded.manifest.id;
     const pluginPath = loaded.path;
 
     const dataPath = () => {
-      const dir = this.pluginDataDir(pluginId);
+      const dir = loaded.workspaceContext ? join(this.pluginDataDir(pluginId),"workspaces",createHash("sha256").update(JSON.stringify([loaded.workspaceContext.authority,loaded.workspaceContext.workspaceId,loaded.workspaceContext.roots])).digest("hex")) : this.pluginDataDir(pluginId);
       mkdirSync(dir, { recursive: true });
       return dir;
     };
@@ -5539,7 +5915,7 @@ export class PluginRuntime {
           for (const s of loaded.manifest.contributes?.settings ?? []) {
             defaults[s.key] = s.default;
           }
-          const file = join(dataPath(), "settings.json");
+          const file = join(this.pluginDataDir(pluginId), "settings.json");
           if (!existsSync(file)) return defaults;
           try {
             const stored = JSON.parse(readFileSync(file, "utf8"));
@@ -5552,7 +5928,9 @@ export class PluginRuntime {
         setSettings: async (partial: Record<string, unknown>) => {
           const current = await this.hostApi(loaded).plugin.getSettings();
           const next = { ...current, ...partial };
-          writeFileSync(join(dataPath(), "settings.json"), JSON.stringify(next, null, 2), "utf8");
+          const settingsDir = this.pluginDataDir(pluginId);
+          mkdirSync(settingsDir, {recursive:true});
+          writeFileSync(join(settingsDir, "settings.json"), JSON.stringify(next, null, 2), "utf8");
         },
         getDataPath: async () => dataPath(),
       },
@@ -5569,6 +5947,8 @@ export class PluginRuntime {
             throw apiError("NOT_FOUND", `panel html missing: ${panel}`);
           }
           await this.services.openPanel({
+            context: loaded.workspaceContext,
+            sessionId: this.surfaceInvocation.getStore()?.sessionId ?? this.inFlightTool(pluginId)?.sessionId,
             pluginId,
             title:
               options?.title ||
@@ -5632,7 +6012,20 @@ export class PluginRuntime {
           this.clearComposerSuggestion(loaded, input),
       },
       workspace: {
+        getContext: async () => loaded.workspaceContext ?? await this.services.resolveWorkspaceExecution?.(this.surfaceInvocation.getStore() ?? {sessionId:this.inFlightTool(pluginId)?.sessionId}) ?? null,
         get: async () => {
+          if (loaded.workspaceContext) {
+            const context=loaded.workspaceContext;const root=context.roots.find(item=>item.primary)!;
+            return {path:root.path,name:root.name,projectId:context.projectId,roots:context.roots,executionContext:context};
+          }
+          const owner=this.surfaceInvocation.getStore();
+          if (owner?.context) {
+            const context=await this.services.resolveWorkspaceExecution?.(owner) ?? owner.context;
+            const root=context.roots.find(item=>item.primary)!;
+            if(context.authority.kind==="remote") return {path:`remote-project:${context.projectId}`,name:root.name,projectId:context.projectId,
+              roots:[{...root,path:`remote-project:${context.projectId}`}],remote:{hostKey:context.authority.hostKey,path:root.path,readOnly:true},executionContext:context};
+            return {path:root.path,name:root.name,projectId:context.projectId,roots:context.roots,executionContext:context};
+          }
           // The enriched payload carries the project group behind the visible
           // workspace (ADR 0263); the path-only fallback keeps `get` working for
           // any caller whose services never bound the richer provider.
@@ -5778,7 +6171,8 @@ export class PluginRuntime {
           }
         },
       },
-      fs: {
+      fs: loaded.workspaceContext?.authority.kind === "remote"
+        ? workspaceFileApi(<T>(api: string, args: unknown[]) => this.workspaceFileCall<T>(loaded, api, args)) : {
         readText: async (pathFromRoot: string) => {
           const { full, rel } = await this.resolveFsRequest(
             loaded,

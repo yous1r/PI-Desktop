@@ -14,6 +14,8 @@ export type RemoteHostClient = RemoteRacpClient & {
   subscribeState?(listener: (state: RemoteHostClientState) => void): () => void;
   subscribeSubscriptionClosed?(listener: (notice: RemoteSubscriptionClosed) => void): () => void;
   state?(): RemoteHostClientState;
+  generation?(): number;
+  handleServerRequest?(method: string, handler: (params: unknown) => Promise<unknown>): () => void;
 };
 export type RemoteHostConnectionOptions = {
   hostKey: string;

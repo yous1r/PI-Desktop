@@ -184,6 +184,21 @@ import type {
 } from "@pi-desktop/shared";
 export type { ModelConfigImportCandidate, ModelConfigImportSource };
 
+// Work-panel terminal payloads: the renderer sends a target on create and then
+// addresses the returned terminal id alone.
+import { TERMINAL_IPC } from "./terminal-channels";
+
+import type {
+  TerminalBufferResult,
+  TerminalCreateInput,
+  TerminalDataEvent,
+  TerminalExitEvent,
+  TerminalOpenResult,
+  TerminalReplayResult,
+  TerminalShellProfile,
+  TerminalTargetContext,
+} from "@pi-desktop/shared";
+
 export interface ImportCandidate {
   source: ImportSource;
   externalId: string;
@@ -859,6 +874,47 @@ export const api = {
       listener((payload ?? {}) as { version?: number }),
     );
   },
+  /**
+   * Terminal shells available on the host that owns `target`.
+   *
+   * The target travels with the request: a remote terminal must list the
+   * shells of its own host, never the ones probed on this machine.
+   */
+  terminalListShells: (input: { target: TerminalTargetContext; refresh?: boolean }) =>
+    invoke<{ shells: TerminalShellProfile[] }>(TERMINAL_IPC.listShells, input),
+  terminalCreate: (input: TerminalCreateInput) =>
+    invoke<TerminalOpenResult>(TERMINAL_IPC.create, input),
+  terminalWrite: (terminalId: string, data: string) =>
+    invoke<{ ok: boolean }>(TERMINAL_IPC.write, { terminalId, data }),
+  terminalResize: (terminalId: string, cols: number, rows: number) =>
+    invoke<{ ok: boolean }>(TERMINAL_IPC.resize, { terminalId, cols, rows }),
+  terminalClose: (terminalId: string) =>
+    invoke<{ ok: boolean }>(TERMINAL_IPC.close, { terminalId }),
+  terminalGetBuffer: (terminalId: string, maxBytes?: number) =>
+    invoke<TerminalBufferResult>(TERMINAL_IPC.getBuffer, { terminalId, maxBytes }),
+  /**
+   * Raw base64 replay of a live terminal's scrollback, ANSI intact. `data` is
+   * null when the process already exited and the tab must start a new one
+   * instead of re-attaching to a dead id.
+   */
+  terminalReplay: (terminalId: string, maxBytes?: number) =>
+    invoke<TerminalReplayResult>(TERMINAL_IPC.replay, { terminalId, maxBytes }),
+  onTerminalData: (listener: (event: TerminalDataEvent) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(TERMINAL_IPC.dataEvent, (payload) => {
+      const event = payload as TerminalDataEvent | undefined;
+      if (!event || typeof event.terminalId !== "string" || typeof event.data !== "string") return;
+      listener(event);
+    });
+  },
+  onTerminalExit: (listener: (event: TerminalExitEvent) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(TERMINAL_IPC.exitEvent, (payload) => {
+      const event = payload as TerminalExitEvent | undefined;
+      if (!event || typeof event.terminalId !== "string") return;
+      listener({ terminalId: event.terminalId, exitCode: event.exitCode ?? null });
+    });
+  },
   configSyncGetState: () => invoke<ConfigSyncState>(IPC.invoke.configSyncGetState),
   configSyncConfigure: (input: ConfigSyncConfigureInput) =>
     invoke<ConfigSyncState>(IPC.invoke.configSyncConfigure, input),
@@ -1494,8 +1550,8 @@ export const api = {
     pluginId: string,
     viewId: string,
     extra?: { sessionId?: string; location?: string; tabId?: string },
-  ) => invoke(IPC.invoke.pluginViewOpen, { pluginId, viewId, ...extra }),
-  pluginViewClose: (pluginId: string, viewId: string, extra?: { sessionId: string; tabId?: string }) =>
+  ) => invoke<{ ok: true; surfaceId: string }>(IPC.invoke.pluginViewOpen, { pluginId, viewId, ...extra }),
+  pluginViewClose: (pluginId: string, viewId: string, extra?: { sessionId?: string; tabId?: string; surfaceId?: string }) =>
     invoke(IPC.invoke.pluginViewClose, { pluginId, viewId, ...extra }),
   pluginViewSetBounds: (bounds: {
     x: number;
@@ -1508,12 +1564,14 @@ export const api = {
     viewId: string,
     visible: boolean,
     sessionId?: string,
+    surfaceId?: string,
   ) =>
     invoke(IPC.invoke.pluginViewSetVisible, {
       pluginId,
       viewId,
       visible,
       sessionId,
+      surfaceId,
     }),
   marketRefresh: (force = true) =>
     invoke<{

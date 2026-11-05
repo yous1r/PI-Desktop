@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./mcp/*": {
+      "types": "./dist/mcp/*.d.ts",
+      "import": "./dist/mcp/*.js"
     }
   },
   "scripts": {
@@ -20,7 +24,8 @@
   "dependencies": {
     "@pi-desktop/agent-host": "workspace:*",
     "@pi-desktop/agent-runtime": "workspace:*",
-    "@pi-desktop/shared": "workspace:*"
+    "@pi-desktop/shared": "workspace:*",
+    "@pi-desktop/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

@@ -2408,3 +2408,40 @@ fn plugin_ui_meta_parses_the_floating_widget_placement() {
     assert!(panel.always_on_top.is_none());
     assert!(panel.resizable.is_none());
 }
+
+#[test]
+fn workspace_mcp_requires_valid_placement_and_a_backend_entry() {
+    let dir = tempdir().unwrap();
+    for (name, placement, backend, accepted) in [
+        ("unknown", "ssh", None, false),
+        ("missing", "workspace", None, false),
+        ("desktop", "desktop", None, true),
+        (
+            "workspace",
+            "workspace",
+            Some(json!({"main":"workspace"})),
+            true,
+        ),
+        (
+            "companion",
+            "workspace",
+            Some(json!({"main":"desktop","workspaceMain":"worker.js"})),
+            true,
+        ),
+    ] {
+        let root = dir.path().join(name);
+        let mut manifest = capability_manifest(
+            json!({"mcpServers":[{"id":"server","transport":"stdio","command":"node","execution":placement}]}),
+            json!(["mcp.server.local"]),
+        );
+        if let Some(execution) = backend {
+            manifest["execution"] = execution;
+        }
+        write_plugin(&root, manifest, &[("worker.js", "module.exports = {};")]);
+        assert_eq!(
+            PluginManager::read_manifest(&root).is_ok(),
+            accepted,
+            "{name}"
+        );
+    }
+}

@@ -554,3 +554,15 @@ runtime, main, and renderer tracks in parallel.
 | Should v2 custom entries persist to host-core and take part in compaction? | Persist; excluded from compaction summaries |
 | Should v3 read the pi CLI's `settings.json` enabled paths as discovery hints? | Read-only hints, never written |
 | Should extension tools be selectable per project like plugin tools? | Scope from §3.2 is the only gate |
+
+## Workspace execution amendment (ADR 0340)
+
+[Workspace execution](17-workspace-execution.md) is the implemented candidate
+contract for optional backend placement, captured workspace/session ownership,
+SDK processes/terminals, MCP placement, resources and disconnect behavior.
+It amends Desktop-only backend assumptions in this document. Omitted execution
+metadata retains legacy behavior. Model/device/renderer integrations and local
+Agent persistence remain on Desktop; native remote execution requires separate
+Host/package consent and is not an OS sandbox. See
+[ADR 0340](../../adr/0340-workspace-plugin-execution.md) for the decision and
+spec 17 for migration, limits and release acceptance requirements.

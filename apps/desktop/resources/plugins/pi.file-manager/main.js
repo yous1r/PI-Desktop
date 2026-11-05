@@ -435,7 +435,7 @@ function canonicalPath(target) {
 function samePath(left, right) {
   const a = canonicalPath(left);
   const b = canonicalPath(right);
-  return a === b || a.toLowerCase() === b.toLowerCase();
+  return a === b || (process.platform === "win32" && a.toLowerCase() === b.toLowerCase());
 }
 
 /** roots 里按路径命中一个 root：先精确比，再忽略大小写比一次。 */
@@ -1078,7 +1078,7 @@ function summarizeGit(snapshot) {
 
 /** 打开一个文件时问一句「它有没有改动」：列表收起时右侧也要有「变更」可看。 */
 async function gitInfoFor(abs, rel) {
-  if (!rel) return null;
+  if (!rel || isAbsolutePath(rel)) return null;
   const root = await currentRoot();
   // 项目外（宿主自选的会话临时文件 / 附件）没有根内基点，与 git 无关。
   if (!root || !isInside(root.path, abs)) return null;
@@ -2211,6 +2211,7 @@ function launchEditor(command, target) {
 }
 
 async function handleEditors() {
+  if ((await pi.workspace.getContext?.())?.authority.kind === "remote") return {ok:true,platform:PLATFORM,stamp:todayStamp(),editors:[]};
   const cache = await detectEditors();
   return {
     ok: true,
@@ -2222,6 +2223,7 @@ async function handleEditors() {
 }
 
 async function handleOpenWith(payload) {
+  if ((await pi.workspace.getContext?.())?.authority.kind === "remote") throw fail("UNSUPPORTED", "Use the Desktop download-and-open action for remote files");
   if (payload?.external === true) {
     // 编辑器 command 绝不由视图指定，只认 id；external 是「宿主自己选定的项目外路径」
     // 那条通道的标记，这里不该出现——与其放行，不如明确拒绝。
@@ -2521,30 +2523,15 @@ const WINDOWS_RESERVED = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i;
 function assertValidName(rawName) {
   if (typeof rawName !== "string") throw fail("INVALID_NAME", "name is required");
   const name = rawName.trim();
-function entryFromStat(name, rel, stat) {
-  return {
-    name,
-    path: rel,
-    isDirectory: stat.isDirectory(),
-    size: stat.isDirectory() ? undefined : stat.size,
-    mtimeMs: stat.mtimeMs,
-    ignored: false,
-    isSymlink: false,
-    outside: false,
-    // 新建 / 改名 / 移动之后这一行是全新的：状态由下一次列表调用现算。
-    git: null,
-  };
+  if (!name || name === "." || name === ".." || name.length > 255 || /[<>:"/\|?* -]/.test(name) || /[. ]$/.test(name) || WINDOWS_RESERVED.test(name)) {
+    throw fail("INVALID_NAME", "name must be a single valid file or directory name");
+  }
+  return name;
 }
-  return {
-    name,
-    path: rel,
-    isDirectory: stat.isDirectory(),
-    size: stat.isDirectory() ? undefined : stat.size,
-    mtimeMs: stat.mtimeMs,
-    ignored: false,
-    isSymlink: false,
-    outside: false,
-  };
+
+function entryFromStat(name, rel, stat) {
+  return {name, path: rel, isDirectory: stat.isDirectory(), size: stat.isDirectory() ? undefined : stat.size,
+    mtimeMs: stat.mtimeMs, ignored: false, isSymlink: false, outside: false, git: null};
 }
 
 async function handleCreate(payload) {
@@ -3365,6 +3352,9 @@ async function onPanelInvoke(channel, payload) {
   if (!handler) return { ok: false, code: "UNSUPPORTED", message: `unknown channel: ${channel}` };
   try {
     const workspace = await pi.workspace.get();
+    if (workspace?.executionContext?.authority.kind === "remote" && !workspace.remote && payload?.external === true) {
+      throw fail("PERMISSION_DENIED", "Local external files cannot be addressed by a remote workspace backend");
+    }
     if (payload?.workspacePath !== undefined && payload.workspacePath !== workspace?.path) {
       throw fail("WORKSPACE_CHANGED", "The workspace changed while the file was loading");
     }
@@ -3408,6 +3398,11 @@ module.exports = {
   onLoad,
   onUnload,
   onPanelInvoke,
+  onWorkspaceInvoke: onPanelInvoke,
+  async onLocalFileInvoke(channel, payload) {
+    if (payload?.external !== true || !["fm.read", "fm.write"].includes(channel)) return {ok:false,code:"PERMISSION_DENIED",message:"Only the host-selected local file can be read or saved"};
+    try { await pi.fs.stat(payload.path); return await CHANNELS[channel](payload); } catch(error) { return toFailure(error); }
+  },
   // 纯解析函数：verify-git.mjs 直接拿它们单测（porcelain / numstat / unified
   // diff 的形态很容易在 git 升级时悄悄变一次，解析必须能被断言）。
   internals: {

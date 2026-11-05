@@ -220,3 +220,15 @@ visible workspace for a panel call (ADR 0266).
    interrupted past 50 removals in a rolling minute
 8. A plugin declaring only the legacy `fs.*.workspace` names loses write and
    delete reach, and the Plugins page says so
+
+## Workspace execution amendment (ADR 0340)
+
+[Workspace execution](17-workspace-execution.md) is the implemented candidate
+contract for optional backend placement, captured workspace/session ownership,
+SDK processes/terminals, MCP placement, resources and disconnect behavior.
+It amends Desktop-only backend assumptions in this document. Omitted execution
+metadata retains legacy behavior. Model/device/renderer integrations and local
+Agent persistence remain on Desktop; native remote execution requires separate
+Host/package consent and is not an OS sandbox. See
+[ADR 0340](../../adr/0340-workspace-plugin-execution.md) for the decision and
+spec 17 for migration, limits and release acceptance requirements.

@@ -139,6 +139,7 @@ export function registerPluginUiIpc({
     const htmlPath = resolveInsidePluginRoot(loaded.path, manifest.ui.panel);
     if (!htmlPath) throw new Error("plugin panel must stay inside the plugin");
     await pluginPanels.open({
+      context: await plugins.captureWorkspaceContext(id),
       pluginId: id,
       title: resolvePluginLocalizedString(manifest.ui.title, getUpdaterLocale(), manifest.name),
       locale: getUpdaterLocale(),
@@ -294,7 +295,11 @@ export function registerPluginUiIpc({
       if (isBrowserView && sessionId) {
         browserHost.setChromeSession(sessionId, typeof payload.tabId === "string" ? payload.tabId : undefined, location);
       }
-      pluginViews.open({
+      const surfaceId = pluginViews.open({
+        sessionId: sessionId || undefined,
+        tabId: payload.tabId,
+        context: await plugins.captureWorkspaceContext(pluginId, sessionId || undefined),
+        localResource: plugins.createLocalResourceGrant(location,sessionId || undefined),
         pluginId,
         viewId,
         locale: getUpdaterLocale(),
@@ -307,19 +312,19 @@ export function registerPluginUiIpc({
         // view receives the opener's subject untouched (D320 follow-up).
         ...(isBrowserView || !location ? {} : { location }),
       });
-      return { ok: true };
+      return { ok: true, surfaceId };
     },
   );
 
   handle(
     IPC.invoke.pluginViewClose,
-    async (payload: { pluginId?: string; viewId?: string; sessionId?: string; tabId?: string }) => {
+    async (payload: { pluginId?: string; viewId?: string; sessionId?: string; tabId?: string; surfaceId?: string }) => {
       if (payload.pluginId === BROWSER_PLUGIN_ID && payload.viewId === BROWSER_VIEW_ID && typeof payload.sessionId === "string") {
         if (typeof payload.tabId === "string") browserHost.closeTab(payload.sessionId, payload.tabId);
         else browserHost.closeSession(payload.sessionId);
         return { ok: true };
       }
-      pluginViews.close(String(payload?.pluginId ?? ""), String(payload?.viewId ?? ""));
+      pluginViews.close(String(payload?.pluginId ?? ""), String(payload?.viewId ?? ""), payload.surfaceId);
       return { ok: true };
     },
   );
@@ -339,6 +344,7 @@ export function registerPluginUiIpc({
       viewId?: string;
       visible?: boolean;
       sessionId?: string;
+      surfaceId?: string;
     }) => {
       const pluginId = String(payload?.pluginId ?? "");
       const viewId = String(payload?.viewId ?? "");
@@ -351,7 +357,7 @@ export function registerPluginUiIpc({
       ) {
         browserHost.setChromeSession(sessionId);
       }
-      pluginViews.setVisible(pluginId, viewId, payload?.visible === true);
+      pluginViews.setVisible(pluginId, viewId, payload?.visible === true, payload.surfaceId);
       return { ok: true };
     },
   );

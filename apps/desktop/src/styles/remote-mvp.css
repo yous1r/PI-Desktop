@@ -26,3 +26,11 @@
 .remote-workspace { display: flex; flex-direction: column; min-width: 0; }
 .remote-host-workbench { padding: 12px; }
 .settings-remote-host-card-actions { flex-wrap: wrap; }
+/* The remote terminal fills the panel below the identity hint, like the local
+   work-panel terminal: the shell owns the scroll surface, not the panel. */
+.remote-workspace-terminal {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}

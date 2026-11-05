@@ -37,6 +37,7 @@ import {
 import type { AppState } from "../app-state";
 import type { SessionRuntime } from "../runtime/session-runtime";
 import type { StoreAccess } from "./types";
+import { closeTerminalForSession, closeTerminalForTabs } from "../../lib/terminal-sessions";
 
 export type ProjectSliceDependencies = StoreAccess & {
   runtime: SessionRuntime;
@@ -152,6 +153,20 @@ function clearLocalSessionState(
   >,
   id: string,
 ): void {
+  // A deleted session (or a session under a deleted project) takes its work
+  // panel with it, so the terminals of that context are ended here: dropping the
+  // context alone would leave a shell running with no view that could reach it.
+  // A project or session *switch* never reaches this path, so a terminal there
+  // only detaches and stays re-attachable.
+  const droppedContext = get().workPanelContexts[id];
+  if (droppedContext) {
+    closeTerminalForTabs(
+      droppedContext.tabs.filter((tab) => tab.kind === "terminal").map((tab) => tab.id),
+    );
+  }
+  // A remote terminal has a session-scoped tab id but no work-panel context, so
+  // the sweep also matches on the bound session.
+  closeTerminalForSession(id);
   forgetTranscriptReadingState(id);
   runtime.pendingSessionConfigurations.delete(id);
   runtime.sessionTranscriptCache.delete(id);

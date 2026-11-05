@@ -121,3 +121,13 @@ describe("resolveMcpRefs", () => {
     expect(resolveMcpRefs(undefined, {})).toEqual({ ok: true, values: {} });
   });
 });
+
+
+describe("MCP execution placement", () => {
+  it("accepts the two execution sides and rejects unknown placement", () => {
+    for (const execution of ["desktop", "workspace"]) {
+      expect(validateMcpServer({id:"server",transport:"stdio",command:"node",execution}).ok).toBe(true);
+    }
+    expect(error({id:"server",transport:"stdio",command:"node",execution:"ssh"})).toMatch(/execution/);
+  });
+});

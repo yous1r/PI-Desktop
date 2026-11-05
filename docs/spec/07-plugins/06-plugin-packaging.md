@@ -101,3 +101,15 @@ The plugin center independently resolves and verifies the source claim.
 - `packages/plugin-devkit/src/{check,walk,pack,publish,cli}.ts` and their tests
 - `crates/host-core/src/plugins/{install,manifest,validation,registry}.rs`
 - [Author release workflow](../../plugin-development.md#9-check-pack-and-install)
+
+## Workspace execution amendment (ADR 0340)
+
+[Workspace execution](17-workspace-execution.md) is the implemented candidate
+contract for optional backend placement, captured workspace/session ownership,
+SDK processes/terminals, MCP placement, resources and disconnect behavior.
+It amends Desktop-only backend assumptions in this document. Omitted execution
+metadata retains legacy behavior. Model/device/renderer integrations and local
+Agent persistence remain on Desktop; native remote execution requires separate
+Host/package consent and is not an OS sandbox. See
+[ADR 0340](../../adr/0340-workspace-plugin-execution.md) for the decision and
+spec 17 for migration, limits and release acceptance requirements.

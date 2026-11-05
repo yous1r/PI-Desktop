@@ -83,7 +83,7 @@ test("an isolated session launches in its worktree with its project's configurat
       runtimeState: { host, sidecar: { setVendorAuthBindings() {} }, agentHostBridge: null },
       logger: { app() {} },
       userMcp: { setRecords() {}, async toolsForProject() { return []; } },
-      plugins: { getTools: () => [], getSkills: () => [], listLoaded: () => [], getAgentExtensions: () => [] },
+      plugins: { getToolsForSession: async () => [], getSkills: () => [], listLoaded: () => [], getAgentExtensions: () => [] },
       sessionProjects: new Map(),
       dataDir: temp,
       vendorOAuth: { async bindingFor() { return undefined; } },

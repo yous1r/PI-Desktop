@@ -1,4 +1,4 @@
-# Vendored File Manager: scoped remote-read hotfix
+# Vendored File Manager: workspace execution hotfix
 
 This directory is the actual plugin loaded and packaged by Desktop. It now
 contains the remote-read consumer required by issue #1711. It follows the
@@ -16,15 +16,15 @@ unpublished plugin contribution as an official upstream release.
 | Integration source | https://github.com/Seraph-x/pi-desktop-plugin-file-manager/tree/f47ce21fab3c59f3f4b94d30f3e3a0c8124447e1 |
 | Integration commit | `f47ce21fab3c59f3f4b94d30f3e3a0c8124447e1` |
 | Companion upstream proposal | https://github.com/Tioit-Wang/pi-desktop-plugin-file-manager/pull/5 |
-| Bundled version | `0.9.1-pi.1` — Desktop hotfix, not an upstream release |
+| Bundled version | `0.9.1-pi.2` — Desktop workspace hotfix, not an upstream release |
 | License | MIT; preserve the bundled `LICENSE` and PDF.js notices |
-| Locally packed runtime | `pi.file-manager-0.9.1-pi.1.piplug`, 6921923 bytes, SHA-256 `e8b6041cb5d3d4eab2b68a1e7fa61a8c7089235d9918f4a418541bd60cd109b3` |
+| Historical 0.9.1-pi.1 runtime (not this candidate) | `pi.file-manager-0.9.1-pi.1.piplug`, 6921923 bytes, SHA-256 `e8b6041cb5d3d4eab2b68a1e7fa61a8c7089235d9918f4a418541bd60cd109b3` |
 | Marketplace publication | Not published; no marketplace artifact or accepted upstream tag is claimed for this hotfix |
 
 The released reference tag is retained unchanged. The integration source is a
 separate, immutable contribution commit. Its remote consumer uses public
 `pi.fs.list` / `pi.fs.readPreview`, not local filesystem reads for opaque remote
-identities. Remote editing/search/Git/watch remain unavailable explicitly.
+identities. That legacy gateway remains read-only. The new workspace companion runs the native engine beside the workspace files.
 
 The hotfix is strictly newer than both the previous bundled `0.5.3-pi.1` and
 marketplace `0.9.0`, so `sync_builtin` can repair either installation. A future
@@ -53,13 +53,39 @@ so the synthetic filesystem events could reach Node.
    scopes Node's module interpretation to this plugin; other bundled plugins
    retain their own module format.
 
-`main.js`, `remote-workspace.js`, `README.md`, `CHANGELOG.md`, `views/index.html`
+`remote-workspace.js`, `README.md`, `CHANGELOG.md`, `views/index.html`
 and `views/assets/pdfjs-LICENSES.txt` are byte-identical to the pinned integration
-commit. Only the manifest and rebuilt view differ. The runtime pack has eight
-files; the two Desktop-local license/module files are added when vendoring.
+commit. The manifest and `main.js` now carry the workspace patch, and `desktop.js` is a new Desktop entry. The generated view retains the previous hotfix bytes. The historical pack above predates this patch.
 QA dependencies, tests and `views-src/` are not included in the shipped plugin.
 The pinned changelog contains trailing spaces; its narrow `.gitattributes`
 exception preserves those upstream bytes rather than silently rewriting them.
+
+## Workspace patch (0.9.1-pi.2)
+
+- Desktop `desktop.js` forwards project requests using public `workspace.invoke`;
+  `main.js` exposes `onWorkspaceInvoke` and runs locally or on the admitted SSH Host.
+- Local scratch/attachment reads and saves stay in the Desktop entry, with a
+  short-lived single-file grant supplied by the host-owned view. Workspace
+  entries reject remote `external: true` requests. Native Node code is trusted
+  with the account's OS privileges; SDK gates are not an OS sandbox.
+- Remote graphical editor detection/launch is disabled. Default-app actions
+  download an explicit copy; HTML actions use bounded Host-authorized reads.
+- Linux/macOS path matching preserves case. External attachments skip project
+  Git lookup. New/create/rename filename validation and the independent
+  `entryFromStat` helper repair an existing malformed function in the pinned
+  integration source (`rel` was undefined in `assertValidName`).
+- No generated JavaScript was edited or rebuilt for this patch. If
+  `workspace.isAvailable()` is false (old Host or refused native approval), the
+  Desktop entry keeps the scoped read-only consumer and does not prompt again.
+- New regression: `workspace-plugin-files-git.test.mjs` executes this actual
+  bundle through the broker for local and remote service transports, including
+  editing/conflicts, create/rename/search/delete, local attachment isolation,
+  HTML/download/reveal, and disconnected-write refusal.
+
+The 0.9.1-pi.2 candidate has not been published to the marketplace. Full Linux
+SSH and mounted Electron acceptance remain release gates. Reproduce the
+workspace patch from this Desktop task tree before checking or packing; the
+old three-edit recipe below describes only the historical 0.9.1-pi.1 hotfix.
 
 ## Shipped checksums (SHA-256)
 
@@ -71,8 +97,9 @@ is recorded here. `UPSTREAM.md` is the provenance record, not a runtime input.
 | `CHANGELOG.md` | 34520 | `b7a3c06c07b2dbe5ce79577bbc6c6a53ffa00324bd64a27d0d5634493dec48b4` |
 | `LICENSE` | 1067 | `ebaec3ae096498a39f6b86e3ac8017e39818fb5aaff80b452349f94bc275ec0d` |
 | `README.md` | 38470 | `4ecf6e3afa2051b59b479907c485d156caca54ef6d1f4e3c410805807942a268` |
-| `main.js` | 125236 | `707feec0ecba8eb1a7c6a876a5ecf157ce064f36f14f5f30bafcf5852c5bed72` |
-| `manifest.json` | 39991 | `75c169a9b5f2ce844611874fcac0c24438db8d849355b090b6e52f8af12a5a40` |
+| `desktop.js` | 827 | `702e6a3f66bc0003c76d9323a3538440ff7b3a2b754f1dc78f8911b2dded66b2` |
+| `main.js` | 126134 | `4261d73756736efd0a740d3308996f40c37e0aec59826bf48d606c382f4149e6` |
+| `manifest.json` | 41327 | `ff6c563b5186a03473bed6544dbfdf94069eb07d8182063928ee9d83bc0b7f3f` |
 | `package.json` | 25 | `8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a` |
 | `remote-workspace.js` | 3757 | `931a579801fd4b334c3d96231aafc7ff52e0c03e7baebbabaf00b4c5e17cc366` |
 | `views/assets/index.js` | 6616929 | `0e415df8a14b4414a53ce3e2add8bb2cc155c67de21a43582a4dc217ae1a85e0` |

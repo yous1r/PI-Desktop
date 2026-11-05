@@ -523,6 +523,27 @@ pub(crate) fn validate_contributions(root: &Path, manifest: &PluginManifest) -> 
                 bail!("PLUGIN_INVALID: duplicate mcp server id {id}");
             }
             seen.push(id);
+            if let Some(execution) = obj.get("execution") {
+                if !matches!(execution.as_str(), Some("desktop" | "workspace")) {
+                    bail!("PLUGIN_INVALID: mcp server {id} execution must be desktop or workspace");
+                }
+                if execution.as_str() == Some("workspace")
+                    && manifest
+                        .execution
+                        .as_ref()
+                        .and_then(|v| v.get("main"))
+                        .and_then(Value::as_str)
+                        != Some("workspace")
+                    && manifest
+                        .execution
+                        .as_ref()
+                        .and_then(|v| v.get("workspaceMain"))
+                        .and_then(Value::as_str)
+                        .is_none()
+                {
+                    bail!("PLUGIN_INVALID: workspace MCP requires a workspace backend entry");
+                }
+            }
             match obj.get("transport").and_then(Value::as_str) {
                 Some("stdio") => {
                     require_permission(manifest, "mcp.server.local", "stdio mcp servers")?;

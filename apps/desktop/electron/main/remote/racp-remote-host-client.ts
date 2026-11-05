@@ -128,6 +128,8 @@ export function createRacpRemoteHostClient(
   const closedListeners = new Set<(notice: RemoteSubscriptionClosed) => void>();
   let closed = false;
   let generation = 0;
+  let connectionGeneration = 0;
+  const serverHandlers = new Map<string, (params: unknown) => Promise<unknown>>();
   let visibleState: RacpClientState = "disconnected";
   const notify = <T>(subscribers: Set<(value: T) => void>, value: T) => {
     for (const listener of subscribers) {
@@ -136,6 +138,7 @@ export function createRacpRemoteHostClient(
     }
   };
   const publishState = (state: RacpClientState) => {
+    if (state === "connected" && visibleState !== "connected") connectionGeneration++;
     visibleState = state;
     notify(stateListeners, state);
     try { options.onStateChange?.(state); }
@@ -170,6 +173,11 @@ export function createRacpRemoteHostClient(
   const racp = new RacpClient({
     transport: options.transport,
     client: options.clientInfo,
+    onServerRequest: async (method, params) => {
+      const handler = serverHandlers.get(method);
+      if (!handler) throw Object.assign(new Error("Unsupported server request"), { code: "METHOD_NOT_FOUND" });
+      return handler(params);
+    },
     onStateChange: state => {
       if (closed && state !== "disconnected") return;
       // The socket is initialized before onReconnected runs. Do not advertise
@@ -208,6 +216,13 @@ export function createRacpRemoteHostClient(
     async request<T = unknown>(method: string, params?: unknown, timeoutMs?: number): Promise<T> {
       // Offline errors remain offline errors; capabilities belong to the live handshake.
       if (racp.state === "connected") {
+        if (method === "workspace/process" && racp.initialized?.capabilities.workspaceProcesses !== 1) throw Object.assign(new Error("Update the Host to execute structured workspace commands"), {code:"CAPABILITY_UNAVAILABLE",errorCode:"CAPABILITY_UNAVAILABLE"});
+        if (method === "workspace/plugin" && racp.initialized?.capabilities.workspacePlugins !== 1) {
+          throw Object.assign(new Error("Upgrade pi-host for workspace plugin support"), {code:"CAPABILITY_UNAVAILABLE",errorCode:"CAPABILITY_UNAVAILABLE"});
+        }
+        if (method === "workspace/terminal" && !racp.initialized?.capabilities.workspaceTerminal) {
+          throw Object.assign(new Error("Upgrade pi-host for workspace terminal support"), { code: "TERMINAL_HOST_UNSUPPORTED", errorCode: "TERMINAL_HOST_UNSUPPORTED" });
+        }
         if (method === "workspace/pluginFiles") {
           if (!racp.initialized?.capabilities.workspacePluginFiles) {
             throw Object.assign(new Error("Upgrade pi-host to a matching Desktop release with plugin file browsing support"), {
@@ -222,6 +237,12 @@ export function createRacpRemoteHostClient(
       return racp.request<T>(method, params, timeoutMs);
     },
     state: () => visibleState,
+    generation: () => connectionGeneration,
+    handleServerRequest(method, handler) {
+      if (serverHandlers.has(method)) throw new Error(`Server request handler already registered: ${method}`);
+      serverHandlers.set(method, handler);
+      return () => { if (serverHandlers.get(method) === handler) serverHandlers.delete(method); };
+    },
     subscribeReconnect(listener) { reconnectListeners.add(listener); return () => { reconnectListeners.delete(listener); }; },
     subscribeState(listener) { stateListeners.add(listener); return () => { stateListeners.delete(listener); }; },
     subscribeSubscriptionClosed(listener) { closedListeners.add(listener); return () => { closedListeners.delete(listener); }; },
@@ -250,7 +271,7 @@ export function createRacpRemoteHostClient(
       generation++;
       listeners.clear(); reconnectListeners.clear(); closedListeners.clear();
       await racp.close();
-      stateListeners.clear();
+      stateListeners.clear(); serverHandlers.clear();
     },
   };
 }

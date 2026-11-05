@@ -16,7 +16,7 @@ const hostProcessEntry = join(desktopRoot, "electron/main/plugin-host-process.mj
 register(pathToFileURL(join(here, "helpers/ts-import-hooks.mjs")));
 const { PluginRuntime } = await import("../electron/main/plugin-runtime.ts");
 
-const hostSrc = readFileSync(hostProcessEntry, "utf8");
+const hostSrc = readFileSync(join(repoRoot, "packages/host-runtime/plugin-host-process.mjs"), "utf8");
 const runtimeSrc = readFileSync(join(desktopRoot, "electron/main/plugin-runtime.ts"), "utf8");
 const mainSrc = readMainSourceSync();
 const apiSrc = readFileSync(join(desktopRoot, "src/lib/api.ts"), "utf8");

@@ -143,6 +143,16 @@ describe("check", () => {
     expect((await check(dir)).errors.map((e) => e.code)).toContain("main.missing");
   });
 
+  it("checks the separate workspace backend before packaging", async () => {
+    const dir = await scaffolded("agent-tool-basic");
+    await patchManifest(dir, (manifest) => {
+      manifest.execution = { main: "desktop", workspaceMain: "remote.cjs" };
+    });
+    expect((await check(dir)).errors.map(issue => issue.code)).toContain("workspace-main.missing");
+    await writeFile(join(dir, "remote.cjs"), "module.exports = {};", "utf8");
+    expect((await check(dir)).ok).toBe(true);
+  });
+
   it("reports a missing panel file", async () => {
     const dir = await scaffolded("panel-basic");
     await rm(join(dir, "renderer/index.html"));

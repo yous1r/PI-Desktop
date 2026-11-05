@@ -18,6 +18,7 @@ pub(crate) const MAX_PACKAGE_BYTES: u64 = 50 * 1024 * 1024;
 pub(crate) const MAX_PACKAGE_FILES: usize = 2000;
 
 mod device;
+mod execution;
 mod install;
 mod manifest;
 pub mod marketplace;
@@ -31,6 +32,7 @@ mod renderer;
 mod resolve;
 pub(crate) mod reviews;
 mod validation;
+mod workspace_grants;
 
 pub use manifest::PluginManifest;
 pub use marketplace::{market_channel_from_settings, MarketChannel, OFFICIAL_CHANNEL_CATALOG_URL};

@@ -33,6 +33,10 @@ import {
   type RuntimeProviderConfig,
 } from "@pi-desktop/agent-runtime";
 import { createFsConsentService } from "../plugin-fs-consent";
+import { createWorkspacePluginServices } from "./workspace-plugin-services";
+import { WorkspaceResources } from "../remote/workspace-resources";
+import { WorkspacePorts, forwardWorkspacePort } from "../remote/workspace-ports";
+import { catalogs, resolveLocale } from "@pi-desktop/i18n";
 import { pluginWorkspaceInfo, projectFolderPaths } from "../workspace-roots";
 import { createDesktopConsentService } from "../plugin-desktop-consent";
 import { PluginRuntime } from "../plugin-runtime";
@@ -89,7 +93,7 @@ export type PluginServicesDependencies = {
    * Whether a plugin's contributions apply to the project the window shows.
    * Scope records live in Main, so this is the one lookup that decides.
    */
-  isPluginActiveInProject: (pluginId: string) => boolean;
+  isPluginActiveInProject: (pluginId: string, projectPath?: string | null) => boolean;
   /**
    * Scope check against an explicit project path, so the session-event
    * fan-out can hold the same line `session.getActive` does for sessions
@@ -662,6 +666,7 @@ export function createPluginServices({
     });
   });
   pluginPanels.addSenderResolver((senderId) => pluginViews.pluginIdForSender(senderId));
+  pluginPanels.addContextResolver((senderId) => pluginViews.contextForSender(senderId));
   const browserBackingHost = new BrowserBackingHost();
   const browserHost = new BrowserHost({
     createPane: (onState, onOpenUrl) => new BrowserPane(onState, onOpenUrl, browserBackingHost),
@@ -704,11 +709,40 @@ export function createPluginServices({
     onRevealView: (sessionId, tabId, location) =>
       sendToRenderer(IPC.event.browserPreview, { sessionId, tabId, ...(location ?? { revealOnly: true }) }),
   });
+  const workspacePorts = new WorkspacePorts({
+    connect: (context,port) => {const boot=getActiveRemoteHostsBoot();if(!boot)throw new Error("Workspace Host is unavailable");return forwardWorkspacePort(boot,context,port);},
+    openBrowser: async (url,sessionId) => {await browserHost.openTab({url},sessionId);},
+  });
+  const workspaceResources = new WorkspaceResources({
+    chooseCopy: async ({name,pluginName,hostKey}) => {
+      const strings = catalogs[resolveLocale(getUpdaterLocale())].pluginWorkspaceResource;
+      const window = getMainWindow();
+      const prompt = {type:"question" as const,message:strings.message.replace("{name}",pluginName).replace("{host}",hostKey),
+        detail:strings.detail,buttons:[strings.cancel,strings.download],defaultId:0,cancelId:0,noLink:true};
+      const answer = window && !window.isDestroyed() ? await dialog.showMessageBox(window,prompt) : await dialog.showMessageBox(prompt);
+      if (answer.response !== 1) return null;
+      const options = {title:strings.download,defaultPath:name,buttonLabel:strings.download};
+      const selected = window && !window.isDestroyed() ? await dialog.showSaveDialog(window,options) : await dialog.showSaveDialog(options);
+      return selected.canceled ? null : selected.filePath ?? null;
+    },
+    openCopy: async path => {const error=await shell.openPath(stripWinLongPrefix(path));if(error)throw new Error(error);},
+    openBrowser: async (url,sessionId) => {await browserHost.openTab({url},sessionId);},
+    reveal: async (path,sessionId) => {
+      if (!plugins.getLoaded("pi.file-manager")) throw Object.assign(new Error("The File Manager plugin is unavailable"),{code:"UNAVAILABLE"});
+      sendToRenderer(IPC.event.pluginViewReveal,{pluginId:"pi.file-manager",viewId:"manager",sessionId,location:path});
+    },
+  });
   pluginViews.onSurface = (surface) => {
     browserHost.setChromeSurface(surface);
   };
   plugins.setServices({
+    ...createWorkspacePluginServices({getHost,currentWorkspacePath:getWorkspacePath,getWindow:getMainWindow,getLocale:getUpdaterLocale,
+      client:hostKey=>{const boot=getActiveRemoteHostsBoot();if(!boot)throw new Error("Workspace Host is unavailable");return boot.workspaceClient(hostKey);}}),
     readRemoteWorkspaceFiles: createPluginWorkspaceReader({ getHost, getBoot: getActiveRemoteHostsBoot }),
+    openWorkspaceResource: input => workspaceResources.open(input),
+    openWorkspacePort: input => workspacePorts.open(input),
+    closeWorkspaceResources: ownerId => {workspaceResources.closeOwner(ownerId);workspacePorts.closeOwner(ownerId);},
+    disposeWorkspaceResources: () => {workspaceResources.dispose();workspacePorts.dispose();},
     /**
      * The richer workspace payload, so `pi.workspace.get` and the
      * `workspace:changed` event both expose the open project's folder roots
@@ -731,6 +765,14 @@ export function createPluginServices({
     getWorkspacePathForSession: (sessionId) => sessionProjects.get(sessionId) ?? null,
     agentExtensionsChanged: () =>
       sendToRenderer(IPC.event.pluginChanged, { reason: "agentExtensions" }),
+    getSessionSnapshot: async (pluginId,sessionId) => {
+      const host=getHost();if(!host)throw new Error("Session owner is unavailable");
+      const {session}=await host.call<{session:{projectPath?:string}|null}>("session.get",{id:sessionId,messageLimit:1});
+      if(getHost()!==host)throw new Error("Session owner changed");
+      if(!session)return null;
+      if(!isPluginActiveInProject(pluginId,session.projectPath??null))throw Object.assign(new Error("Plugin is not active in the originating project"),{code:"PERMISSION_DENIED"});
+      return pluginSession.snapshotFor({sessionId,projectPath:session.projectPath??null});
+    },
     /** `pi.session.getActive`: the selected session as the shell shows it. */
     getActiveSession: () => pluginSession.snapshot(),
     /**

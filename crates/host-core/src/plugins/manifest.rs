@@ -8,6 +8,9 @@ pub struct PluginManifest {
     pub name: String,
     pub version: String,
     pub main: String,
+    /// Explicit backend placement, preserved across manifest serialization.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub execution: Option<Value>,
     /// Renderer entry module (relative path). Declaring it requires the
     /// `renderer.extension` permission; the module registers UI slot
     /// components in the host renderer (`docs/plugin-plan/ui/`).
@@ -52,8 +55,12 @@ impl PluginManager {
         }
         let raw = fs::read_to_string(&manifest_path)
             .with_context(|| format!("read manifest {}", manifest_path.display()))?;
-        let manifest: PluginManifest =
+        let document: Value =
             serde_json::from_str(&raw).map_err(|e| anyhow!("PLUGIN_INVALID: {e}"))?;
+        let manifest: PluginManifest =
+            serde_json::from_value(document.clone()).map_err(|e| anyhow!("PLUGIN_INVALID: {e}"))?;
+        super::execution::validate_execution(path, document.get("execution"), &manifest.main)?;
+        super::execution::validate_desktop_contributions(&document)?;
         if manifest.id.trim().is_empty() || manifest.main.trim().is_empty() {
             bail!("PLUGIN_INVALID: id/main required");
         }

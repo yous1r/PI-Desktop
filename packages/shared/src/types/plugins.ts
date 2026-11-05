@@ -308,6 +308,9 @@ export type PluginServiceState = "starting" | "running" | "stopped" | "failed";
 
 /** Supervision state of one resident plugin service (spec 07 §5). */
 export type PluginServiceStatus = {
+  /** Workspace services are owned independently for each admitted instance. */
+  instanceId?: string;
+  workspaceId?: string;
   pluginId: string;
   serviceId: string;
   label: string;

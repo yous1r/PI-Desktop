@@ -81,11 +81,13 @@ test("the vendored copy stays traceable to its upstream release", () => {
   const tag = upstream.match(/`v(\d+\.\d+\.\d+)`/);
   assert.ok(tag, "UPSTREAM.md must name the vendored base tag");
   assert.equal(tag[1], "0.9.0");
-  assert.equal(manifest.version, "0.9.1-pi.1");
+  assert.equal(manifest.version, "0.9.1-pi.2");
+  assert.deepEqual(manifest.execution,{main:"desktop",workspaceMain:"main.js"});
   assert.match(upstream, /Not published; no marketplace artifact/);
   // Every upstream or locally rebuilt file hashes to a recorded value, so a
   // silent edit cannot pass as the released artifact or documented patch.
   for (const file of [
+    "desktop.js",
     "main.js",
     "remote-workspace.js",
     "README.md",

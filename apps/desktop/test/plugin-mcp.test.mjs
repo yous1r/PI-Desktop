@@ -706,8 +706,8 @@ test("the stdio environment carries no host secrets", () => {
 });
 
 test("stdio PATH uses the login-shell lookup and names a missing command", () => {
-  const src = readFileSync(join(desktopRoot, "electron/main/plugin-mcp.ts"), "utf8");
-  assert.match(src, /import \{ userLookupPath \} from "\.\/user-login-path\.ts"/);
+  const src = readFileSync(join(desktopRoot, "../../packages/host-runtime/src/mcp/client.ts"), "utf8");
+  assert.match(src, /import \{ userLookupPath \} from "\.\/user-login-path\.js"/);
   assert.match(src, /userLookupPath\(process\.env\.PATH/);
   assert.match(src, /command not found: \$\{options\.command\}/);
 });
@@ -744,13 +744,13 @@ test("discovered mcp tools ride the existing plugin tool path", () => {
   );
   assert.match(register, /pluginMcpToolKey\(server\.id, tool\.name\)/);
   assert.match(register, /pluginToolName\(pluginId, name\)/);
-  assert.match(register, /this\.tools\.set\(fullName/);
+  assert.match(register, /catalog\.set\(fullName/);
   // Remote code the desktop cannot inspect never auto-approves.
   assert.match(register, /risk: "medium"/);
   assert.match(register, /this\.mcpCalls\.run\(/);
   assert.match(register, /client\.callTool\(tool\.name, toolArgs, signal\)/);
   // A server that fails to answer must not fail the plugin load.
-  assert.match(register, /await client\.connect\(\);\s*\n\s*\} catch \{/);
+  assert.match(register, /await client\.connect\(\);\s*\n\s*\} catch \(error\) \{/);
 });
 
 test("mcp clients are closed when the plugin goes away", () => {

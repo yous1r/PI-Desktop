@@ -71,6 +71,7 @@ const HOST_PROXY_ALLOWED = new Set([
   "extensions.ui.request",
   "extensions.diagnostics.publish",
   "extensions.model.configure",
+  "extensions.workspaceProcess",
   "session.rename",
   "session.create",
   "session.fork",
@@ -80,6 +81,7 @@ const HOST_PROXY_ALLOWED = new Set([
 
 /** Host-side answers for the `extensions.*` proxy methods. */
 export type TrustedExtensionSidecarBridge = {
+  workspaceProcess?: (params: Record<string, unknown>) => Promise<unknown>;
   publishCommands: (params: Record<string, unknown>) => void;
   publishDiagnostics: (params: Record<string, unknown>) => void;
   requestUi: (params: Record<string, unknown>) => Promise<unknown>;
@@ -524,6 +526,10 @@ export class AgentSidecar {
           if (method === "extensions.commands.publish") bridge.publishCommands(params);
           else if (method === "extensions.diagnostics.publish") bridge.publishDiagnostics(params);
           else if (method === "extensions.model.configure") result = await bridge.configureModel(params);
+          else if (method === "extensions.workspaceProcess") {
+            if (!bridge.workspaceProcess) throw Object.assign(new Error("Workspace processes are unavailable"), {errorCode:"CAPABILITY_UNAVAILABLE"});
+            result = await bridge.workspaceProcess(params);
+          }
           else if (method === "session.queuePush") result = await bridge.queuePush(params);
           else if (method === "session.queuePrioritize") result = await bridge.queuePrioritize(params);
           else result = await bridge.requestUi(params);

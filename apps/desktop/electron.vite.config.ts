@@ -67,6 +67,7 @@ export default defineConfig({
         // breaks the main bundle's esbuild transform.
         external: [
           "original-fs",
+          "node-pty",
           "electron-updater",
           "jiti",
           "jiti/static",

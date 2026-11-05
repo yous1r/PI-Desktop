@@ -242,3 +242,12 @@ describe("check", () => {
     expect(absolute.errors.some((e) => e.code === "theme.asset-package-relative")).toBe(false);
   });
 });
+
+it("counts a companion entry when checking unused permissions", async()=>{
+  const dir=await tempDir();
+  await writeFile(join(dir,"manifest.json"),JSON.stringify({schemaVersion:1,id:"test.companion",name:"Companion",version:"1.0.0",main:"desktop.js",execution:{main:"desktop",workspaceMain:"worker.js"},permissions:["fs.read"]}));
+  await writeFile(join(dir,"desktop.js"),"module.exports = {}; ");
+  await writeFile(join(dir,"worker.js"),"module.exports = {onLoad:()=>pi.fs.readText('file.txt')};");
+  const result=await check(dir);expect(result.ok).toBe(true);
+  expect(result.warnings.filter(item=>item.code==="permission.unused")).toEqual([]);
+});

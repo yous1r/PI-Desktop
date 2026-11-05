@@ -67,6 +67,14 @@ export type LifecycleDialogRequest = {
 export type LifecycleDialogDismiss = { requestId: string };
 export const IPC = {
   invoke: {
+    terminalListShells: "pi-desktop/terminal/listShells",
+    terminalCreate: "pi-desktop/terminal/create",
+    terminalWrite: "pi-desktop/terminal/write",
+    terminalResize: "pi-desktop/terminal/resize",
+    terminalClose: "pi-desktop/terminal/close",
+    terminalReplay: "pi-desktop/terminal/replay",
+    terminalGetBuffer: "pi-desktop/terminal/getBuffer",
+
     storageGet: "pi-desktop/storage/get",
     storageChoose: "pi-desktop/storage/choose",
     storageMigrate: "pi-desktop/storage/migrate",
@@ -454,6 +462,8 @@ export const IPC = {
     nativeMenuAction: "pi-desktop/menu/nativeAction",
   },
   event: {
+    terminalData: "pi-desktop/terminal/event/data",
+    terminalExit: "pi-desktop/terminal/event/exit",
     pluginChanged: "pi-desktop/event/pluginChanged",
     /** Progress of an install or update, while it is still running. */
     pluginInstallProgress: "pi-desktop/plugin/event/installProgress",
