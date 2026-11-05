@@ -29,6 +29,23 @@ const [
   read("../../../scripts/release-macos.sh"),
   read("../../../scripts/export-linux-asar.mjs"),
 ]);
+const prPackageWorkflowSource = await read("../../../.github/workflows/pr-package.yml");
+
+test("PR package builds review artifacts without publishing a release", () => {
+  assert.match(prPackageWorkflowSource, /^on:\n  pull_request:\n  workflow_dispatch:/m);
+  assert.match(prPackageWorkflowSource, /^permissions:\n  contents: read$/m);
+  assert.match(prPackageWorkflowSource, /runs-on: windows-latest/);
+  assert.match(prPackageWorkflowSource, /cargo build --release --locked -p host-core/);
+  assert.match(prPackageWorkflowSource, /pnpm install --frozen-lockfile/);
+  assert.match(prPackageWorkflowSource, /run: pnpm --filter @pi-desktop\/desktop run dist:win -- --x64/);
+  assert.match(prPackageWorkflowSource, /plugin-devkit\/dist\/cli\.js pack dist --out release/);
+  assert.match(prPackageWorkflowSource, /name: pi-desktop-windows-x64/);
+  assert.match(prPackageWorkflowSource, /name: ai-memory-plugin/);
+  assert.match(prPackageWorkflowSource, /829eee8dc90490d9671554b5cfd075976b61195221576ef8adec9732d3a94fef/);
+  assert.doesNotMatch(prPackageWorkflowSource, /contents: write|action-gh-release|secrets\.|--publish always|tags:/);
+  // electron-builder's Windows wrapper forces --publish never for every target.
+  assert.match(desktopPackageSource, /"dist:win": "[^"]*build-desktop-release\.mjs win"/);
+});
 
 test("CI skips documentation-only pushes and pull requests", () => {
   assert.equal(

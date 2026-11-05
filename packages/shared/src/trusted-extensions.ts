@@ -4,6 +4,8 @@
  * Plain data shared by the renderer, Electron main, and the Agent sidecar.
  */
 
+import type { PluginExtensionOperation } from "./plugin-extension-owner.js";
+
 /** `plugin` is the only source in v1.1: modules come from `contributes.agentExtensions`. */
 export type TrustedExtensionSource = "user" | "project" | "manual" | "plugin";
 
@@ -18,6 +20,9 @@ export type TrustedExtensionSpec = {
   source: TrustedExtensionSource;
   /** Directory the entry was discovered from (the extensions root). */
   root: string;
+  /** Filled only by the host's authorized plugin projection. */
+  ownerPluginId?: string;
+  ownerOperations?: PluginExtensionOperation[];
 };
 
 export type TrustedExtensionDiagnosticKind =

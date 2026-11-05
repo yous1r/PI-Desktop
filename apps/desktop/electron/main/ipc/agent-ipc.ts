@@ -314,7 +314,7 @@ export function registerAgentIpc({
         sidecar.clearProjectInstructionRoot(req.sessionId);
         sidecar.clearVendorAuthBindings(req.sessionId);
         await sidecar
-          .call("agent.disposeSession", { sessionId: req.sessionId })
+          .call("agent.disposeSession", { sessionId: req.sessionId, reason: "reconfigure" })
           .catch(() => undefined);
       }
       const refreshed = await host.call<{ session?: any }>("session.get", {

@@ -351,3 +351,11 @@ v1 交付顺序：打包 spike（E2E-245）、shared 协议类型，然后运行
 | v2 自定义条目是否持久化到 host-core 并参与压缩？ | 持久化；不进入压缩摘要 |
 | v3 是否把 pi CLI `settings.json` 的启用路径作为发现提示读取？ | 只读提示，永不写入 |
 | 扩展工具是否像插件工具一样按项目可选？ | §3.2 的范围是唯一门控 |
+
+## 15. 所属常驻服务
+
+插件扩展可以声明 `contributes.agentExtensionOperations`，并在有效回调内 await
+`ctx.owner.call`。附加上下文包含稳定的会话/turn 身份、独立的运行时代次和退休原因。
+Host 校验所属插件以及当前启动/会话范围；Plan/Goal 拒绝写操作，取消会收回下游 SDK
+权限。这不会放松现有的过期回调保护，也不会暴露任意 Host RPC。细节、上限和能力探测见
+[规格 17](/zh-CN/spec/07-plugins/17-owned-extension-services)。

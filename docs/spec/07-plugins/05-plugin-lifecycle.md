@@ -48,6 +48,15 @@ host invokes it only for an enabled plugin's declared OAuth provider during
 user sign-in or token refresh; it receives an abort signal for cancellation,
 unload, and timeout.
 
+`onAgentExtensionCall` is another operation callback, bound to an active owning
+extension invocation and limited to manifest-declared operations. Descendant SDK
+calls expire when it completes or is cancelled. Runtime retirement identifies
+`reconfigure`, `session-close`, or `app-quit`; it does not assert user-task
+completion. App quit gives extensions bounded graceful shutdown while their
+owner services and Host records remain available, before plugin teardown.
+Managed connection requests abort on unload, disable and credential revision
+change. See [spec 17](17-owned-extension-services.md).
+
 **Planned:** once the full lifecycle lands, hooks fire in this order:
 
 1. `onInstall` (once, only after a successful install)

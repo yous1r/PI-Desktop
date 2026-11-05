@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="pi-plugin-chrome" content="v2">
+  <title>ai-memory</title>
+  <style>
+    :root{color-scheme:light dark;font:14px/1.5 system-ui,sans-serif;background:Canvas;color:CanvasText}*{box-sizing:border-box}body{margin:0;padding:20px;max-width:960px}h1{font-size:24px;margin:0}h2{font-size:18px}h3{font-size:15px}p{max-width:78ch}section{border:1px solid color-mix(in srgb,CanvasText 20%,transparent);border-radius:10px;padding:16px;margin:18px 0}.row{display:flex;gap:12px;flex-wrap:wrap}.field{display:flex;flex-direction:column;gap:4px;flex:1;min-width:180px;margin:8px 0}input,select,textarea,button{font:inherit;color:inherit;background:Canvas;border:1px solid color-mix(in srgb,CanvasText 35%,transparent);border-radius:5px;padding:7px}button{cursor:pointer}button:disabled{opacity:.5;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid Highlight;outline-offset:2px}.check{display:block;margin:10px 0}.check input{margin-right:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;max-height:280px;overflow:auto;padding:12px;background:color-mix(in srgb,CanvasText 5%,Canvas)}#notice{min-height:24px;overflow-wrap:anywhere}.muted{opacity:.75}textarea{width:100%;min-height:72px}#project-path{overflow-wrap:anywhere}details{margin:10px 0}button,input,select,textarea{-webkit-app-region:no-drag}
+  </style>
+</head>
+<body>
+  <h1 data-i18n="title"></h1><p data-i18n="subtitle" class="muted"></p>
+  <div class="row"><button id="refresh" data-i18n="refresh"></button><button id="probe" data-i18n="probe"></button><button id="pause"></button><button id="export" data-i18n="export"></button></div>
+  <p id="notice" role="status" aria-live="polite"></p>
+  <section><h2 data-i18n="settings"></h2><label data-i18n="current"></label><p id="project-path"></p>
+    <form id="settings-form">
+      <label class="field"><span data-i18n="connection"></span><select id="connection" required></select></label><p class="muted" data-i18n="connectionHelp"></p>
+      <div class="row"><label class="field"><span data-i18n="workspace"></span><input id="workspace" required maxlength="128" pattern="[A-Za-z0-9][A-Za-z0-9._-]*"></label><label class="field"><span data-i18n="project"></span><input id="project" required maxlength="128" pattern="[A-Za-z0-9][A-Za-z0-9._-]*"></label></div>
+      <label class="field"><span data-i18n="mode"></span><select id="mode"><option value="coexist" data-i18n="coexist"></option><option value="managed" data-i18n="managed"></option></select></label><p data-i18n="modeHelp" class="muted"></p>
+      <label class="check"><input type="checkbox" id="capture"><span data-i18n="capture"></span></label>
+      <h3 data-i18n="policy"></h3><p class="muted" data-i18n="metadata"></p>
+      <div class="row"><label class="check"><input type="checkbox" id="prompts"><span data-i18n="prompts"></span></label><label class="check"><input type="checkbox" id="toolArguments"><span data-i18n="toolArguments"></span></label><label class="check"><input type="checkbox" id="toolResults"><span data-i18n="toolResults"></span></label><label class="check"><input type="checkbox" id="assistant"><span data-i18n="assistant"></span></label></div>
+      <label class="field"><span data-i18n="excludes"></span><textarea id="excludes" maxlength="25000"></textarea></label>
+      <div class="row"><button id="save" type="submit" data-i18n="save"></button><button id="remove" type="button" data-i18n="remove"></button></div>
+    </form>
+  </section>
+  <section><h2 data-i18n="diagnostics"></h2><p id="state"></p><h3 data-i18n="capability"></h3><pre id="capabilities"></pre><p class="muted" data-i18n="updateHelp"></p><h3 data-i18n="sources"></h3><pre id="sources"></pre><h3 data-i18n="queue"></h3><p id="queue-count"></p><pre id="queue"></pre>
+    <details><summary data-i18n="recovery"></summary><button id="recovery" data-i18n="recovery"></button><pre id="recovery-content"></pre></details>
+    <label class="field"><span data-i18n="eventId"></span><input id="event-id" maxlength="200"></label><div class="row"><button id="reconcile" data-i18n="reconcile"></button><button id="retry" data-i18n="retry"></button><button id="delivered" data-i18n="delivered"></button><button id="discard" data-i18n="discard"></button></div>
+  </section>
+  <script type="module" src="panel.js"></script>
+</body></html>

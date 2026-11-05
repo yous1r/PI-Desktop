@@ -1,0 +1,142 @@
+{
+  "release": "3.3.3",
+  "binarySha256": "0fcf2490d707041a503b2c92876640b7706ef464156e2135a84b719688a541ff",
+  "platform": "win32",
+  "implementation": "Production V3Adapter, McpTransport, Outbox, Journal, SessionCoordinator, Mutations; no injected catalog",
+  "observations": [
+    {
+      "kind": "session-start",
+      "title": "native-4e15f8f8bb8769d5a2706ba98690331c525e9bd196d841982d5a8c9abbc55682",
+      "body": "",
+      "importance": 7,
+      "extension": "pi-desktop-memory",
+      "source_event": "native-4e15f8f8bb8769d5a2706ba98690331c525e9bd196d841982d5a8c9abbc55682"
+    },
+    {
+      "kind": "other",
+      "title": "PI Desktop session_start 1/1",
+      "body": "[pi-memory:4e15f8f8bb8769d5a2706ba98690331c525e9bd196d841982d5a8c9abbc55682] part 1/1\n{\"schemaVersion\":1,\"event\":\"session_start\",\"runtimeId\":\"synthetic-runtime\",\"turnId\":\"synthetic-turn\",\"sequence\":1}\n[/pi-memory]",
+      "importance": 3,
+      "extension": "pi-desktop-memory",
+      "source_event": "detail-4e15f8f8bb8769d5a2706ba98690331c525e9bd196d841982d5a8c9abbc55682-0"
+    },
+    {
+      "kind": "user-prompt",
+      "title": "Synthetic project request",
+      "body": "Synthetic project request",
+      "importance": 8,
+      "extension": "pi-desktop-memory",
+      "source_event": "native-870c56e4605e3cee1e5814b2104435c5263f1ee5b867b54b5b9918373aafee9d"
+    },
+    {
+      "kind": "other",
+      "title": "PI Desktop prompt 1/1",
+      "body": "[pi-memory:870c56e4605e3cee1e5814b2104435c5263f1ee5b867b54b5b9918373aafee9d] part 1/1\n{\"schemaVersion\":1,\"event\":\"prompt\",\"runtimeId\":\"synthetic-runtime\",\"turnId\":\"synthetic-turn\",\"sequence\":2,\"prompt\":\"Synthetic project request\"}\n[/pi-memory]",
+      "importance": 3,
+      "extension": "pi-desktop-memory",
+      "source_event": "detail-870c56e4605e3cee1e5814b2104435c5263f1ee5b867b54b5b9918373aafee9d-0"
+    },
+    {
+      "kind": "pre-tool-use",
+      "title": "tool non-file",
+      "body": "tool_family: non-file\ntool_call_id: synthetic-call",
+      "importance": 5,
+      "extension": "pi-desktop-memory",
+      "source_event": "native-d71c55a90fb7e3fede4c8ac441c818dc3b54cd959ce23b7e321fcbbe95d0b34b"
+    },
+    {
+      "kind": "other",
+      "title": "PI Desktop tool_call 1/1",
+      "body": "[pi-memory:d71c55a90fb7e3fede4c8ac441c818dc3b54cd959ce23b7e321fcbbe95d0b34b] part 1/1\n{\"schemaVersion\":1,\"event\":\"tool_call\",\"runtimeId\":\"synthetic-runtime\",\"turnId\":\"synthetic-turn\",\"sequence\":3,\"toolName\":\"Bash\",\"toolCallId\":\"synthetic-call\",\"args\":{\"command\":\"synthetic argument value\"}}\n[/pi-memory]",
+      "importance": 3,
+      "extension": "pi-desktop-memory",
+      "source_event": "detail-d71c55a90fb7e3fede4c8ac441c818dc3b54cd959ce23b7e321fcbbe95d0b34b-0"
+    },
+    {
+      "kind": "post-tool-use",
+      "title": "tool non-file",
+      "body": "tool_family: non-file\ntool_call_id: synthetic-call\noutcome: error\n---\nSynthetic failed result",
+      "importance": 5,
+      "extension": "pi-desktop-memory",
+      "source_event": "native-635296608bca3a6e9b0d0461dc644c8bf29fc75d575460d86f74bcc707b00ca6"
+    },
+    {
+      "kind": "other",
+      "title": "PI Desktop tool_result 1/1",
+      "body": "[pi-memory:635296608bca3a6e9b0d0461dc644c8bf29fc75d575460d86f74bcc707b00ca6] part 1/1\n{\"schemaVersion\":1,\"event\":\"tool_result\",\"runtimeId\":\"synthetic-runtime\",\"turnId\":\"synthetic-turn\",\"sequence\":4,\"toolName\":\"Bash\",\"toolCallId\":\"synthetic-call\",\"isError\":true,\"output\":\"Synthetic failed result\"}\n[/pi-memory]",
+      "importance": 3,
+      "extension": "pi-desktop-memory",
+      "source_event": "detail-635296608bca3a6e9b0d0461dc644c8bf29fc75d575460d86f74bcc707b00ca6-0"
+    },
+    {
+      "kind": "stop",
+      "title": "native-e8b68c88352f23003ffaaff892ef4f2a703df7a98489933cfdbde293aa94e730",
+      "body": "",
+      "importance": 6,
+      "extension": "pi-desktop-memory",
+      "source_event": "native-e8b68c88352f23003ffaaff892ef4f2a703df7a98489933cfdbde293aa94e730"
+    },
+    {
+      "kind": "other",
+      "title": "PI Desktop agent_end 1/4",
+      "body": "[pi-memory:e8b68c88352f23003ffaaff892ef4f2a703df7a98489933cfdbde293aa94e730] part 1/4\n{\"schemaVersion\":1,\"event\":\"agent_end\",\"runtimeId\":\"synthetic-runtime\",\"turnId\":\"synthetic-turn\",\"sequence\":5,\"cancelled\":true,\"response\":\"Synthetic assistant 边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边\n[/pi-memory]",
+      "importance": 3,
+      "extension": "pi-desktop-memory",
+      "source_event": "detail-e8b68c88352f23003ffaaff892ef4f2a703df7a98489933cfdbde293aa94e730-0"
+    },
+    {
+      "kind": "other",
+      "title": "PI Desktop agent_end 2/4",
+      "body": "[pi-memory:e8b68c88352f23003ffaaff892ef4f2a703df7a98489933cfdbde293aa94e730] part 2/4\n界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边\n[/pi-memory]",
+      "importance": 3,
+      "extension": "pi-desktop-memory",
+      "source_event": "detail-e8b68c88352f23003ffaaff892ef4f2a703df7a98489933cfdbde293aa94e730-1"
+    },
+    {
+      "kind": "other",
+      "title": "PI Desktop agent_end 3/4",
+      "body": "[pi-memory:e8b68c88352f23003ffaaff892ef4f2a703df7a98489933cfdbde293aa94e730] part 3/4\n界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边\n[/pi-memory]",
+      "importance": 3,
+      "extension": "pi-desktop-memory",
+      "source_event": "detail-e8b68c88352f23003ffaaff892ef4f2a703df7a98489933cfdbde293aa94e730-2"
+    },
+    {
+      "kind": "other",
+      "title": "PI Desktop agent_end 4/4",
+      "body": "[pi-memory:e8b68c88352f23003ffaaff892ef4f2a703df7a98489933cfdbde293aa94e730] part 4/4\n界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界边界 END-OF-ASSISTANT\"}\n[/pi-memory]",
+      "importance": 3,
+      "extension": "pi-desktop-memory",
+      "source_event": "detail-e8b68c88352f23003ffaaff892ef4f2a703df7a98489933cfdbde293aa94e730-3"
+    },
+    {
+      "kind": "other",
+      "title": "PI Desktop compact 1/1",
+      "body": "[pi-memory:662ff40cfa1a60834fdbf709eb34a20128601a940800ac0fd1c560d4889eeaba] part 1/1\n{\"schemaVersion\":1,\"event\":\"compact\",\"runtimeId\":\"synthetic-runtime\",\"turnId\":\"synthetic-turn\",\"sequence\":6,\"reason\":\"synthetic compaction\"}\n[/pi-memory]",
+      "importance": 3,
+      "extension": "pi-desktop-memory",
+      "source_event": "detail-662ff40cfa1a60834fdbf709eb34a20128601a940800ac0fd1c560d4889eeaba-0"
+    },
+    {
+      "kind": "other",
+      "title": "PI Desktop retire 1/1",
+      "body": "[pi-memory:89006cf4740d3977e59e33439205ae4d746903115691cf9d3926dee1fbc1ec42] part 1/1\n{\"schemaVersion\":1,\"event\":\"retire\",\"runtimeId\":\"synthetic-runtime\",\"turnId\":\"synthetic-turn\",\"sequence\":7,\"reason\":\"reconfigure\"}\n[/pi-memory]",
+      "importance": 3,
+      "extension": "pi-desktop-memory",
+      "source_event": "detail-89006cf4740d3977e59e33439205ae4d746903115691cf9d3926dee1fbc1ec42-0"
+    }
+  ],
+  "assertions": [
+    "guarded create/read/replace/conflict/delete",
+    "explicit no-synthesis query",
+    "202 admission retains queue and blocks next event",
+    "all native and detail observations uniquely reconciled",
+    "tool arguments/results and long Unicode assistant text persisted",
+    "native tool error preserved",
+    "runtime retirement leaves session open",
+    "session-start does not consume handoff",
+    "immutable ingest-key deduplication across restart",
+    "hook response loss recovers without duplicate event",
+    "exact accept persisted before return; replay served locally",
+    "lost handoff response stays uncertain; never blindly retried"
+  ]
+}

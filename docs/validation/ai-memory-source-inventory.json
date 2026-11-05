@@ -1,0 +1,838 @@
+{
+  "schemaVersion": 1,
+  "baseMain": "3cb4710cf95db2b80a8fdca8ac8bc55ab3135433",
+  "note": "Task source changes only; generated bundles/package recorded separately. Validation reports excluded to avoid recursive hashes. No commit created.",
+  "sha256": "df4c78ea7a21147de6c71fb80bd83e960d5d699e6308ae4bcfcbca290e79454b",
+  "files": [
+    {
+      "path": ".github/workflows/ai-memory-compatibility.yml",
+      "bytes": 3784,
+      "sha256": "fa7dde7760ffb1ef8e6650d20c61b74420b0fff3ed9ea3f6b3d0e3a57ce306c8"
+    },
+    {
+      "path": ".github/workflows/pr-package.yml",
+      "bytes": 4744,
+      "sha256": "0fb2300480718f5ba6f5544f761a1b1925ee0894b3f82350941f812183b23cb8"
+    },
+    {
+      "path": "Cargo.lock",
+      "bytes": 56946,
+      "sha256": "3fe5318d2b3db58aaaa5da182a632ac51087bbfb43949d839aacf8c96c85e8d1"
+    },
+    {
+      "path": "Cargo.toml",
+      "bytes": 152,
+      "sha256": "f83a9cff32c1f8e5a1657730e88a9793839ca2e7926544acb1b9f2613d140d7b"
+    },
+    {
+      "path": "apps/desktop/electron/main/agent-sidecar.ts",
+      "bytes": 5654,
+      "sha256": "52354338fa5f1e94b5999fe922fb95d31463e7f301d37244db99e7c3bd21393f"
+    },
+    {
+      "path": "apps/desktop/electron/main/bootstrap/shutdown.ts",
+      "bytes": 11807,
+      "sha256": "6c186bc4786ccc790086e986e818c0cfebf8a3bbb5c6d142d0c9e3fbfcd777fb"
+    },
+    {
+      "path": "apps/desktop/electron/main/ipc/agent-ipc.ts",
+      "bytes": 38015,
+      "sha256": "5d16ef94e0e630b4f6f38e8607513aa4536c51e44682228770daf9dd0ea006b1"
+    },
+    {
+      "path": "apps/desktop/electron/main/ipc/plugin-ipc.ts",
+      "bytes": 17685,
+      "sha256": "227f13bce3851eefa19119f00ced502fc279433cec08dc39c407aa8b935a9901"
+    },
+    {
+      "path": "apps/desktop/electron/main/ipc/session-ipc.ts",
+      "bytes": 32327,
+      "sha256": "8765c0ff5754eb2571a6cf8bc2c57e1a854fa735f193f59fe05dace156471300"
+    },
+    {
+      "path": "apps/desktop/electron/main/mcp-control.ts",
+      "bytes": 53289,
+      "sha256": "7e1a978e1252a6acd75f5429057cbb2b4c667df9fa3ec37f5278e38a089de306"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-connection-network.ts",
+      "bytes": 690,
+      "sha256": "ef4f4b54538d2edb50ce7e4fe0ffcfabc2be508262135cdd708c7d621d01be01"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-connection-policy.ts",
+      "bytes": 5255,
+      "sha256": "584d5596aab8e99c1b8370170a04da6fafe1ed231767cb72f32293f6d4c93502"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-connection-transport.ts",
+      "bytes": 5366,
+      "sha256": "bb27804552cbfacf013860f0b08bb1af43cd074f7bc1d082ec62b13976a55ed4"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-connections.ts",
+      "bytes": 13514,
+      "sha256": "bcac0c92faef263927c5c5e0c7787a14b37059410f0b8558577a9535bb2ca17b"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-extension-dispatch.ts",
+      "bytes": 1936,
+      "sha256": "048e6e8405cb966da7d5f283a398d8fc843dc79a5df6c104e22a9af93de23fb3"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-extension-launch-bindings.ts",
+      "bytes": 5996,
+      "sha256": "a3bf738d84cbe6d6ce2befb1fcd4a370e624553169aac06cebf3ae607d5fa4a1"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-extension-owner-bridge.ts",
+      "bytes": 4580,
+      "sha256": "4033b6ed0eabd1f3a3858d8fab9c19a113980c5faa1d96b1b8a3482b2d641821"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-extension-owner-broker.ts",
+      "bytes": 13216,
+      "sha256": "32cc7c1b9daa7f28d2f2c144c2745f2de3382d1786357de08b641d43630fa6d1"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-host-process.mjs",
+      "bytes": 31220,
+      "sha256": "d7669839314e57f251f00883e7578ed5711eaa5be8bad1bb4847bca853b74b11"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-owner-files.ts",
+      "bytes": 5026,
+      "sha256": "3a9c08820a75547a0275e6799ace6f7b8ed8df9d35daee1199ccbbe14a6446cf"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-runtime.ts",
+      "bytes": 255730,
+      "sha256": "535329e8d7e4352ddf9d3d0810c807a0dea3446cde8deee5840aa42548b3e182"
+    },
+    {
+      "path": "apps/desktop/electron/main/runtime/session-launch.ts",
+      "bytes": 33367,
+      "sha256": "8a430877fa1e1206be5455f8a4444e5d9733b91d17e77f495795cdc794cd9744"
+    },
+    {
+      "path": "apps/desktop/electron/main/runtime/sidecar.ts",
+      "bytes": 28307,
+      "sha256": "c4adf494c9b933ea67d57a802bd7e45e5b69be4648ca1c723aba4e1fdcd8ad13"
+    },
+    {
+      "path": "apps/desktop/electron/main/services/plugin-services.ts",
+      "bytes": 35676,
+      "sha256": "51c08d4659f660907494e59db51e2b79e08e189e239f6a1ffc8d5f465bc300a7"
+    },
+    {
+      "path": "apps/desktop/package.json",
+      "bytes": 9120,
+      "sha256": "b806a357a3348f5b147c124a7ee0e61b5a859dbb4665629c29770dc16ac020e7"
+    },
+    {
+      "path": "apps/desktop/src/components/plugins/PluginSettingsSheet.tsx",
+      "bytes": 11237,
+      "sha256": "5bb6c7351a5b999667a88197ee3133587034e85ab094136b06853dc465c8a5da"
+    },
+    {
+      "path": "apps/desktop/src/features/plugins/InstalledPluginsPanel.tsx",
+      "bytes": 15144,
+      "sha256": "15497412ed69a4370c3d9d36317b37f76764cdf411714063539868cf82b5810f"
+    },
+    {
+      "path": "apps/desktop/src/features/plugins/model.ts",
+      "bytes": 8363,
+      "sha256": "e4f215c640404e49e7f2e3228b5fa4eee7ab0fc1ccf5750ad722ac7b200a457c"
+    },
+    {
+      "path": "apps/desktop/src/features/settings/PluginConnectionsSection.tsx",
+      "bytes": 26901,
+      "sha256": "8e037374bd43e4908dcd760e81c2656d651aeb80fa45587143b20adb364df2db"
+    },
+    {
+      "path": "apps/desktop/src/features/settings/plugin-connections-form.ts",
+      "bytes": 9416,
+      "sha256": "3d15af2ac4ad7dea889a74206eeff9684bd5040435a3d7a4e70b679c284ef1e1"
+    },
+    {
+      "path": "apps/desktop/test/ai-memory-desktop.e2e.mjs",
+      "bytes": 14335,
+      "sha256": "1a1b43859609c3c2c073d397b99556fb05247eb91ccb48a56c4ce05656c69dc9"
+    },
+    {
+      "path": "apps/desktop/test/ai-memory-plugin-flow.test.mjs",
+      "bytes": 19021,
+      "sha256": "51f07358a0b4cff293e1b669768f6864c42ad2496eb8e4f827b771547a3b510e"
+    },
+    {
+      "path": "apps/desktop/test/ci-workflow.test.mjs",
+      "bytes": 24100,
+      "sha256": "5cf4a77ddcd9fa96c75d7431029d3bd6222ca9413f605bbb9a407e6dbd61ada3"
+    },
+    {
+      "path": "apps/desktop/test/helpers/ai-memory-candidate-sidecar.mjs",
+      "bytes": 2923,
+      "sha256": "4db8d5c98253d8eb6f9f4758100997923edbc8f90fa3f660e96045a16fb48c87"
+    },
+    {
+      "path": "apps/desktop/test/helpers/ai-memory-desktop-fixture.mjs",
+      "bytes": 8606,
+      "sha256": "d9c24839c9e276b52b8b7d50b76edd24f6b4cac0f81a34f92051ec986fff05d5"
+    },
+    {
+      "path": "apps/desktop/test/helpers/ai-memory-upstream.mjs",
+      "bytes": 5667,
+      "sha256": "717b7145f345381e1cc58af9debd51ba3da99899619b38cab4810e9f1fb9e53c"
+    },
+    {
+      "path": "apps/desktop/test/helpers/owner-runtime-import-hooks.mjs",
+      "bytes": 564,
+      "sha256": "2e96147278b1dd13baec3c4149e505f22eb9cc97706f959c567218a94c225ff4"
+    },
+    {
+      "path": "apps/desktop/test/plugin-connection-transport.test.mjs",
+      "bytes": 4547,
+      "sha256": "52d8db19ca2c1369695dfaaabbc4d34eb972dfecca13caffeb9ed3fb5fc7d5c7"
+    },
+    {
+      "path": "apps/desktop/test/plugin-connections-form.test.mjs",
+      "bytes": 8826,
+      "sha256": "bcf35528d17065626d0003482c487a8304ad73f4e9e11cac10d4016756fcf3b4"
+    },
+    {
+      "path": "apps/desktop/test/plugin-connections-user-path.test.mjs",
+      "bytes": 28504,
+      "sha256": "ea768f983f498fd8a8b210d90e9d9869458bf4fa95b1c244699a571bc60d0c7b"
+    },
+    {
+      "path": "apps/desktop/test/plugin-connections.test.mjs",
+      "bytes": 9692,
+      "sha256": "98cab03aae82df8ae78fc901af0ce03b19e4f868bd4b89ef09f0c2e61ad08472"
+    },
+    {
+      "path": "apps/desktop/test/plugin-extension-owner-broker.test.mjs",
+      "bytes": 8769,
+      "sha256": "31b48a124d2dfa408503266ab6b87dddc921bac64e0fbc948e16652d37ecbef3"
+    },
+    {
+      "path": "apps/desktop/test/plugin-extension-owner-flow.test.mjs",
+      "bytes": 12997,
+      "sha256": "fa148036585377324ed9209f46024935e518cd3a61b4584679d0af916f19b33d"
+    },
+    {
+      "path": "apps/desktop/test/plugin-extension-owner-ipc.test.mjs",
+      "bytes": 6047,
+      "sha256": "847619970435ec977f2132c5032951d77d07043010226fa80679bf1a26d28453"
+    },
+    {
+      "path": "apps/desktop/test/plugin-extension-owner-main.test.mjs",
+      "bytes": 17691,
+      "sha256": "58be840810e14e2af151446be1f938beaea1f6dfd21c85485d640af70fd79b6e"
+    },
+    {
+      "path": "apps/desktop/test/plugin-extension-owner-process.test.mjs",
+      "bytes": 7677,
+      "sha256": "ac315e4a67a54274669b4929bf9db007e466632788c0af497a10eeb2e68e0fd8"
+    },
+    {
+      "path": "apps/desktop/test/plugin-owner-files.test.mjs",
+      "bytes": 4803,
+      "sha256": "0407bf7ed9922b890a6be450846ef48a85c7a53cb83be552de34e7fbd0fd68e0"
+    },
+    {
+      "path": "apps/desktop/test/shutdown-regenerate-persistence.test.mjs",
+      "bytes": 9141,
+      "sha256": "51012071a4f10874069aa5044c0d3e68571e655f8b331bd14634427f50f7316a"
+    },
+    {
+      "path": "apps/pi-host/package.json",
+      "bytes": 1162,
+      "sha256": "02b4f02c708066a2154aba39814cb928c8ceb4c083d14e88975b2d94e713416a"
+    },
+    {
+      "path": "docs/adr/plugin-agent-extension-owner-calls.md",
+      "bytes": 2555,
+      "sha256": "c5fd6f97d0243ecbe6b317e5e8b2026adafc3aa23381a3e86bbedf0dd4dcb51e"
+    },
+    {
+      "path": "docs/adr/plugin-managed-remote-connections.md",
+      "bytes": 2920,
+      "sha256": "124b55636131dc9913e5fc907a906b79132b03ae71410a54291b599ab15c82a0"
+    },
+    {
+      "path": "docs/package.json",
+      "bytes": 408,
+      "sha256": "9bbb630f3e9aa285ff74e896d11034cf7f5142381ec111ec70ebe6f57ba31fa0"
+    },
+    {
+      "path": "docs/plugin-development.md",
+      "bytes": 66481,
+      "sha256": "71deb45ef36a0f671732fd0ebc1fb44742a4141ea2a6c984458d92b8cef2aada"
+    },
+    {
+      "path": "docs/spec/06-delivery/04-e2e-test-plan.md",
+      "bytes": 1280403,
+      "sha256": "eca83d1c6e4f56a3a3a6caa1e81f973217dd0d2786accd924a69d024eae9cb46"
+    },
+    {
+      "path": "docs/spec/06-delivery/06-release-runbook.md",
+      "bytes": 39255,
+      "sha256": "5363a320ab78e60ea2cff8f1bece1e85642c4b857c19047ccd71ef413ffd2f19"
+    },
+    {
+      "path": "docs/spec/07-plugins/02-plugin-manifest-schema.md",
+      "bytes": 30793,
+      "sha256": "2f904ab2034c4f335a7e4f2c12ec93c08eb4cea5a864354d8c0e72861b039a03"
+    },
+    {
+      "path": "docs/spec/07-plugins/03-plugin-api.md",
+      "bytes": 77946,
+      "sha256": "a1536a1106bf76d0eb6c7f07e39f2b5b3efa5e030b40b247b240bf3b60844e31"
+    },
+    {
+      "path": "docs/spec/07-plugins/05-plugin-lifecycle.md",
+      "bytes": 9441,
+      "sha256": "5c3f4208d9b9a138792c4e2aa4ebd3a76beaff1c93c155066ba778e7a1efcb0b"
+    },
+    {
+      "path": "docs/spec/07-plugins/13-plugin-permissions-matrix.md",
+      "bytes": 23806,
+      "sha256": "9ff7bca12c38f6b14f307ba04407fbc3e2bf465315a368c1af5e49ae4936fff4"
+    },
+    {
+      "path": "docs/spec/07-plugins/16-trusted-extensions.md",
+      "bytes": 35884,
+      "sha256": "3cbde3278971172e2c7f84a0d473c9a542a266bba23234c0f94283406860eacc"
+    },
+    {
+      "path": "docs/spec/07-plugins/17-owned-extension-services.md",
+      "bytes": 8720,
+      "sha256": "ee5f3aa6e87780936f5c96d973ee36b65fe5f8b478868101cd1c2bb6008cfa68"
+    },
+    {
+      "path": "docs/spec/07-plugins/README.md",
+      "bytes": 3314,
+      "sha256": "228281fa0e15251645900ac07df71f40b37afbdeb9aaac513395511bffa8eebe"
+    },
+    {
+      "path": "docs/zh-CN/spec/06-delivery/06-release-runbook.md",
+      "bytes": 37082,
+      "sha256": "5c56bf3664e954860f9251cd3321769095e53e19120c8dc7bb141ed96ab9a30f"
+    },
+    {
+      "path": "examples/plugins/ai-memory/.gitignore",
+      "bytes": 29,
+      "sha256": "4e5cc97da8ae96e8906947cf83ec704c2db121c09b4c2f0ef0344bc9d2330721"
+    },
+    {
+      "path": "examples/plugins/ai-memory/CHANGELOG.md",
+      "bytes": 1498,
+      "sha256": "0e8dec0939b6445980fd689c183c301a5875645679a063aa2bd5452fc81355b6"
+    },
+    {
+      "path": "examples/plugins/ai-memory/README.md",
+      "bytes": 5054,
+      "sha256": "c21f0ca4b164334be077e5de38353b1d2ba4d3b538a6e1d20db7833c98317d87"
+    },
+    {
+      "path": "examples/plugins/ai-memory/compatibility/supported-versions.json",
+      "bytes": 795,
+      "sha256": "cb075d5e7cf6d1b658dd46363cb9074d4f63a6de468740d38bb9072049b37138"
+    },
+    {
+      "path": "examples/plugins/ai-memory/compatibility/verified-contract.md",
+      "bytes": 5775,
+      "sha256": "ea0d0d8faa74d170aac34610cdead60fb57ec81a14274cbf9a7a37591a34a66b"
+    },
+    {
+      "path": "examples/plugins/ai-memory/docs/architecture.md",
+      "bytes": 5521,
+      "sha256": "44f8b1db05a7ba28a26a1369f0a09797e5e159af2d7c230a9a22b6b4dcd8e1cc"
+    },
+    {
+      "path": "examples/plugins/ai-memory/docs/compatibility.md",
+      "bytes": 6935,
+      "sha256": "4d4108e45e5e49d0a96e64bf6ba5b2ed4671c5014e9971c380ae310038ea94d7"
+    },
+    {
+      "path": "examples/plugins/ai-memory/docs/operations.md",
+      "bytes": 8942,
+      "sha256": "608f213d5225c39e6a0ffc6671612b270ae74d25bf5a60eaeff3c2186350754c"
+    },
+    {
+      "path": "examples/plugins/ai-memory/docs/requirements.md",
+      "bytes": 6562,
+      "sha256": "719293644853351b0a5622b47307b7008c30b49b708e54242791d3c661601370"
+    },
+    {
+      "path": "examples/plugins/ai-memory/manifest.json",
+      "bytes": 1695,
+      "sha256": "40becd90a008d41d9b14b709c07009abce2bf832be2051314635988924ac11a3"
+    },
+    {
+      "path": "examples/plugins/ai-memory/package.json",
+      "bytes": 523,
+      "sha256": "e85ee78b8d2a9ffd0263bfe91e961b8ae9e6ed9e6f1a74ad3c1b11f53eb7b283"
+    },
+    {
+      "path": "examples/plugins/ai-memory/scripts/build.mjs",
+      "bytes": 1733,
+      "sha256": "ce8dbfd5f379e13a42b016c5db51ade89c77683b2b1df052d2cc5ad64f28e9de"
+    },
+    {
+      "path": "examples/plugins/ai-memory/scripts/check-compatibility.mjs",
+      "bytes": 2187,
+      "sha256": "9c070ae00bb497f0545a0eb1ce0e78829468b99a0c9dacb9b1aa08e462e78b03"
+    },
+    {
+      "path": "examples/plugins/ai-memory/scripts/dependencies.mjs",
+      "bytes": 1005,
+      "sha256": "f0d8f2c082bcee3c9cc6d224c281da144f6a363fbefb8435e53582d2a04500e4"
+    },
+    {
+      "path": "examples/plugins/ai-memory/scripts/import-contract-fixtures.mjs",
+      "bytes": 3578,
+      "sha256": "543a1a381407fea805802786b5a6c1263fb52eb1bcee69389a4d26687aa4458a"
+    },
+    {
+      "path": "examples/plugins/ai-memory/scripts/import-plugin-evidence.mjs",
+      "bytes": 2325,
+      "sha256": "3acfb4c8098d3ca7686aae04dc8fb6e66280df742a50ba014153a6c867e56f5b"
+    },
+    {
+      "path": "examples/plugins/ai-memory/scripts/test-panel.mjs",
+      "bytes": 1500,
+      "sha256": "688268ee800884ceea397406507d2c1f2e5928e739798df1fe4c1afd0d8f62c6"
+    },
+    {
+      "path": "examples/plugins/ai-memory/scripts/test.mjs",
+      "bytes": 1418,
+      "sha256": "a8206eecec8d8a68cca387824111d9d1d280e9f10789eec1a05fe674cbe99084"
+    },
+    {
+      "path": "examples/plugins/ai-memory/scripts/typecheck.mjs",
+      "bytes": 860,
+      "sha256": "734b0aa2481de90c7b0b487003f8debbe3953ae657adaae2b578fbe835c99d65"
+    },
+    {
+      "path": "examples/plugins/ai-memory/skills/memory.md",
+      "bytes": 1440,
+      "sha256": "9e782f0979a4f9ce48bf075afa3863254c1d4f4d29350044f1b0b42e617b21cb"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/capture/outbox.ts",
+      "bytes": 7492,
+      "sha256": "2f93673b6463bea21fbef97add851bbc57603f67f76aab1a1c6ab76579b37ed0"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/capture/policy.ts",
+      "bytes": 5493,
+      "sha256": "d7dd4fc8957c041e4ac4c2f1b5ebf2d37a56ca2ee8e827581340cb7c889e24f5"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/contracts.ts",
+      "bytes": 6599,
+      "sha256": "7f4b09aa4ca5dac2f28931a08a7a2f535200036f579e59f956a42b7c383c6db3"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/extension.ts",
+      "bytes": 6501,
+      "sha256": "da38e15f9b550f005e0216003103000bb04b5fd58a6ba47b7b329c3eaa9cd687"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/i18n/messages.ts",
+      "bytes": 5757,
+      "sha256": "88bba54ebf434298fec52fa5fcace3d7d79b2091eaf4975d2068be054698bb27"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/main.ts",
+      "bytes": 2848,
+      "sha256": "a3bb8a2da2213542b73e8bd771152e5568f9612fab5160a5d1fa9946e2fd85b0"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/project-identity.ts",
+      "bytes": 623,
+      "sha256": "865582de5b976175fc085b8b5d651df16df0f8c1ba86ba12ef0ccbfe19ca0410"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/recall/handoff.ts",
+      "bytes": 6378,
+      "sha256": "0d48e648eb94fe91634399bb80e72dc3d1f77dc0f1c40f7dfcb3483c0929ea78"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/recall/retrieval.ts",
+      "bytes": 4680,
+      "sha256": "6ad65590b80d8094b8be763b998a0eaed7472e2cb0244c84eb6a51c333e8c73a"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/service/memory-service.ts",
+      "bytes": 17104,
+      "sha256": "ac1abc47385f052a58f3d869d2faa9c0024012530fa5ad2440964100990f1d70"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/service/project-binding.ts",
+      "bytes": 5396,
+      "sha256": "12bc068dc1f213fdd16faadd2fed64ab3e5cc09c0cd3f7f9c781755a29d06e59"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/service/session-coordinator.ts",
+      "bytes": 4309,
+      "sha256": "38d80dd0a45154b865ccfaff07930b0076f7271782545bcf240e8c1c74ca7c70"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/storage/atomic-file.ts",
+      "bytes": 821,
+      "sha256": "41895706dd29c64d6cee0d390c1e1f23985ca9eed584b5a095140fbfb126169a"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/storage/journal.ts",
+      "bytes": 9762,
+      "sha256": "8ce4988c8b292cc5a68ac1be6813db082ebea82d3ed38fb81b1976999a01ea59"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/tools/managed.ts",
+      "bytes": 5017,
+      "sha256": "995f5f8c0905ce2aed38cabfe9c99e165e8521d1e259bb3f1d72f23031f900e5"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/ui/index.html",
+      "bytes": 4497,
+      "sha256": "14e99d8135d8e2f7c37500635707678259db9a12bcd1112675b4eded75eef786"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/ui/panel.ts",
+      "bytes": 7744,
+      "sha256": "64523a6a7bab8c31c976456a628d578846ee4e8fd3d7edb54e8b61f95d1da080"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/upstream/adapters/v3.ts",
+      "bytes": 8489,
+      "sha256": "542f9e9679fe56cc7a57839524b1798ae00cbf2ca7aa225baa52c2b7a664d4d2"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/upstream/capabilities.ts",
+      "bytes": 5879,
+      "sha256": "6da6f168c9353e30aa5a40f1139b2c35b4b97315911a9aa581fe2aa5ad49f76b"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/upstream/errors.ts",
+      "bytes": 410,
+      "sha256": "67aa590554b85341bc9cd984224779ff102a17c70e06b56882a9483bc44bdb5f"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/upstream/hook.ts",
+      "bytes": 3182,
+      "sha256": "8e78fde3d46f872815a1aa3749a2e51918dcadc71376e4fb78f4b775119748d9"
+    },
+    {
+      "path": "examples/plugins/ai-memory/src/upstream/transport.ts",
+      "bytes": 6556,
+      "sha256": "3e2b2d81b13b4c35b1390b0dbbfd4b058d7d0a597c89ecc5efcf8a6c7f3f5670"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/contract/binary-fixtures.test.ts",
+      "bytes": 4950,
+      "sha256": "c89ac3bc0fe6ebf2dbb58e79c5fdb5dde6d0de66d69f8d19fd0bf84b999bfd9e"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/contract/upstream.test.ts",
+      "bytes": 5695,
+      "sha256": "d253303fc1940669845b7d24a65ec25a67528d099c8fa4fcedb67ca23f2744b3"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/e2e/panel-preload.cjs",
+      "bytes": 227,
+      "sha256": "e118b0fd8cb9bef4a10cab63c9fc815389f6c25ab75cc4d180c14c39e5b629de"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/e2e/panel.cjs",
+      "bytes": 5116,
+      "sha256": "d9681575c2e4429036775be6d769f7b6781e0923b5ba28d6b594adbed1b32b62"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/fixtures/upstream/checksums.json",
+      "bytes": 1176,
+      "sha256": "28f697d2b6cfa5ecd2fcedd30c3f18bdbd91f78f04740a2a5a6bb7a4a272de61"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/fixtures/upstream/v3-all-tools.json",
+      "bytes": 96368,
+      "sha256": "eaf4e6e436921d14f53e3c7e6936ad27dd4b9b9e1e3a900e55b0a3b6400c6ce6"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/fixtures/upstream/v3.3.2-binary.json",
+      "bytes": 43530,
+      "sha256": "e41a1a17de4313a303c76156ed08befcbbea946d27c9ea641f7de5a0ed159561"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/fixtures/upstream/v3.3.2-plugin.json",
+      "bytes": 12782,
+      "sha256": "1cd1ca0a0cc56d632880da46ec0d8a9e433fefd47de6645d83d9b1d8a3aeb7fe"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/fixtures/upstream/v3.3.2.json",
+      "bytes": 3597,
+      "sha256": "23402497f8e13de3ef3c6e4b94386c889d1feaec197ff0592a06a05b0c5ea47d"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/fixtures/upstream/v3.3.3-binary.json",
+      "bytes": 43532,
+      "sha256": "df65ed21bcb063fd4f8ed1823ed98f4b8b794f32030b7e4c1962ecfcc95517de"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/fixtures/upstream/v3.3.3-plugin.json",
+      "bytes": 12782,
+      "sha256": "4fc2b4c75612e254b4dafde285c86e7e462da1804ed70e9231263c2847369e8e"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/helpers.ts",
+      "bytes": 8335,
+      "sha256": "c0804a53a78a339579c1692273368c149b307cd8fbee90886c401272adb97b9d"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/integration/delivery.test.ts",
+      "bytes": 5482,
+      "sha256": "5e6863d5c7f6d3d0e9fbb0b2922d203141dbb1d76e8565c350d0c164dfd30e39"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/integration/extension.test.ts",
+      "bytes": 5504,
+      "sha256": "0c2ab3b976f2db7f760bd05efee2af5d7bf32699e59b1cb66793197a7ff39a04"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/integration/mutation-boundaries.test.ts",
+      "bytes": 2842,
+      "sha256": "9551a131bff49448390b3cdbe6e09f2d068515fda01caa5de1e3ece4dc5c723e"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/integration/recovery.test.ts",
+      "bytes": 6332,
+      "sha256": "642f4b7932b17ebc3a6eaba9c652a3bf706566bb64f8fa355a15cba2644d1077"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/integration/user-path.test.ts",
+      "bytes": 6633,
+      "sha256": "176b8489b2318f2023333fbb06d3660042809d891f2bd3bdf869e789ed804cd8"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/real-server/adapter.test.ts",
+      "bytes": 15055,
+      "sha256": "daec83ed2f6504a90515db05fc9c21085531b99b0f74eb0a42cf3501d023856c"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/real-server/fixture.ts",
+      "bytes": 5796,
+      "sha256": "8c9142019552388d6bfe257c70fe106ec3adb6213ee76c5ca61b777cf9205afe"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/unit/atomic-file.test.ts",
+      "bytes": 1499,
+      "sha256": "64989d1bcd696e9627ec2c3fe41d88014c3ba3bb7e63d1a09e54c94013ef5034"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tests/unit/policy-binding.test.ts",
+      "bytes": 6945,
+      "sha256": "a3a43e4b8326c94308b50897f444eae74e048d3f28cfeb6ae3ee1862dcdbfdc0"
+    },
+    {
+      "path": "examples/plugins/ai-memory/tsconfig.json",
+      "bytes": 411,
+      "sha256": "d0e772f3ffb6de1bc6de8dfdb62cfc70a78129d78f9a3c11324035ccb37da46d"
+    },
+    {
+      "path": "package.json",
+      "bytes": 8563,
+      "sha256": "ae54dac6facd5d9a7af968c529235d2704427572ded08898a28a55c3e7ebab84"
+    },
+    {
+      "path": "packages/agent-host/package.json",
+      "bytes": 658,
+      "sha256": "fa3cb37759b0f7fd53d515266ff37c1edac95e603405d2db564c96172df9fae6"
+    },
+    {
+      "path": "packages/agent-runtime/package.json",
+      "bytes": 1341,
+      "sha256": "47bb26019a707878cd9d07e2bfb0378b02310c5c08fe36e1e1284ab8a71e54e6"
+    },
+    {
+      "path": "packages/agent-runtime/src/extensions/owner-runtime.test.ts",
+      "bytes": 4981,
+      "sha256": "aa57879dcdaa0d34ec6926ad1d839cbae6586a817fb156f34365f81072ed33e3"
+    },
+    {
+      "path": "packages/agent-runtime/src/extensions/owner-runtime.ts",
+      "bytes": 5897,
+      "sha256": "59a7c7dbcad9d5824f5ecf2cbe666d8968434adb8daeee49aa5d4818998a9b20"
+    },
+    {
+      "path": "packages/agent-runtime/src/extensions/runner.test.ts",
+      "bytes": 38059,
+      "sha256": "735366c4855cfb97029bd0f674ae324cdb12b7c43a0c2af6190f6d0ecaecfe06"
+    },
+    {
+      "path": "packages/agent-runtime/src/extensions/runner.ts",
+      "bytes": 41372,
+      "sha256": "ab693f68a82af9b9f83e7bedebdcd3e3cce52ae07dd2c0374020d008fd186814"
+    },
+    {
+      "path": "packages/agent-runtime/src/extensions/runtime-shutdown.ts",
+      "bytes": 1143,
+      "sha256": "37936f5fde216a9e6800e9fa1c262cc984ae3c45b78ca322a8229ebbc6d33cbe"
+    },
+    {
+      "path": "packages/agent-runtime/src/extensions/working-directory.ts",
+      "bytes": 631,
+      "sha256": "a2aaf3ad29e2dbd2ced1189863b6442ad3b9eef71db0d5ebd67db9eaf0816673"
+    },
+    {
+      "path": "packages/agent-runtime/src/runtime.ts",
+      "bytes": 391966,
+      "sha256": "d089575942b5b8842ad0a8939ec441950a1bb2a33aec71217377c088ab926368"
+    },
+    {
+      "path": "packages/agent-runtime/src/sidecar.ts",
+      "bytes": 26345,
+      "sha256": "003d582b28ac84670f395b88b83c9e9f7291cc665aab66cbc87732148ce32f31"
+    },
+    {
+      "path": "packages/host-runtime/package.json",
+      "bytes": 753,
+      "sha256": "39b4a1d02d5144736e47c54e0a673f966dc12ffa3043a17ed30f2dc4b28db809"
+    },
+    {
+      "path": "packages/host-runtime/src/agent-sidecar.ts",
+      "bytes": 24464,
+      "sha256": "342eb6321d78c3f30737b61f077fda8c41e2e262637b10b6222f99625e319f06"
+    },
+    {
+      "path": "packages/host-runtime/src/extension-owner-routing.test.ts",
+      "bytes": 3563,
+      "sha256": "35a9ea17728548b84dddeecff49f04775957cc4ab5faf32176e45f9b57fece0c"
+    },
+    {
+      "path": "packages/host-runtime/src/extension-owner-routing.ts",
+      "bytes": 2292,
+      "sha256": "9df712be46d49de96a259e9626e315a481f06dd76b3a9f274cf3ee40fc9fe7ca"
+    },
+    {
+      "path": "packages/i18n/package.json",
+      "bytes": 907,
+      "sha256": "711ed1c70ee557e67cc961482b7b5fed52e4581a631bb4d7780dbb14c8da80c5"
+    },
+    {
+      "path": "packages/i18n/src/locales/de/index.ts",
+      "bytes": 169435,
+      "sha256": "d3e27e59bcca4fa63f38fcd6fd51e97b943b8283b861cd47db09588de881fa00"
+    },
+    {
+      "path": "packages/i18n/src/locales/en/index.ts",
+      "bytes": 150769,
+      "sha256": "e3c48c1ee902bc79027fd57d6a0b193fb35970aaed20e4729932fd7368474b8a"
+    },
+    {
+      "path": "packages/i18n/src/locales/es/index.ts",
+      "bytes": 167326,
+      "sha256": "c824cba77d561368c75c57e198cf954be3a85c0404b31443812d7d38737268c1"
+    },
+    {
+      "path": "packages/i18n/src/locales/fr/index.ts",
+      "bytes": 172314,
+      "sha256": "aaa61f75c78bd0768f47bbb01b71fd8d893647545f8329c35831719e331a092e"
+    },
+    {
+      "path": "packages/i18n/src/locales/ko/index.ts",
+      "bytes": 169591,
+      "sha256": "3e7a13da00f5f15f19eb555c333ad82ca8735e1c72ca8bf11639942bd1bc4b09"
+    },
+    {
+      "path": "packages/i18n/src/locales/pt-BR/index.ts",
+      "bytes": 162736,
+      "sha256": "efa31f28e7eabfdfbf0a64602f7914ce4191c10ac93c7d51f18e76f826877b83"
+    },
+    {
+      "path": "packages/i18n/src/locales/tr/index.ts",
+      "bytes": 159323,
+      "sha256": "390e8378de6a8790408a553d92b3effa3aeaab0820340b15e68a6e1a46a03dbb"
+    },
+    {
+      "path": "packages/i18n/src/locales/zh-CN/index.ts",
+      "bytes": 147256,
+      "sha256": "bcf03b3526cb66e3c704ffad4fcc6c1447f962208ddf27dd81e5d7ad8c29efda"
+    },
+    {
+      "path": "packages/i18n/src/locales/zh-TW/index.ts",
+      "bytes": 146450,
+      "sha256": "aa1f67f8fbd6f68b0eff02178f3e37fe1d9adc45666738224aaa168e5ec5eeea"
+    },
+    {
+      "path": "packages/i18n/test/catalogs.test.mjs",
+      "bytes": 14809,
+      "sha256": "9c3326910534bb3f0c524f3067f0c597c64e8b4b5af67beebe4f60f17e505825"
+    },
+    {
+      "path": "packages/plugin-devkit/package.json",
+      "bytes": 714,
+      "sha256": "bde5810d5e42a2f74e1cd4e8bd6532bd497bf0b0db6502de59571e23384e13fb"
+    },
+    {
+      "path": "packages/plugin-sdk/package.json",
+      "bytes": 612,
+      "sha256": "924c785125a5900b7a9debb70184b397c319c10410aab1ff583a6a0f05d6f4c7"
+    },
+    {
+      "path": "packages/plugin-sdk/src/index.ts",
+      "bytes": 98829,
+      "sha256": "0e4d8af3c62bdff43f53e023bb2b5706a2452bec5b3434c1bdfa4a6aa166f6b3"
+    },
+    {
+      "path": "packages/plugin-sdk/src/plugin-connections.ts",
+      "bytes": 1360,
+      "sha256": "bf9fba52830657fbac8f06be20902d3e6a5734d9fd236e3f0db572e33f3e9b55"
+    },
+    {
+      "path": "packages/plugin-sdk/src/plugin-extension-owner.test.ts",
+      "bytes": 1379,
+      "sha256": "f9f68c5784ee6ca3670bec3145c056b50de9efd79d5a8cabc47a0055e003a04f"
+    },
+    {
+      "path": "packages/plugin-sdk/src/plugin-extension-owner.ts",
+      "bytes": 2035,
+      "sha256": "4d144ee5b3f6641c9a22529d5b5fcd2ca3370485d0b053c03e6c8a6ee3cbfc59"
+    },
+    {
+      "path": "packages/racp/package.json",
+      "bytes": 886,
+      "sha256": "68d40a52f485d53a138d954a9f48f7428398e457a23454833ffd73dd1751be93"
+    },
+    {
+      "path": "packages/shared/package.json",
+      "bytes": 932,
+      "sha256": "10fd056710a5505807fc53130c233ed5744ad2049617be3d13f1272bdcdfb085"
+    },
+    {
+      "path": "packages/shared/src/index.ts",
+      "bytes": 2776,
+      "sha256": "f985a17102efc2acec6a68346c9f471aa1605eac1b1f48a0b79c641614057896"
+    },
+    {
+      "path": "packages/shared/src/plugin-extension-owner.ts",
+      "bytes": 2104,
+      "sha256": "254f8ecc1122101dce3c92c97d953d169cdf09249e5b97598e2914f0b3cc6a7c"
+    },
+    {
+      "path": "packages/shared/src/protocol.ts",
+      "bytes": 26939,
+      "sha256": "61be6cb0128442d305a3468d8f260b846b7daccf5d5672e4f17137a445d502c9"
+    },
+    {
+      "path": "packages/shared/src/trusted-extensions.ts",
+      "bytes": 7431,
+      "sha256": "4d8a8ba7765db5283480bc31d8e4786ca8e8e03d615dd85aabf5cfecb1316433"
+    },
+    {
+      "path": "packages/voice-runtime/package.json",
+      "bytes": 692,
+      "sha256": "3be69167d2fe39758661d21926fc1909721ef0e11e949890b2dcebaa8f297210"
+    }
+  ]
+}

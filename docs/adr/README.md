@@ -39,6 +39,8 @@ Each ADR includes:
 | pi-ai-core-0991-authority | [Pi 0.99.1 account model authority](pi-ai-core-0991-authority.md) | Superseded for chat model metadata |
 | plan-tool-declarations-and-execution-denials | [Keep known tool declarations while denying contract-mode execution](plan-tool-declarations-and-execution-denials.md) | Accepted for implementation |
 | trusted-extension-operation-ownership | [Trusted extension operation ownership](trusted-extension-operation-ownership.md) | Implemented candidate |
+| plugin-agent-extension-owner-calls | [Plugin agent-extension owner calls](plugin-agent-extension-owner-calls.md) | Accepted for implementation |
+| plugin-managed-remote-connections | [Host-managed plugin remote connections](plugin-managed-remote-connections.md) | Accepted for implementation |
 | scheduled-desktop-automations | [Desktop automation scheduling](scheduled-desktop-automations.md) | Accepted for implementation |
 | subagent-model-fallback | [Ordered subagent model fallback](subagent-model-fallback.md) | Accepted for implementation |
 | subagent-model-opt-in | [Separate Subagent Model Opt-In from Definition Pins](subagent-model-opt-in.md) | Accepted for implementation |

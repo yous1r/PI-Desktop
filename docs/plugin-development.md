@@ -33,6 +33,8 @@ A plugin can contribute one or more of these capabilities:
 | Global shortcut | Invoke your command while the app is unfocused | `contributes.globalShortcuts`, `pi.keyboard`, `keyboard.globalShortcut` |
 | Trusted agent extension | pi ExtensionAPI hooks, tools, commands, and custom agents | `contributes.agentExtensions`, `agent.extension` |
 | Real-time connection | Host-owned, bounded WebSockets | `pi.net.websocket`, `net.websocket` |
+| Managed authenticated connection | Call user-configured services without exporting credentials to plugins | `pi.connections`, `net.connection`, native plugin settings ([contract](spec/07-plugins/17-owned-extension-services.md)) |
+| Owned extension service | Await resident plugin work from a trusted extension callback | `ctx.owner.call`, `contributes.agentExtensionOperations`, `onAgentExtensionCall` ([contract](spec/07-plugins/17-owned-extension-services.md)) |
 | Browser / desktop control | Reviewed browser or app operations | `pi.browser`, `browser.cdp`; `pi.desktop`, `desktop.control` |
 | Speech adapter | Add a speech protocol handled by the plugin process | `pi.speech`, `speech.adapter.register` |
 

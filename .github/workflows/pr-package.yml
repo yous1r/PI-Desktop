@@ -1,0 +1,130 @@
+name: PR package
+
+# Builds installable review artifacts for a pull request: the Windows x64
+# installers (NSIS setup, portable ZIP, portable EXE) with the native Rust
+# sidecar, and the ai-memory `.piplug`. Artifacts are uploaded to the workflow
+# run only. Nothing is published: no tag, no GitHub Release, no update feed.
+# Tagged releases remain owned by release.yml.
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    name: Windows x64 installers + ai-memory plugin
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Prepare package inputs
+        # Same inputs as release.yml: a locked host-core build plus every
+        # workspace dependency of the desktop app.
+        run: |
+          set -euo pipefail
+          cargo build --release --locked -p host-core &
+          host_build_pid=$!
+          trap 'kill "$host_build_pid" 2>/dev/null || true' EXIT
+
+          pnpm install --frozen-lockfile
+          pnpm --filter '@pi-desktop/desktop^...' --fail-if-no-match build
+
+          wait "$host_build_pid"
+          trap - EXIT
+
+      - name: Package Windows installers
+        # dist:win passes --publish never to every electron-builder target.
+        run: pnpm --filter @pi-desktop/desktop run dist:win -- --x64
+
+      - name: Prepare checksum-pinned plugin dependency
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'ai-memory-package'
+          New-Item -ItemType Directory -Force $root | Out-Null
+          $toml = Join-Path $root 'smol-toml.tgz'
+          Invoke-WebRequest 'https://registry.npmjs.org/smol-toml/-/smol-toml-1.4.2.tgz' -OutFile $toml
+          if ((Get-FileHash $toml -Algorithm SHA256).Hash.ToLowerInvariant() -ne '829eee8dc90490d9671554b5cfd075976b61195221576ef8adec9732d3a94fef') { throw 'TOML checksum mismatch' }
+          tar -xf $toml -C $root
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "AI_MEMORY_TOML_ENTRY=$root/package/dist/index.js" >> $env:GITHUB_ENV
+
+      - name: Build, check and pack the ai-memory plugin
+        run: |
+          set -euo pipefail
+          cd examples/plugins/ai-memory
+          node scripts/typecheck.mjs
+          node scripts/build.mjs
+          node ../../../packages/plugin-devkit/dist/cli.js check dist
+          node ../../../packages/plugin-devkit/dist/cli.js pack dist --out release
+
+      - name: Verify artifact versions and record checksums
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./apps/desktop/package.json').version")"
+          plugin="examples/plugins/ai-memory/release/local.ai-memory-0.1.0.piplug"
+          shopt -s nullglob
+          installers=(apps/desktop/release/PI-Desktop-Setup-"$version".exe apps/desktop/release/PI-Desktop-Portable-"$version".exe apps/desktop/release/PI-Desktop-Portable-"$version".zip)
+          for file in "${installers[@]}" "$plugin"; do
+            if [[ ! -f "$file" ]]; then
+              echo "::error::Missing package artifact $file"
+              ls -la apps/desktop/release examples/plugins/ai-memory/release || true
+              exit 1
+            fi
+          done
+          {
+            echo "### PR package $version"
+            echo
+            echo '| Artifact | SHA-256 |'
+            echo '| --- | --- |'
+            for file in "${installers[@]}" "$plugin"; do
+              echo "| $(basename "$file") | \`$(sha256sum "$file" | cut -d' ' -f1)\` |"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+          sha256sum "${installers[@]}" "$plugin" > package-checksums.sha256
+          cat package-checksums.sha256
+
+      - name: Upload Windows installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: pi-desktop-windows-x64
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.zip
+            package-checksums.sha256
+
+      - name: Upload ai-memory plugin package
+        uses: actions/upload-artifact@v7
+        with:
+          name: ai-memory-plugin
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+          path: |
+            examples/plugins/ai-memory/release/*.piplug
+            package-checksums.sha256

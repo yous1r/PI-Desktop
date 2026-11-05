@@ -231,6 +231,14 @@ Linux 更新源带上它们所构建的架构：x64 为 `latest-linux.yml`，arm
 `latest-linux-arm64.yml`。这正是 `electron-updater` 在对应架构上请求的通道文件，
 因此某条通道若缺少自己的更新源，会在上传前就失败。
 
+**拉取请求审阅包。** `.github/workflows/pr-package.yml` 在每个拉取请求和手动
+触发时运行。一个 Windows x64 runner 以锁定方式构建 host-core，执行 `dist:win`
+（NSIS 安装包、便携 ZIP、便携 EXE，均使用 `--publish never`），并用
+plugin-devkit 打包 `ai-memory` 插件。安装包和 `.piplug` 作为工作流构件上传，
+保留 14 天，并附 SHA-256 摘要。该工作流只有只读内容权限，不使用密钥，不创建
+标签，也不发布 GitHub Release 或更新源。这些包是未签名的审阅构建；正式发布
+仍只通过推送标签触发 `release.yml`。
+
 ### 4.4 CNB 镜像触发
 
 `softprops/action-gh-release` 发布或更新 GitHub Release 之后，

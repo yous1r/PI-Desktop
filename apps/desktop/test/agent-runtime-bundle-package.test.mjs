@@ -175,7 +175,11 @@ test(
       });
 
       assert.equal(result.exitCode, 0, result.stderr);
-      assert.deepEqual(received.get(1)?.result, { ok: true, runtimes: 0 });
+      assert.deepEqual(received.get(1)?.result, {
+        ok: true,
+        runtimes: 0,
+        capabilities: { extensionOwner: 1, normalShutdown: 1 },
+      });
       assert.deepEqual(received.get(2)?.result?.sessions, []);
     } finally {
       if (child && child.exitCode === null && child.signalCode === null) {

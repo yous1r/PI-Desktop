@@ -35,6 +35,8 @@
 | 系统快捷键 | Invoke your command while the app is unfocused | `contributes.globalShortcuts`, `pi.keyboard`, `keyboard.globalShortcut` |
 | 受信任 Agent 扩展 | pi ExtensionAPI hooks, tools, commands, and custom agents | `contributes.agentExtensions`, `agent.extension` |
 | 实时连接 | Host-owned, bounded WebSockets | `pi.net.websocket`, `net.websocket` |
+| 托管鉴权连接 | 调用用户配置的服务，凭据不导出给插件 | `pi.connections`, `net.connection`, 原生插件设置（[契约](/zh-CN/spec/07-plugins/17-owned-extension-services)） |
+| 所属扩展服务 | 在受信任扩展回调中等待常驻插件完成工作 | `ctx.owner.call`, `contributes.agentExtensionOperations`, `onAgentExtensionCall`（[契约](/zh-CN/spec/07-plugins/17-owned-extension-services)） |
 | 浏览器与桌面控制 | Reviewed browser or app operations | `pi.browser`, `browser.cdp`; `pi.desktop`, `desktop.control` |
 | 语音适配器 | Add a speech protocol handled by the plugin process | `pi.speech`, `speech.adapter.register` |
 

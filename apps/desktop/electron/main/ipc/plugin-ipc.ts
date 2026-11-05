@@ -1,3 +1,4 @@
+import type { PluginConnectionInput } from "@pi-desktop/plugin-sdk";
 import { dialog } from "electron";
 import { IPC, type ActivationScope } from "@pi-desktop/shared";
 import { isTemplateName, scaffold } from "@pi-desktop/plugin-devkit";
@@ -51,6 +52,17 @@ export function registerPluginIpc({
       return fn(...args);
     });
   };
+
+  handle(IPC.invoke.pluginConnectionsList, async (input: { pluginId: string }) => ({
+    connections: await plugins.connections.list(input.pluginId),
+  }));
+  handle(IPC.invoke.pluginConnectionsSave, async (input: PluginConnectionInput) => ({
+    connection: await plugins.connections.save(input),
+  }));
+  handle(IPC.invoke.pluginConnectionsDelete, async (input: { pluginId: string; connectionId: string }) => {
+    await plugins.connections.remove(input.pluginId, input.connectionId);
+    return { ok: true };
+  });
 
   /**
    * Register a development plugin folder, load it with the permissions the user
@@ -406,8 +418,9 @@ export function registerPluginIpc({
     if (!host) throw new Error("host unavailable");
     pluginViews.closePlugin(id);
     await plugins.unload(id);
-    logger.app("plugin", "info", "plugin uninstalled", { pluginId: id });
+    await plugins.connections.uninstall(id);
     const res = await host.call("plugins.uninstall", { id });
+    logger.app("plugin", "info", "plugin uninstalled", { pluginId: id });
     sendToRenderer(IPC.event.pluginChanged,{ reason: "uninstall", pluginId: id });
     return res;
   });

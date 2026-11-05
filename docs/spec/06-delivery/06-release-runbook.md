@@ -295,6 +295,16 @@ The Linux updater feeds carry the architecture they were built for:
 channel files `electron-updater` requests on the matching architecture, so a
 lane fails before upload if its own feed is missing.
 
+**Pull-request review packages.** `.github/workflows/pr-package.yml` runs on
+every pull request and on manual dispatch. One Windows x64 runner builds the
+locked host-core, runs `dist:win` (NSIS setup, portable ZIP, portable EXE, all
+with `--publish never`) and packs the `ai-memory` plugin with plugin-devkit.
+The installers and `.piplug` are uploaded as workflow artifacts for 14 days with
+a SHA-256 summary. The workflow has read-only contents permission, uses no
+secrets, creates no tag and publishes no GitHub Release or updater feed. These
+packages are unsigned review builds; a tag push through `release.yml` remains
+the only release path.
+
 ### 4.4 Documentation site deployment
 
 The release workflow does not deploy the documentation site. Vercel Git

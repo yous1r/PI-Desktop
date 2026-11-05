@@ -1,3 +1,9 @@
+import { connectionTransport, type ConnectionTransport } from "./plugin-connection-transport";
+import type { OwnerFileReader } from "./plugin-owner-files";
+import { dispatchPluginExtension } from "./plugin-extension-dispatch";
+import type { PluginExtensionCallContext, PluginExtensionOperation } from "@pi-desktop/shared";
+import { PluginConnectionService, type ConnectionSecretStore } from "./plugin-connections";
+import type { PluginConnectionRequest } from "@pi-desktop/plugin-sdk";
 import {
   readFileSync,
   existsSync,
@@ -198,6 +204,7 @@ export type RegisteredAgentExtension = {
   /** Absolute module path inside the plugin directory. */
   entry: string;
   root: string;
+  ownerOperations: PluginExtensionOperation[];
 };
 
 export type RegisteredPluginSkill = {
@@ -316,6 +323,9 @@ export type PluginDesktopConsentRequest = {
 };
 
 export type PluginHostServices = {
+  /** Main-only encrypted storage. No secret getter is exposed on PluginHostApi. */
+  connectionSecrets?: ConnectionSecretStore;
+  connectionTransport?: ConnectionTransport;
   getWorkspacePath: () => string | null;
   /**
    * The workspace plus the project group behind it, when the caller can supply
@@ -329,6 +339,7 @@ export type PluginHostServices = {
    */
   getWorkspacePathForSession?: (sessionId: string) => string | null;
   readRemoteWorkspaceFiles?: PluginRemoteFilesRead;
+  readOwnerFile?: OwnerFileReader;
   /** The set of `contributes.agentExtensions` modules changed (load/unload). */
   agentExtensionsChanged?: () => void;
   getLocale?: () => string;
@@ -571,6 +582,10 @@ const HOST_API_ALLOWLIST = new Set([
   "plugin.getPermissions",
   "plugin.setSettings",
   "plugin.getDataPath",
+  "connections.getCapabilities",
+  "connections.list",
+  "connections.request",
+  "connections.cancel",
   "ui.revealView",
   "composer.suggest",
   "composer.clearSuggestion",
@@ -1468,6 +1483,29 @@ export class PluginRuntime {
   private loaded = new Map<string, LoadedPlugin>();
   private toasts: Array<{ message: string; level?: string }> = [];
   private services: PluginHostServices;
+  readonly connections = new PluginConnectionService({
+    transport: (url, init, ca) => (this.services.connectionTransport ?? connectionTransport)(url, init, ca),
+    store: {
+      read: (key) => {
+        if (!this.services.connectionSecrets) throw apiError("UNSUPPORTED", "Connection storage unavailable");
+        return this.services.connectionSecrets.read(key);
+      },
+      write: (key, value) => {
+        if (!this.services.connectionSecrets) throw apiError("UNSUPPORTED", "Connection storage unavailable");
+        return this.services.connectionSecrets.write(key, value);
+      },
+      delete: (key) => {
+        if (!this.services.connectionSecrets) throw apiError("UNSUPPORTED", "Connection storage unavailable");
+        return this.services.connectionSecrets.delete(key);
+      },
+    },
+    assertGranted: (pluginId) => {
+      const plugin = this.loaded.get(pluginId);
+      if (!plugin || plugin.disposing) throw apiError("PLUGIN_UNLOADED", "Plugin is not active");
+      this.assertPermission(plugin, "net.connection");
+    },
+    audit: (entry) => this.services.audit?.({ ...entry, api: "connections.request", ts: Date.now() }),
+  });
   /**
    * Development plugins under watch, with the permission ceiling the user
    * approved when they picked the folder. Survives a failed reload so the fix
@@ -1582,9 +1620,29 @@ export class PluginRuntime {
     return parseSpeechAdapterReply(reply);
   }
 
+  private readonly extensionOwnerUnavailable = new Set<(pluginId: string) => void>();
+
+  onExtensionOwnerUnavailable(listener: (pluginId: string) => void): () => void {
+    this.extensionOwnerUnavailable.add(listener);
+    return () => this.extensionOwnerUnavailable.delete(listener);
+  }
+
+  private invalidateExtensionOwner(pluginId: string): void {
+    for (const listener of this.extensionOwnerUnavailable) listener(pluginId);
+  }
+
   /** ExtensionAPI modules from loaded plugins holding `agent.extension`. */
   getAgentExtensions(): RegisteredAgentExtension[] {
     return [...this.agentExtensions.values()].sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  async callAgentExtension(pluginId: string, operation: string, payload: unknown,
+    context: PluginExtensionCallContext & { signal: AbortSignal }): Promise<unknown> {
+    const loaded = this.loaded.get(pluginId);
+    if (!loaded?.child) throw apiError("NOT_FOUND", "Owner plugin is not loaded");
+    return dispatchPluginExtension(loaded, this.toolInvocations,
+      (message, timeout, signal) => this.sendToChild(loaded, message, timeout, signal),
+      operation, payload, context);
   }
 
   /** Catalog of active plugin skills, ordered by id for a stable prompt. */
@@ -2238,6 +2296,8 @@ export class PluginRuntime {
     const loaded = this.loaded.get(pluginId);
     if (loaded) {
       loaded.disposing = true;
+      this.invalidateExtensionOwner(pluginId);
+      this.connections.releasePlugin(pluginId);
       this.toolInvocations.cancelOwner(loaded, "Plugin unloaded");
       // An explicit stop ends supervision; a supervisor-driven reload keeps it.
       if (!this.restarting.has(pluginId)) this.cancelRestarts(pluginId);
@@ -2335,6 +2395,8 @@ export class PluginRuntime {
     // stopping must already be covered by the guard in `handleChildExit`.
     for (const loaded of loadedPlugins) {
       loaded.disposing = true;
+      this.invalidateExtensionOwner(loaded.manifest.id);
+      this.connections.releasePlugin(loaded.manifest.id);
       this.toolInvocations.cancelOwner(loaded, "Application shutting down");
       this.cancelRestarts(loaded.manifest.id);
     }
@@ -2736,6 +2798,17 @@ export class PluginRuntime {
   ): Promise<unknown> {
     const pluginId = loaded.manifest.id;
     switch (api) {
+      case "connections.getCapabilities":
+        this.assertPermission(loaded, "net.connection");
+        return { version: 1 };
+      case "connections.list":
+        return this.connections.list(pluginId);
+      case "connections.request":
+        return this.connections.request(pluginId, args[0] as PluginConnectionRequest, this.toolInvocations.current(loaded)?.signal);
+      case "connections.cancel":
+        this.assertPermission(loaded, "net.connection");
+        this.connections.cancel(pluginId, String(args[0] ?? ""));
+        return;
       case "commands.register": {
         const descriptor = (args[0] ?? {}) as {
           id?: string;
@@ -3579,6 +3652,7 @@ export class PluginRuntime {
   }
 
   private clearContributions(pluginId: string): void {
+    this.invalidateExtensionOwner(pluginId);
     for (const [id, cmd] of this.commands) {
       if (cmd.pluginId === pluginId) this.commands.delete(id);
     }
@@ -3628,6 +3702,7 @@ export class PluginRuntime {
     // Same for a real-time connection: the host owns the socket, so a plugin
     // that is gone keeps neither the connection nor the frames still arriving.
     this.services.pluginSockets?.releasePlugin(pluginId);
+    this.connections.releasePlugin(pluginId);
   }
 
   /**
@@ -3684,6 +3759,7 @@ export class PluginRuntime {
         pluginName: loaded.manifest.name,
         entry,
         root: loaded.path,
+        ownerOperations: loaded.manifest.contributes?.agentExtensionOperations ?? [],
       });
       changed = true;
     }
@@ -5867,6 +5943,18 @@ export class PluginRuntime {
           }
         },
         readPreview: async (pathFromRoot: string, options?: PluginFsReadOptions) => {
+          const invocation = this.toolInvocations.current(loaded);
+          if (invocation?.toolName.startsWith("extension:")) {
+            this.assertPermission(loaded, "fs.read");
+            if (!this.services.readOwnerFile) throw apiError("UNSUPPORTED", "Session file previews are unavailable");
+            const result = await this.services.readOwnerFile({ invocation, path: pathFromRoot,
+              rule: loaded.fsPolicy.read ?? { root: "workspace", scope: [] },
+              workspacePath: options?.workspacePath, isProtected: (path) => this.isProtectedPath(path),
+              audit: this.services.audit });
+            this.assertPermission(loaded, "fs.read");
+            this.toolInvocations.current(loaded);
+            return result;
+          }
           const admitted = this.captureFileWorkspace(loaded, options);
           const remote = await this.remoteFsRead(loaded, "preview", pathFromRoot, admitted);
           if (remote && remote.kind !== "list") return remote;

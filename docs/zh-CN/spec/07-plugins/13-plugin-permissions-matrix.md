@@ -34,6 +34,7 @@
 | `provider.register` | 高 | `contributes.providers` 成为原生 Provider 列表中的行，归插件所有并在每次加载时按 manifest 刷新 | 显式确认；v1.1 仅限本地导入和开发插件，与 `agent.extension` 一致 | 用户路径拒绝编辑该行（`PROVIDER_OWNED_BY_PLUGIN`）；API key 凭据仍存放在 Host secret store 的常规 provider 引用下 |
 | `provider.oauth` | 高 | 已声明 OAuth provider 的 `onProviderOAuth`；宿主渲染的 `pi.providers.oauth.prompt` / `notify` | 显式确认 | `authKind: "oauth"` 需要与 `provider.register` 一起授予。回调只能读取和刷新该 provider 声明自己的加密凭据。Host 会把刷新令牌隔离在渲染进程与 Agent Runtime 之外。宿主代发的网络请求仍需 `net.fetch` 和 `manifest.net.domains`；插件入口代码本身不是操作系统沙箱。每个 provider 声明只保存一个账号；退出登录会清除凭据 |
 | `net.fetch` | 高 | `net.fetch` | 默认拒绝 | 限定在 `manifest.net.domains` 之内；列表为空或非法即完全不放行出网（§2A） |
+| `net.connection` | 高 | `pi.connections.getCapabilities/list/request/cancel` | 安装时显式授予，并在原生界面配置连接 | 仅限调用插件自己的、由用户配置的连接，且必须匹配当前 revision 和精确的路由/方法授权；不提供凭据读取接口，不跟随重定向，插件或 agent API 均不能修改配置（[规格 17](/zh-CN/spec/07-plugins/17-owned-extension-services)） |
 | `net.websocket` | 高 | `pi.net.websocket.connect` / `send` / `close`（套接字由宿主持有；每个插件最多 4 个，帧封顶 1 MiB） | 默认拒绝 | 与 `net.fetch` 一样被限制在 `manifest.net.domains` 之内；被拒绝的主机永远到不了传输层，插件卸载、被禁用或崩溃时每个套接字都会被关闭 |
 | `net.anyHost` | 高 | 主机掌握的所有出网路径（`net.fetch`、`net.websocket`、面板 session、远程 HTTP MCP） | 安装时确认 | 对用户自填端点（自建服务器等）解除 `manifest.net.domains` 白名单；云元数据端点始终拒绝；请求时不再弹窗 |
 | `shell.openExternal` | 中等 | 打开外部链接 | 首次使用时确认 | 防止网络钓鱼链接 |
@@ -68,7 +69,7 @@ manifest 里的字段负责回答「能做到多远」。两个字段都由主�
 
 | 字段 | 限定的范围 | 缺失或为空时 |
 |---|---|---|
-| `net.domains` | 主机掌握的每一条出网路径：面板 session、`pi.net.fetch`、远程 HTTP MCP 端点 | 完全不放行出网，无论 `net.fetch` 是否声明 |
+| `net.domains` | 面板 session、`pi.net.fetch`、WebSocket 和远程 HTTP MCP 端点 | 这些 API 完全不放行出网，无论 `net.fetch` 是否声明；托管连接改由单独的原生端点/路由授权约束（规格 17） |
 | `fs.read` / `fs.write` / `fs.delete` | 该文件模式可以触碰哪些路径 | 没有常驻可达范围；每次访问都落到确认弹窗 |
 
 字段缺失时一律 fail closed，这正是它们可以省略的原因：manifest 什么都不说，

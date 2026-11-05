@@ -1,3 +1,5 @@
+import { managedConnectionTransport } from "../plugin-connection-network";
+import { createOwnerFileReader } from "../plugin-owner-files";
 import { dialog, globalShortcut, shell, type BrowserWindow } from "electron";
 import { join } from "node:path";
 import { getActiveRemoteHostsBoot } from "../bootstrap/remote-hosts";
@@ -230,6 +232,27 @@ export function createPluginServices({
     onEvent: (pluginId, event) => plugins.deliverSocketEvent(pluginId, event),
   });
   const plugins: PluginRuntime = new PluginRuntime({
+    connectionTransport: managedConnectionTransport,
+    readOwnerFile: createOwnerFileReader({ getHost, getRemote: getActiveRemoteHostsBoot,
+      isPluginActive: pluginActiveInProject }),
+    connectionSecrets: {
+      read: async (secretRef) => {
+        const host = getHost();
+        if (!host?.isAvailable()) throw new Error("Host unavailable");
+        const result = await host.call<{ value: string | null }>("secrets.getForRuntime", { secretRef });
+        return result.value;
+      },
+      write: async (secretRef, value) => {
+        const host = getHost();
+        if (!host?.isAvailable()) throw new Error("Host unavailable");
+        await host.call("secrets.set", { secretRef, value });
+      },
+      delete: async (secretRef) => {
+        const host = getHost();
+        if (!host?.isAvailable()) throw new Error("Host unavailable");
+        await host.call("secrets.delete", { secretRef });
+      },
+    },
     pluginShortcuts,
     pluginSockets,
     providerOAuthPrompt: (pluginId, loginId, input) =>

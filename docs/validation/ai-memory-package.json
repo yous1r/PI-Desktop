@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "baseMain": "3cb4710cf95db2b80a8fdca8ac8bc55ab3135433",
+  "package": {
+    "path": "examples/plugins/ai-memory/release/local.ai-memory-0.1.0.piplug",
+    "bytes": 417585,
+    "sha256": "b2afd34eec8ed52b2d8b4a63d0fa75d0bc61f2dcea40dd017298de10f0daef63"
+  },
+  "checks": [
+    "store ZIP entries match dist bytes",
+    "24 expected artifact files",
+    "no credential/state/profile files",
+    "no private keys or session scratch path",
+    "no temporary diagnostic instrumentation"
+  ],
+  "artifacts": {
+    "apps/desktop/out/main/index.js": "2190fad85ef98a9bc0b5de9f39aa28700c3fc936a6b4334f658567540ad1cdf5",
+    "apps/desktop/out/preload/index.cjs": "05fbabbd1b4b41a6d51ba376eb8fb4db351c7e9e28cf57225f0f2c74f65843ba",
+    "packages/agent-runtime/dist-bundle/sidecar.js": "7f2dbcb6660e149e7b84938a229a2e923a738bb485b7f398fc212e9b39ff1a09",
+    "examples/plugins/ai-memory/dist/main.cjs": "042a0f6946e71f3dac55fbb1d9dd1bbf16a02d70733e2a75a812a6274697b8a5",
+    "examples/plugins/ai-memory/dist/agent-extension.js": "ca9d99336a721466eecd55ca1bd83e02d631ffc942d098fe03d482e5d2133003",
+    "examples/plugins/ai-memory/dist/ui/panel.js": "b11c65ab09b886e911d5659f1a8fb28b3bf0e4b39cda8a7b824e5ec01d07bc7e"
+  },
+  "files": [
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 1498,
+      "sha256": "0e8dec0939b6445980fd689c183c301a5875645679a063aa2bd5452fc81355b6"
+    },
+    {
+      "path": "README.md",
+      "bytes": 5054,
+      "sha256": "c21f0ca4b164334be077e5de38353b1d2ba4d3b538a6e1d20db7833c98317d87"
+    },
+    {
+      "path": "SMOL-TOML-LICENSE",
+      "bytes": 1499,
+      "sha256": "fa5659948374d4f555594f47f6da073b40dc503e921aeeece30df4362b3051a5"
+    },
+    {
+      "path": "agent-extension.js",
+      "bytes": 14330,
+      "sha256": "ca9d99336a721466eecd55ca1bd83e02d631ffc942d098fe03d482e5d2133003"
+    },
+    {
+      "path": "agent-extension.mjs",
+      "bytes": 14330,
+      "sha256": "ca9d99336a721466eecd55ca1bd83e02d631ffc942d098fe03d482e5d2133003"
+    },
+    {
+      "path": "compatibility/supported-versions.json",
+      "bytes": 795,
+      "sha256": "cb075d5e7cf6d1b658dd46363cb9074d4f63a6de468740d38bb9072049b37138"
+    },
+    {
+      "path": "compatibility/verified-contract.md",
+      "bytes": 5775,
+      "sha256": "ea0d0d8faa74d170aac34610cdead60fb57ec81a14274cbf9a7a37591a34a66b"
+    },
+    {
+      "path": "docs/architecture.md",
+      "bytes": 5521,
+      "sha256": "44f8b1db05a7ba28a26a1369f0a09797e5e159af2d7c230a9a22b6b4dcd8e1cc"
+    },
+    {
+      "path": "docs/compatibility.md",
+      "bytes": 6935,
+      "sha256": "4d4108e45e5e49d0a96e64bf6ba5b2ed4671c5014e9971c380ae310038ea94d7"
+    },
+    {
+      "path": "docs/operations.md",
+      "bytes": 8942,
+      "sha256": "608f213d5225c39e6a0ffc6671612b270ae74d25bf5a60eaeff3c2186350754c"
+    },
+    {
+      "path": "docs/requirements.md",
+      "bytes": 6562,
+      "sha256": "719293644853351b0a5622b47307b7008c30b49b708e54242791d3c661601370"
+    },
+    {
+      "path": "main.cjs",
+      "bytes": 105117,
+      "sha256": "042a0f6946e71f3dac55fbb1d9dd1bbf16a02d70733e2a75a812a6274697b8a5"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 1695,
+      "sha256": "40becd90a008d41d9b14b709c07009abce2bf832be2051314635988924ac11a3"
+    },
+    {
+      "path": "package.json",
+      "bytes": 107,
+      "sha256": "48153e2a6711d95229e99cd738f640f6b979dbe3edff432298e599d116cd1b9c"
+    },
+    {
+      "path": "skills/memory.md",
+      "bytes": 1440,
+      "sha256": "9e782f0979a4f9ce48bf075afa3863254c1d4f4d29350044f1b0b42e617b21cb"
+    },
+    {
+      "path": "tests/fixtures/upstream/checksums.json",
+      "bytes": 1176,
+      "sha256": "28f697d2b6cfa5ecd2fcedd30c3f18bdbd91f78f04740a2a5a6bb7a4a272de61"
+    },
+    {
+      "path": "tests/fixtures/upstream/v3-all-tools.json",
+      "bytes": 96368,
+      "sha256": "eaf4e6e436921d14f53e3c7e6936ad27dd4b9b9e1e3a900e55b0a3b6400c6ce6"
+    },
+    {
+      "path": "tests/fixtures/upstream/v3.3.2-binary.json",
+      "bytes": 43530,
+      "sha256": "e41a1a17de4313a303c76156ed08befcbbea946d27c9ea641f7de5a0ed159561"
+    },
+    {
+      "path": "tests/fixtures/upstream/v3.3.2-plugin.json",
+      "bytes": 12782,
+      "sha256": "1cd1ca0a0cc56d632880da46ec0d8a9e433fefd47de6645d83d9b1d8a3aeb7fe"
+    },
+    {
+      "path": "tests/fixtures/upstream/v3.3.2.json",
+      "bytes": 3597,
+      "sha256": "23402497f8e13de3ef3c6e4b94386c889d1feaec197ff0592a06a05b0c5ea47d"
+    },
+    {
+      "path": "tests/fixtures/upstream/v3.3.3-binary.json",
+      "bytes": 43532,
+      "sha256": "df65ed21bcb063fd4f8ed1823ed98f4b8b794f32030b7e4c1962ecfcc95517de"
+    },
+    {
+      "path": "tests/fixtures/upstream/v3.3.3-plugin.json",
+      "bytes": 12782,
+      "sha256": "4fc2b4c75612e254b4dafde285c86e7e462da1804ed70e9231263c2847369e8e"
+    },
+    {
+      "path": "ui/index.html",
+      "bytes": 4497,
+      "sha256": "14e99d8135d8e2f7c37500635707678259db9a12bcd1112675b4eded75eef786"
+    },
+    {
+      "path": "ui/panel.js",
+      "bytes": 16715,
+      "sha256": "b11c65ab09b886e911d5659f1a8fb28b3bf0e4b39cda8a7b824e5ec01d07bc7e"
+    }
+  ]
+}

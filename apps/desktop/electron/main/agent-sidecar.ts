@@ -1,3 +1,4 @@
+import { PluginExtensionLaunchBindings } from "./plugin-extension-launch-bindings";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -58,9 +59,66 @@ function fallbackStderrLogger(text: string): void {
  * the sidecar bundle this build ships.
  */
 export class AgentSidecar extends RuntimeAgentSidecar {
-  constructor(onStderr?: StderrHandler) {
+  readonly extensionOwnerLaunches = new PluginExtensionLaunchBindings();
+  private ownerLifecycle?: { closeSession(sessionId: string): void; dispose(): void };
+  private ownerDisposed = false;
+  private readonly ownerRetirements = new Map<string, Promise<void>>();
+
+  setExtensionOwnerLifecycle(lifecycle: { closeSession(sessionId: string): void; dispose(): void }): void {
+    if (this.ownerDisposed) { lifecycle.dispose(); return; }
+    this.ownerLifecycle?.dispose();
+    this.ownerLifecycle = lifecycle;
+  }
+
+  private disposeExtensionOwner(): void {
+    const lifecycle = this.ownerLifecycle;
+    this.ownerDisposed = true;
+    this.ownerLifecycle = undefined;
+    lifecycle?.dispose();
+    this.extensionOwnerLaunches.clear();
+  }
+
+  private retireInvalidatedOwner(sessionId: string): Promise<void> {
+    const existing = this.ownerRetirements.get(sessionId);
+    if (existing) return existing;
+    const retiring = (async () => {
+      const result = await super.call<{ status?: { isRunning?: boolean } }>("agent.getStatus", { sessionId });
+      if (result.status?.isRunning !== false) throw new Error("Cannot reload an active extension runtime");
+      await this.call("agent.disposeSession", { sessionId, reason: "reconfigure" }, 3_000);
+    })();
+    this.ownerRetirements.set(sessionId, retiring);
+    void retiring.finally(() => this.ownerRetirements.delete(sessionId)).catch(() => undefined);
+    return retiring;
+  }
+
+  override async call<T = unknown>(method: string, params: unknown = {}, timeoutOverrideMs?: number): Promise<T> {
+    if (this.ownerDisposed) throw new Error("agent sidecar is unavailable");
+    if (params && typeof params === "object" && "sessionId" in params && typeof params.sessionId === "string" &&
+        this.extensionOwnerLaunches.needsRetirement(params.sessionId)) {
+      if (method === "extensions.command.run") throw new Error("Extension runtime changed; start a new turn to reload it");
+      if (["agent.prompt", "agent.executeApprovedPlan", "agent.compact"].includes(method)) {
+        await this.retireInvalidatedOwner(params.sessionId);
+        if (this.ownerDisposed) throw new Error("agent sidecar is unavailable");
+      }
+    }
+    this.extensionOwnerLaunches.observe(method, params);
+    try {
+      return await super.call<T>(method, params, timeoutOverrideMs);
+    } finally {
+      if (method === "agent.disposeSession" && params && typeof params === "object" && "sessionId" in params) {
+        this.ownerLifecycle?.closeSession(String(params.sessionId));
+        this.extensionOwnerLaunches.close(String(params.sessionId));
+      }
+    }
+  }
+
+  override async dispose(): Promise<void> {
+    this.disposeExtensionOwner();
+    await super.dispose();
+  }
+  constructor(onStderr?: StderrHandler, launch?: ConstructorParameters<typeof RuntimeAgentSidecar>[0]["launch"]) {
     super({
-      launch: {
+      launch: launch ?? {
         command: process.execPath,
         // Keep the OS trust store available to the sidecar. On macOS the
         // Electron 43 build applies `--use-system-ca` by replacing the
@@ -82,5 +140,6 @@ export class AgentSidecar extends RuntimeAgentSidecar {
       },
       onStderr: onStderr ?? fallbackStderrLogger,
     });
+    this.onExit(() => this.disposeExtensionOwner());
   }
 }

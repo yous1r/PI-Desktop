@@ -1,0 +1,82 @@
+name: ai-memory compatibility
+
+on:
+  pull_request:
+    paths:
+      - 'examples/plugins/ai-memory/**'
+      - '.github/workflows/ai-memory-compatibility.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '23 6 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-memory-compatibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-contract:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare checksum-pinned isolated dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP 'ai-memory-contract'
+          New-Item -ItemType Directory -Force $root | Out-Null
+          $releases = @{
+            '3.3.2' = '7c35827430e7d1753fa420b256a059ad7104c469c263d6b0a1080bd04064cbb0'
+            '3.3.3' = '7febf22e0b8c0c5cf546e8597c2218598bdececc98fd375bbcd1e13e376cf87c'
+          }
+          foreach ($version in $releases.Keys) {
+            $zip = Join-Path $root "$version.zip"
+            Invoke-WebRequest "https://github.com/akitaonrails/ai-memory/releases/download/v$version/ai-memory-windows-x86_64.zip" -OutFile $zip
+            if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $releases[$version]) { throw 'Release checksum mismatch' }
+            $unpack = Join-Path $root "unpack-$version"
+            Expand-Archive $zip $unpack
+            $binary = @(Get-ChildItem $unpack -Recurse -Filter ai-memory.exe)
+            if ($binary.Count -ne 1) { throw 'Unexpected release layout' }
+            $bin = Join-Path $root "bin-v$version"
+            New-Item -ItemType Directory $bin | Out-Null
+            Copy-Item $binary[0].FullName (Join-Path $bin 'ai-memory.exe')
+          }
+          $toml = Join-Path $root 'smol-toml.tgz'
+          Invoke-WebRequest 'https://registry.npmjs.org/smol-toml/-/smol-toml-1.4.2.tgz' -OutFile $toml
+          if ((Get-FileHash $toml -Algorithm SHA256).Hash.ToLowerInvariant() -ne '829eee8dc90490d9671554b5cfd075976b61195221576ef8adec9732d3a94fef') { throw 'TOML checksum mismatch' }
+          tar -xf $toml -C $root
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "PI_SCRATCH_DIR=$root" >> $env:GITHUB_ENV
+          "AI_MEMORY_TEST_BINARIES=$root" >> $env:GITHUB_ENV
+          "AI_MEMORY_TOML_ENTRY=$root/package/dist/index.js" >> $env:GITHUB_ENV
+      - name: Build devkit
+        run: pnpm --filter '@pi-desktop/plugin-devkit...' build
+      - name: Validate production adapter against both official releases
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd examples/plugins/ai-memory
+          node scripts/typecheck.mjs
+          node scripts/test.mjs
+          node scripts/check-compatibility.mjs
+          node scripts/build.mjs
+          node ../../../packages/plugin-devkit/dist/cli.js check dist
+      - name: Report upstream release drift without enabling it
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $latest = Invoke-RestMethod 'https://api.github.com/repos/akitaonrails/ai-memory/releases/latest'
+          $supported = Get-Content examples/plugins/ai-memory/compatibility/supported-versions.json -Raw | ConvertFrom-Json
+          $version = $latest.tag_name -replace '^v', ''
+          $known = $supported.releases.PSObject.Properties.Name -contains $version
+          "Latest upstream: $version; reviewed: $known" >> $env:GITHUB_STEP_SUMMARY
+          if (-not $known) { 'New release requires isolated contract review; writes remain disabled for it.' >> $env:GITHUB_STEP_SUMMARY }
