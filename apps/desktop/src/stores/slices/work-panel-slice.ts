@@ -167,7 +167,8 @@ export function createWorkPanelSlice({
 
   openWorkPanelTabForSession: (sessionId, tab) => {
     if (!sessionId) return;
-    if (isRemoteSession(get().sessions.find((session) => session.id === sessionId)) || sessionId.startsWith("remote:")) return;
+    const remote = isRemoteSession(get().sessions.find((session) => session.id === sessionId)) || sessionId.startsWith("remote:");
+    if (remote && (tab.kind !== "terminal" || tab.terminal?.sessionId !== sessionId)) return;
     set((state) => {
       const affectsVisibleSession =
         state.activeSessionId === sessionId &&

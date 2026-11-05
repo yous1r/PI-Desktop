@@ -134,3 +134,22 @@ test("opening a terminal tab does not end any shell", () => {
   );
   assert.equal(handle.get().activeWorkPanelTabId, tabs[1].id);
 });
+
+test("remote sessions keep independent terminal tabs and reject unrelated panel targets", () => {
+  const handle = store();
+  const sessionId = "remote:host:session";
+  handle.set({ activeSessionId: sessionId });
+  const first = workPanelTabs.terminalWorkPanelTab({ sessionId, workspaceId: "ssh:host:/repo" });
+  const second = workPanelTabs.terminalWorkPanelTab({ sessionId, workspaceId: "ssh:host:/repo" });
+  handle.get().openWorkPanelTab(first);
+  handle.get().openWorkPanelTab(second);
+  assert.deepEqual(handle.get().workPanelTabs.map(tab => tab.id), [first.id, second.id]);
+  handle.get().openWorkPanelTab(workPanelTabs.newWorkPanelTab());
+  handle.get().openWorkPanelTab(workPanelTabs.terminalWorkPanelTab({ sessionId: "other" }));
+  assert.equal(handle.get().workPanelTabs.length, 2);
+  closedTabs.length = 0;
+  handle.get().closeWorkPanelTab(first.id);
+  assert.deepEqual(closedTabs, [first.id]);
+  assert.equal(handle.get().activeWorkPanelTabId, second.id);
+  assert.deepEqual(handle.get().workPanelContexts[sessionId].tabs.map(tab => tab.id), [second.id]);
+});

@@ -19301,3 +19301,24 @@ substitute for native Linux packaging or SSH acceptance.
 - **Milestone:** Maintenance.
 - **Status:** Automated isolated Electron and service regression coverage;
   this does not assert live SSH or installed-application acceptance.
+
+### E2E-TERMINAL-multiple-tabs
+
+- **Entry:** `node --test apps/desktop/test/multiple-terminal-user-path.test.mjs`.
+- **Preconditions:** Dedicated candidate worktree, existing Electron/JS toolchain,
+  isolated profile; no real SSH Host or provider connection.
+- **Steps:** In local and SSH-bound workspaces, open a terminal and click New
+  terminal twice. Switch back, type input and close an inactive terminal; verify
+  the other shells remain. Remount the panel and switch sessions. Close every
+  terminal, reopen explicitly, then close another while its create is pending.
+  Repeat in a remote-Agent session, including its two-shell limit rejection.
+- **Expected:** Unique handles, input routed to the selected shell, one close
+  per removed process, preserved bindings and scrollback on reattachment. The
+  last close leaves an empty panel; delayed creation cannot leak a process.
+  New/close controls stay visible in the narrow panel and use localized labels.
+- **Coverage:** Real React WorkPanel, store, TerminalTab, xterm and API facade;
+  only Host IPC is simulated. State tests cover foreign-session target refusal.
+- **Specs:** [UI IA](../04-ux/01-ui-ia.md),
+  [workspace terminals](../07-plugins/18-workspace-execution.md).
+- **Status:** Automated component/user-path coverage; installed app and real
+  SSH process acceptance are not implied.

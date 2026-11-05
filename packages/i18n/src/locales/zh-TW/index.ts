@@ -2147,6 +2147,8 @@ sklm: {
       terminal: "終端",
     },
     terminal: {
+      new: "新增終端",
+      close: "關閉終端",
       title: "終端",
       shell: "Shell 程式",
       hostLabel: "主機",

@@ -1001,7 +1001,9 @@ function LocalWorkPanel({
                   const label =
                     tab.kind === "subagent"
                       ? (subagentLabelById.get(tab.id) ?? t("panel.tabs.subagent"))
-                      : tabLabel(tab, t, pluginViews);
+                      : tab.kind === "terminal"
+                        ? `${tabLabel(tab, t, pluginViews)} ${tabs.filter(item => item.kind === "terminal").findIndex(item => item.id === tab.id) + 1}`
+                        : tabLabel(tab, t, pluginViews);
                   const selected = tab.id === activeTabId;
                   const Icon =
                     tab.kind === "plugin"
@@ -1170,6 +1172,8 @@ function LocalWorkPanel({
                 >
                   <TerminalTab
                     tabId={activeTab.id}
+                    onNewTerminal={() => openWorkPanelTab(terminalWorkPanelTab(activeTab.terminal ?? { sessionId: activeSessionId }))}
+                    onCloseTerminal={() => closeTabAndFocus(activeTab.id)}
                     target={
                       activeTab.terminal ?? {
                         ...(activeSessionId ? { sessionId: activeSessionId } : {}),

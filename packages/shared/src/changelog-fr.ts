@@ -10,6 +10,7 @@ export const frEntries: ChangelogEntry[] = [
       "Les plugins peuvent maintenir un bloc géré dans le AGENTS.md global pendant que vous continuez à modifier tout ce qui l'entoure.",
       "L'éditeur d'instructions détecte les modifications faites hors de l'application et conserve votre brouillon non enregistré au lieu d'écraser l'une ou l'autre version.",
       "Les hôtes distants SSH installent le pi-host lié statiquement depuis la version propre à cette build, si bien que les hôtes dotés d'une glibc plus ancienne démarrent correctement.",
+      "Ouvrez plusieurs onglets de terminal depuis la barre d’outils et fermez chaque shell séparément ; les autres restent actifs lorsque vous changez d’onglet.",
     ],
   },
   {

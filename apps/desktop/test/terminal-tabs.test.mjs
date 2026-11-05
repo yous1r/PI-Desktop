@@ -172,9 +172,10 @@ test("the remote workspace offers the same terminal pane for a remote host", () 
     new URL("../src/components/remote/RemoteWorkspace.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(remote, /import \{ TerminalTab \} from "\.\.\/workpanel\/TerminalTab"/);
+  const terminals = readFileSync(new URL("../src/components/remote/RemoteTerminalTabs.tsx", import.meta.url), "utf8");
+  assert.match(remote, /<RemoteTerminalTabs session=\{session\}/);
+  assert.match(terminals, /import \{ TerminalTab \} from "\.\.\/workpanel\/TerminalTab"/);
   assert.match(remote, /value: "terminal", label: tRoot\("panel\.tabs\.terminal"\)/);
-  assert.match(remote, /hostKey: session\.remoteWorkspace\?\.hostKey \?\? session\.remoteHostKey/);
-  // The remote pane must not fall back to the renderer's active workspace.
-  assert.doesNotMatch(remote, /terminalWorkspaceId\(\{ hostKey: useAppStore/);
+  assert.match(terminals, /session\.remoteWorkspace\?\.hostKey \?\? session\.remoteHostKey/);
+  assert.doesNotMatch(terminals, /terminalWorkspaceId\(\{ hostKey: useAppStore/);
 });

@@ -116,6 +116,14 @@ destination, chat as the home surface, tools and permissions inline.
   revealing it without creating a resource tab and collapsing it without
   discarding one; the create trigger remains unavailable while the panel is
   closed. Closing the final tab keeps the panel open and shows the New launcher.
+  Terminal tabs are independent shells. The terminal toolbar's **New terminal**
+  (`+`) opens another terminal for the captured session/workspace; **Close
+  terminal** (`×`) ends only that shell, including a shell still starting.
+  Numbered labels distinguish terminals. Switching tabs or collapsing the panel
+  retains their processes and scrollback. Remote-Agent sessions expose their
+  own terminal tab strip using the same session context and close lifecycle;
+  after all tabs are closed, the empty state offers New terminal and never
+  silently starts a replacement. Existing Host terminal limits still apply.
   No agent or tool result opens, activates, or resizes the panel: Review is
   reached only through an explicit user action, so a successful workspace
   Write/Edit leaves the panel exactly as the user left it and shows its

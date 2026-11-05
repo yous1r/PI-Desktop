@@ -110,3 +110,35 @@
 .terminal-tab__surface .xterm-viewport {
   background: transparent !important;
 }
+
+.terminal-tab__bar { flex-wrap: wrap; }
+.remote-terminal-tabs,
+.remote-terminal-tabs__pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+.remote-terminal-tabs__bar,
+.remote-terminal-tabs__item {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.remote-terminal-tabs__bar {
+  gap: 4px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--ds-border-subtle);
+}
+.remote-terminal-tabs__list {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+}
+.remote-terminal-tabs__item [aria-selected="true"] {
+  background: var(--ds-bg-active);
+  color: var(--ds-text-primary);
+}
+.remote-terminal-tabs__empty { padding: 12px; }
