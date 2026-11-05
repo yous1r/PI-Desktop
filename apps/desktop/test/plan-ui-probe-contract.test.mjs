@@ -34,11 +34,9 @@ test("Plan UI probe is Main-only, explicitly gated, and reuses the live Host", (
   assert.match(probeSource, /hostChildPid:/);
 });
 
-test("runtime identity is a probe-gated WeakMap identity for the live runtime object", () => {
-  assert.match(sidecarSource, /PI_DESKTOP_PLAN_UI_PROBE/);
-  assert.match(sidecarSource, /WeakMap<DesktopAgentRuntime, string>/);
-  assert.match(sidecarSource, /testRuntimeIds\.get\(runtime\)/);
-  assert.match(sidecarSource, /testRuntimeIds\.set\(runtime, runtimeId\)/);
+test("runtime identity probe reuses the live runtime generation behind its opt-in gate", () => {
+  assert.match(sidecarSource, /if \(process\.env\.PI_DESKTOP_PLAN_UI_PROBE !== "1"\)/);
+  assert.match(sidecarSource, /const runtimeId = runtime\.runtimeId/);
   assert.match(sidecarSource, /runtimes\.get\(sessionId\)/);
   assert.match(sidecarSource, /agent\.testRuntimeIdentity/);
   const identityBlock = sidecarSource.slice(

@@ -43,8 +43,8 @@ test("an installed card grows one call to action: update, then open panel", () =
   // throws for a plugin it has not loaded.
   assert.match(installedPanel, /const canOpenPanel = plugin\.enabled && !!plugin\.ui\?\.panel/);
   assert.doesNotMatch(installedPanel, /\{plugin\.ui\?\.panel \?/);
-  // Settings stay behind enabled + declared settings.
-  assert.match(installedPanel, /plugin\.enabled && plugin\.settings\?\.length/);
+  // Enabled plugins expose settings for declared fields or managed connections.
+  assert.match(installedPanel, /plugin\.enabled && \(plugin\.settings\?\.length \|\| plugin\.permissions\?\.includes\("net\.connection"\)\)/);
   // A disabled plugin has no primary: both branches read plugin.enabled.
   assert.match(installedPanel, /\{plugin\.enabled && update \? \(/);
 });

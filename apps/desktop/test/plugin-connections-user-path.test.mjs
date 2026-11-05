@@ -247,6 +247,10 @@ window.pluginConnectionsProbe = async () => {
   await wait(() => !field("plugin-connection-token").value, "clearing must empty the pending token");
   check(text().includes(label("tokenClearNote")), "clearing must explain what saving does");
   await click(buttonByText(label("save")), "save action missing");
+  check(alertText() === label("errorTokenRequired"), "clearing cannot bypass endpoint credential re-entry");
+  check(saveCalls().length === 3, "clearing at a changed endpoint must not reach IPC");
+  await fill(field("plugin-connection-base-url"), "https://memory.example.eu");
+  await click(buttonByText(label("save")), "save action missing");
   await wait(() => saveCalls().length === 4, "clearing must save");
   check(saveCalls()[4 - 1].input.token === "", "clearing sends an empty token, not an absent one");
 
