@@ -19321,3 +19321,25 @@ substitute for native Linux packaging or SSH acceptance.
 - **Specs:** [Release runbook](06-release-runbook.md),
   [remote native compatibility](../../adr/0338-static-host-core-for-remote-bundles.md).
 - **Status:** Automated native CI gate; actual user-host deployment is separate.
+
+### E2E-WORKSPACE-CONSENT-theme
+
+- **Preconditions:** Dedicated candidate worktree, compatible Electron and
+  existing dependency tree; isolated temporary profile, no live SSH or model.
+- **Entry:** `node --test apps/desktop/test/workspace-plugin-consent*.test.mjs`.
+- **Steps:** Request approval before renderer readiness, then display the real
+  consent component through production preload and Main handlers. Verify dark,
+  light and overridden theme tokens, long Chinese text in a narrow window,
+  initial Deny focus, Tab wrapping, Escape, backdrop and explicit approval.
+  Queue two plugins; attempt stale and foreign-window replies; reload or close
+  with pending decisions, and unload a queued plugin.
+- **Expected:** One themed modal is visible, embedded views are blocked, focus
+  returns on dismissal, and only the matching explicit approval succeeds.
+  Cancellation never writes a grant; already granted Host/package bindings
+  bypass the dialog. Other Hosts or changed digests require a fresh decision.
+- **Specs:** [Workspace execution](../07-plugins/18-workspace-execution.md),
+  [IPC](../03-runtime/01-ipc-protocol.md).
+- **Acceptance:** Plugin permission enforcement and accessible themed UI.
+- **Milestone:** Maintenance.
+- **Status:** Automated isolated Electron and service regression coverage;
+  this does not assert live SSH or installed-application acceptance.
