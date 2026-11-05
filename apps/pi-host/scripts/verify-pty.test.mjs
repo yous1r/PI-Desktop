@@ -16,3 +16,9 @@ test("refuses an unreadable or unrecognized native symbol report", () => {
   assert.throws(() => assertGlibcFloor(""), /No glibc requirement/);
   assert.throws(() => assertGlibcFloor("GLIBCXX_3.4.29"), /No glibc requirement/);
 });
+
+test("rejects a dynamic C++ runtime even when the glibc floor is satisfied", () => {
+  for (const symbol of ["GLIBCXX_3.4.29", "CXXABI_1.3.15"]) {
+    assert.throws(() => assertGlibcFloor(`GLIBC_2.28 ${symbol}`), /C\+\+ runtime must be linked statically/);
+  }
+});

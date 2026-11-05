@@ -56,6 +56,9 @@ jobs:
       - name: Unit-test the Pi patch checks
         run: node --test scripts/pi-patch-hash.test.mjs
 
+      - name: Unit-test the remote PTY compatibility gate
+        run: node --test apps/pi-host/scripts/verify-pty.test.mjs
+
       - name: Unit tests
         run: pnpm -r --if-present test
 

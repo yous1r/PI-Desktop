@@ -13,6 +13,9 @@ export function assertGlibcFloor(symbols, floor = [2, 28]) {
   if (highest[0] > floor[0] || (highest[0] === floor[0] && highest[1] > floor[1])) {
     throw new Error(`PTY needs glibc ${highest.join(".")}, above ${floor.join(".")}`);
   }
+  if (/\b(?:GLIBCXX|CXXABI)_/.test(symbols)) {
+    throw new Error("PTY C++ runtime must be linked statically");
+  }
   return highest.join(".");
 }
 
