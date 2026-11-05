@@ -4,6 +4,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { register } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const data = await mkdtemp(join(tmpdir(), "pi-remote-plugin-data-"));
@@ -25,7 +26,7 @@ async function harness(t, { permissions = ["fs.read"], scope = ["docs/**"], read
   const requests = []; const audits = [];
   let workspace = REMOTE;
   const runtime = new PluginRuntime({
-    hostEntry: new URL("../electron/main/plugin-host-process.mjs", import.meta.url).pathname,
+    hostEntry: fileURLToPath(new URL("../electron/main/plugin-host-process.mjs", import.meta.url)),
     spawnProcess({ entry }) {
       const child = fork(entry, [], { stdio: ["ignore", "pipe", "pipe", "ipc"] });
       return { postMessage: message => { if (child.connected) child.send(message); },

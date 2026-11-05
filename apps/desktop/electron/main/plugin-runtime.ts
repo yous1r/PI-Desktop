@@ -2593,6 +2593,13 @@ export class PluginRuntime {
   ): Promise<unknown> {
     const installed = this.loaded.get(pluginId);
     if (!installed) throw apiError("NOT_FOUND", `plugin not loaded: ${pluginId}`);
+    // Legacy file reads must capture selection before workspaceTarget yields.
+    // An explicit workspace context already binds the originating session.
+    if (!context?.context && installed.manifest.execution?.main !== "workspace" &&
+        (channel === "fs.list" || channel === "fs.readPreview")) {
+      const captured = this.captureFileWorkspace(installed, pluginFsReadOptions(payload?.workspacePath));
+      payload = { ...payload, workspacePath: captured.workspacePath };
+    }
     const remoteFiles = channel.startsWith("fs.") && context?.context?.authority.kind === "remote" &&
       !resolveLocalResource(context.localResource,String(payload?.path ?? ""));
     let loaded: LoadedPlugin;

@@ -51,9 +51,11 @@ test("runtime theme APIs and setTheme are allowlisted and wired", () => {
   assert.match(themeServicesSrc, /setThemePreference/);
   assert.match(themeServicesSrc, /IPC\.event\.settingsChanged/);
   assert.match(themeServicesSrc, /reason: "themes"/);
-  // Child host process must expose the same surface.
+  // Child host process must expose the same surface. The Desktop entry only
+  // imports the shared Node/Electron runner, so the preload-facing API object
+  // lives in packages/host-runtime.
   const childSrc = readFileSync(
-    join(desktopRoot, "electron/main/plugin-host-process.mjs"),
+    join(repoRoot, "packages/host-runtime/plugin-host-process.mjs"),
     "utf8",
   );
   assert.match(childSrc, /setTheme:\s*\(themeId\)/);

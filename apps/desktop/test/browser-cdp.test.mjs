@@ -122,8 +122,21 @@ test("browser.reveal is admitted by the plugin host API allowlist", () => {
 test("in-flight tool.execute session survives the child host-api round trip", () => {
   assert.match(runtimeSource, /private readonly toolInvocations = new PluginToolInvocations/);
   assert.match(runtimeSource, /reveal: async \(\) => \{[\s\S]*browserSessionId\(pluginId\)/);
-  assert.match(runtimeSource, /toolInvocations\.begin\(target/);
+  // The invocation opens on the installed plugin — the owner the runtime also
+  // cancels on unload — and records the tool's session, so a host-api call the
+  // child makes mid-tool resumes that same per-call binding instead of ambient
+  // state.
+  assert.match(
+    runtimeSource,
+    /toolInvocations\.begin\(installed, \{\s*pluginId,\s*sessionId,/s,
+  );
   assert.match(runtimeSource, /invocationId: invocation\.id/);
+  // The child echoes the invocation id back on every host-api call; the runtime
+  // resolves it against the installation that owns the invocation.
+  assert.match(
+    runtimeSource,
+    /toolInvocations\.run\(loaded\.installation \?\? loaded, message\.invocationId/,
+  );
   assert.match(runtimeSource, /this\.browserSessionId\(pluginId\)/);
 });
 
