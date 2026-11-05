@@ -212,7 +212,8 @@ describe("pi-host packaging", () => {
     expect(launched.status, launched.stderr).toBe(0);
     expect(launched.stdout.trim()).toBe("updated CLI");
     expect(readdirSync(root).filter((name) => name.startsWith(".stage") || name === ".install-lock")).toEqual([]);
-  });
+  // Four verified install attempts copy and hash the bundled Node on CI disks.
+  }, 30_000);
 
 
   it("verifies in place without creating installation state and rejects altered files", () => {

@@ -115,7 +115,7 @@ jobs:
           pnpm install --frozen-lockfile --config.side-effects-cache=false
           pnpm build:js
           # These Host checks require POSIX sockets, permissions and native packaging.
-          pnpm exec vitest run apps/pi-host/src packages/host-runtime/src/extension-owner-routing.test.ts
+          pnpm exec vitest run apps/pi-host/src packages/host-runtime/src/extension-owner-routing.test.ts --maxWorkers=2
           pnpm --filter @pi-desktop/agent-runtime bundle
           pnpm --filter @pi-desktop/pi-host build
           node apps/pi-host/scripts/bundle.mjs \
