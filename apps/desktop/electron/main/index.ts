@@ -895,7 +895,7 @@ function registerIpc() {
     },
     /** The shell reports the session on screen; plugin surfaces read it. */
     setActivePluginSession: (next) => pluginServices.pluginSession.setActiveSession(next),
-    /** The shell answers a composer suggestion through the same invoke list. */
+    workspaceConsent: pluginServices.workspaceConsent,
     settleComposerSuggestion: (answer: ComposerSuggestionAnswer) =>
       pluginServices.composerSuggestion.settle(answer),
     getPluginLauncherWindow: () => mainState.pluginLauncherWindow,
