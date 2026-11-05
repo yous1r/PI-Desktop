@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { parseArgs, resolveConfig } from "./config.js";
+import { nodeRuntimePath } from "./runtime-path.js";
 
 /**
  * `pi-host [--data-dir <dir>] [--port <n>] [--pair] [--host-core <bin>] [--sidecar <entry>]`
@@ -37,6 +38,7 @@ async function main(): Promise<void> {
     return;
   }
   const config = resolveConfig(args);
+  process.env.PATH = nodeRuntimePath(config.nodeBinary, process.env.PATH);
   const { startPiHost } = await import("./app.js");
   const app = await startPiHost(config);
   process.stdout.write(`PI_HOST_READY ${JSON.stringify({ hostId: app.hostId, host: app.address.host, port: app.address.port, version: (await import("@pi-desktop/shared")).APP_VERSION })}\n`);

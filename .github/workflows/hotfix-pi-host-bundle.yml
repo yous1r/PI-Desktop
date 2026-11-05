@@ -113,6 +113,7 @@ jobs:
           # cached node-pty build ships an addon linked against that newer glibc,
           # so build native addons on this Ubuntu 22.04 runner instead.
           pnpm install --frozen-lockfile --config.side-effects-cache=false
+          pnpm exec vitest run apps/pi-host/src/runtime-path.test.ts
           pnpm build:js
           pnpm --filter @pi-desktop/agent-runtime bundle
           pnpm --filter @pi-desktop/pi-host build
