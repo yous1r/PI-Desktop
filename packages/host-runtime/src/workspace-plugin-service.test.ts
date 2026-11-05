@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { mkdtemp, mkdir, writeFile, readFile, rm, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { WorkspacePluginRequest, WorkspacePluginEvent, WorkspaceExecutionContext } from "@pi-desktop/shared";
 import { WorkspacePluginService } from "./workspace-plugin-service.js";
 import { collectPluginPackage, safePluginPackagePath } from "./plugin-packages.js";
@@ -24,14 +25,18 @@ describe("workspace Node plugin service", () => {
           text: channel === 'media' ? '字'.repeat(700000) : 'ok', secret: process.env.PROVIDER_API_KEY || null };
       };
     `);
-    const service = new WorkspacePluginService({ dataDir: join(root, "state"), runner: resolve("packages/host-runtime/plugin-host-process.mjs"), env: { ...process.env, PROVIDER_API_KEY: "must-not-cross" } });
+    const service = new WorkspacePluginService({ dataDir: join(root, "state"), runner: fileURLToPath(new URL("../plugin-host-process.mjs", import.meta.url)), env: { ...process.env, PROVIDER_API_KEY: "must-not-cross" } });
     const owner = { deviceId: "desktop", connectionId: "one" }; const decoder = new PluginMessageDecoder();
     const responses = new Map<string, { resolve(value: unknown): void; reject(error: Error): void }>();
     let next = 0; let frameCount = 0;
     const request = (input: WorkspacePluginRequest) => service.handle(input, owner, sink);
     const send = async (message: unknown) => { for (const frame of pluginFrames(encodePluginMessage(message))) await request({ action: "message", instanceId: "instance", frame }); };
     const sink = async (event: WorkspacePluginEvent) => {
-      if (!("frame" in event)) return;
+      if (!("frame" in event)) {
+        for (const pending of responses.values()) pending.reject(new Error(`Plugin runner exited with code ${event.exitCode}`));
+        responses.clear();
+        return;
+      }
       frameCount++; const decoded = decoder.accept(event.frame); if (!decoded) return;
       const message = decoded.message as {t:string;id:string;api?:string;ok?:boolean;value?:unknown;error?:{message:string}};
       if (message.t === "call") {

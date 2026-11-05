@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -36,5 +36,7 @@ try {
 } finally { clearTimeout(timeout); }
 console.log(`Browser capture artifacts retained at ${artifacts}`);
 console.log(output.trim());
+const progress = join(artifacts, "progress.log");
+if (existsSync(progress)) console.log(`Browser capture stages:\n${readFileSync(progress, "utf8")}`);
 assert.equal(code, 0, "native browser capture/resize regression failed");
 assert.match(output, /BROWSER_CAPTURE_RESIZE {"ok":true/);
