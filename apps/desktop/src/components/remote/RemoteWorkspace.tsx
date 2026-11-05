@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import type { FsEntry, FsReadResult, SessionSummary, WorkspaceDiff } from "@pi-desktop/shared";
-import { terminalWorkspaceId } from "@pi-desktop/shared";
 import { api } from "../../lib/api";
 import { sessionAllows } from "../../lib/remote-session-safety";
 import { useAppStore } from "../../stores/app-store";
 import { Button, SegmentedControl } from "../ui";
-import { TerminalTab } from "../workpanel/TerminalTab";
+import { RemoteTerminalTabs } from "./RemoteTerminalTabs";
 import "../../styles/remote-mvp.css";
 
 export function RemoteWorkspace({ session, width, exiting, onExitAnimationEnd }: {
@@ -65,17 +64,6 @@ export function RemoteWorkspace({ session, width, exiting, onExitAnimationEnd }:
     } catch (caught) { if (current(request)) setError(caught instanceof Error ? caught.message : String(caught)); }
     finally { if (current(request)) setBusy(false); }
   };
-  // The remote terminal is one stable view per session, so its handle survives a
-  // switch away from this panel and back. The target comes from the session's
-  // own host and workspace: switching project elsewhere never retargets it.
-  const terminalTabId = `remote-terminal:${session.id}`;
-  const hostLabel = session.remoteHostLabel ?? session.remoteHostKey;
-  const terminalTarget = {
-    workspaceId: terminalWorkspaceId({
-      hostKey: session.remoteWorkspace?.hostKey ?? session.remoteHostKey,
-      path: session.remoteWorkspace?.path,
-    }),
-  };
   return (
     <aside className={`work-panel remote-workspace${exiting ? " is-exiting" : ""}`}
       style={{ "--work-panel-width": `${width}px` } as CSSProperties}
@@ -94,22 +82,8 @@ export function RemoteWorkspace({ session, width, exiting, onExitAnimationEnd }:
         <Button variant="ghost" onClick={() => useAppStore.getState().collapseWorkPanel()}>{t("close")}</Button>
       </div>
       <p className="remote-hint">{t("identity", { host: session.remoteHostLabel ?? session.remoteHostKey, workspace: session.remoteWorkspaceLabel ?? t("workspace") })}</p>
-      {tab === "terminal" && (
-        <div className="remote-workspace-terminal">
-          <TerminalTab
-            tabId={terminalTabId}
-            target={{
-              sessionId: session.id,
-              ...(terminalTarget.workspaceId ? { workspaceId: terminalTarget.workspaceId } : {}),
-              tabId: terminalTabId,
-            }}
-            {...(hostLabel ? { hostLabel } : {})}
-            {...(session.remoteHostKey ? { hostKey: session.remoteHostKey } : {})}
-            {...(session.remoteWorkspace?.path ? { workspacePath: session.remoteWorkspace.path } : {})}
-          />
-        </div>
-      )}
-      <div className="remote-workspace-content" aria-busy={busy}>
+      {tab === "terminal" && <div className="remote-workspace-terminal"><RemoteTerminalTabs session={session} /></div>}
+      <div className="remote-workspace-content" aria-busy={busy} hidden={tab === "terminal"}>
         {!sessionAllows(session, "canReadWorkspace") && <p>{t("readOnly")}</p>}
         {busy && <p role="status">{t("loading")}</p>}
         {error && <p role="alert">{error}</p>}

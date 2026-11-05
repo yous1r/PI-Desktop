@@ -151,6 +151,13 @@ and eight per device. Detached terminals expire after five minutes. SDK PTY outp
 API. The built-in terminal receives live events and subscribes before creation.
 Missing node-pty returns a capability error. A disconnected terminal never queues
 keystrokes or starts a local shell as a substitute.
+The built-in toolbar can create multiple independent terminal tabs and close
+each explicitly. A close ends only its tab's process; selection/panel/session
+changes detach the view and retain the shell. Tabs capture the original target
+and do not inherit later workspace selection. Remote-Agent session terminals
+use the same tab lifecycle while retaining the legacy two-shell session limit;
+workspace terminals retain the eight-per-device limit. Failed or still-starting
+tabs remain closable, and a late create result for a closed tab is reclaimed.
 
 Trusted Agent extension `pi.exec` routes default/relative/workspace cwd to the
 session's remote workspace. `target:"local"` and legacy explicit absolute outside-root

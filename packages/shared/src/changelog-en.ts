@@ -10,6 +10,7 @@ export const enEntries: ChangelogEntry[] = [
       "Plugins can keep a managed block in the global AGENTS.md while you keep editing everything around it.",
       "The instructions editor detects edits made outside the app and keeps your unsaved draft instead of overwriting either version.",
       "SSH remote hosts install the statically linked pi-host from this build's own release, so hosts with an older glibc start correctly.",
+      "Open multiple terminal tabs directly from the toolbar and close each shell independently; switching tabs keeps the others running.",
     ],
   },
   {

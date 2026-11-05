@@ -10,6 +10,7 @@ export const trEntries: ChangelogEntry[] = [
       "Eklentiler genel AGENTS.md içinde yönetilen bir blok tutabilir; çevresindeki her şeyi düzenlemeye devam edebilirsiniz.",
       "Talimat düzenleyici uygulama dışında yapılan değişiklikleri algılar ve iki sürümün de üzerine yazmak yerine kaydedilmemiş taslağınızı korur.",
       "SSH uzak ana bilgisayarları statik bağlantılı pi-host'u bu derlemenin kendi sürümünden kurar; eski glibc kullanan ana bilgisayarlar da doğru şekilde başlar.",
+      "Araç çubuğundan birden fazla terminal sekmesi açın ve her kabuğu ayrı kapatın; sekme değiştirirken diğer terminaller çalışmaya devam eder.",
     ],
   },
   {

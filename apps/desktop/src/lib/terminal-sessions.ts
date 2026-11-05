@@ -68,9 +68,8 @@ export function closeTerminalForTab(tabId: string): void {
 /**
  * End every shell bound to `sessionId`.
  *
- * A remote terminal lives under a session-scoped tab id that never enters
- * `workPanelContexts` (the remote panel has no tab model), so deleting a session
- * has to sweep the registry by target as well as by tab id.
+ * Sweep by creation-time session ownership as well as by visible tab id, so
+ * deleting a session also closes its detached/background terminals.
  */
 export function closeTerminalForSession(sessionId: string): void {
   for (const [tabId, handle] of [...terminalHandles]) {

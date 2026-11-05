@@ -2147,6 +2147,8 @@ sklm: {
       terminal: "终端",
     },
     terminal: {
+      new: "新建终端",
+      close: "关闭终端",
       title: "终端",
       shell: "Shell 程序",
       hostLabel: "主机",

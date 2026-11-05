@@ -2158,6 +2158,8 @@ sklm: {
       terminal: "터미널",
     },
     terminal: {
+      new: "새 터미널",
+      close: "터미널 닫기",
       title: "터미널",
       shell: "셸",
       hostLabel: "호스트",

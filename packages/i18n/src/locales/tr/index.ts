@@ -2152,6 +2152,8 @@ sklm: {
       terminal: "Terminal",
     },
     terminal: {
+      new: "Yeni terminal",
+      close: "Terminali kapat",
       title: "Terminal",
       shell: "Kabuk",
       hostLabel: "Ana makine",

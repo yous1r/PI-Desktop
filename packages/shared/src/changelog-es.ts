@@ -10,6 +10,7 @@ export const esEntries: ChangelogEntry[] = [
       "Los plugins pueden mantener un bloque gestionado en el AGENTS.md global mientras sigues editando todo lo que lo rodea.",
       "El editor de instrucciones detecta cambios hechos fuera de la aplicación y conserva tu borrador sin guardar en lugar de sobrescribir cualquiera de las versiones.",
       "Los hosts remotos por SSH instalan el pi-host enlazado estáticamente desde la propia versión de esta compilación, de modo que los hosts con una glibc más antigua se inician correctamente.",
+      "Abra varias pestañas de terminal desde la barra de herramientas y cierre cada shell por separado; las demás siguen ejecutándose al cambiar de pestaña.",
     ],
   },
   {

@@ -30,6 +30,7 @@ import {
 } from "../../lib/terminal-sessions";
 import { IconPlug, IconRefresh } from "../icons";
 import { Badge, Select, TooltipButton } from "../ui";
+import { TerminalTabActions } from "./TerminalTabActions";
 
 /**
  * One work-panel terminal, local or remote.
@@ -62,6 +63,8 @@ export function TerminalTab({
   hostLabel,
   hostKey,
   workspacePath,
+  onNewTerminal,
+  onCloseTerminal,
 }: {
   tabId: string;
   /** Creation-time target: session, workspace identity, and owning tab. */
@@ -70,6 +73,8 @@ export function TerminalTab({
   hostLabel?: string;
   hostKey?: string;
   workspacePath?: string;
+  onNewTerminal?: () => void;
+  onCloseTerminal?: () => void;
 }) {
   const { t } = useTranslation();
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -540,6 +545,7 @@ export function TerminalTab({
         >
           <IconRefresh size={14} />
         </TooltipButton>
+        <TerminalTabActions onNew={onNewTerminal} onClose={onCloseTerminal} />
       </div>
       <div
         className="terminal-tab__surface"

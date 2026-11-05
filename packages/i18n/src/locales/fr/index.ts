@@ -2142,6 +2142,8 @@ sklm: {
       "terminal": "Terminal",
     },
     "terminal": {
+      "new": "Nouveau terminal",
+      "close": "Fermer le terminal",
       "title": "Terminal",
       "shell": "Shell",
       "hostLabel": "Hôte",

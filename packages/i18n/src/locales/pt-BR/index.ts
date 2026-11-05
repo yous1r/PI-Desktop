@@ -2108,6 +2108,8 @@ export const ptBR = {
       terminal: "Terminal",
     },
     terminal: {
+      new: "Novo terminal",
+      close: "Fechar terminal",
       title: "Terminal",
       shell: "Shell",
       hostLabel: "Host",
