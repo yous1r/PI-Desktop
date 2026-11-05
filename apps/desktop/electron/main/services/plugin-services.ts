@@ -36,6 +36,7 @@ import {
 } from "@pi-desktop/agent-runtime";
 import { createFsConsentService } from "../plugin-fs-consent";
 import { createWorkspacePluginServices } from "./workspace-plugin-services";
+import { createWorkspacePluginConsent } from "./workspace-plugin-consent";
 import { WorkspaceResources } from "../remote/workspace-resources";
 import { WorkspacePorts, forwardWorkspacePort } from "../remote/workspace-ports";
 import { catalogs, resolveLocale } from "@pi-desktop/i18n";
@@ -732,6 +733,7 @@ export function createPluginServices({
     onRevealView: (sessionId, tabId, location) =>
       sendToRenderer(IPC.event.browserPreview, { sessionId, tabId, ...(location ?? { revealOnly: true }) }),
   });
+  const workspaceConsent = createWorkspacePluginConsent({ getWindow: getMainWindow });
   const workspacePorts = new WorkspacePorts({
     connect: (context,port) => {const boot=getActiveRemoteHostsBoot();if(!boot)throw new Error("Workspace Host is unavailable");return forwardWorkspacePort(boot,context,port);},
     openBrowser: async (url,sessionId) => {await browserHost.openTab({url},sessionId);},
@@ -759,13 +761,13 @@ export function createPluginServices({
     browserHost.setChromeSurface(surface);
   };
   plugins.setServices({
-    ...createWorkspacePluginServices({getHost,currentWorkspacePath:getWorkspacePath,getWindow:getMainWindow,getLocale:getUpdaterLocale,
+    ...createWorkspacePluginServices({getHost,currentWorkspacePath:getWorkspacePath,requestConsent:workspaceConsent.request,
       client:hostKey=>{const boot=getActiveRemoteHostsBoot();if(!boot)throw new Error("Workspace Host is unavailable");return boot.workspaceClient(hostKey);}}),
     readRemoteWorkspaceFiles: createPluginWorkspaceReader({ getHost, getBoot: getActiveRemoteHostsBoot }),
     openWorkspaceResource: input => workspaceResources.open(input),
     openWorkspacePort: input => workspacePorts.open(input),
     closeWorkspaceResources: ownerId => {workspaceResources.closeOwner(ownerId);workspacePorts.closeOwner(ownerId);},
-    disposeWorkspaceResources: () => {workspaceResources.dispose();workspacePorts.dispose();},
+    disposeWorkspaceResources: () => {workspaceConsent.dispose();workspaceResources.dispose();workspacePorts.dispose();},
     /**
      * The richer workspace payload, so `pi.workspace.get` and the
      * `workspace:changed` event both expose the open project's folder roots
@@ -841,6 +843,7 @@ export function createPluginServices({
       cdp: (method, params, sessionId, tabId) => browserHost.cdpCommand(method, params, sessionId, tabId),
     },
     onPluginUnload: (pluginId) => {
+      workspaceConsent.cancelPlugin(pluginId);
       if (pluginId === BROWSER_PLUGIN_ID) browserHost.disposeGuest();
       // A stopped plugin loses its line in the composer with it.
       composerSuggestion.clearPlugin(pluginId);
@@ -865,6 +868,7 @@ export function createPluginServices({
     browserHost,
     pluginSession,
     composerSuggestion,
+    workspaceConsent,
     speech,
   };
 }

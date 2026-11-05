@@ -2678,3 +2678,21 @@ window, and the owner's own failure code arrives through the main window, which
 is the frame that ran the action. A widget action never changes call state by
 itself: it is forwarded to the owner frame, and the resulting state reaches the
 widget through the same authoritative view the owner receives.
+
+### Workspace plugin consent dialog
+
+These main-window-only channels present native-code authorization in the themed
+renderer. They are not registered in the internal invoke map and cannot be
+called through plugin desktop control or MCP. Main additionally verifies the
+sender frame. The renderer receives display metadata and an opaque request ID;
+Main retains the plugin/Host/package grant binding and Rust owns persistence.
+
+- `plugin/workspaceConsent/ready({ ready: boolean }) -> { ready: boolean }`
+- `plugin/workspaceConsent/respond({ requestId, allowed: boolean }) -> { accepted: boolean }`
+- Event `plugin/event/workspaceConsentRequest`: `{ requestId, pluginName, hostKey }`
+- Event `plugin/event/workspaceConsentDismiss`: `{ requestId }`
+
+Only the displayed request accepts a response. Queued, duplicate, stale, or
+foreign-window responses cannot grant execution. Renderer unmount/navigation,
+process loss, window close, plugin unload and shutdown deny pending requests.
+The existing host RPC and grant file format are unchanged.

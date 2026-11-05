@@ -1,6 +1,7 @@
 export * from "./plugin-extension-owner.js";
 export * from "./activation.js";
 export * from "./workspace-execution.js";
+export * from "./workspace-plugin-consent.js";
 export * from "./workspace-terminal.js";
 export * from "./protocol.js";
 export * from "./errors.js";

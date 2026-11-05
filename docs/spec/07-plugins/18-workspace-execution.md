@@ -83,7 +83,14 @@ Trusted extension processes also recheck disablement/ownership every five second
 
 Native plugins execute with the OS privileges of the SSH account. Neither a child
 process nor SDK scopes form an OS sandbox. Desktop presents an explicit native-code
-consent; Rust host-core stores approvals by plugin, Host and package SHA-256.
+consent in a theme-aware application dialog; Rust host-core stores approvals by
+plugin, Host and package SHA-256. Main owns the pending binding and accepts only
+an explicit answer for the active request from the main window's top frame.
+Requests are queued until the renderer subscribes and shown one at a time. Deny
+is initially focused; Escape and a backdrop click deny. Navigation, renderer loss,
+window closure, plugin unload and service disposal cancel pending decisions.
+There is no automatic approval or native-dialog fallback. The dialog uses the
+shared overlay tokens and blocks embedded plugin views while visible.
 Changed package content requires approval again. SDK file/process/terminal/MCP
 calls still intersect installed and declared permissions. Model keys, SSH keys and
 Desktop environment secrets are not copied to the remote child.

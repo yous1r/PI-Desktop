@@ -15,6 +15,7 @@ import {
   IconPanelOpen,
 } from "../../components/icons";
 import { LifecycleConfirmationDialog } from "../../components/LifecycleConfirmationDialog";
+import { WorkspacePluginConsentDialog } from "../../components/plugins/WorkspacePluginConsentDialog";
 import { ProjectCreateDialog } from "../../components/ProjectCreateDialog";
 import { SearchDialog } from "../../components/SearchDialog";
 import { Sidebar } from "../../components/Sidebar";
@@ -386,6 +387,7 @@ export function AppShell() {
       ) : null}
       <ProjectCreateDialog />
       <LifecycleConfirmationDialog />
+      <WorkspacePluginConsentDialog />
       {splash}
       {startupRecovery}
     </div>

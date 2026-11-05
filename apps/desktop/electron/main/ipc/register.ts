@@ -18,6 +18,8 @@ import { searchMcpMarket } from "../mcp-registry-catalog";
 import { registerNotificationIpc } from "./notification-ipc";
 import { registerPluginIpc } from "./plugin-ipc";
 import { registerPluginUiIpc } from "./plugin-ui-ipc";
+import { registerWorkspacePluginConsentIpc } from "./workspace-plugin-consent-ipc";
+import type { WorkspacePluginConsent } from "../services/workspace-plugin-consent";
 import { registerJevIpc } from "./jev-ipc";
 import { registerProviderIpc } from "./provider-ipc";
 import { registerScheduledIpc } from "./scheduled-ipc";
@@ -78,6 +80,7 @@ export type RegisterIpcDependencies = {
   liveVoiceWidget?: LiveVoiceWidget;
   restartForStorage: () => void;
   mcpOAuth?: McpOAuthManager;
+  workspaceConsent: WorkspacePluginConsent;
   markLifecycleDialogRendererReady: (window: BrowserWindow) => boolean;
   respondLifecycleDialog: (senderWindowId: number, requestId: unknown, choice: LifecycleDialogChoice) => boolean;
   [name: string]: any;
@@ -509,6 +512,7 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     currentWorkspacePath,
   });
 
+  registerWorkspacePluginConsentIpc(registrar, dependencies.workspaceConsent);
   registerPluginUiIpc({
     registrar,
     plugins,
