@@ -1,3 +1,4 @@
+export * from "./plugin-extension-owner.js";
 export * from "./activation.js";
 export * from "./workspace-execution.js";
 export * from "./workspace-terminal.js";

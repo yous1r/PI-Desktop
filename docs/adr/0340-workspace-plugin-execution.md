@@ -5,7 +5,7 @@
 - Deciders: PI-Desktop maintainers
 - Related: [ADR 0008](0008-plugin-runtime-isolation-target.md),
   [ADR 0292](0292-ssh-remote-host-bootstrap.md),
-  [workspace execution contract](../spec/07-plugins/17-workspace-execution.md)
+  [workspace execution contract](../spec/07-plugins/18-workspace-execution.md)
 
 ## Context
 
@@ -50,6 +50,6 @@ selection/installation, real Linux x64/arm64 SSH acceptance and mounted Desktop
 acceptance remain prerequisites to broad release; Windows loopback tests do not
 establish those results.
 
-The new contract and migration examples live in spec 17. It amends the earlier
+The new contract and migration examples live in spec 18. It amends the earlier
 Desktop-only backend and read-only remote plugin assumptions without changing
 local Agent persistence or the provider-secret owner.

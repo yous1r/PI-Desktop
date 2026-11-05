@@ -813,6 +813,8 @@ export function createSessionLaunchRuntime({
             label: extension.pluginName,
             source: "plugin" as const,
             root: extension.root,
+            ownerPluginId: extension.pluginId,
+            ownerOperations: extension.ownerOperations,
           })),
         subagents: subagentCatalog.definitions,
         subagentProviders: subagentBindings.providers,

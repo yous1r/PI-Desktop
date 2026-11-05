@@ -2,6 +2,10 @@ import { pluginExecutionError, type PluginExecution, type PluginWorkspaceContext
 export { pluginWorkspaceEntry, pluginExecutionError, type PluginExecution, type PluginWorkspaceContext } from "./plugin-execution.js";
 import type { PluginWorkspaceExecutionApi } from "./workspace-execution-api.js";
 export type * from "./workspace-execution-api.js";
+import type { PluginConnectionsApi } from "./plugin-connections.js";
+export * from "./plugin-connections.js";
+import { validateAgentExtensionOperations, type PluginExtensionOperation, type PluginAgentExtensionHandler } from "./plugin-extension-owner.js";
+export * from "./plugin-extension-owner.js";
 import { isValidBusTopic, isValidBusTopicPattern } from "./bus-topics.js";
 import {
   parseFsPolicy,
@@ -161,6 +165,8 @@ export type PluginManifest = {
      * the plugin directory (spec 07-plugins/16).
      */
     agentExtensions?: string[];
+    /** Operations exposed only to this plugin's authorized agent extensions. */
+    agentExtensionOperations?: PluginExtensionOperation[];
     /**
      * Providers this plugin adds to Settings' provider list. Requires the
      * `provider.register` permission; each row is read-only for the user and
@@ -1524,6 +1530,8 @@ export type PluginHostApi = {
     console: (input?: { limit?: number }) => Promise<{ messages: unknown[] }>;
     cdp: (input: { method: string; params?: unknown }) => Promise<unknown>;
   };
+  /** Native-configured authenticated connections; requires net.connection. No credentials are returned. */
+  connections: PluginConnectionsApi;
   net: {
     /** Query before using redirect on hosts that may predate this API. */
     getCapabilities: () => Promise<{ fetchRedirectModes: ("follow" | "error" | "manual")[] }>;
@@ -1548,6 +1556,8 @@ export type PluginHostApi = {
 export type PluginModule = {
   onLoad?: () => Promise<void> | void;
   onUnload?: () => Promise<void> | void;
+  /** Runs with host-authoritative scope and an invocation-owned abort signal. */
+  onAgentExtensionCall?: PluginAgentExtensionHandler;
   /** Performs OAuth login or refresh for one `contributes.providers` entry. */
   onProviderOAuth?: (
     request: PluginProviderOAuthRequest,
@@ -1618,6 +1628,7 @@ export const PLUGIN_PERMISSIONS = [
   // user-typed endpoints, e.g. a self-hosted server, that no manifest written
   // ahead of time can name. Enforced by net-policy's grant-aware checks.
   "net.fetch",
+  "net.connection",
   "net.anyHost",
   "shell.openExternal",
   "mcp.server.local",
@@ -1731,6 +1742,10 @@ export function validateManifest(raw: unknown): {
     !(m.permissions ?? []).includes("agent.extension")
   ) {
     return { ok: false, error: "contributes.agentExtensions requires the agent.extension permission" };
+  }
+  if (!contributesError && m.contributes?.agentExtensionOperations !== undefined &&
+      !(m.permissions ?? []).includes("agent.extension")) {
+    return { ok: false, error: "contributes.agentExtensionOperations requires the agent.extension permission" };
   }
   if (
     !contributesError &&
@@ -1977,6 +1992,9 @@ export function validateContributions(
     const pathError = relativePathError(path, "contributes.skills path");
     if (pathError) return pathError;
   }
+
+  const operationsError = validateAgentExtensionOperations(contributes.agentExtensionOperations);
+  if (operationsError) return operationsError;
 
   const agentExtensions = contributes.agentExtensions ?? [];
   if (!Array.isArray(agentExtensions)) return "contributes.agentExtensions must be an array";

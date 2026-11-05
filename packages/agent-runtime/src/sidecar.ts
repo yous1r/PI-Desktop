@@ -1,3 +1,4 @@
+import { RuntimeShutdown } from "./extensions/runtime-shutdown.js";
 import { parseMcpServerIds, parseMcpToolNames } from "./mcp-tool-selection.js";
 /**
  * Node pi agent sidecar.
@@ -69,7 +70,7 @@ function nativeProjectPaths(params: { projectPaths?: unknown } | undefined): str
 
 const runtimes: RuntimeMap = new Map();
 const hostProxy = new ParentHostProxy();
-const testRuntimeIds = new WeakMap<DesktopAgentRuntime, string>();
+const shutdown = new RuntimeShutdown();
 function testRuntimeIdentity(sessionId: string) {
   if (process.env.PI_DESKTOP_PLAN_UI_PROBE !== "1") {
     throw Object.assign(new Error("test runtime identity RPC is unavailable"), {
@@ -83,11 +84,7 @@ function testRuntimeIdentity(sessionId: string) {
       errorCode: "RUNTIME_NOT_FOUND",
     });
   }
-  let runtimeId = testRuntimeIds.get(runtime);
-  if (!runtimeId) {
-    runtimeId = randomUUID();
-    testRuntimeIds.set(runtime, runtimeId);
-  }
+  const runtimeId = runtime.runtimeId;
   const status = runtime.getStatus();
   return {
     runtimeId,
@@ -106,6 +103,7 @@ function testRuntimeIdentity(sessionId: string) {
 
 type RuntimeParams = {
   sessionId: string;
+  parentSessionId?: string;
   mode?: Mode;
   /** Durable host turn ID for the prompt currently being executed. */
   turnId?: string;
@@ -185,6 +183,7 @@ async function runtimeFor(
   params: RuntimeParams,
   currentPrompt?: string,
 ): Promise<DesktopAgentRuntime> {
+  shutdown.assertOpen();
   const sessionId = String(params.sessionId);
   const mode = normalizeMode(params.mode);
   if (!isCommandShellOption(params.commandShell) || !params.commandShell.available) {
@@ -235,6 +234,7 @@ async function runtimeFor(
   }
   const reusable = existing?.matches({
     mode,
+    parentSessionId: params.parentSessionId,
     provider,
     thinkingLevel,
     pluginTools,
@@ -255,7 +255,7 @@ async function runtimeFor(
     ? existing
     : undefined;
   if (existing && !reusable) {
-    await existing.dispose();
+    await existing.dispose("reconfigure");
     runtimes.delete(sessionId);
   }
   if (reusable) {
@@ -301,9 +301,11 @@ async function runtimeFor(
       history = history.slice(0, -1);
     }
   }
+  shutdown.assertOpen();
   const runtime = new DesktopAgentRuntime({
     host: hostProxy,
     sessionId,
+    parentSessionId: params.parentSessionId,
     mode,
     turnId: params.turnId,
     provider,
@@ -392,6 +394,7 @@ function classifiedRuntimeError(err: unknown) {
 // permission dialog delivery).
 
 async function handle(method: string, params: any): Promise<unknown> {
+  if (["agent.prompt", "agent.executeApprovedPlan", "agent.compact", "extensions.command.run", "native.session.fork"].includes(method)) shutdown.assertOpen();
   switch (method) {
     case "sidecar.configure": {
       // Main owns host-core; sidecar only keeps config metadata.
@@ -407,7 +410,7 @@ async function handle(method: string, params: any): Promise<unknown> {
       return { ok: true, mode: "host-proxy" };
     }
     case "sidecar.health":
-      return { ok: true, runtimes: runtimes.size };
+      return { ok: true, runtimes: runtimes.size, capabilities: { extensionOwner: 1, normalShutdown: 1 } };
     case "native.session.list": {
       const service = await getNativePiService();
       return { sessions: await service.list({ projectPaths: nativeProjectPaths(params) }) };
@@ -628,11 +631,13 @@ async function handle(method: string, params: any): Promise<unknown> {
       }
       const runtime = runtimes.get(sessionId);
       if (runtime) {
-        await runtime.dispose();
+        await runtime.dispose(params.reason === "session-close" || params.reason === "app-quit" ? params.reason : "reconfigure");
         runtimes.delete(sessionId);
       }
       return { ok: true };
     }
+    case "agent.shutdown":
+      return shutdown.shutdown(runtimes, () => nativePiServiceFactory?.().disposeAll());
     default:
       throw Object.assign(new Error(`method not found: ${method}`), {
         rpcCode: -32601,

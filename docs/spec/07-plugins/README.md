@@ -8,7 +8,6 @@ this directory define the normative contracts and implementation boundaries.
 
 | Document | Description |
 |---|---|
-| [17-workspace-execution.md](17-workspace-execution.md) | Local/SSH placement, services, resources and migration |
 | [01-plugin-system.md](01-plugin-system.md) | Plugin system overview |
 | [02-plugin-manifest-schema.md](02-plugin-manifest-schema.md) | Manifest schema |
 | [03-plugin-api.md](03-plugin-api.md) | Plugin API |
@@ -25,6 +24,8 @@ this directory define the normative contracts and implementation boundaries.
 | [14-plugin-roadmap.md](14-plugin-roadmap.md) | Plugin roadmap |
 | [15-plugin-center.md](15-plugin-center.md) | Plugin center (publishing side) |
 | [16-trusted-extensions.md](16-trusted-extensions.md) | Trusted extensions (in-sidecar extension surface) |
+| [17-owned-extension-services.md](17-owned-extension-services.md) | Owner callbacks, runtime identity, session file previews and managed connections |
+| [18-workspace-execution.md](18-workspace-execution.md) | Local/SSH placement, services, resources and migration |
 
 ## Read the code behind the contract
 

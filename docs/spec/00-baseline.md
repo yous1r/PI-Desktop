@@ -250,6 +250,6 @@ relevant decision record before changing the contract.
 
 [ADR 0340](../adr/0340-workspace-plugin-execution.md) adds optional native workspace
 plugin backends and structured workspace services while preserving the local
-Agent/model boundary. [Spec 17](07-plugins/17-workspace-execution.md) is the contract.
+Agent/model boundary. [Spec 18](07-plugins/18-workspace-execution.md) is the contract.
 This is a candidate implementation; native Linux SSH and mounted Desktop release
 acceptance are not implied by local process/protocol test results.

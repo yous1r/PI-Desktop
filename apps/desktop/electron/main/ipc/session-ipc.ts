@@ -175,7 +175,7 @@ export function registerSessionIpc({
         sidecar.clearProjectInstructionRoot(sessionId);
         sidecar.clearVendorAuthBindings(sessionId);
         await sidecar
-          .call("agent.disposeSession", { sessionId })
+          .call("agent.disposeSession", { sessionId, reason: "reconfigure" })
           .catch(() => undefined);
       }
       const result = await run();
@@ -401,21 +401,26 @@ export function registerSessionIpc({
       });
     }
     if (!host) throw new Error("host unavailable");
-    const res = await host.call("session.delete", { id });
-    await persistenceOutbox.dropSession(id);
-    forgetTranscriptRewriteHistory(id);
-    // Drop the session's pi-agent so a later session with the same id (or a
-    // stale runtime) can't answer with this session's context.
-    if (sidecar) {
-      sidecar.clearProjectInstructionRoot(id);
-      sidecar.clearVendorAuthBindings(id);
-      await sidecar
-        .call("agent.disposeSession", { sessionId: id })
-        .catch(() => undefined);
+    const currentHost = host;
+    const currentSidecar = sidecar;
+    const releaseSessionOperation = await acquireSessionOperation(id);
+    try {
+      // Keep the host record available while the old generation persists its terminal event.
+      if (currentSidecar) {
+        await currentSidecar.call("agent.disposeSession", { sessionId: id, reason: "session-close" })
+          .catch((error: unknown) => logger.app("session", "warn", "session retirement failed", { sessionId: id, data: String(error) }));
+        currentSidecar.clearProjectInstructionRoot(id);
+        currentSidecar.clearVendorAuthBindings(id);
+      }
+      const res = await currentHost.call("session.delete", { id });
+      await persistenceOutbox.dropSession(id);
+      forgetTranscriptRewriteHistory(id);
+      sessionProjects.delete(id);
+      logger.app("session", "info", "session deleted", { sessionId: id });
+      return res;
+    } finally {
+      releaseSessionOperation();
     }
-    sessionProjects.delete(id);
-    logger.app("session", "info", "session deleted", { sessionId: id });
-    return res;
   });
   handle(IPC.invoke.sessionRename, async (id: string, title: string) => {
     if (id.startsWith("native-pi:")) {
@@ -482,7 +487,7 @@ export function registerSessionIpc({
         sidecar.clearProjectInstructionRoot(sessionId);
         sidecar.clearVendorAuthBindings(sessionId);
         await sidecar
-          .call("agent.disposeSession", { sessionId })
+          .call("agent.disposeSession", { sessionId, reason: "reconfigure" })
           .catch(() => undefined);
         if (movedProjectPath) {
           sidecar.setProjectInstructionRoot(sessionId, movedProjectPath);

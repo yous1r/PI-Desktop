@@ -2,6 +2,13 @@
 
 > **翻译说明：** 本页是与 [英文源规格](/spec/07-plugins/03-plugin-api) 一一对应的机器辅助翻译。代码、协议字段和标识符保持原文；如翻译与英文源事实有歧义，以英文版本为准。
 
+## 所属服务与托管连接
+
+`pi.connections.getCapabilities/list/request/cancel` 在 `net.connection` 授权下，使用用户在
+原生界面配置的连接 ID 发起带鉴权、有边界的 HTTP 请求。`onAgentExtensionCall` 接收所属
+agent 扩展按 manifest 声明发起的调用，并附带 Host 验证过的会话/运行时上下文与取消信号。
+所属回调中的文件预览按会话实际的 worktree 或远程根目录解析。完整的附加契约和示例见
+[规格 17](/zh-CN/spec/07-plugins/17-owned-extension-services)；使用前必须进行能力探测。
 
 ## 1. 设计原则
 

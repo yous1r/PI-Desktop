@@ -13208,13 +13208,24 @@ describe("isolated session workspace (ADR 0329)", () => {
 
   it("works in the worktree while the project stays its identity", () => {
     const runtime = createRuntime({ projectPath: "/work/app", workspaceRoot: "/data/wt/app/s1" });
-    const internals = runtime as unknown as { extensionCwd(): string; projectPath?: string };
-    expect(internals.extensionCwd()).toBe("/data/wt/app/s1");
-    expect(internals.projectPath).toBe("/work/app");
-    expect(
-      (createRuntime({ projectPath: "/work/app" }) as unknown as { extensionCwd(): string })
-        .extensionCwd(),
-    ).toBe("/work/app");
+    const bridge = (instance: DesktopAgentRuntime) =>
+      (instance as unknown as { createExtensionBridge(): { cwd: string } }).createExtensionBridge();
+    expect(bridge(runtime).cwd).toBe("/data/wt/app/s1");
+    expect((runtime as unknown as { projectPath?: string }).projectPath).toBe("/work/app");
+    expect(bridge(createRuntime({ projectPath: "/work/app" })).cwd).toBe("/work/app");
+  });
+
+  it("keeps one identity per runtime generation, not per persisted session", async () => {
+    const runtime = createRuntime();
+    const replacement = createRuntime();
+    const identity = runtime.runtimeId;
+    expect(identity).toEqual(expect.any(String));
+    expect(identity.length).toBeGreaterThan(0);
+    expect(runtime.runtimeId).toBe(identity);
+    expect(replacement.runtimeId).not.toBe(identity);
+    await runtime.dispose("reconfigure");
+    expect(runtime.runtimeId).toBe(identity);
+    await replacement.dispose();
   });
 
   it("is not reused for another worktree or for a non-isolated launch", () => {

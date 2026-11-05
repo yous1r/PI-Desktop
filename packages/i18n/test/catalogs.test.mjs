@@ -314,3 +314,88 @@ test("inline review cards expose localized accessible labels", () => {
     "该文件在此消息之后又发生了变化，已跳过回退。",
   );
 });
+
+test("host-managed connection copy is localized and keeps its placeholders", () => {
+  const chinese = flattenCatalog(zhCN);
+  // The credential never comes back from the host, so the copy has to say so
+  // in every locale; a missing line here renders as a raw key next to a
+  // password field.
+  const keys = [
+    "title",
+    "description",
+    "add",
+    "empty",
+    "loading",
+    "loadFailed",
+    "retry",
+    "newTitle",
+    "editTitle",
+    "formHint",
+    "labelField",
+    "baseUrlField",
+    "baseUrlHint",
+    "endpointChangedNote",
+    "tokenField",
+    "tokenHint",
+    "tokenPlaceholderKeep",
+    "tokenClear",
+    "tokenClearNote",
+    "allowHttpTitle",
+    "allowHttpWarning",
+    "caField",
+    "caHint",
+    "caClear",
+    "routesTitle",
+    "routesHint",
+    "routeLabel",
+    "routePath",
+    "routeMethods",
+    "routeAdd",
+    "routeRemove",
+    "edit",
+    "deleteConnection",
+    "tokenStored",
+    "tokenMissing",
+    "plainHttp",
+    "customCa",
+    "save",
+    "cancel",
+    "deleteTitle",
+    "deleteBody",
+    "deleteCancel",
+    "deleteConfirm",
+    "errorLabel",
+    "errorBaseUrl",
+    "errorHttpConsent",
+    "errorTokenRequired",
+    "errorRoutes",
+    "errorRoutePath",
+    "errorRouteMethods",
+    "errorRouteDuplicate",
+    "errorConflict",
+    "errorSave",
+    "errorDelete",
+  ].map((key) => `plugins.connections.${key}`);
+  // Short labels may legitimately match English (German "Name"), so the
+  // no-English-fallback check covers the prose a user has to actually read.
+  const prose = keys.filter((key) => /(Hint|Note|Warning|Body|description|error|tokenStored)/.test(key));
+  for (const [id, catalog] of Object.entries(catalogs)) {
+    const flat = flattenCatalog(catalog);
+    for (const key of keys) {
+      assert.equal(typeof flat[key], "string", `${id} ${key}`);
+      assert.notEqual(flat[key].trim(), "", `${id} ${key}`);
+      if (id !== "en" && prose.includes(key)) {
+        assert.notEqual(flat[key], english[key], `${id} ${key} must not fall back to English`);
+      }
+    }
+    for (const key of ["plugins.permissions.net.connection", "plugins.permissionHelp.net.connection"]) {
+      assert.equal(typeof flat[key], "string", `${id} ${key}`);
+      if (id !== "en") assert.notEqual(flat[key], english[key], `${id} ${key} must not fall back to English`);
+    }
+  }
+
+  assert.match(english["plugins.connections.tokenHint"], /Write-only/);
+  assert.match(english["plugins.connections.allowHttpWarning"], /plain text/);
+  assert.equal(chinese["plugins.connections.tokenStored"], "令牌已保存");
+  assert.equal(chinese["plugins.connections.routePath"], "路由 {{index}} 的路径");
+});

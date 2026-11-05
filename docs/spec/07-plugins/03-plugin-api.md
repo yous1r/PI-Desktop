@@ -8,6 +8,16 @@ in private plugin settings, and refreshes an active theme without selecting a
 new theme or reloading the renderer. It never accepts stylesheet text, URLs,
 selectors, images, fonts, or arbitrary property names.
 
+## Owned services and managed connections
+
+`pi.connections.getCapabilities/list/request/cancel` provides authenticated,
+bounded HTTP using native user-configured connection IDs under `net.connection`.
+`onAgentExtensionCall` receives manifest-declared calls from the owning agent
+extension, with Host-authenticated session/generation context and cancellation.
+Owner-callback file previews resolve the session's actual worktree or remote
+root. The complete additive contract and examples are in
+[spec 17](17-owned-extension-services.md); capability detection is required.
+
 ## 1. Design principles
 
 1. Small and stable
@@ -1624,7 +1634,7 @@ host React instance in production and development builds.
 
 ## Workspace execution amendment (ADR 0340)
 
-[Workspace execution](17-workspace-execution.md) is the implemented candidate
+[Workspace execution](18-workspace-execution.md) is the implemented candidate
 contract for optional backend placement, captured workspace/session ownership,
 SDK processes/terminals, MCP placement, resources and disconnect behavior.
 It amends Desktop-only backend assumptions in this document. Omitted execution
@@ -1632,4 +1642,4 @@ metadata retains legacy behavior. Model/device/renderer integrations and local
 Agent persistence remain on Desktop; native remote execution requires separate
 Host/package consent and is not an OS sandbox. See
 [ADR 0340](../../adr/0340-workspace-plugin-execution.md) for the decision and
-spec 17 for migration, limits and release acceptance requirements.
+spec 18 for migration, limits and release acceptance requirements.

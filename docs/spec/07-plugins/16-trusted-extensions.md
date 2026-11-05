@@ -555,9 +555,20 @@ runtime, main, and renderer tracks in parallel.
 | Should v3 read the pi CLI's `settings.json` enabled paths as discovery hints? | Read-only hints, never written |
 | Should extension tools be selectable per project like plugin tools? | Scope from §3.2 is the only gate |
 
+## 15. Owned resident services
+
+Plugin extensions may declare `contributes.agentExtensionOperations` and await
+`ctx.owner.call` inside active callbacks. Additive context includes stable
+session/turn identities, an independent runtime generation and retirement
+reason. The Host validates the owning plugin and current launch/session scope;
+Plan/Goal refuse write operations, and cancellation retires downstream SDK
+authority. This does not relax the existing expired-callback guard or expose
+arbitrary Host RPC. Details, limits and capability detection are specified in
+[spec 17](17-owned-extension-services.md).
+
 ## Workspace execution amendment (ADR 0340)
 
-[Workspace execution](17-workspace-execution.md) is the implemented candidate
+[Workspace execution](18-workspace-execution.md) is the implemented candidate
 contract for optional backend placement, captured workspace/session ownership,
 SDK processes/terminals, MCP placement, resources and disconnect behavior.
 It amends Desktop-only backend assumptions in this document. Omitted execution
@@ -565,4 +576,4 @@ metadata retains legacy behavior. Model/device/renderer integrations and local
 Agent persistence remain on Desktop; native remote execution requires separate
 Host/package consent and is not an OS sandbox. See
 [ADR 0340](../../adr/0340-workspace-plugin-execution.md) for the decision and
-spec 17 for migration, limits and release acceptance requirements.
+spec 18 for migration, limits and release acceptance requirements.

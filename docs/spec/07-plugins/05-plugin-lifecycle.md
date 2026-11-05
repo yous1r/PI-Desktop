@@ -48,6 +48,15 @@ host invokes it only for an enabled plugin's declared OAuth provider during
 user sign-in or token refresh; it receives an abort signal for cancellation,
 unload, and timeout.
 
+`onAgentExtensionCall` is another operation callback, bound to an active owning
+extension invocation and limited to manifest-declared operations. Descendant SDK
+calls expire when it completes or is cancelled. Runtime retirement identifies
+`reconfigure`, `session-close`, or `app-quit`; it does not assert user-task
+completion. App quit gives extensions bounded graceful shutdown while their
+owner services and Host records remain available, before plugin teardown.
+Managed connection requests abort on unload, disable and credential revision
+change. See [spec 17](17-owned-extension-services.md).
+
 **Planned:** once the full lifecycle lands, hooks fire in this order:
 
 1. `onInstall` (once, only after a successful install)
@@ -240,7 +249,7 @@ Default recommendation:
 
 ## Workspace execution amendment (ADR 0340)
 
-[Workspace execution](17-workspace-execution.md) is the implemented candidate
+[Workspace execution](18-workspace-execution.md) is the implemented candidate
 contract for optional backend placement, captured workspace/session ownership,
 SDK processes/terminals, MCP placement, resources and disconnect behavior.
 It amends Desktop-only backend assumptions in this document. Omitted execution
@@ -248,4 +257,4 @@ metadata retains legacy behavior. Model/device/renderer integrations and local
 Agent persistence remain on Desktop; native remote execution requires separate
 Host/package consent and is not an OS sandbox. See
 [ADR 0340](../../adr/0340-workspace-plugin-execution.md) for the decision and
-spec 17 for migration, limits and release acceptance requirements.
+spec 18 for migration, limits and release acceptance requirements.

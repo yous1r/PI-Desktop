@@ -23,8 +23,10 @@ import { scheduledToolParameters, scheduledToolDescriptions } from "./scheduled-
 import { withPiFileOpToolNames } from "./pi-file-ops.js";
 import { remoteMutationIdentity } from "./remote-workspace.js";
 import { remoteExtensionExec } from "./extensions/remote-exec.js";
+import { ExtensionOwnerRuntime, trustedExtensionIdentity } from "./extensions/owner-runtime.js";
+import type { PluginExtensionRetirementReason } from "@pi-desktop/shared";
 import { randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
+import { extensionWorkingDirectory } from "./extensions/working-directory.js";
 import {
   settledDelegationMessage,
   taskMessageSnapshot,
@@ -987,6 +989,7 @@ export type PluginToolDef = {
 export type AgentRuntimeOptions = {
   host: RuntimeHost;
   sessionId: string;
+  parentSessionId?: string;
   mode: Mode;
   /** Durable host turn ID for the current prompt, used by plan identity. */
   turnId?: string;
@@ -1074,6 +1077,7 @@ export type AgentRuntimeDiagnostic = {
 
 export type RuntimeMatchConfig = {
   mode: Mode;
+  parentSessionId?: string;
   provider: RuntimeProviderConfig;
   thinkingLevel: SessionThinkingLevel;
   jevApiKey?: string;
@@ -1097,9 +1101,6 @@ export type RuntimeMatchConfig = {
 /** Tool calls ride in the assistant content array as `type: "toolCall"`. A
  * message that requested any is never a silent turn: the loop keeps going and
  * the user sees the tool activity. */
-function trustedExtensionIds(specs: TrustedExtensionSpec[]): string {
-  return specs.map((spec) => spec.id).sort().join("\n");
-}
 
 function messageRequestsTools(message: unknown): boolean {
   const content = isRecord(message) ? message.content : undefined;
@@ -1860,7 +1861,10 @@ export class DesktopAgentRuntime {
   private model: Model<Api>;
   private turnId?: string;
   private disposed = false;
+  private disposal?: Promise<void>;
   readonly sessionId: string;
+  private readonly extensionOwner: ExtensionOwnerRuntime;
+  get runtimeId(): string { return this.extensionOwner.runtimeId; }
   private mode: Mode;
   private provider: RuntimeProviderConfig;
   private thinkingLevel: SessionThinkingLevel;
@@ -2137,6 +2141,12 @@ export class DesktopAgentRuntime {
     this.projectPath = opts.remoteWorkspace?.path ?? (opts.projectPath?.trim() || undefined);
     // Remote workspaces are never isolated (ADR 0329).
     this.workspaceRoot = opts.remoteWorkspace ? undefined : opts.workspaceRoot?.trim() || undefined;
+    this.extensionOwner = new ExtensionOwnerRuntime(this.host, this.trustedExtensionSpecs, () => ({
+      sessionId: this.sessionId, turnId: this.turnId, mode: this.mode,
+      projectPath: opts.projectPath?.trim() || null,
+      workspaceRoot: opts.remoteWorkspace?.path ?? this.workspaceRoot ?? this.projectPath ?? this.scratchDir ?? null,
+      remoteWorkspace: this.remoteWorkspace, parentSessionId: opts.parentSessionId,
+    }));
     this.customSystemPrompt = opts.customSystemPrompt;
     this.baseProjectInstructions = opts.projectInstructions;
     this.projectInstructions = opts.projectInstructions;
@@ -2809,6 +2819,8 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
         safeJson(config.customSystemPrompt ?? null) &&
       (this.projectMemory ?? "") === (config.projectMemory?.trim() ?? "") &&
       (this.projectPath ?? "") === (config.remoteWorkspace?.path ?? config.projectPath?.trim() ?? "") &&
+      this.extensionOwner.context().projectPath === (config.projectPath?.trim() || null) &&
+      this.extensionOwner.context().parentSessionId === config.parentSessionId &&
       safeJson(this.remoteWorkspace ?? null) === safeJson(config.remoteWorkspace ?? null) &&
       (this.workspaceRoot ?? "") === (config.workspaceRoot?.trim() ?? "") &&
       // Editing `~/.agents/subagents/*.md` must reach the next prompt. Definition
@@ -2820,8 +2832,8 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
         safeJson([...new Set(config.subagentModelKeys ?? [])].sort()) &&
       // Enabling or disabling a trusted extension retires the runtime so the
       // next prompt reloads the set (spec 16 §4.3).
-      trustedExtensionIds(this.trustedExtensionSpecs) ===
-        trustedExtensionIds(config.trustedExtensions ?? [])
+      trustedExtensionIdentity(this.trustedExtensionSpecs) ===
+        trustedExtensionIdentity(config.trustedExtensions ?? [])
     );
   }
 
@@ -2963,33 +2975,18 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
   getTrustedExtensionReports() {
     return this.extensionRunner?.getLoadReports() ?? [];
   }
-  /**
-   * The working directory extensions see: the project root, or the session
-   * scratch for a temporary session. Scratch is otherwise created lazily by the
-   * first host tool call (D114), so it is created here; a failure leaves the
-   * path in place, because loading extensions must not fail the session.
-   */
-  private extensionCwd(): string {
-    const root = this.workspaceRoot ?? this.projectPath;
-    if (root) return root;
-    if (!this.scratchDir) return process.cwd();
-    try {
-      mkdirSync(this.scratchDir, { recursive: true });
-    } catch {
-      // pi.exec reports the missing directory itself.
-    }
-    return this.scratchDir;
-  }
 
   private createExtensionBridge(): TrustedExtensionBridge {
     const runtime = this;
     return {
       sessionId: this.sessionId,
-      cwd: this.extensionCwd(),
+      cwd: extensionWorkingDirectory(this.workspaceRoot, this.projectPath, this.scratchDir),
       remoteWorkspace: Boolean(this.remoteWorkspace),
       execWorkspace: (extensionId,command,args,owner,options) => remoteExtensionExec(
         request => runtime.host.call("extensions.workspaceProcess", {sessionId:runtime.sessionId,extensionId,workspace:runtime.remoteWorkspace,request}),
         command,args,owner,options),
+      getOwnerContext: () => runtime.extensionOwner.context(),
+      callOwner: (spec, operation, payload, signal) => runtime.extensionOwner.call(spec, operation, payload, signal),
       getModel: () => runtime.model,
       setModel: (model, signal) => runtime.setExtensionModel(model, signal),
       modelRegistry: runtime.extensionModelRegistry(),
@@ -9424,7 +9421,8 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
       settle();
       throw error;
     }
-    return result.finally(() => {
+    return result.finally(async () => {
+      await this.extensionRunner?.settleTurn();
       if (this.activeTurnSettlements.get(turnId) === settlement) {
         this.activeTurnSettlements.delete(turnId);
       }
@@ -9447,6 +9445,7 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
       sessionId: this.sessionId,
       isRunning:
         this.agent.state.isStreaming ||
+        this.extensionRunner?.hasPendingTurnEnd === true ||
         this.compactionInProgress ||
         this.agentActivity !== undefined ||
         (!this.turnHadError && !this.runCancelled && this.runningDelegations().length > 0),
@@ -9459,11 +9458,11 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
     };
   }
 
-  async dispose(): Promise<void> {
-    if (this.disposed) return;
+  async dispose(reason: PluginExtensionRetirementReason = "reconfigure"): Promise<void> {
+    if (this.disposal) return this.disposal;
     const runner = this.extensionRunner;
     this.extensionRunner = undefined;
-    const closingExtensions = runner?.dispose();
+    const closingExtensions = this.disposal = this.extensionOwner.close(runner, reason);
     this.streamSink.dispose();
     this.disposed = true;
     this.acceptingSteering = false;

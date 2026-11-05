@@ -1,3 +1,5 @@
+import { EXTENSION_OWNER_PROXY_METHODS, routeExtensionRequest, type TrustedExtensionSidecarBridge } from "./extension-owner-routing.js";
+export type { TrustedExtensionSidecarBridge } from "./extension-owner-routing.js";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { DEFAULT_RPC_TIMEOUT_MS, IMAGE_BATCH_TIMEOUT_MS, imageGenerationPrompts, readNdjsonLines, rpcTimeoutMs, rpcErrorFromWire, rpcErrorToWire } from "@pi-desktop/shared";
@@ -72,6 +74,7 @@ const HOST_PROXY_ALLOWED = new Set([
   "extensions.diagnostics.publish",
   "extensions.model.configure",
   "extensions.workspaceProcess",
+  ...EXTENSION_OWNER_PROXY_METHODS,
   "session.rename",
   "session.create",
   "session.fork",
@@ -79,17 +82,6 @@ const HOST_PROXY_ALLOWED = new Set([
   "session.queuePrioritize",
 ]);
 
-/** Host-side answers for the `extensions.*` proxy methods. */
-export type TrustedExtensionSidecarBridge = {
-  workspaceProcess?: (params: Record<string, unknown>) => Promise<unknown>;
-  publishCommands: (params: Record<string, unknown>) => void;
-  publishDiagnostics: (params: Record<string, unknown>) => void;
-  requestUi: (params: Record<string, unknown>) => Promise<unknown>;
-  configureModel: (params: Record<string, unknown>) => Promise<unknown>;
-  /** `sendUserMessage`: the Host-owned queue drains it (D386); host-core alone would only store it. */
-  queuePush: (params: Record<string, unknown>) => Promise<unknown>;
-  queuePrioritize: (params: Record<string, unknown>) => Promise<unknown>;
-};
 
 /** The host-core transport as the sidecar proxy sees it. `HostProcess` satisfies it. */
 export interface SidecarHostLink {
@@ -522,17 +514,7 @@ export class AgentSidecar {
         if (method.startsWith("extensions.") || method === "session.queuePush" || method === "session.queuePrioritize") {
           const bridge = this.trustedExtensionBridge;
           if (!bridge) throw new Error("trusted extension bridge unavailable");
-          let result: unknown = { ok: true };
-          if (method === "extensions.commands.publish") bridge.publishCommands(params);
-          else if (method === "extensions.diagnostics.publish") bridge.publishDiagnostics(params);
-          else if (method === "extensions.model.configure") result = await bridge.configureModel(params);
-          else if (method === "extensions.workspaceProcess") {
-            if (!bridge.workspaceProcess) throw Object.assign(new Error("Workspace processes are unavailable"), {errorCode:"CAPABILITY_UNAVAILABLE"});
-            result = await bridge.workspaceProcess(params);
-          }
-          else if (method === "session.queuePush") result = await bridge.queuePush(params);
-          else if (method === "session.queuePrioritize") result = await bridge.queuePrioritize(params);
-          else result = await bridge.requestUi(params);
+          const result = await routeExtensionRequest(bridge, method, params);
           this.writeToChild(
             JSON.stringify({ jsonrpc: "2.0", id: msg.id, result }) + "\n",
           );
@@ -610,10 +592,10 @@ export class AgentSidecar {
     return () => this.handlers.delete(handler);
   }
 
-  async call<T = unknown>(method: string, params: unknown = {}): Promise<T> {
+  async call<T = unknown>(method: string, params: unknown = {}, timeoutOverrideMs?: number): Promise<T> {
     if (this.closed) throw new Error("agent sidecar is unavailable");
     const id = randomUUID();
-    const timeoutMs = rpcTimeoutMs(method, params);
+    const timeoutMs = timeoutOverrideMs ?? rpcTimeoutMs(method, params);
     const payload = JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n";
     return new Promise<T>((resolve, reject) => {
       this.pending.set(id, {
@@ -642,6 +624,17 @@ export class AgentSidecar {
         if (pending) pending.timer = timer;
       }
     });
+  }
+
+  /** Opt-in graceful shutdown; old dispose() callers retain immediate termination. */
+  async shutdown(timeoutMs = 3_000): Promise<void> {
+    try {
+      if (!this.closed && !this.disposed) {
+        await this.call("agent.shutdown", {}, Math.max(1, Math.min(timeoutMs, 5_000)));
+      }
+    } finally {
+      await this.dispose();
+    }
   }
 
   async dispose(): Promise<void> {

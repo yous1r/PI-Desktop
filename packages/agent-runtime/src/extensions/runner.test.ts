@@ -797,3 +797,35 @@ export default function (pi: any) {
     expect(await runner.emit("turn_start", { type: "turn_start" })).toBeUndefined();
   });
 });
+
+it("settles an owned end notification before the caller can retire its runtime", async () => {
+  let entered!: () => void, finish!: (response: TrustedExtensionUiResponse) => void;
+  const ready = new Promise<void>((resolve) => { entered = resolve; });
+  const response = new Promise<TrustedExtensionUiResponse>((resolve) => { finish = resolve; });
+  const { bridge } = fakeBridge();
+  bridge.requestUi = async () => { entered(); return response; };
+  const owned = { ...spec("owned-end", `export default pi => { pi.on('agent_end', async (_event, ctx) => { await ctx.ui.confirm('End', 'Persist'); }); };`), ownerPluginId: "local.fixture" };
+  const runner = new TrustedExtensionRunner({ specs: [owned], bridge });
+  await runner.load();
+  const emitted = runner.emit("agent_end", { messages: [] });
+  await ready; expect(runner.hasPendingTurnEnd).toBe(true);
+  let settled = false;
+  const settling = runner.settleTurn().then(() => { settled = true; });
+  await Promise.resolve(); expect(settled).toBe(false);
+  finish({ kind: "confirm", value: true });
+  await emitted; await settling; expect(runner.hasPendingTurnEnd).toBe(false);
+  await runner.dispose();
+});
+
+it("bounds an unresponsive owned end notification without keeping the turn busy", async () => {
+  const { bridge } = fakeBridge();
+  const owned = { ...spec("owned-end-timeout", `export default pi => { pi.on('agent_end', () => new Promise(() => {})); };`), ownerPluginId: "local.fixture" };
+  const runner = new TrustedExtensionRunner({ specs: [owned], bridge });
+  await runner.load(); vi.useFakeTimers();
+  const emitted = runner.emit("agent_end", { messages: [] });
+  expect(runner.hasPendingTurnEnd).toBe(true);
+  await vi.advanceTimersByTimeAsync(2000); await emitted; await runner.settleTurn();
+  expect(runner.hasPendingTurnEnd).toBe(false);
+  expect(runner.getDiagnostics()).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "handler_timeout", member: "agent_end" })]));
+  await runner.dispose();
+});

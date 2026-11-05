@@ -477,6 +477,12 @@ function buildApi() {
       console: (input) => call("browser.console", [input ?? {}]),
       cdp: (input) => call("browser.cdp", [input]),
     },
+    connections: {
+      getCapabilities: () => call("connections.getCapabilities"),
+      list: () => call("connections.list"),
+      request: (input) => call("connections.request", [input]),
+      cancel: (requestId) => call("connections.cancel", [requestId]),
+    },
     net: {
       getCapabilities: () => call("net.getCapabilities"),
       fetch: (input) => call("net.fetch", [input]),
@@ -644,6 +650,27 @@ async function handleParentCall(method, payload, invocationId, callId) {
         throw error;
       }
       return handle(payload ?? {});
+    }
+    case "extension.owner": {
+      const handle = pluginModule?.onAgentExtensionCall;
+      if (typeof handle !== "function") {
+        throw Object.assign(new Error("Plugin does not expose extension owner operations"), { code: "UNSUPPORTED" });
+      }
+      if (typeof invocationId !== "string" || !invocationId || invocations.has(invocationId)) {
+        throw toolAbortedError("A unique host extension invocation ID is required");
+      }
+      const invocation = { id: invocationId, controller: new AbortController() };
+      invocations.set(invocationId, invocation);
+      try {
+        return await invocationContext.run(invocation, () => handle(
+          String(payload?.operation ?? ""), payload?.payload,
+          { ...payload?.context, signal: invocation.controller.signal },
+        )) ?? null;
+      } finally {
+        invocations.delete(invocationId);
+        invocation.controller.abort(toolAbortedError("Plugin extension invocation finished"));
+        rejectInvocationCalls(invocationId, toolAbortedError("Plugin extension invocation finished"));
+      }
     }
     case "tool.execute": {
       if (typeof invocationId !== "string" || !invocationId || invocations.has(invocationId)) {

@@ -64,7 +64,7 @@ test("a successful move rebinds the live agent to the new project", () => {
   assert.match(handler, /sessionProjects\.set\(sessionId, movedProjectPath\)/);
   assert.match(handler, /sidecar\.clearProjectInstructionRoot\(sessionId\)/);
   assert.match(handler, /sidecar\.clearVendorAuthBindings\(sessionId\)/);
-  assert.match(handler, /sidecar\s*\n?\s*\.call\("agent\.disposeSession", \{ sessionId \}\)/);
+  assert.match(handler, /sidecar\s*\.call\("agent\.disposeSession", \{ sessionId, reason: "reconfigure" \}\)/);
   assert.match(handler, /sidecar\.setProjectInstructionRoot\(sessionId, movedProjectPath\)/);
   assert.match(mcpControl, /spec\("sessionMoveProject", "session\/moveProject"/);
 });

@@ -1,4 +1,4 @@
-# 17. Local and SSH Workspace Execution
+# 18. Local and SSH Workspace Execution
 
 Status: Implemented candidate; native Linux SSH and mounted Desktop acceptance remain release gates.
 Decision: [ADR 0340](../../adr/0340-workspace-plugin-execution.md).

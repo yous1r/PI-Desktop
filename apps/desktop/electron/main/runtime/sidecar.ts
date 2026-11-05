@@ -1,3 +1,4 @@
+import { createPluginExtensionOwnerBridge } from "../plugin-extension-owner-bridge";
 import { IPC, type AgentEventEnvelope, type UiMessage } from "@pi-desktop/shared";
 import {
   findSubagentProviderSource,
@@ -445,8 +446,14 @@ export function createSidecarRuntime({
     // Request auth for a vendor account (ADR 0098). The sidecar names a provider
   // row it was launched with; main resolves that row's account and returns a
   // short-lived `ModelAuth`. The refresh token never crosses this boundary.
+  const ownerBridge = createPluginExtensionOwnerBridge({
+    launches: s.extensionOwnerLaunches, getHost: () => runtimeState.host,
+    plugins, pluginActiveInProject,
+  });
+  s.setExtensionOwnerLifecycle(ownerBridge);
   s.setTrustedExtensionBridge({
     workspaceProcess: params => extensionProcesses.handle(params),
+    ...ownerBridge,
     publishCommands: (params) =>
       agentExtensions.publishCommands(
         String(params.sessionId ?? ""),

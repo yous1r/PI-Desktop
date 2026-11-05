@@ -46,6 +46,7 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
   const warnings = [];
   const activeTurns = new Map([["session", "turn"]]);
   let hostDisposed = false;
+  let pluginsDisposed = false;
   const host = {
     isAvailable: () => !hostDisposed,
     async call(method, params) {
@@ -92,12 +93,16 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
   registerShutdownHandlers({
     hasSingleInstanceLock: true, state,
     getHost: () => host,
-    getSidecar: () => ({ dispose: async () => { sidecarStopped.resolve(); } }),
+    getSidecar: () => ({ shutdown: async () => {
+      assert.equal(pluginsDisposed, false, "extension shutdown requires live owner plugin services");
+      assert.equal(hostDisposed, false, "extension shutdown requires live host context");
+      sidecarStopped.resolve();
+    } }),
     getMcpControl: () => null, activeTurns, persistenceOutbox: outbox,
     inflightCheckpointer: checkpoint,
     flushEventPersistence: () => persistence.flush(),
     pluginPanels: { closeAll: async () => {} },
-    plugins: { disposeAll: async () => {} }, userMcp: { disposeAll: dispose },
+    plugins: { disposeAll: async () => { pluginsDisposed = true; } }, userMcp: { disposeAll: dispose },
     browserHost: { dispose }, pluginViews: { dispose: async () => {} },
     updater: { dispose, isInstallingUpdate: () => false }, logger,
     confirmQuitDialog: async () => true, disposePowerSaveBlockers: dispose,

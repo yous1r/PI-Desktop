@@ -192,7 +192,7 @@ export function registerShutdownHandlers({
       // Stop event production before draining the terminal writes. A finished
       // turn can already have left activeTurns while its branch archive is
       // still awaiting the host; closing host-core first loses that archive.
-      const sidecarShutdown = getSidecar()?.dispose();
+      const sidecarShutdown = getSidecar()?.shutdown();
       await Promise.allSettled([sidecarShutdown]);
       await inflightCheckpointer.flushAll();
       let persistenceTimer: ReturnType<typeof setTimeout> | undefined;

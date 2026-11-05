@@ -28,6 +28,7 @@ export const HIGH_RISK_PERMISSIONS = [
   "net.fetch",
   "net.anyHost",
   "net.websocket",
+  "net.connection",
   "fs.write",
   "fs.delete",
   "fs.write.workspace",

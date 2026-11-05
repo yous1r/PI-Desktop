@@ -24,6 +24,8 @@ import {
 import {
   trustedExtensionAgentProviderId,
   type TrustedExtensionAgentModelConfig,
+  type PluginExtensionCallContext,
+  type PluginExtensionRetirementReason,
 } from "@pi-desktop/shared";
 import {
   createVirtualModules,
@@ -146,6 +148,8 @@ export interface TrustedExtensionBridge {
   /** Workspace is remote; implicit workspace exec must never spawn locally. */
   remoteWorkspace?: boolean;
   execWorkspace?: (extensionId:string,command:string,args:string[],owner:AbortSignal,options?:ExtensionExecOptions)=>Promise<ExtensionExecResult>;
+  getOwnerContext?(): PluginExtensionCallContext;
+  callOwner?(extension: TrustedExtensionSpec, operation: string, payload: unknown, signal: AbortSignal): Promise<unknown>;
   getModel(): unknown;
   setModel(model: unknown, signal?: AbortSignal): Promise<boolean>;
   getThinkingLevel(): string;
@@ -322,6 +326,7 @@ export class TrustedExtensionRunner {
   private disposal?: Promise<void>;
   private readonly lifecycle = new HandlerLifecycle();
   private readonly processes = new Set<Promise<ExtensionExecResult>>();
+  private readonly pendingTurnEnds = new Set<Promise<unknown>>();
 
   constructor(options: TrustedExtensionRunnerOptions) {
     this.bridge = options.bridge;
@@ -423,13 +428,17 @@ export class TrustedExtensionRunner {
     if (!this.closing) this.lifecycle.cancel();
   }
 
-  dispose(): Promise<void> {
+  get hasPendingTurnEnd(): boolean { return this.pendingTurnEnds.size > 0; }
+  async settleTurn(): Promise<void> { await Promise.allSettled([...this.pendingTurnEnds]); }
+
+  dispose(reason: PluginExtensionRetirementReason = "reconfigure", timeoutMs?: number): Promise<void> {
     if (this.disposal) return this.disposal;
     this.closing = true;
     this.lifecycle.cancel();
     this.disposal = Promise.resolve().then(async () => {
+      const deadline = timeoutMs === undefined ? undefined : Date.now() + Math.max(0, timeoutMs);
       try {
-        await this.dispatch("session_shutdown", { type: "session_shutdown", reason: "quit" });
+        await this.dispatch("session_shutdown", { type: "session_shutdown", reason: "quit", retirementReason: reason }, undefined, deadline);
       } finally {
         this.disposed = true;
         this.lifecycle.cancel();
@@ -551,7 +560,11 @@ export class TrustedExtensionRunner {
     fold?: (acc: R | undefined, next: R) => R,
   ): Promise<R | undefined> {
     if (this.closing) return undefined;
-    return this.dispatch(event, payload, fold);
+    const ownedEnd = event === "agent_end" && this.specs.some((spec) => spec.ownerPluginId);
+    const pending = this.dispatch(event, payload, fold, ownedEnd ? Date.now() + 2000 : undefined);
+    if (!ownedEnd) return pending;
+    this.pendingTurnEnds.add(pending);
+    try { return await pending; } finally { this.pendingTurnEnds.delete(pending); }
   }
 
   /** Chain prompt replacements within this turn while keeping handler inputs isolated. */
@@ -575,6 +588,7 @@ export class TrustedExtensionRunner {
     event: TrustedExtensionEventName,
     payload: Record<string, unknown>,
     fold?: (acc: R | undefined, next: R) => R,
+    deadline?: number,
   ): Promise<R | undefined> {
     const signal = this.lifecycle.signal;
     let acc: R | undefined;
@@ -583,6 +597,8 @@ export class TrustedExtensionRunner {
       if (!handlers?.length) continue;
       for (const handler of handlers) {
         if (signal.aborted || this.disposed) return undefined;
+        const timeoutMs = deadline === undefined ? TRUSTED_EXTENSION_HANDLER_TIMEOUT_MS : Math.min(TRUSTED_EXTENSION_HANDLER_TIMEOUT_MS, deadline - Date.now());
+        if (timeoutMs <= 0) return acc;
         try {
           // Result/mutation events operate on detached data. Only a timely
           // headers mutation is committed; late handlers retain their own copy.
@@ -590,7 +606,7 @@ export class TrustedExtensionRunner {
             TRUSTED_EXTENSION_EVENT_CAPABILITIES[event] === "mutation";
           const input = isolate ? structuredClone(payload) : payload;
           const result = await this.lifecycle.run(
-            () => handler(input, this.createContext(extension)), signal, TRUSTED_EXTENSION_HANDLER_TIMEOUT_MS,
+            () => handler(input, this.createContext(extension)), signal, timeoutMs,
           ) as R | undefined;
           if (signal.aborted || this.disposed) return undefined;
           if (event === "before_provider_headers" && payload.headers && typeof payload.headers === "object") {
@@ -749,8 +765,19 @@ export class TrustedExtensionRunner {
 
   private createContext(extension: LoadedExtension): Record<string, unknown> {
     const bridge = this.operationBridge(this.lifecycle.operationSignal);
+    const signal = this.lifecycle.operationSignal;
+    const identity = this.bridge.getOwnerContext?.();
+    const owner = extension.spec.ownerPluginId && this.bridge.callOwner ? {
+      version: 1,
+      call: (operation: string, payload?: unknown) => {
+        signal.throwIfAborted();
+        return this.bridge.callOwner!(extension.spec, operation, payload, signal);
+      },
+    } : undefined;
     return {
       signal: this.lifecycle.operationSignal,
+      ...(identity ?? {}),
+      ...(owner ? { owner } : {}),
       ui: this.createUi(extension),
       hasUI: true,
       cwd: bridge.cwd,
