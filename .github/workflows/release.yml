@@ -571,6 +571,12 @@ jobs:
       - name: Assemble pi-host bundle
         run: node apps/pi-host/scripts/bundle.mjs --platform linux --arch ${{ matrix.arch }} --host-core target/musl-host-core/pi-desktop-host-core
 
+      - name: Rebuild and verify the remote PTY on glibc 2.28
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./apps/pi-host/package.json').version")"
+          node apps/pi-host/scripts/rebuild-linux-pty.mjs "apps/pi-host/dist-bundle/pi-host-${version}-linux-${{ matrix.arch }}"
+
       - name: Archive bundle with checksum
         run: |
           set -euo pipefail

@@ -109,9 +109,8 @@ jobs:
       - name: Assemble the pi-host bundle
         run: |
           set -euo pipefail
-          # The pnpm store cache is shared with ubuntu-latest jobs. Reusing its
-          # cached node-pty build ships an addon linked against that newer glibc,
-          # so build native addons on this Ubuntu 22.04 runner instead.
+          # Keep build-time native addons on this runner. The shipped PTY is
+          # separately rebuilt and exercised at the remote glibc 2.28 floor.
           pnpm install --frozen-lockfile --config.side-effects-cache=false
           pnpm build:js
           # These Host checks require POSIX sockets, permissions and native packaging.
@@ -123,38 +122,16 @@ jobs:
             --arch ${{ matrix.arch }} \
             --host-core "target/${{ matrix.target }}/release/pi-desktop-host-core"
 
-      - name: Verify the bundled node-pty within the glibc floor
-        # Terminals are optional at runtime, so a broken addon only shows up as
-        # "terminals are disabled" on the remote. Fail the bundle here instead.
+      - name: Rebuild and verify the remote PTY on glibc 2.28
         run: |
           set -euo pipefail
           version="$(node -p "require('./apps/pi-host/package.json').version")"
-          bundle="apps/pi-host/dist-bundle/pi-host-${version}-linux-${{ matrix.arch }}"
-          pty="$bundle/node_modules/node-pty/build/Release/pty.node"
-          test -f "$pty"
-          needed="$(objdump -T "$pty" | grep -o 'GLIBC_2\.[0-9]*' | sort -t. -k2 -n -u | tail -1)"
-          compiler="$(strings -a "$pty" | grep -m1 '^GCC: ' || true)"
-          echo "pty.node needs ${needed:-no glibc symbols}; ${compiler:-compiler unknown}"
-          minor="${needed##*.}"
-          if [ -n "$needed" ] && [ "$minor" -gt 35 ]; then
-            printf '::error title=node-pty glibc::pty.node needs %s, above the 2.35 floor\n' "$needed"
-            exit 1
-          fi
-          "$bundle/bin/node" -e '
-            const pty = require(process.argv[1]);
-            const term = pty.spawn("/bin/sh", ["-c", "printf pty-ok"], { cols: 80, rows: 24 });
-            let output = "";
-            const timer = setTimeout(() => { console.error("pty spawn timed out"); process.exit(1); }, 10000);
-            term.onData((data) => { output += data; });
-            term.onExit(({ exitCode }) => {
-              clearTimeout(timer);
-              if (exitCode !== 0 || !output.includes("pty-ok")) {
-                console.error("pty exit " + exitCode + ": " + JSON.stringify(output));
-                process.exit(1);
-              }
-              console.log("bundled node-pty spawned a terminal");
-            });
-          ' "$PWD/$bundle/node_modules/node-pty"
+          node apps/pi-host/scripts/rebuild-linux-pty.mjs "apps/pi-host/dist-bundle/pi-host-${version}-linux-${{ matrix.arch }}"
+
+      - name: Verify terminal routing regressions
+        run: |
+          node --test apps/desktop/test/workspace-path.test.mjs apps/desktop/test/workspace-execution-context.test.mjs apps/desktop/test/workspace-terminal-router.test.mjs apps/desktop/test/workspace-terminal-user-path.e2e.mjs
+          node --test apps/pi-host/scripts/verify-pty.test.mjs
 
       - name: Smoke-test the packaged pi-host startup
         # Exercise the same entry point used by remote setup. Pairing tokens

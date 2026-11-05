@@ -73,3 +73,19 @@ error path named glibc.
   bundle grows by the static-link size delta.
 - A static binary is a separate artifact from the desktop's glibc one, so the
   two are built in different lanes from the same commit.
+
+## PTY compatibility correction
+
+The beta.6 remote bundle loaded Node and host-core on the glibc 2.28 target,
+but its separately built `node-pty` imported `GLIBC_2.34`. The optional addon
+loader therefore disabled both terminal services while the Host stayed ready.
+The same archive loaded the addon on a glibc 2.36 host. A version-only reinstall
+cannot correct incompatible native bytes in the same release.
+
+Both Linux release lanes now rebuild the copied PTY sources in a native
+AlmaLinux 8 container using the bundle's Node and the installed node-addon-api.
+The build links libstdc++/libgcc statically and validates glibc imports at 2.28,
+then exercises shell input, output, resize and exit with that Node inside the
+container before updating the bundle manifest. This preserves the existing
+remote floor without changing the Desktop floor, runtime capability checks,
+SSH trust, or the target machine's system libraries.

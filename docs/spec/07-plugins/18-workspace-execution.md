@@ -144,6 +144,18 @@ and eight per device. Detached terminals expire after five minutes. SDK PTY outp
 API. The built-in terminal receives live events and subscribes before creation.
 Missing node-pty returns a capability error. A disconnected terminal never queues
 keystrokes or starts a local shell as a substitute.
+Published Linux remote bundles require a PTY compatible with the bundled Node's
+glibc 2.28 floor. Release CI must load and exercise the addon at that floor;
+successful Host startup alone does not prove terminal capability availability.
+
+Built-in terminal target hints are checked against the Host-owned session/project
+binding before shell discovery or creation. Local Windows paths compare native
+backslashes with persisted forward slashes, including the drive-path extended
+prefix and trailing separator. Project lookup uses the same comparison so a tab
+opened without a session retains its durable project identity. This does not
+fold case, reinterpret POSIX paths, admit another root/Host, or change the actual
+working directory. SSH host keys, remote paths and `remote-project:*` identities
+remain exact matches; a failed remote request never falls back to a local PTY.
 
 Trusted Agent extension `pi.exec` routes default/relative/workspace cwd to the
 session's remote workspace. `target:"local"` and legacy explicit absolute outside-root

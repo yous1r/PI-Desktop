@@ -19279,3 +19279,45 @@ revocation and disconnect before/during/after mutations. Record base/head,
 artifact digests and target Node/PTY ABI. Verify no other workspace changed.
 Mounted Desktop checks require task authorization. A Windows-native build cannot
 substitute for native Linux packaging or SSH acceptance.
+
+### E2E-TERMINAL-workspace-target-paths
+
+- **Entry:** `node --test apps/desktop/test/workspace-terminal-user-path.e2e.mjs`
+  after building shared, plugin-sdk and host-runtime with an available native
+  `node-pty`. Run from the request worktree on the current remote-main base.
+- **Steps:** Open a terminal with and without a session using the native Windows
+  workspace path and the forward-slash durable project/session spelling. List
+  shells, create one, execute arithmetic, observe output, resize and replay.
+  Switch the selected project, execute another command in the retained terminal,
+  close the tab and verify the handle is gone.
+- **Expected:** No `WORKSPACE_CHANGED` for equivalent Windows paths; shell input,
+  output and cleanup succeed and selection changes cannot retarget a live PTY.
+- **Boundary coverage:** `workspace-terminal-router.test.mjs` covers remote
+  project identity and actual-path hints, remote sessions, disconnect/reconnect,
+  and rejecting different roots, case or Hosts. `workspace-path.test.mjs` keeps
+  POSIX paths exact. `workspace-terminal-racp.test.ts` covers owner authorization
+  and output/replay across protocol reconnection without duplicate input.
+- **Environment:** Production IPC handlers, router, shell discovery and PTY
+  service with a real local shell and isolated temporary directories. Only Host
+  project/session records and the Electron sender boundary are fixtures; no
+  running user Desktop, provider or SSH server is contacted. Mounted Desktop
+  and native SSH acceptance remain separate checks.
+- **Specs:** [Workspace execution](../07-plugins/18-workspace-execution.md).
+- **Status:** Automated process/user-path regression; post-MVP maintenance.
+
+### E2E-REMOTE-PTY-glibc-floor
+
+- **Entry:** Normal and hotfix Linux x64/arm64 CI run
+  `node apps/pi-host/scripts/rebuild-linux-pty.mjs <bundle>` before archiving.
+- **Environment:** Native runner and isolated AlmaLinux 8 container (glibc 2.28),
+  copied PTY sources, bundled Node and real shell. No user SSH host is modified.
+- **Steps:** Remove cached/prebuilt addons from the build copy; rebuild against
+  the bundled Node; inspect glibc symbol versions; load the native module; create
+  a shell, resize, send arithmetic input, verify calculated output and exit.
+- **Expected:** Incompatible imports (including beta.6's `GLIBC_2.34`) fail the
+  gate. Successful shell execution precedes module replacement and manifest
+  refresh. Both archives retain the verified sources and checksums; a missing
+  PTY is a release failure, while runtime capability checks remain unchanged.
+- **Specs:** [Release runbook](06-release-runbook.md),
+  [remote native compatibility](../../adr/0338-static-host-core-for-remote-bundles.md).
+- **Status:** Automated native CI gate; actual user-host deployment is separate.
