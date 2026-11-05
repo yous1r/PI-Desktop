@@ -7,7 +7,7 @@ The approved independent `local.ai-memory` plugin plus generic Host capability i
 - Request branch: `feat/ai-memory-plugin`, dedicated worktree `worktrees/ai-memory-plugin`.
 - Base and latest fetched `origin/main`: `3cb4710cf95db2b80a8fdca8ac8bc55ab3135433`.
 - No task commit was created because none was requested. Results identify executable bytes and a source inventory, not an invented commit.
-- Package: [local.ai-memory-0.1.0.piplug](../../examples/plugins/ai-memory/release/local.ai-memory-0.1.0.piplug), 417,585 bytes, 24 files.
+- Package: `examples/plugins/ai-memory/release/local.ai-memory-0.1.0.piplug` (local build output, not committed; pull requests also upload it as the `ai-memory-plugin` artifact of `.github/workflows/pr-package.yml`), 417,585 bytes, 24 files.
 - Package SHA-256: `b2afd34eec8ed52b2d8b4a63d0fa75d0bc61f2dcea40dd017298de10f0daef63`.
 - [Package file inventory and executable hashes](ai-memory-package.json).
 - [Source inventory](ai-memory-source-inventory.json).
@@ -20,7 +20,7 @@ The plugin owns explicit project scope, full TOML marker validation, Windows pro
 
 Host additions are generic: declared owner-operation routing with live session/project/mode/generation checks, bounded cancellation/retirement/end notification, authoritative worktree/remote file previews and audit, and encrypted Host-managed connections with native configuration. Tokens never become a plugin getter. Route/revision checks, redirect refusal, connection-local CA and application proxy routing stay enforced. Uninstall revokes stored connections; disable/reload retains them. Rust keeps exclusive SQLite ownership; no Rust source/schema or secret-format change was needed.
 
-See [requirements R1–R12](../../examples/plugins/ai-memory/docs/requirements.md), [plugin architecture](../../examples/plugins/ai-memory/docs/architecture.md), [Host interface specification](../spec/07-plugins/17-owned-extension-services.md), [owner ADR](../adr/plugin-agent-extension-owner-calls.md), and [connection ADR](../adr/plugin-managed-remote-connections.md).
+See the plugin repository docs `examples/plugins/ai-memory/docs/requirements.md` (R1–R12) and `examples/plugins/ai-memory/docs/architecture.md`, the [Host interface specification](../spec/07-plugins/17-owned-extension-services.md), [owner ADR](../adr/plugin-agent-extension-owner-calls.md), and [connection ADR](../adr/plugin-managed-remote-connections.md).
 
 ## Executed verification
 
@@ -94,6 +94,6 @@ The released PI-Desktop 0.22.1-beta.4 lacks the new interfaces. This candidate i
 
 Windows x64 with ai-memory 3.3.2/3.3.3 is measured. macOS/Linux, live SSH deployment, multi-machine/multi-user authorization, paid consolidation and cross-version server database migration are not claimed. No Rust checks were rerun because there are no Rust changes; the provisioned Host executable was reused in actual Desktop E2E. No `verify:ui:*`, paid model call, production memory write or user-profile installation was performed. The candidate is delivered as a pull request; review packages are built by `.github/workflows/pr-package.yml` without publishing a release. Early E2E discovery accidentally read global MCP definitions; this was corrected with isolated `PI_DESKTOP_AGENTS_DIR`, and those exploratory runs were excluded.
 
-Native upstream session-end can create an automatic handoff. Explicit Desktop closure therefore records a local closed state and remote boundary observation while leaving the upstream native session unended; handoff creation stays explicitly confirmed. HTTP 202 remains admission, not persistence. Retained uncertainty, local queue privacy/retention, credential rotation, upgrade and rollback steps are documented in [operations](../../examples/plugins/ai-memory/docs/operations.md).
+Native upstream session-end can create an automatic handoff. Explicit Desktop closure therefore records a local closed state and remote boundary observation while leaving the upstream native session unended; handoff creation stays explicitly confirmed. HTTP 202 remains admission, not persistence. Retained uncertainty, local queue privacy/retention, credential rotation, upgrade and rollback steps are documented in `examples/plugins/ai-memory/docs/operations.md`.
 
 No implementation blocker remains for the measured candidate. Deployment requires a Host containing these changes and the user's chosen coexist/managed configuration. Existing `mem`, remote server settings and unrelated primary-checkout changes remain unchanged.
