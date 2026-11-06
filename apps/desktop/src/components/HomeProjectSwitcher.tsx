@@ -27,6 +27,8 @@ import { AnchoredMenu } from "./settings/AnchoredMenu";
 import { cx } from "./ui";
 import { useRemoteProjects } from "../hooks/use-remote-projects";
 import { remoteProjectKey, type RemoteProjectEntry } from "../lib/remote-project-catalog";
+import { useRemoteProjectLaunch } from "../hooks/use-remote-host-preparation";
+import { RemoteHostPreparationNotice } from "./remote/RemoteHostPreparationNotice";
 import { isRemoteSession } from "../lib/remote-session-safety";
 
 type ProjectMenuEntry = { key: string; name: string; title: string; localPath?: string; remoteProject?: RemoteProjectEntry };
@@ -87,6 +89,9 @@ export function HomeProjectSwitcher({
   const activeKey = isRemoteSession(activeSession) && activeSession?.remoteHostKey && activeSession.remoteProjectId
     ? `remote:${remoteProjectKey(activeSession.remoteHostKey, activeSession.remoteProjectId)}`
     : normalizeProjectPath(activeProjectPath ?? path);
+  // Opening a saved remote project is a user action, so this surface prepares
+  // the Host first and keeps the answer (including a stop) visible in the menu.
+  const remoteLaunch = useRemoteProjectLaunch();
   const cloneTarget = parseGitCloneUrl(cloneUrl, {
     allowInsecureHttp: allowInsecureUserEndpoints(settings),
   });
@@ -131,8 +136,13 @@ export function HomeProjectSwitcher({
     if (project.localPath) return selectProject(project.localPath);
     if (busy || busyRef.current || !project.remoteProject?.connected) return;
     busyRef.current = true; setBusy(true);
-    try { await newSession({ remoteProject: project.remoteProject }); close(); }
-    catch (error) { reportError(error); }
+    try {
+      const result = await remoteLaunch.open(project.remoteProject);
+      // A preparation stop is the menu's own message; anything else is a plain
+      // failure this surface cannot explain.
+      if (result.ok) close();
+      else if (!result.code) reportError(new Error(t("remote:operationFailed")));
+    } catch (error) { reportError(error); }
     finally { busyRef.current = false; setBusy(false); }
   };
 
@@ -378,6 +388,16 @@ export function HomeProjectSwitcher({
           {remoteCatalog.busy && <p role="status">{t("remote:loading")}</p>}
           {remoteCatalog.error && <p role="alert">{remoteCatalog.error}</p>}
           <div className="home-project-switcher-divider" aria-hidden />
+          {remoteLaunch.state.hostKey ? (
+            <RemoteHostPreparationNotice
+              className="is-compact"
+              hostKey={remoteLaunch.state.hostKey}
+              view={remoteLaunch.view(remoteLaunch.state.hostKey)}
+              errorCode={remoteLaunch.state.errorCode}
+              onPrepare={(_hostKey, options) => void remoteLaunch.resume(options)}
+              onCancel={remoteLaunch.cancel}
+            />
+          ) : null}
           <button
             type="button"
             role="menuitem"

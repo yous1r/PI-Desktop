@@ -57,6 +57,7 @@ import {
   type SessionPort,
   type SessionSummary,
 } from "./ports.js";
+import type { MaintenanceAdmission } from "./maintenance-admission.js";
 import { TurnQueue } from "./turn-queue.js";
 
 export type AgentHostOptions = {
@@ -76,6 +77,8 @@ export type AgentHostOptions = {
   snapshotItems?: number;
   /** Called after any change to a session's queue, with the new entries. */
   onQueueChange?: (sessionId: string, entries: QueueEntryView[]) => void;
+  /** Maintenance admission; while closed this module starts and drains no work. */
+  gate?: Pick<MaintenanceAdmission, "isClosed">;
 };
 
 /** A queued turn together with the prompt it will send. */
@@ -201,6 +204,9 @@ export class AgentHost {
   /** A pass that arrived while one was running: the queue must be looked at again. */
   private readonly drainPending = new Set<string>();
   private readonly admissions = new Map<string, Promise<void>>();
+  private readonly gate?: Pick<MaintenanceAdmission, "isClosed">;
+  /** Turns and drains that already passed the gate; a maintenance lease waits for them. */
+  private inFlight = 0;
 
   constructor(options: AgentHostOptions) {
     this.runtime = options.runtime;
@@ -213,6 +219,7 @@ export class AgentHost {
     this.allowRemoteSessionGrants = options.allowRemoteSessionGrants ?? false;
     this.snapshotItems = options.snapshotItems ?? 50;
     this.onQueueChange = options.onQueueChange;
+    this.gate = options.gate;
     this.hub = new EventHub({ clock: this.clock, ids: this.ids, limits: this.limits });
     this.queue = new TurnQueue(options.queueStore ?? new MemoryQueueStore(), this.limits.maxQueuedTurnsPerSession);
     this.approvals = new ApprovalBroker(options.approvals, this.clock);
@@ -462,19 +469,52 @@ export class AgentHost {
 
   async startTurn(principal: Principal, params: StartTurnParams): Promise<StartTurnResult> {
     this.requireRole(principal, "turn/start");
-    return this.withAdmission(params.sessionId, () => this.startTurnAdmitted(principal, params));
+    const release = this.beginAdmittedWork();
+    try {
+      return await this.withAdmission(params.sessionId, () => this.startTurnAdmitted(principal, params));
+    } finally {
+      release();
+    }
   }
 
   /** Append to the shared Host queue even when no turn is currently running. */
   async enqueueTurn(principal: Principal, params: StartTurnParams): Promise<StartTurnResult> {
     this.requireRole(principal, "turn/start");
-    const result = await this.withAdmission(params.sessionId, () => this.startTurnAdmitted(principal, params, true));
-    await this.drain(params.sessionId);
-    return {
-      ...result,
-      turn: this.getTurn(result.turn.id),
-      cursor: this.hub.stream(params.sessionId).cursor(),
+    const release = this.beginAdmittedWork();
+    try {
+      const result = await this.withAdmission(params.sessionId, () => this.startTurnAdmitted(principal, params, true));
+      await this.drain(params.sessionId);
+      return {
+        ...result,
+        turn: this.getTurn(result.turn.id),
+        cursor: this.hub.stream(params.sessionId).cursor(),
+      };
+    } finally {
+      release();
+    }
+  }
+
+  /** Count admitted work synchronously so a concurrent lease sees it before any await. */
+  private beginAdmittedWork(): () => void {
+    if (this.gate?.isClosed()) throw racpError("HOST_BUSY", "the Host is entering maintenance");
+    this.inFlight += 1;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.inFlight = Math.max(0, this.inFlight - 1);
     };
+  }
+
+  /** Work that a maintenance lease would displace: turns, queues and admitted hand-offs. */
+  maintenanceBusyCounts(): { turns: number; queuedTurns: number; admissions: number } {
+    let turns = 0;
+    let queuedTurns = 0;
+    for (const [sessionId, state] of this.states) {
+      if (this.hasActiveTurn(state) || this.startingQueuedTurns.has(sessionId) || this.draining.has(sessionId)) turns += 1;
+      queuedTurns += this.queue.size(sessionId);
+    }
+    return { turns, queuedTurns, admissions: this.inFlight };
   }
 
   private async startTurnAdmitted(
@@ -970,7 +1010,7 @@ export class AgentHost {
   private async drainAdmitted(sessionId: string): Promise<void> {
       while (true) {
         const state = this.state(sessionId);
-        if (this.queue.isHeld(sessionId) || this.isOccupied(state)) return;
+        if (this.gate?.isClosed() || this.queue.isHeld(sessionId) || this.isOccupied(state)) return;
         const head = this.queue.peek(sessionId);
         const headTurn = head ? this.ensureTurn(state, head.id) : undefined;
         if (headTurn?.deliveryPending) return;
@@ -1028,6 +1068,7 @@ export class AgentHost {
   }
 
   private async drain(sessionId: string): Promise<void> {
+    if (this.gate?.isClosed()) return;
     if (this.draining.has(sessionId)) {
       // The pass already running may have decided to stop before this request
       // arrived — the session was still busy, or the queue had not been written
@@ -1036,14 +1077,16 @@ export class AgentHost {
       this.drainPending.add(sessionId);
       return;
     }
+    const release = this.beginAdmittedWork();
     this.draining.add(sessionId);
     try {
       do {
         this.drainPending.delete(sessionId);
         await this.withAdmission(sessionId, () => this.drainAdmitted(sessionId));
-      } while (this.drainPending.has(sessionId));
+      } while (this.drainPending.has(sessionId) && !this.gate?.isClosed());
     } finally {
       this.draining.delete(sessionId);
+      release();
     }
   }
 

@@ -76,6 +76,10 @@ function harness({ transport = fakeTransport(), checksum, ports = [RESERVED_PORT
       built.push(target);
       return transport;
     },
+    uploadArtifact: async (_transport, input) => {
+      input.onUpload?.();
+      return { path: "/home/test/.pi-desktop/pi-host/.upload.ABC123/artifact.tar.gz", cleanup: async () => {} };
+    },
     fetchChecksum: async (url) => {
       fetched.push(url);
       return checksum ?? `${DIGEST}  ${ARTIFACT_NAME}\n`;
@@ -119,6 +123,8 @@ test("bootstrap probes, installs, forwards, and pairs in order", async () => {
     "probe",
     "resolve-release",
     "download-checksum",
+    "download",
+    "upload",
     "install",
     "forward",
     "pair",
@@ -149,8 +155,7 @@ test("bootstrap probes, installs, forwards, and pairs in order", async () => {
     { url: `ws://127.0.0.1:${RESERVED_PORT}/v1/racp/ws`, pairingToken: "ppt1.abc", label: "Prod box", expectedHostId: "host_x" },
   ]);
 
-  // What travelled over SSH is the script with the pinned digest and URL, not
-  // any executable bytes.
+  // The install script uses the uploaded archive and the pinned release digest.
   const upload = transport.calls.uploads[0];
   assert.equal(upload.command, "sh -s");
   assert.ok(upload.input.includes(`EXPECTED_SHA256='${DIGEST}'`));
@@ -209,7 +214,7 @@ test("a checksum file with no digest for this artifact fails the bootstrap", asy
   const transport = fakeTransport();
   const { bootstrap } = harness({ transport, checksum: `${DIGEST}  pi-host-0.15.0-linux-x64.tar.gz\n` });
   const error = await catchError(() => bootstrap.bootstrap(request()));
-  assert.equal(error.errorCode, "HOST_BOOTSTRAP_FAILED");
+  assert.equal(error.errorCode, "HOST_INTEGRITY_FAILED");
   assert.deepEqual(transport.calls.uploads, [], "the script must not run without a digest to verify");
 });
 
@@ -220,7 +225,7 @@ test("a failed remote script reports the step it failed at", async () => {
   });
   const { bootstrap } = harness({ transport });
   const error = await catchError(() => bootstrap.bootstrap(request()));
-  assert.equal(error.errorCode, "HOST_BOOTSTRAP_FAILED");
+  assert.equal(error.errorCode, "HOST_INTEGRITY_FAILED");
   assert.equal(error.step, "checksum-mismatch");
   assert.match(error.message, /did not match the published SHA-256/);
   assert.deepEqual(transport.calls.forwards, []);

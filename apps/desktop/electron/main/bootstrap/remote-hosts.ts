@@ -9,13 +9,15 @@ import {
   type CommandShellOption, isCommandShellOption,
   type WorkspaceFilesRequest,
   type WorkspacePluginFilesRequest,
+  type RemoteHostPrepareRequest,
 } from "@pi-desktop/shared";
 import { wsClientTransport } from "@pi-desktop/racp";
 import type { HostRpcPort } from "@pi-desktop/agent-host";
 import type { BackendRouter } from "../remote/backend-router.js";
 import { makeRemoteSessionId, parseRemoteSessionId } from "../remote/backend-router.js";
 import { createRacpRemoteHostClient, exchangePairingToken, type RacpRemoteHostClient } from "../remote/racp-remote-host-client.js";
-import { createRemoteHostRealigner, type RemoteHostRealignResult } from "../remote/remote-host-realign.js";
+import { createRemoteHostRealigner } from "../remote/remote-host-realign.js";
+import { createRemoteHostPreparer } from "../remote/remote-host-prepare.js";
 import { createSshBootstrap, type SshBootstrapDeps } from "../remote/ssh-bootstrap.js";
 import { createSshTunnelManager, type SshTunnelManager } from "../remote/ssh-tunnel.js";
 import { createRemoteHostConnection, type RemoteHostConnection, type RemoteHostClient } from "../remote/remote-host-connection.js";
@@ -59,6 +61,8 @@ export interface RemoteHostsBoot {
   bootstrapHost(request: RemoteHostBootstrapRequest): Promise<RemoteHostBootstrapResult>;
   reconnectHost(hostKey: string): Promise<RemoteHostSummary>;
   ensureReady(hostKey: string): Promise<RemoteHostSummary>;
+  prepareHost(request: RemoteHostPrepareRequest): Promise<RemoteHostSummary>;
+  cancelPreparation(hostKey: string, requestId: string): void;
   removeHost(hostKey: string): Promise<void>;
   sessionSummaries(): SessionSummary[];
   sessions(hostKey: string): Promise<SessionSummary[]>;
@@ -95,12 +99,6 @@ function requiresUserAction(error: unknown): boolean {
     .includes(fields.errorCode ?? fields.code ?? "");
 }
 
-/** The one failure that a version realignment can fix (ADR 0327). */
-function isHostVersionMismatch(error: unknown): boolean {
-  if (!error || typeof error !== "object") return false;
-  const fields = error as { errorCode?: string; code?: string };
-  return (fields.errorCode ?? fields.code ?? "") === "HOST_VERSION_MISMATCH";
-}
 
 /**
  * A paired Host can run the right release and still predate the additive
@@ -128,7 +126,6 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
   const openingHosts = new Set<OpenHost>();
   const hostClosings = new WeakMap<OpenHost, Promise<void>>();
   const operations = new Map<string, Promise<unknown>>();
-  const readiness = new Map<string, Promise<RemoteHostSummary>>();
   const bootstraps = new Map<AbortController, Promise<unknown>>();
   let closed = false;
   let opening: Promise<number> | undefined;
@@ -173,7 +170,7 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
           // not emitted exit yet. Reopen it before reconnecting the WebSocket.
           await tunnels.close(record.hostKey);
           assertOpen();
-          url = (await tunnels.open(record.hostKey, ssh, record.sshSecret)).url;
+          url = (await tunnels.open(record.hostKey, { ...ssh, version: options.clientInfo.version }, record.sshSecret)).url;
           assertOpen();
           const live = opened.get(record.hostKey);
           if (live) live.url = url;
@@ -191,20 +188,18 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
   const bootstrap = createSshBootstrap({
     version: options.clientInfo.version,
     exchangePairing: ({ url, pairingToken, label, expectedHostId }) => exchangePairingToken({ url, pairingToken, label, expectedHostId, clientInfo: options.clientInfo, requireWorkspace: true, log }),
+    verifyConnection: async ({ url, deviceToken, expectedHostId }) => {
+      const adapter = createRacpRemoteHostClient({ transport: wsClientTransport({ url, token: deviceToken }),
+        expectedHostId, clientInfo: options.clientInfo, reconnect: { enabled: false }, log });
+      try { await adapter.connect(); assertWorkspaceCapabilities(adapter); }
+      finally { await adapter.close(); }
+    },
     log, ...options.sshBootstrap,
   });
 
-  /**
-   * Re-provision one paired Host onto this desktop's release, in place. It
-   * reuses the verified bootstrap the pairing path uses, so the artifact must
-   * still match the published SHA-256 and pass the installed manifest check;
-   * only the trigger differs (ADR 0327).
-   */
   const realigner = createRemoteHostRealigner({
-    version: options.clientInfo.version,
     bootstrap: (request, execOptions) => bootstrap.bootstrap(request, execOptions),
     upsert: (record) => registry.upsert(record),
-    log,
   });
 
   function closeHost(host: OpenHost): Promise<void> {
@@ -236,9 +231,8 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
     // must not mask a Host that is behind, which is the case realignment
     // repairs.
     const expected = ssh ? { ...ssh, version: options.clientInfo.version } : undefined;
-    const url = expected
-      ? (await tunnels.open(record.hostKey, expected, record.sshSecret)).url
-      : record.url;
+    const tunnel = expected ? await tunnels.open(record.hostKey, expected, record.sshSecret) : undefined;
+    const url = tunnel?.url ?? record.url;
     if (closed) { await tunnels.close(record.hostKey); throw unavailable(); }
     const adapter = buildAdapter({ ...record, url });
     const connection = createRemoteHostConnection({
@@ -259,6 +253,7 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       await adapter.connect();
       assertOpen();
       assertWorkspaceCapabilities(adapter);
+      await tunnel?.completePreparation?.();
       await connection.open();
       assertOpen();
       opened.set(record.hostKey, live);
@@ -275,59 +270,16 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
     }
   }
 
-  /**
-   * Re-provision a paired Host onto this desktop's release and re-pair it in
-   * place. `force` is the user's explicit reconnect, which must not be silently
-   * throttled. Returns the refreshed record, or `null` when the attempt was not
-   * allowed or did not succeed.
-   */
-  async function realignHost(record: RemoteHostRecord, force: boolean): Promise<RemoteHostRecord | null> {
-    const decision = realigner.decide(record, { force });
-    if (decision !== "attempt") {
-      log("info", "remote host realignment not attempted", {
-        hostKey: record.hostKey, decision, version: options.clientInfo.version,
-      });
-      return null;
-    }
-    log("info", "remote host realignment started", {
-      hostKey: record.hostKey, version: options.clientInfo.version,
-    });
-    assertOpen();
-    await closeLive(record.hostKey);
-    await tunnels.close(record.hostKey);
-    assertOpen();
-    const controller = new AbortController();
-    const task = realigner.realign(record, { force, signal: controller.signal });
-    bootstraps.set(controller, task);
-    let result: RemoteHostRealignResult | null;
-    try { result = await task; }
-    finally { bootstraps.delete(controller); }
-    if (!result) return null;
+  async function openHost(record: RemoteHostRecord, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted();
+    const abort = () => {
+      void Promise.allSettled([closeLive(record.hostKey), tunnels.close(record.hostKey)]);
+    };
+    signal?.addEventListener("abort", abort, { once: true });
     try {
-      assertOpen();
-      await tunnels.adopt(record.hostKey, result.outcome.ssh, result.outcome.forward);
-    } catch (error) {
-      // `adopt` never took ownership, so this call still owns the forward.
-      await result.outcome.forward.close().catch(() => undefined);
-      throw error;
-    }
-    return result.record;
-  }
-
-  /**
-   * Open one host, and when it is refused for its version, bring it up to this
-   * release and open it again. A second failure is surfaced unchanged: a
-   * realignment that cannot help must never hide the reason the user sees.
-   */
-  async function openHost(record: RemoteHostRecord, forceRealign = false): Promise<OpenHost> {
-    try {
-      return await openHostOnce(record);
-    } catch (error) {
-      if (closed || !isHostVersionMismatch(error)) throw error;
-      const realigned = await realignHost(record, forceRealign);
-      if (!realigned) throw error;
-      return await openHostOnce(realigned);
-    }
+      await openHostOnce(record);
+      if (signal?.aborted) { await closeLive(record.hostKey); signal.throwIfAborted(); }
+    } finally { signal?.removeEventListener("abort", abort); }
   }
   function summaryOf(record: RemoteHostRecord): RemoteHostSummary {
     const state = opened.get(record.hostKey)?.adapter.state();
@@ -335,7 +287,7 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       ? state
       : state === "error" || actionRequired.has(record.hostKey) ? "action-required" : "disconnected";
     return { hostKey: record.hostKey, label: record.label, url: opened.get(record.hostKey)?.url ?? record.url,
-      connected: status === "connected", status, transport: transportOf(record) };
+      connected: status === "connected", status, transport: transportOf(record), preparation: preparer.state(record.hostKey) };
   }
   async function addRecord(record: RemoteHostRecord): Promise<RemoteHostSummary> {
     assertOpen();
@@ -349,28 +301,43 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
     return summaryOf(record);
   }
 
-  const ensureReady = (key: string): Promise<RemoteHostSummary> => {
-    const pending = readiness.get(key);
-    if (pending) return pending;
-    const task = serial(key, async () => {
-      const record = (await registry.list()).find((item) => item.hostKey === key);
+  const preparer = createRemoteHostPreparer({
+    version: options.clientInfo.version, registry, summary: summaryOf, changed,
+    connect: (record, signal) => serial(record.hostKey, async () => {
+      signal.throwIfAborted();
+      if (connectedHost(record.hostKey)) return;
+      await closeLive(record.hostKey);
+      await openHost(record, signal);
+    }),
+    upgrade: (record, run) => serial(record.hostKey, async () => {
       assertOpen();
-      if (!record) throw unavailable();
-      if (!connectedHost(key)) {
-        await closeLive(key);
-        assertOpen();
-        await openHost(record);
+      run.signal.throwIfAborted();
+      await closeLive(record.hostKey);
+      await tunnels.close(record.hostKey);
+      const ssh = sshMetadataOf(record);
+      if (ssh && run.currentVersion) {
+        // Authenticate the existing device before replacing an older running Host.
+        const { url } = await tunnels.open(record.hostKey, { ...ssh, version: run.currentVersion }, record.sshSecret);
+        const adapter = buildAdapter({ ...record, url });
+        try { await adapter.connect(); }
+        finally { await adapter.close(); await tunnels.close(record.hostKey); }
       }
-      return summaryOf(record);
-    });
-    readiness.set(key, task);
-    void task.finally(() => { if (readiness.get(key) === task) readiness.delete(key); }).catch(() => undefined);
-    return task;
-  };
+      run.signal.throwIfAborted();
+      const result = await realigner(record, run);
+      try {
+        assertOpen(); run.signal.throwIfAborted();
+        await tunnels.adopt(record.hostKey, result.outcome.ssh, result.outcome.forward);
+        return result.record;
+      } catch (error) { await result.outcome.forward.close(); throw error; }
+    }),
+  });
+  const ensureReady = preparer.ensureReady;
 
   return {
     registry,
     ensureReady,
+    prepareHost: preparer.prepare,
+    cancelPreparation: preparer.cancel,
     open() {
       if (opening) return opening;
       opening = (async () => {
@@ -398,6 +365,7 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       if (closing) return closing;
       closed = true;
       for (const controller of bootstraps.keys()) controller.abort();
+      const preparations = preparer.dispose();
       const hosts = new Set([...opened.values(), ...openingHosts]);
       opened.clear();
       closing = (async () => {
@@ -405,7 +373,7 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
         // Forward creation is itself an operation we must cancel, not await
         // before disposal. The same fence prevents all late registrations.
         const disposal = tunnels.dispose();
-        await Promise.allSettled([...cleanup, disposal, ...operations.values(), ...bootstraps.values()]);
+        await Promise.allSettled([...cleanup, disposal, preparations, ...operations.values(), ...bootstraps.values()]);
         await disposal;
       })();
       return closing;
@@ -505,16 +473,10 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       });
     },
     addHost: (record) => serial(record.hostKey, () => addRecord(record)),
-    reconnectHost: (key) => serial(key, async () => {
-      const record = (await registry.list()).find((item) => item.hostKey === key);
-      if (!record) throw unavailable();
-      await closeLive(key);
-      await tunnels.close(key);
-      // An explicit reconnect is the user asking again, so it may realign a
-      // Host the automatic throttling has already given up on for this release.
-      await openHost(record, true);
-      return summaryOf(record);
-    }),
+    async reconnectHost(key) {
+      await serial(key, async () => { await closeLive(key); await tunnels.close(key); });
+      return preparer.prepare({ hostKey: key, requestId: `reconnect-${Date.now()}`, retry: true });
+    },
     async bootstrapHost(request) {
       assertOpen();
       const controller = new AbortController();
@@ -530,7 +492,9 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
           adopted = true;
           try {
             assertOpen();
-            const host = await addRecord(sshHostRecord(outcome));
+            const record = sshHostRecord(outcome);
+            record.metadata = { ...record.metadata, piHostDownloadConsent: true };
+            const host = await addRecord(record);
             return { host, ssh: outcome.ssh, steps: outcome.steps };
           } catch (error) {
             await tunnels.close(outcome.hostKey);
@@ -543,14 +507,17 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
         if (!adopted) await outcome.forward.close();
       }
     },
-    removeHost: (key) => serial(key, async () => {
+    removeHost: async (key) => {
+      await preparer.forget(key);
+      return serial(key, async () => {
       await closeLive(key);
       await tunnels.close(key);
       await registry.remove(key);
       actionRequired.delete(key);
       catalog.forget(key);
       changed();
-    }),
+      });
+    },
     async listSessions() {
       const results = await Promise.all([...opened.values()].map(async (host) => {
         if (!connectedHost(host.hostKey)) return [];

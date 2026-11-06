@@ -53,8 +53,16 @@ jobs:
           ARCHITECTURE_BASE: ${{ github.event.pull_request.base.sha || github.event.before || 'HEAD^' }}
         run: node scripts/check-architecture.mjs
 
+      - name: Check release version surfaces
+        # A partial version bump — desktop, workspace packages, Cargo, or the
+        # in-app APP_VERSION — must fail on the pull request, not on the tag.
+        run: node scripts/check-release-versions.mjs
+
       - name: Unit-test the Pi patch checks
         run: node --test scripts/pi-patch-hash.test.mjs
+
+      - name: Unit-test the release gates
+        run: node --test scripts/check-release-versions.test.mjs scripts/check-pi-host-release-assets.test.mjs
 
       - name: Unit tests
         run: pnpm -r --if-present test

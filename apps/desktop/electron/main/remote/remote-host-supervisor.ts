@@ -1,13 +1,14 @@
 import { shellQuote, type PiHostReadyLine } from "./pi-host-bootstrap-script.js";
 import { REMOTE_DEPLOY_LOCK_SCRIPT } from "./remote-deploy-lock.js";
 import type { SshTransport } from "./ssh-transport.js";
+import { assertMatchingHostRelease } from "./host-release-policy.js";
 
 export type RemoteHostSupervisorOptions = {
   /**
    * Release the running Host must report. It is the release this desktop
    * expects — not the version recorded when the host was paired — so a Host
    * left behind by an upgrade is refused here and handed to realignment
-   * (ADR 0327).
+   * (see the on-demand preparation ADR).
    */
   version: string;
   expectedHostId?: string;
@@ -39,7 +40,26 @@ chmod 700 "$work" || die work-permissions
 ${REMOTE_DEPLOY_LOCK_SCRIPT}
 trap release_deploy_lock EXIT
 trap 'exit 1' HUP INT TERM
+transaction_id=""
+state="$work/deployment-state.json"
+if [ -e "$state" ] || [ -L "$state" ]; then
+  [ -f "$state" ] && [ ! -L "$state" ] || die recovery-required
+  [ "$(wc -c < "$state")" -le 16384 ] || die recovery-required
+  phase=$(grep -o '"phase":"[^"]*"' "$state" | head -n 1 | cut -d '"' -f 4)
+  case "$phase" in
+    complete|failed-safe) ;;
+    queued) die deployment-busy ;;
+    awaiting-racp)
+      transaction_id=$(grep -o '"transactionId":"[a-f0-9]*"' "$state" | head -n 1 | cut -d '"' -f 4)
+      [ "\${#transaction_id}" -eq 32 ] || die recovery-required
+      ;;
+    *) die recovery-required ;;
+  esac
+fi
 [ -f "$entry" ] || die host-not-installed
+if [ -f "$base/current/SHA256SUMS" ]; then
+  sh "$base/current/install.sh" --verify >/dev/null 2>&1 || die host-install-damaged
+fi
 log="$work/pi-host.log"
 err="$work/pi-host.err"
 pidfile="$work/pi-host.pid"
@@ -63,6 +83,7 @@ if [ -f "$pidfile" ]; then
   case "$host_pid" in ''|*[!0-9]*|0) die invalid-host-pid ;; esac
 fi
 if [ -z "$host_pid" ] || ! is_host; then
+  [ -z "$transaction_id" ] || die recovery-required
   node="$base/current/bin/node"
   if [ ! -x "$node" ]; then
     node=$(command -v node) || die missing-node
@@ -85,6 +106,7 @@ while [ "$waited" -lt ${shellQuote(String(readyTimeoutSec))} ]; do
     is_host || die host-exited
     # Never echo a historic single-use pairing token.
     printf '%s\\n' "$ready"
+    [ -z "$transaction_id" ] || printf '%s\\n' "PI_HOST_DEPLOYMENT_TRANSACTION $transaction_id"
     exit 0
   fi
   sleep 1
@@ -95,9 +117,10 @@ die ready-timeout
 }
 
 /** Treat SSH stdout as an untrusted boundary; never include it in diagnostics. */
-export function parseRemoteHostReady(stdout: string, options: RemoteHostSupervisorOptions): PiHostReadyLine {
+export function parseRemoteHostReady(stdout: string, options: RemoteHostSupervisorOptions): PiHostReadyLine & { transactionId?: string } {
   const lines = stdout.trim().split(/\r?\n/);
-  if (lines.length !== 1 || !lines[0]?.startsWith("PI_HOST_READY ")) {
+  const transactionId = lines.length === 2 ? /^PI_HOST_DEPLOYMENT_TRANSACTION ([a-f0-9]{32})$/.exec(lines[1]!)?.[1] : undefined;
+  if ((lines.length !== 1 && !transactionId) || !lines[0]?.startsWith("PI_HOST_READY ")) {
     throw failure("Remote Host did not report a single ready line");
   }
   let value: unknown;
@@ -116,21 +139,35 @@ export function parseRemoteHostReady(stdout: string, options: RemoteHostSupervis
   if (options.expectedHostId !== undefined && hostId !== options.expectedHostId) {
     throw failure("Remote Host identity changed", "HOST_AUTH_FAILED");
   }
-  if (version.replace(/^v/, "") !== options.version.replace(/^v/, "")) {
-    throw failure("the running remote Host does not match the release this Desktop expects", "HOST_VERSION_MISMATCH");
-  }
-  return { hostId, host, port, version };
+  assertMatchingHostRelease(version, options.version);
+  return { hostId, host, port, version, ...(transactionId ? { transactionId } : {}) };
 }
 
 export async function ensureRemoteHostReady(
   transport: SshTransport,
   options: RemoteHostSupervisorOptions,
-): Promise<PiHostReadyLine> {
+): Promise<PiHostReadyLine & { transactionId?: string }> {
   const timeout = options.readyTimeoutSec ?? 30;
-  const result = await transport.execWithInput("sh -s", buildRemoteHostSupervisorScript(timeout), {
-    timeoutMs: (120 + timeout + 15) * 1000,
-    maxOutputBytes: 16 * 1024,
-  });
-  if (result.code !== 0) throw failure("Remote Host startup check failed");
+  let result;
+  try {
+    result = await transport.execWithInput("sh -s", buildRemoteHostSupervisorScript(timeout), {
+      timeoutMs: (120 + timeout + 15) * 1000,
+      maxOutputBytes: 16 * 1024,
+    });
+  } catch (error) {
+    const stderr = error && typeof error === "object" && "stderr" in error ? String(error.stderr) : "";
+    const classified = supervisorFailure(stderr);
+    if (classified) throw classified;
+    throw error;
+  }
+  if (result.code !== 0) throw supervisorFailure(result.stderr) ?? failure("Remote Host startup check failed");
   return parseRemoteHostReady(result.stdout, options);
+}
+
+function supervisorFailure(stderr: string): Error | undefined {
+  const step = /^PI_HOST_SUPERVISOR_FAILED ([a-z-]+)$/m.exec(stderr)?.[1];
+  const codes: Record<string, string> = { "host-not-installed": "HOST_NOT_INSTALLED",
+    "host-install-damaged": "HOST_INSTALL_DAMAGED", "recovery-required": "HOST_RECOVERY_REQUIRED",
+    "deployment-busy": "HOST_BUSY" };
+  return step && codes[step] ? failure("Remote Host requires preparation", codes[step]) : undefined;
 }

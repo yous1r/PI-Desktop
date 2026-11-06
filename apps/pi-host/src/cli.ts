@@ -11,9 +11,16 @@ import { nodeRuntimePath } from "./runtime-path.js";
  * Everything else is structured stderr.
  */
 async function main(): Promise<void> {
+  // Both channel commands are handled before `parseArgs`, so an unknown
+  // operation can never fall through to starting a second database writer.
   if (process.argv[2] === "provider-import") {
     const { runProviderImport } = await import("./provider-import.js");
     process.exitCode = await runProviderImport(process.argv.slice(3));
+    return;
+  }
+  if (process.argv[2] === "maintenance") {
+    const { runMaintenance } = await import("./maintenance-cli.js");
+    process.exitCode = await runMaintenance(process.argv.slice(3));
     return;
   }
   const args = parseArgs(process.argv.slice(2));
@@ -22,6 +29,7 @@ async function main(): Promise<void> {
       [
         "pi-host — headless PI Agent Host (RACP-WS on loopback)",
         "  provider-import          import selected providers from SSH stdin",
+        "  maintenance              status/acquire/release a maintenance lease (JSON stdin)",
         "",
         "  --data-dir <dir>          host data directory (default ~/.pi-desktop)",
         "  --port <n>                loopback port (default 0 = pick free)",
@@ -41,7 +49,7 @@ async function main(): Promise<void> {
   process.env.PATH = nodeRuntimePath(config.nodeBinary, process.env.PATH);
   const { startPiHost } = await import("./app.js");
   const app = await startPiHost(config);
-  process.stdout.write(`PI_HOST_READY ${JSON.stringify({ hostId: app.hostId, host: app.address.host, port: app.address.port, version: (await import("@pi-desktop/shared")).APP_VERSION })}\n`);
+  process.stdout.write(`PI_HOST_READY ${JSON.stringify({ hostId: app.hostId, host: app.address.host, port: app.address.port, version: (await import("@pi-desktop/shared")).APP_VERSION, maintenance: app.maintenance })}\n`);
   if (config.pair) {
     const pairing = await app.issuePairingToken(config.pairingLifetimeMs);
     process.stdout.write(`PI_HOST_PAIRING_TOKEN ${JSON.stringify(pairing)}\n`);

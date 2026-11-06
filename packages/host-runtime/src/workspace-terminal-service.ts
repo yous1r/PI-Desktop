@@ -204,6 +204,12 @@ export class WorkspaceTerminalService {
     for (const dispose of record.cleanup) dispose();
     if (kill) { try { record.pty.kill(); } catch { /* The OS may have already reaped the PTY. */ } }
   }
+  /** Open PTYs plus calls still being admitted; derived from the existing records. */
+  inUse(): number {
+    let pending = 0;
+    for (const requests of this.admissions.values()) pending += requests.size;
+    return this.records.size + pending;
+  }
   dispose(): void {
     this.sealed = true;
     for (const record of this.records.values()) this.closeRecord(record);

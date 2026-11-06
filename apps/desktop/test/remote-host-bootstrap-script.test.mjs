@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { chmod, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { register } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -12,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 register(pathToFileURL(join(here, "helpers/ts-import-hooks.mjs")));
 
-const { buildBootstrapScript, parseBootstrapOutput, shellQuote } = await import(
+const { buildBootstrapScript, parseBootstrapOutput, redactBootstrapOutput, shellQuote } = await import(
   "../electron/main/remote/pi-host-bootstrap-script.ts"
 );
 
@@ -21,10 +20,17 @@ const BUNDLE_DIR = `pi-host-${VERSION}-linux-x64`;
 const ARTIFACT_NAME = `${BUNDLE_DIR}.tar.gz`;
 const ARTIFACT_URL = `https://github.com/yous1r/PI-Desktop/releases/download/v${VERSION}/${ARTIFACT_NAME}`;
 const DIGEST = "0123456789abcdef".repeat(4);
-/** The sandbox the script's `HOME`/`PATH` point at, outside the real user's. */
-const WORK_SUBDIR = ".pi-desktop/pi-host/.bootstrap";
+const UPLOADED = "/home/user/.pi-desktop/pi-host/.upload.abc123/artifact.tar.gz";
 
-/** Inputs every scenario starts from; callers override the digest or version. */
+/**
+ * The generated script targets Linux and requires `flock`. Windows/MSYS has no
+ * `flock`, so the runtime fail-closed cases can only run on the product host.
+ */
+const NO_FLOCK = process.platform === "win32"
+  ? "the generated script requires Linux flock, which this test host does not provide"
+  : false;
+
+/** Inputs every scenario starts from; callers override individual fields. */
 function scriptInput(overrides = {}) {
   return {
     version: VERSION,
@@ -32,6 +38,7 @@ function scriptInput(overrides = {}) {
     artifactName: ARTIFACT_NAME,
     bundleDir: BUNDLE_DIR,
     expectedSha256: DIGEST,
+    artifactPath: UPLOADED,
     port: 0,
     pairingLifetimeMs: 600_000,
     readyTimeoutSec: 30,
@@ -44,118 +51,6 @@ async function tempDir(prefix) {
   return { dir, cleanup: () => rm(dir, { recursive: true, force: true }) };
 }
 
-/**
- * Everything the generated script touches, faked on `PATH`: a `curl` that
- * copies a prepared tarball, a `node` that plays the host's ready/pairing
- * output, and a `sha256sum` that hashes with the real Node. The tarball is a
- * real `tar.gz` because the script unpacks and installs it.
- *
- * Returns the env for the run plus the digest the script will compute, which
- * is what `expectedSha256` has to be for a run that is meant to succeed.
- */
-async function prepareSandbox(root, { readyVersion = VERSION } = {}) {
-  const stage = join(root, "stage");
-  const bin = join(root, "bin");
-  const home = join(root, "home");
-  await mkdir(join(stage, BUNDLE_DIR), { recursive: true });
-  await mkdir(bin, { recursive: true });
-  await mkdir(home, { recursive: true });
-  await writeFile(join(stage, BUNDLE_DIR, "install.sh"), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
-
-  const tarball = join(root, "artifact.tar.gz");
-  execFileSync("tar", ["-czf", tarball, "-C", stage, BUNDLE_DIR]);
-  const digest = createHash("sha256").update(await readFile(tarball)).digest("hex");
-
-  // `sha256_of` prefers `sha256sum`; the stand-in delegates to the real Node so
-  // the digest is computed the same way the release publishes it.
-  const sha256Helper = join(root, "sha256.mjs");
-  await writeFile(
-    sha256Helper,
-    [
-      'import { createHash } from "node:crypto";',
-      'import { readFileSync } from "node:fs";',
-      "const file = process.argv[2];",
-      'if (file === "-c") {',
-      '  const manifest = readFileSync(process.argv[3], "utf8").trim().split("\\n");',
-      '  for (const line of manifest) { const [hash, path] = line.split(/  /); if (createHash("sha256").update(readFileSync(path)).digest("hex") !== hash) process.exit(1); }',
-      '  process.exit(0);',
-      '}',
-      'process.stdout.write(`${createHash("sha256").update(readFileSync(file)).digest("hex")}  ${file}\\n`);',
-      "",
-    ].join("\n"),
-  );
-  await writeFile(join(bin, "sha256sum"), `#!/bin/sh\nexec "${process.execPath}" "${sha256Helper}" "$@"\n`, {
-    mode: 0o755,
-  });
-
-  await writeFile(
-    join(bin, "curl"),
-    [
-      "#!/bin/sh",
-      "# pretend the artifact URL served the tarball this test prepared",
-      'out=""',
-      'while [ "$#" -gt 0 ]; do',
-      '  case "$1" in',
-      '    -o) out="$2"; shift 2 ;;',
-      "    *) shift ;;",
-      "  esac",
-      "done",
-      '[ -n "$out" ] || { printf \'fake curl: missing -o\\n\' >&2; exit 2; }',
-      'cp "$PI_HOST_TEST_TARBALL" "$out"',
-      "",
-    ].join("\n"),
-    { mode: 0o755 },
-  );
-
-  const readyLine = `PI_HOST_READY ${JSON.stringify({
-    hostId: "host_x",
-    host: "127.0.0.1",
-    port: 41234,
-    version: readyVersion,
-  })}`;
-  const pairingLine = `PI_HOST_PAIRING_TOKEN ${JSON.stringify({
-    token: "ppt1.stub",
-    expiresAt: 1_893_456_000_000,
-  })}`;
-  await writeFile(
-    join(bin, "node"),
-    [
-      "#!/bin/sh",
-      "# `node -p` is the script's version probe; answer with a modern major.",
-      'case " $* " in',
-      "  *\" -p \"*) printf '99\\n'; exit 0 ;;",
-      "esac",
-      `printf '%s\\n' '${readyLine}'`,
-      `printf '%s\\n' '${pairingLine}'`,
-      "# The script polls `kill -0` on this pid, so the fake host outlives the wait.",
-      "sleep 5",
-      "",
-    ].join("\n"),
-    { mode: 0o755 },
-  );
-
-  return {
-    digest,
-    home,
-    tarball,
-    env: {
-      ...process.env,
-      HOME: home,
-      PATH: `${bin}:${process.env.PATH ?? ""}`,
-      PI_HOST_TEST_TARBALL: tarball,
-    },
-  };
-}
-
-function runScript(scriptPath, env) {
-  return execFileSync("sh", [scriptPath], {
-    encoding: "utf8",
-    timeout: 120_000,
-    stdio: ["ignore", "pipe", "pipe"],
-    env,
-  });
-}
-
 test("shellQuote produces a single-quoted literal that cannot escape", () => {
   assert.equal(shellQuote("plain"), "'plain'");
   // The one character a single-quoted string cannot contain ends the literal,
@@ -166,34 +61,70 @@ test("shellQuote produces a single-quoted literal that cannot escape", () => {
   assert.equal(shellQuote("$(touch /tmp/pwned)"), "'$(touch /tmp/pwned)'");
 });
 
-test("buildBootstrapScript interpolates every input as a quoted literal", () => {
+test("the script interpolates every input as a quoted shell literal", () => {
   const script = buildBootstrapScript(scriptInput());
   assert.ok(script.startsWith("#!/bin/sh\n"), "the script is uploaded and run by `sh`");
-  assert.ok(script.includes(`VERSION='${VERSION}'`));
-  assert.ok(script.includes(`ARTIFACT_URL='${ARTIFACT_URL}'`));
-  assert.ok(script.includes(`ARTIFACT_NAME='${ARTIFACT_NAME}'`));
-  assert.ok(script.includes(`BUNDLE_DIR='${BUNDLE_DIR}'`));
-  assert.ok(script.includes(`EXPECTED_SHA256='${DIGEST}'`));
-  assert.ok(script.includes("PORT='0'"));
-  assert.ok(script.includes("PAIRING_LIFETIME_MS='600000'"));
-  assert.ok(script.includes("READY_TIMEOUT_SEC='30'"));
-  assert.match(
-    script,
-    /chmod 700 "\$work" 2>\/dev\/null \|\| die "bootstrap-permissions"/,
-  );
-  assert.match(
-    script,
-    /chmod 600 "\$tarball" 2>\/dev\/null \|\| die "artifact-permissions"/,
-  );
-  // The Node floor is injected from the module, not left as an empty shell var.
-  assert.match(script, /^MIN_NODE_MAJOR='\d+'$/m);
-  assert.ok(script.includes('$MIN_NODE_MAJOR'));
-
-  // Every `${…}` that reaches the shell must be deliberate. `${HOME:-}` is a
-  // shell expansion; anything else would be a JS placeholder that never
-  // interpolated and would run as garbage on the remote machine.
+  for (const [name, value] of Object.entries({
+    VERSION,
+    ARTIFACT_URL,
+    ARTIFACT_NAME,
+    BUNDLE_DIR,
+    EXPECTED_SHA256: DIGEST,
+    ARTIFACT_PATH: UPLOADED,
+    PORT: "0",
+    PAIRING_LIFETIME_MS: "600000",
+    READY_TIMEOUT_SEC: "30",
+    ALLOW_LEGACY_MAINTENANCE: "false",
+    PRESERVE_PAIRING: "false",
+    EXPECTED_DEVICE_TOKEN_HASH: "",
+  })) {
+    assert.ok(script.includes(`${name}='${value}'`), `${name} must be a quoted assignment`);
+  }
+  // Optional identity inputs are present but empty until an upgrade pins them.
+  assert.ok(script.includes("EXISTING_HOST_ID=''"));
+  assert.ok(script.includes("EXPECTED_CURRENT_VERSION=''"));
+  assert.ok(script.includes("EXPECTED_DEVICE_TOKEN_HASH=''"));
+  // Every `${…}` that reaches the shell must be deliberate.
   const interpolations = [...script.matchAll(/\$\{([^}]*)\}/g)].map((match) => match[1]);
-  assert.deepEqual(interpolations, ["HOME:-"]);
+  assert.deepEqual(interpolations, ["HOME:-", "#EXPECTED_SHA256", "#transaction_id"]);
+});
+
+test("the upgrade identity inputs are interpolated from the new fields", () => {
+  const script = buildBootstrapScript(
+    scriptInput({
+      existingHostId: "host_abc",
+      expectedCurrentVersion: "0.15.0",
+      allowLegacyMaintenance: true,
+      preservePairing: true,
+      expectedDeviceTokenHash: "c".repeat(64),
+    }),
+  );
+  assert.ok(script.includes("EXISTING_HOST_ID='host_abc'"));
+  assert.ok(script.includes("EXPECTED_CURRENT_VERSION='0.15.0'"));
+  assert.ok(script.includes("ALLOW_LEGACY_MAINTENANCE='true'"));
+  assert.ok(script.includes("PRESERVE_PAIRING='true'"));
+  assert.ok(script.includes(`EXPECTED_DEVICE_TOKEN_HASH='${"c".repeat(64)}'`));
+  assert.ok(script.includes("PI_TX_EXPECTED_DEVICE_TOKEN_HASH"));
+  assert.ok(!script.includes("ppt1."), "only the token hash is interpolated");
+});
+
+test("the generated script never downloads executable bytes on the remote host", () => {
+  const script = buildBootstrapScript(scriptInput());
+  // Desktop uploads the exact checksum-verified archive; the remote verifies
+  // it locally and refuses to continue without it.
+  assert.ok(script.includes("upload-required"));
+  assert.ok(!/\bcurl\b/.test(script), "no remote HTTP client may appear in the script");
+  assert.ok(!/\bwget\b/.test(script));
+  assert.ok(!script.includes("ARTIFACT_URL=\"$"), "the artifact URL is diagnostic only");
+  assert.ok(script.includes('case "$ARTIFACT_PATH" in "$base"/.upload.*/artifact.tar.gz)'));
+});
+
+test("the generated script refuses to start while a previous deployment is unresolved", () => {
+  const script = buildBootstrapScript(scriptInput());
+  assert.ok(script.includes("HOST_RECOVERY_REQUIRED"));
+  assert.ok(/deployment-state\.json/.test(script));
+  // Only a finished or safely-failed record may be replaced by a new attempt.
+  assert.ok(script.includes("complete|failed-safe"));
 });
 
 test("the generated script is valid POSIX shell, even with hostile inputs", async () => {
@@ -214,6 +145,9 @@ test("the generated script is valid POSIX shell, even with hostile inputs", asyn
           artifactUrl: "https://example.invalid/a'b",
           artifactName: "a b'c.tar.gz",
           bundleDir: "d'est",
+          existingHostId: "host'; rm -rf $HOME; echo '",
+          expectedCurrentVersion: "1.0.0`id`",
+          expectedDeviceTokenHash: "x'; rm -rf $HOME; echo '",
         }),
       ),
     );
@@ -245,54 +179,45 @@ test("a hostile version stays one literal value when the assignments run", async
   }
 });
 
-test("the generated script installs, starts, and prints the ready/pairing lines", async () => {
-  const { dir, cleanup } = await tempDir("pi-host-script-run-");
+test("the generated script fails closed without an uploaded artifact", { skip: NO_FLOCK }, async () => {
+  const { dir, cleanup } = await tempDir("pi-host-script-upload-");
   try {
-    const sandbox = await prepareSandbox(dir);
     const scriptPath = join(dir, "bootstrap.sh");
-    await writeFile(scriptPath, buildBootstrapScript(scriptInput({ expectedSha256: sandbox.digest })));
-
-    const stdout = runScript(scriptPath, sandbox.env);
-    const parsed = parseBootstrapOutput(stdout);
-    assert.equal(parsed.failure, null);
-    assert.deepEqual(parsed.ready, {
-      hostId: "host_x",
-      host: "127.0.0.1",
-      port: 41234,
-      version: VERSION,
-    });
-    assert.deepEqual(parsed.pairing, { token: "ppt1.stub", expiresAt: 1_893_456_000_000 });
-    assert.deepEqual(parsed.steps, ["download", "verify", "install", "start", "await-ready", "ok"]);
-
-    // The host was started under the sandbox HOME and left running there.
-    const pid = (await readFile(join(sandbox.home, WORK_SUBDIR, "pi-host.pid"), "utf8")).trim();
-    assert.match(pid, /^\d+$/);
+    await writeFile(scriptPath, buildBootstrapScript(scriptInput({ artifactPath: undefined })));
+    let failure;
+    try {
+      execFileSync("sh", [scriptPath], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, HOME: dir },
+      });
+    } catch (error) {
+      failure = error;
+    }
+    assert.ok(failure, "the script must exit non-zero");
+    assert.match(String(failure.stderr), /PI_HOST_BOOTSTRAP_FAILED upload-required/);
   } finally {
     await cleanup();
   }
 });
 
-test("a checksum mismatch fails the script before anything is installed", async () => {
+test("the generated script fails closed on a malformed digest before extraction", { skip: NO_FLOCK }, async () => {
   const { dir, cleanup } = await tempDir("pi-host-script-digest-");
   try {
-    const sandbox = await prepareSandbox(dir);
     const scriptPath = join(dir, "bootstrap.sh");
-    // A tampered download is the case the trust anchor exists for: the digest
-    // travels over the same SSH channel as the script that checks it.
-    await writeFile(scriptPath, buildBootstrapScript(scriptInput({ expectedSha256: "0".repeat(64) })));
-
+    await writeFile(scriptPath, buildBootstrapScript(scriptInput({ expectedSha256: "not-a-digest" })));
     let failure;
     try {
-      runScript(scriptPath, sandbox.env);
+      execFileSync("sh", [scriptPath], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        env: { ...process.env, HOME: dir },
+      });
     } catch (error) {
       failure = error;
     }
     assert.ok(failure, "the script must exit non-zero");
-    assert.notEqual(failure.status, 0);
-    assert.match(String(failure.stderr), /PI_HOST_BOOTSTRAP_FAILED checksum-mismatch/);
-    // The typed line is on stdout too, which is how the desktop reports the step.
-    assert.match(String(failure.stdout), /PI_HOST_FAILED \{.*"step":"checksum-mismatch"/);
-    assert.ok(!String(failure.stdout).includes("PI_HOST_READY"), "the host must not have been started");
+    assert.match(String(failure.stderr), /invalid-checksum/);
   } finally {
     await cleanup();
   }
@@ -301,10 +226,11 @@ test("a checksum mismatch fails the script before anything is installed", async 
 test("parseBootstrapOutput reads the ready and pairing lines", () => {
   const output = parseBootstrapOutput(
     [
-      "PI_HOST_BOOTSTRAP download",
+      "PI_HOST_BOOTSTRAP verify",
       'PI_HOST_READY {"hostId":"host_x","host":"127.0.0.1","port":41234,"version":"0.15.1-beta.5"}',
       'PI_HOST_PAIRING_TOKEN {"token":"ppt1.abc","expiresAt":123}',
-      "PI_HOST_BOOTSTRAP ok",
+      "PI_HOST_DEPLOYMENT_TRANSACTION 0123456789abcdef0123456789abcdef",
+      "PI_HOST_BOOTSTRAP ready",
     ].join("\n"),
   );
   assert.deepEqual(output.ready, {
@@ -314,44 +240,59 @@ test("parseBootstrapOutput reads the ready and pairing lines", () => {
     version: "0.15.1-beta.5",
   });
   assert.deepEqual(output.pairing, { token: "ppt1.abc", expiresAt: 123 });
-  assert.deepEqual(output.steps, ["download", "ok"]);
+  assert.deepEqual(output.steps, ["verify", "ready"]);
+  assert.equal(output.transactionId, "0123456789abcdef0123456789abcdef");
   assert.equal(output.failure, null);
+});
+
+test("a preserved-pairing restart reports readiness without a pairing token", () => {
+  const output = parseBootstrapOutput(
+    [
+      'PI_HOST_READY {"hostId":"host_x","host":"127.0.0.1","port":41234,"version":"0.15.1"}',
+      "PI_HOST_DEPLOYMENT_TRANSACTION 0123456789abcdef0123456789abcdef",
+      "PI_HOST_BOOTSTRAP ready",
+    ].join("\n"),
+  );
+  assert.equal(output.failure, null);
+  assert.equal(output.pairing, null);
+  assert.equal(output.ready?.hostId, "host_x");
+  assert.equal(output.transactionId, "0123456789abcdef0123456789abcdef");
 });
 
 test("parseBootstrapOutput collects step lines and ignores interleaved noise", () => {
   const output = parseBootstrapOutput(
     [
       "Warning: Permanently added 'host' (ED25519) to the list of known hosts.",
-      "PI_HOST_BOOTSTRAP download",
+      "PI_HOST_BOOTSTRAP verify",
       "",
-      "PI_HOST_BOOTSTRAP   verify  ",
+      "PI_HOST_BOOTSTRAP   stage  ",
       "some other chatter",
-      "PI_HOST_BOOTSTRAP install",
+      "PI_HOST_BOOTSTRAP deploy",
     ].join("\n"),
   );
-  assert.deepEqual(output.steps, ["download", "verify", "install"]);
+  assert.deepEqual(output.steps, ["verify", "stage", "deploy"]);
   assert.equal(output.ready, null);
   assert.equal(output.pairing, null);
 });
 
 test("parseBootstrapOutput reports the failing step and ignores unrelated failures", () => {
+  const busy = parseBootstrapOutput('PI_HOST_BOOTSTRAP_FAILED HOST_BUSY\nPI_HOST_FAILED {"code":"HOST_BUSY","step":"HOST_BUSY"}');
+  assert.equal(busy.failure, "HOST_BUSY");
+
+  // The bootstrap's own typed line keeps the legacy `step` extraction.
   const timedOut = parseBootstrapOutput(
-    ['PI_HOST_BOOTSTRAP await-ready', 'PI_HOST_FAILED {"code":"HOST_BOOTSTRAP_FAILED","step":"ready-timeout"}'].join(
-      "\n",
-    ),
+    ['PI_HOST_BOOTSTRAP await-ready', 'PI_HOST_FAILED {"code":"HOST_BOOTSTRAP_FAILED","step":"ready-timeout"}'].join("\n"),
   );
   assert.equal(timedOut.failure, "ready-timeout");
 
-  // The script also writes its own bare failed-line; the first one wins.
+  // The first failure wins.
   const mismatch = parseBootstrapOutput(
-    ["PI_HOST_BOOTSTRAP_FAILED checksum-mismatch", "PI_HOST_BOOTSTRAP_FAILED download-failed"].join("\n"),
+    ["PI_HOST_BOOTSTRAP_FAILED checksum-mismatch", "PI_HOST_BOOTSTRAP_FAILED deployment-failed"].join("\n"),
   );
   assert.equal(mismatch.failure, "checksum-mismatch");
 
-  // A failure line for a different code, or malformed JSON, must not be read as
-  // a bootstrap failure for this host.
-  assert.equal(parseBootstrapOutput('PI_HOST_FAILED {"code":"OTHER","step":"x"}').failure, null);
   assert.equal(parseBootstrapOutput("PI_HOST_FAILED {not json").failure, null);
+  assert.equal(parseBootstrapOutput("PI_HOST_DEPLOYMENT_TRANSACTION not-a-transaction").transactionId, undefined);
 });
 
 test("parseBootstrapOutput refuses a ready line with an unusable port", () => {
@@ -372,59 +313,23 @@ test("parseBootstrapOutput refuses a ready line with an unusable port", () => {
   assert.equal(parseBootstrapOutput('PI_HOST_PAIRING_TOKEN {"expiresAt":1}').pairing, null);
 });
 
-async function seedVerifiedInstall(root, sandbox) {
-  const base = join(sandbox.home, ".pi-desktop/pi-host");
-  const current = join(base, "current");
-  await mkdir(join(current, "bin"), { recursive: true });
-  await copyFile(join(root, "bin/node"), join(current, "bin/node"));
-  await copyFile(fileURLToPath(new URL("../../pi-host/scripts/install.sh", import.meta.url)), join(current, "install.sh"));
-  await chmod(join(current, "install.sh"), 0o755);
-  const files = ["bin/node", "bin/pi-host", "bin/pi-desktop-host-core", "pi-host.js", "install.sh"];
-  for (const file of ["bin/pi-host", "bin/pi-desktop-host-core", "pi-host.js"]) {
-    await writeFile(join(current, file), "#!/bin/sh\nexit 0\n", { mode: 0o755 });
-  }
-  const manifest = (await Promise.all(files.map(async (file) => `${createHash("sha256").update(await readFile(join(current, file))).digest("hex")}  ${file}\n`))).join("");
-  await writeFile(join(current, "SHA256SUMS"), manifest);
-  const manifestDigest = createHash("sha256").update(manifest).digest("hex");
-  await writeFile(join(base, ".release.sha256"), `${VERSION} ${sandbox.digest} ${manifestDigest}\n`);
-  await writeFile(join(root, "bin/curl"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
-  return { base, current };
-}
-
-test("a fully verified release is reused without a download", async () => {
-  const { dir, cleanup } = await tempDir("pi-host-reuse-");
-  try {
-    const sandbox = await prepareSandbox(dir);
-    const { current } = await seedVerifiedInstall(dir, sandbox);
-    // Any accidental system Node dependency must fail this scenario.
-    await writeFile(join(dir, "bin/node"), "#!/bin/sh\nexit 1\n", { mode: 0o755 });
-    const script = join(dir, "bootstrap.sh");
-    await writeFile(script, buildBootstrapScript(scriptInput({ expectedSha256: sandbox.digest })));
-    const result = parseBootstrapOutput(runScript(script, sandbox.env));
-    assert.deepEqual(result.steps, ["reuse", "start", "await-ready", "ok"]);
-    assert.equal(result.ready?.port, 41234);
-    assert.equal(result.pairing?.token, "ppt1.stub");
-    assert.equal(existsSync(join(current, ".release.sha256")), false);
-  } finally { await cleanup(); }
+test("redactBootstrapOutput removes a live pairing token from diagnostics", () => {
+  const redacted = redactBootstrapOutput(
+    [
+      'PI_HOST_READY {"hostId":"host_x","host":"127.0.0.1","port":1,"version":"1"}',
+      'PI_HOST_PAIRING_TOKEN {"token":"{{SECRET_live}}","expiresAt":1}',
+    ].join("\n"),
+  );
+  assert.ok(!redacted.includes("{{SECRET_live}}"));
+  assert.match(redacted, /^PI_HOST_PAIRING_TOKEN <redacted>$/m);
 });
 
-for (const kind of ["damaged", "different-release", "changed-manifest"]) {
-  test(`refuses ${kind} reuse and preserves installed contents on download failure`, async () => {
-    const { dir, cleanup } = await tempDir("pi-host-reuse-refused-");
-    try {
-      const sandbox = await prepareSandbox(dir);
-      const { current } = await seedVerifiedInstall(dir, sandbox);
-      if (kind === "damaged") await writeFile(join(current, "pi-host.js"), "damaged");
-      if (kind === "changed-manifest") await writeFile(join(current, "SHA256SUMS"), "tampered manifest");
-      const before = await readFile(join(current, "pi-host.js"));
-      const script = join(dir, "bootstrap.sh");
-      await writeFile(script, buildBootstrapScript(scriptInput({ expectedSha256: kind === "different-release" ? DIGEST : sandbox.digest })));
-      assert.throws(() => runScript(script, sandbox.env), (error) => {
-        assert.match(String(error.stderr), /PI_HOST_BOOTSTRAP_FAILED download-failed/);
-        assert.ok(!String(error.stdout).includes("PI_HOST_BOOTSTRAP reuse"));
-        return true;
-      });
-      assert.deepEqual(await readFile(join(current, "pi-host.js")), before);
-    } finally { await cleanup(); }
-  });
-}
+test("the generated script is a stable artifact for identical inputs", () => {
+  assert.equal(buildBootstrapScript(scriptInput()), buildBootstrapScript(scriptInput()));
+  const script = buildBootstrapScript(scriptInput());
+  // The transaction record contract the desktop and supervisor share.
+  for (const phase of ["complete|failed-safe", "awaiting-racp", "PI_HOST_DEPLOYMENT_TRANSACTION"]) {
+    assert.ok(script.includes(phase), `${phase} must be part of the generated contract`);
+  }
+  assert.ok(!script.includes("ps -p"), "process identity is decided by the worker, not `ps` output");
+});

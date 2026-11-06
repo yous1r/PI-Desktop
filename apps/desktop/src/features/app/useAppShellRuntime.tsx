@@ -800,7 +800,9 @@ export function useAppShellRuntime() {
         )
         .then(async () => {
           if (event.projectPath) {
-            await useAppStore.getState().openProjectPath(event.projectPath);
+            await useAppStore.getState().openProjectPath(event.projectPath, {
+              prepareRemoteHost: false,
+            });
           } else if (event.projectPath === null && !event.selectSessionId) {
             await useAppStore.getState().clearProject();
           }

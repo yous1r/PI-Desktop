@@ -1,6 +1,6 @@
 # ADR 0327: Automatic remote Host version realignment
 
-- Status: Accepted for experimental implementation (amends ADR 0326 item 6: daily startup is still not an installer, but a version mismatch is now repaired instead of only reported)
+- Status: Superseded by [on-demand remote Host preparation](remote-host-on-demand-preparation.md). The re-pair and permanent success-marker choices below are historical.
 - Date: 2026-10-12
 - Deciders: PI-Desktop maintainers (user-authorized fix for a paired Host that could not be upgraded)
 - Related: [ADR 0326](0326-verified-ssh-host-installation.md), [ADR 0292](0292-ssh-remote-host-bootstrap.md), [ADR 0293](0293-ssh-password-authentication.md), [architecture §5.2](../spec/02-architecture/05-remote-agent-control.md#52-remote-host-over-an-ssh-tunnel-first-remote-topology), [security §3.4](../spec/05-security/02-remote-control-security.md#34-ssh-bootstrap-pairing-first-remote-topology)

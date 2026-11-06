@@ -15,8 +15,15 @@ export const ADMIN_MAX_BYTES = PROVIDER_SYNC_MAX_BYTES + 128;
 const RESPONSE_MAX_BYTES = 64 * 1024;
 const FAILURE_CODES: readonly ImportFailureCode[] = ["INVALID_REQUEST", "PAYLOAD_TOO_LARGE", "ADMIN_UNAVAILABLE", "ADMIN_BUSY", "TIMEOUT", "IMPORT_FAILED"];
 export type AdminResponse = { ok: true; summary: ProviderImportSummary } | { ok: false; code: ImportFailureCode };
+export type MaintenanceResponse = import("./maintenance.js").MaintenanceResponse;
 export type AdminSocket = { path: string; close(): Promise<void> };
 type Log = (level: "info" | "warn", message: string, data?: Record<string, unknown>) => void;
+/** The maintenance surface is served on the same owner-only channel as provider import. */
+export type AdminMaintenance = {
+  handle(request: import("./maintenance.js").MaintenanceRequest): Promise<import("./maintenance.js").MaintenanceResponse>;
+  /** A held maintenance lease also fences provider writes, which must not race an update. */
+  isClosed(): boolean;
+};
 
 export function adminSocketPath(dataDir: string): string {
   const path = join(dataDir, "pi-host", "admin.sock");
@@ -84,7 +91,7 @@ async function claim(dataDir: string): Promise<() => Promise<void>> {
 
 /** One owner-only Unix channel, one allowed operation, one active import. */
 export async function startAdminSocket(options: {
-  dataDir: string; getHost: () => HostCaller | null; log?: Log; timeoutMs?: number;
+  dataDir: string; getHost: () => HostCaller | null; log?: Log; timeoutMs?: number; maintenance?: AdminMaintenance;
 }): Promise<AdminSocket> {
   await prepareAdminDirectory(options.dataDir);
   const release = await claim(options.dataDir);
@@ -109,16 +116,33 @@ export async function startAdminSocket(options: {
       sockets.delete(socket);
     });
     socket.on("error", () => undefined); // errors are represented by the bounded response/closed channel
-    void readCapped(socket, ADMIN_MAX_BYTES, timeoutMs).then(async (raw): Promise<AdminResponse> => {
+    void readCapped(socket, ADMIN_MAX_BYTES, timeoutMs).then(async (raw): Promise<AdminResponse | MaintenanceResponse> => {
       if (controller.signal.aborted || stopping) throw new ImportFailure("TIMEOUT");
+      let request: unknown;
+      try { request = JSON.parse(raw); } catch { throw new ImportFailure("INVALID_REQUEST"); }
+      if (!request || typeof request !== "object" || Array.isArray(request)) throw new ImportFailure("INVALID_REQUEST");
+      const keys = Object.keys(request);
+      // Maintenance runs while the Host may already be refusing work, so it never takes the import slot.
+      if ("op" in request && request.op === "maintenance") {
+        if (keys.some((key) => !["op", "request"].includes(key)) || !("request" in request)) throw new ImportFailure("INVALID_REQUEST");
+        const maintenance = options.maintenance;
+        if (!maintenance) throw new ImportFailure("ADMIN_UNAVAILABLE");
+        const { parseMaintenanceRequest } = await import("./maintenance.js");
+        let parsed;
+        try { parsed = parseMaintenanceRequest(JSON.stringify(request.request)); }
+        catch { return { ok: false as const, code: "INVALID_REQUEST" as const }; }
+        return maintenance.handle(parsed);
+      }
+
       let payload: ProviderImportPayload;
       try {
-        const request: unknown = JSON.parse(raw);
-        if (!request || typeof request !== "object" || Array.isArray(request) || Object.keys(request).some((key) => !["op", "payload"].includes(key))
-          || !("op" in request) || request.op !== "providers.import" || !("payload" in request)) throw new ImportFailure("INVALID_REQUEST");
+        if (keys.some((key) => !["op", "payload"].includes(key)) || !("op" in request)
+          || request.op !== "providers.import" || !("payload" in request)) throw new ImportFailure("INVALID_REQUEST");
         payload = parseProviderImportPayload(request.payload);
       } catch { throw new ImportFailure("INVALID_REQUEST"); }
       if (active) throw new ImportFailure("ADMIN_BUSY");
+      // A lease holder is about to replace this Host; a provider write must not race it.
+      if (options.maintenance?.isClosed()) throw new ImportFailure("ADMIN_BUSY");
       const host = options.getHost();
       if (!host) throw new ImportFailure("ADMIN_UNAVAILABLE");
       const guarded: HostCaller = {
@@ -131,11 +155,11 @@ export async function startAdminSocket(options: {
         .then((summary): AdminResponse => ({ ok: true, summary }))
         .catch((error: unknown): AdminResponse => ({ ok: false, code: importFailureCode(error) }));
       try { return await active; } finally { active = undefined; }
-    }).catch((error: unknown): AdminResponse => ({ ok: false, code: importFailureCode(error) }))
+    }).catch((error: unknown): AdminResponse | MaintenanceResponse => ({ ok: false, code: importFailureCode(error) }))
       .then((response) => {
         if (socket.destroyed) return;
-        if (!response.ok) log("warn", "provider import failed", { code: response.code });
-        else log("info", "providers imported", { imported: response.summary.imported.length, skipped: response.summary.skipped.length });
+        if (!response.ok) log("warn", "admin request failed", { code: response.code });
+        else if ("summary" in response) log("info", "providers imported", { imported: response.summary.imported.length, skipped: response.summary.skipped.length });
         socket.end(`${JSON.stringify(response)}\n`);
         socket.destroySoon();
       });
@@ -202,5 +226,49 @@ export async function sendAdminRequest(dataDir: string, input: ProviderImportPay
     } finally { socket.destroy(); }
   } catch (error) {
     throw new ImportFailure(error instanceof ImportFailure ? error.code : "ADMIN_UNAVAILABLE");
+  }
+}
+
+const MAINTENANCE_FAILURES = ["HOST_BUSY", "HOST_AUTH_FAILED", "HOST_MAINTENANCE_UNAVAILABLE", "INVALID_REQUEST"] as const;
+
+/**
+ * CLI client for the maintenance surface. Any transport, permission or timeout
+ * problem is `HOST_MAINTENANCE_UNAVAILABLE`, so a caller never treats a missing
+ * Host as an acquired lease.
+ */
+export async function sendMaintenanceRequest(dataDir: string, request: import("./maintenance.js").MaintenanceRequest): Promise<MaintenanceResponse> {
+  const unavailable = { ok: false as const, code: "HOST_MAINTENANCE_UNAVAILABLE" as const };
+  try {
+    for (const dir of [dataDir, join(dataDir, "pi-host")]) {
+      const stat = await lstat(dir);
+      if (!stat.isDirectory() || stat.uid !== process.getuid?.() || (stat.mode & 0o077) !== 0) return unavailable;
+    }
+    const path = adminSocketPath(dataDir);
+    await privateSocket(path);
+    const socket = createConnection(path);
+    socket.on("error", () => undefined);
+    const response = readCapped(socket, RESPONSE_MAX_BYTES, IMPORT_DEADLINE_MS);
+    socket.once("connect", () => socket.end(JSON.stringify({ op: "maintenance", request })));
+    try {
+      const raw: unknown = JSON.parse(await response);
+      if (!raw || typeof raw !== "object" || Array.isArray(raw) || !("ok" in raw)) return unavailable;
+      const record = raw as Record<string, unknown>;
+      if (record.ok === false) {
+        return MAINTENANCE_FAILURES.some((code) => code === record.code)
+          ? { ok: false, code: record.code as (typeof MAINTENANCE_FAILURES)[number] }
+          : unavailable;
+      }
+      if (record.ok !== true || record.protocol !== 1 || typeof record.hostId !== "string"
+        || typeof record.version !== "string" || typeof record.busy !== "boolean") return unavailable;
+      const status = { ok: true as const, hostId: record.hostId, version: record.version, protocol: 1 as const, busy: record.busy };
+      if ("leaseId" in record || "expiresAt" in record) {
+        return typeof record.leaseId === "string" && typeof record.expiresAt === "string"
+          ? { ...status, leaseId: record.leaseId, expiresAt: record.expiresAt }
+          : unavailable;
+      }
+      return status;
+    } finally { socket.destroy(); }
+  } catch {
+    return unavailable;
   }
 }

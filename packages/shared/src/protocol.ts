@@ -270,6 +270,10 @@ export const IPC = {
      */
     remoteHostBootstrap: "pi-desktop/remoteHost/bootstrap",
     remoteHostReconnect: "pi-desktop/remoteHost/reconnect",
+    /** Prepare a paired Host for an explicit remote-project action. */
+    remoteHostPrepare: "pi-desktop/remoteHost/prepare",
+    /** Release one caller's preparation wait without cancelling other callers. */
+    remoteHostPrepareCancel: "pi-desktop/remoteHost/prepareCancel",
     remoteHostProjects: "pi-desktop/remoteHost/projects",
     remoteHostBrowseProjects: "pi-desktop/remoteHost/browseProjects",
     remoteHostRegisterProject: "pi-desktop/remoteHost/registerProject",

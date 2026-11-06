@@ -22,7 +22,7 @@ test("readiness validates loopback, integral port, identity and version without 
   for (const output of ["", "PI_HOST_READY {", line(ready) + line(ready), line(ready) + "PI_HOST_PAIRING_TOKEN secret"]) {
     assert.throws(() => parseRemoteHostReady(output, { version: VERSION }), error => !error.message.includes("secret"));
   }
-  assert.throws(() => parseRemoteHostReady(line(ready), { version: "other" }), { errorCode: "HOST_VERSION_MISMATCH", retriable: false });
+  assert.throws(() => parseRemoteHostReady(line(ready), { version: "other" }), { errorCode: "HOST_VERSION_UNSUPPORTED", retriable: false });
   assert.throws(() => parseRemoteHostReady(line(ready), { version: VERSION, expectedHostId: "other" }), { errorCode: "HOST_AUTH_FAILED", retriable: false });
   assert.throws(() => parseRemoteHostReady(line({ ...ready, version: "older" }), { version: VERSION, expectedHostId: "other" }), { errorCode: "HOST_AUTH_FAILED", retriable: false }, "identity mismatch must not authorize automatic upgrade");
   assert.throws(() => buildRemoteHostSupervisorScript(0));
@@ -75,7 +75,7 @@ server.listen(0, '127.0.0.1', () => console.log('PI_HOST_READY ' + JSON.stringif
   return { home, base, work, credentials, run };
 }
 
-test("stopped installed Host starts at a fresh port, then running reuse preserves PID and credentials", async t => {
+test("stopped installed Host starts at a fresh port, then running reuse preserves PID and credentials", { skip: process.platform === "win32" ? "Requires POSIX process inspection (ps -o command)" : false }, async t => {
   const f = await fixture(t);
   await writeFile(join(f.work, "pi-host.pid"), "99999999\n");
   await writeFile(join(f.work, "pi-host.log"), line(ready) + "PI_HOST_PAIRING_TOKEN historic-secret\n");
@@ -94,14 +94,14 @@ test("stopped installed Host starts at a fresh port, then running reuse preserve
   assert.ok((await readFile(join(f.work, "pi-host.log"), "utf8")).includes("historic-secret"));
 });
 
-test("legacy installed bundle can use system Node without installing", async t => {
+test("legacy installed bundle can use system Node without installing", { skip: process.platform === "win32" ? "Requires POSIX process inspection (ps -o command)" : false }, async t => {
   const f = await fixture(t, { legacy: true });
   const result = await f.run();
   assert.equal(result.code, 0, result.stderr);
   parseRemoteHostReady(result.stdout, { version: VERSION });
 });
 
-test("unrelated live PID is neither killed nor mistaken for an installed Host", async t => {
+test("unrelated live PID is neither killed nor mistaken for an installed Host", { skip: process.platform === "win32" ? "Requires POSIX process inspection (ps -o command)" : false }, async t => {
   const f = await fixture(t);
   await writeFile(join(f.work, "pi-host.pid"), String(process.pid));
   await writeFile(join(f.work, "pi-host.log"), line(ready));
@@ -118,4 +118,18 @@ test("symlinked stale log is rejected without truncating its target", async t =>
   assert.equal(result.code, 1);
   assert.match(result.stderr, /unsafe-state-file/);
   assert.equal(await readFile(f.credentials, "utf8"), "durable-device-token");
+});
+
+test("an interrupted transaction prevents startup and preserves its recovery marker", async t => {
+  const f = await fixture(t);
+  const path = join(f.work, "deployment-state.json");
+  for (const phase of ["starting", "recovery-required", "awaiting-racp"]) {
+    const marker = JSON.stringify({ phase, transactionId: "a".repeat(32) });
+    await writeFile(path, marker);
+    const result = await f.run();
+    assert.equal(result.code, 1);
+    assert.match(result.stderr, /recovery-required/);
+    assert.equal(await readFile(path, "utf8"), marker);
+    await assert.rejects(readFile(join(f.work, "pi-host.pid")), { code: "ENOENT" });
+  }
 });

@@ -14,7 +14,10 @@ const MAX_SEEN = 4096;
 const MAX_BYTES = 1024 * 1024;
 
 /** Tool-only owner service. No provider, session or project persistence is needed. */
-export function createWorkspaceTools(getHost: () => HostRpc | null): NonNullable<RacpHostOperations["workspaceTools"]> {
+export function createWorkspaceTools(
+  getHost: () => HostRpc | null,
+  options: { gate?: { isClosed(): boolean } } = {},
+): NonNullable<RacpHostOperations["workspaceTools"]> & { inUse(): number } {
   const active = new Map<string, Active>();
   const seen = new Set<string>();
   const id = (owner: Owner, sessionId: string) => createHash("sha256").update(JSON.stringify([owner.deviceId, sessionId])).digest("hex");
@@ -28,6 +31,7 @@ export function createWorkspaceTools(getHost: () => HostRpc | null): NonNullable
     async execute(input: WorkspaceToolExecute, owner: Owner): Promise<WorkspaceToolResult> {
       if (!owner.deviceId || !TOOLS.has(input.toolName) || !isAbsolute(input.path) || /[\u0000-\u001f]/.test(input.path)
         || Buffer.byteLength(JSON.stringify(input.args)) > MAX_BYTES) throw new RacpError("INVALID_ARGUMENT", "invalid workspace tool request");
+      if (options.gate?.isClosed()) throw new RacpError("HOST_BUSY", "the Host is entering maintenance");
       const requestKey = key(owner, input.sessionId, input.toolCallId);
       if (active.has(requestKey) || seen.has(requestKey)) throw new RacpError("CONFLICT", "workspace tool execution cannot be replayed");
       if (active.size >= MAX_ACTIVE) throw new RacpError("CONFLICT", "workspace tool execution capacity is exhausted");
@@ -67,5 +71,7 @@ export function createWorkspaceTools(getHost: () => HostRpc | null): NonNullable
     async disconnect(connectionId) {
       await Promise.all([...active.values()].filter(entry => entry.owner.connectionId === connectionId).map(abortEntry));
     },
+    /** Executions this service is actually running; there is no second counter. */
+    inUse: () => active.size,
   };
 }

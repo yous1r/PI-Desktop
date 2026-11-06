@@ -142,6 +142,11 @@ export class TerminalService implements RacpTerminalAccess {
     if (record) record.sink = null;
   }
 
+  /** Open session terminals, including ones whose connection dropped; derived from the records. */
+  inUse(): number {
+    return this.terminals.size;
+  }
+
   async closeAll(): Promise<void> {
     for (const id of [...this.terminals.keys()]) await this.close(id);
   }

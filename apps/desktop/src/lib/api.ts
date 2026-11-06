@@ -135,6 +135,8 @@ import type {
   RemoteHostBootstrapResult,
   RemoteHostPairRequest,
   RemoteHostPairResult,
+  RemoteHostPrepareRequest,
+  RemoteHostPrepareCancelRequest,
   RemoteHostSummary,
   RemoteInteractionUpdate,
   UpdateState,
@@ -2077,6 +2079,18 @@ export const api = {
     invoke<{ ok: true }>(IPC.invoke.remoteHostRemove, { hostKey }),
   reconnectRemoteHost: (hostKey: string) =>
     invoke<{ host: RemoteHostSummary }>(IPC.invoke.remoteHostReconnect, { hostKey }),
+  /**
+   * Make one paired Host usable for an explicit remote action. The call
+   * resolves with the refreshed summary; progress reaches the renderer through
+   * `remoteHostList` (`summary.preparation`) on `sessions:changed`, never as a
+   * separate event. `requestId` identifies this caller, so cancelling one
+   * wait never releases another.
+   */
+  prepareRemoteHost: (request: RemoteHostPrepareRequest) =>
+    invoke<{ host: RemoteHostSummary }>(IPC.invoke.remoteHostPrepare, request),
+  /** Release this caller's wait without aborting a preparation others await. */
+  cancelRemoteHostPreparation: (request: RemoteHostPrepareCancelRequest) =>
+    invoke<{ ok: true }>(IPC.invoke.remoteHostPrepareCancel, request),
   remoteHostBrowseProjects: (hostKey: string, path?: string) =>
     invoke<RemoteHostBrowseProjectsResult>(IPC.invoke.remoteHostBrowseProjects, { hostKey, ...(path === undefined ? {} : { path }) }),
   remoteHostProjects: (hostKey: string) =>

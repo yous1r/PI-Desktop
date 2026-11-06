@@ -235,6 +235,23 @@ desktop built in that repository downloads `pi-host` (`PI_HOST_RELEASE_REPO`,
 [ADR 0339](../../adr/0339-fork-release-pi-host-source.md)), so its tag must be
 published before the desktop sets up a remote host.
 
+Before builds, `node scripts/check-release-versions.mjs` checks all workspace
+package versions, Cargo workspace/package/lock versions and `APP_VERSION`.
+The tag must match exactly, including prerelease identifiers. Before publication,
+`node scripts/check-pi-host-release-assets.mjs --version <version> --dir <dir>`
+requires both `linux-x64` and `linux-arm64` Host archives and their named SHA-256
+sidecars. It verifies bytes, bounded archive metadata, bundled package versions
+and updater-feed versions. CI also runs both gate test suites. Missing one Host
+architecture or a beta-version mismatch blocks publication; the Desktop never
+substitutes another release for a missing asset.
+
+Remote preparation downloads on the Desktop machine using its global network
+proxy, then verifies and uploads over SSH. Real Linux SSH qualification remains
+required for staging, maintenance admission, detached deployment and recovery;
+the local proxy fixture `node scripts/test-host-download-proxy.mjs` does not
+replace that gate.
+
+
 The macOS matrix uses `macos-15` for arm64 and `macos-15-intel` for Intel x64.
 Each job verifies `uname -m`, passes the matching `--arm64` or `--x64` flag to
 electron-builder, and builds `pi-desktop-host-core` on that same native

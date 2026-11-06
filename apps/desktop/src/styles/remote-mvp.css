@@ -34,3 +34,80 @@
   min-height: 0;
   overflow: hidden;
 }
+
+/* Host preparation: phases and versions only — Main publishes no byte counts,
+   so there is deliberately no progress bar to style here. */
+.remote-preparation {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--ds-border-default);
+  border-radius: var(--radius-xs);
+  background: var(--ds-bg-secondary);
+}
+.remote-preparation-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.remote-preparation-versions {
+  color: var(--ds-text-secondary);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.remote-preparation-error {
+  margin: 0;
+  color: var(--ds-error);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.remote-preparation-hint {
+  margin: 0;
+  color: var(--ds-text-secondary);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.remote-preparation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.remote-preparation.is-compact {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+}
+.settings-remote-host-download-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.settings-remote-host-download-note .settings-remote-host-meta {
+  flex: 1 1 260px;
+  margin: 0;
+}
+/* A preparation row belongs on its own line inside the Host card, not wedged
+   into the action row next to the status badge. */
+.settings-remote-host-card { flex-wrap: wrap; }
+.settings-remote-host-card > .remote-preparation { flex: 1 1 100%; }
+
+/* The one dialog a stopped remote-project open is answered in. Width is capped
+   so it fits a narrow window, and the body scrolls instead of the dialog. */
+.remote-project-preparation-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100vh - 64px);
+  overflow: auto;
+}
+.remote-project-preparation-dialog .remote-preparation {
+  margin: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+}

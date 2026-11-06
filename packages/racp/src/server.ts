@@ -56,6 +56,7 @@ export type RacpServerOptions = {
   policy?: Partial<RacpPolicy>;
   log: (level: "info" | "warn" | "error", message: string, data?: Record<string, unknown>) => void;
   now?: () => number;
+  admission?: { isClosed(): boolean };
   /** Deadline for `connection/initialize` after the socket opened (spec §12). */
   initializeTimeoutMs?: number;
 };
@@ -204,6 +205,11 @@ export class RacpServer {
    * `RATE_LIMITED`).
    */
   accept(auth: ConnectionAuth, transport: ServerConnectionTransport): RacpConnection | null {
+    if (this.options.admission?.isClosed()) {
+      this.options.log("warn", "racp connection refused: maintenance admission closed", {});
+      transport.close(1013, "HOST_BUSY");
+      return null;
+    }
     if (this.closed) {
       transport.close(1001, "server closing");
       return null;

@@ -36,6 +36,7 @@ Principles:
 | `notification` | Durable inbox list/read/clear, new/activated events, and native-notification sound cues |
 | `stats` | Completed-turn token history (host RPC; dashboard is plugin-owned) |
 | `voice/live` | App-owned real-time calls, secret-free status/settings DTOs, and per-call media ports |
+| `remoteHost` | Enrolled remote Host inventory, explicit SSH preparation and independently cancellable waits |
 
 ## 3. Channel Conventions
 
@@ -68,6 +69,29 @@ Examples:
 - `pi-desktop/session/getScratchPath`
 - `pi-desktop/session/openScratchPath`
 - `pi-desktop/session/collaboration`
+
+### Remote Host preparation
+
+`pi-desktop/remoteHost/prepare` accepts
+`{hostKey, requestId, allowDownload?, allowLegacyMaintenance?, retry?}` and returns
+`{host: RemoteHostSummary}` after readiness succeeds. `hostKey` is a nonempty
+bounded string without colons; `requestId` is at most 128 characters. Optional
+flags must be booleans; unknown fields are rejected. `prepareCancel` accepts
+only `{hostKey, requestId}` and returns `{ok:true}`, cancelling that caller only.
+
+Main shares work by Host. Progress uses `sessionsChanged` and host listing's
+optional `preparation` object: `{hostKey, targetVersion, currentVersion?, phase,
+errorCode?}`. Phases cover checking, download consent, download, upload, install,
+idle/maintenance stops, start/connect, ready, failure and cancellation. Existing
+clients may ignore this additive field. No credentials, proxy URL, raw SSH output
+or fabricated completion percentage is included.
+
+First download and legacy maintenance require explicit flags from user actions.
+Retry bypasses failure cooldown only. Passive boot/list refresh never calls the
+installer. Closing the last waiter aborts pending local work; an already-started
+remote transaction owns its bounded completion/recovery. Cancellation never
+replays a remote mutation or guarantees rollback. See the
+[preparation ADR](../../adr/remote-host-on-demand-preparation.md).
 
 ## 3.1 Logical project groups
 

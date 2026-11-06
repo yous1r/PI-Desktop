@@ -182,6 +182,12 @@ export class WorkspacePluginService {
     for (const tokens of this.admissions.values()) for (const token of tokens) if (token.deviceId === deviceId) token.cancelled = true;
     for (const instance of this.instances.values()) if (instance.owner.deviceId === deviceId) this.close(instance);
   }
+  /** Live instances plus opens still being admitted; derived, never a second registry. */
+  inUse(): number {
+    let pending = 0;
+    for (const tokens of this.admissions.values()) pending += tokens.size;
+    return this.instances.size + pending;
+  }
   dispose(): void {
     this.sealed = true; this.packages.dispose();
     for (const instance of this.instances.values()) this.close(instance);

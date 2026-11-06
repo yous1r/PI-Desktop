@@ -159,22 +159,17 @@ Bootstrap runs over the user's own SSH session, never over RACP:
    the `ssh` client through an askpass helper, never as an argument, and is
    stored encrypted in the desktop's secure storage so the host can reconnect
    after a restart.
-2. It resolves the matching Desktop version and published Linux target, fetches
-   the named release SHA-256 over HTTPS, and uploads a small bootstrap script.
-   Remote download is preferred. Only `download-failed` permits one bounded,
-   locally verified download and SSH upload of that same artifact; integrity or
-   SSH authentication failure does not. The remote side verifies the archive
-   before installing. Bundles include native Node >=22 and a file manifest, so
-   system Node and remote GitHub access are not prerequisites for new bundles.
-   Verified content-addressed installs switch `current` atomically under locks.
+2. It resolves the exact Desktop version and published Linux target. Desktop
+   downloads the named SHA-256 and archive over HTTPS using its existing global
+   System / Direct / Custom proxy, after proxy settings finish applying. It
+   verifies the archive locally and uploads it through SSH; the remote verifies
+   it again before installation. No remote-download fallback, per-Host proxy or
+   reverse proxy tunnel is used. Bundles include native Node >=22 and a file
+   manifest, so system Node and remote release access are not prerequisites.
+   Stage and verify content-addressed installs before activation under locks.
    Reuse checks the external release/manifest receipt and every installed file.
-   [ADR 0326](../../adr/0326-verified-ssh-host-installation.md) explicitly amends
-   the original no-executable-upload and remote-only-download restrictions.
    Trust is release SHA-256 over HTTPS, not independent signature verification.
-   The release is the one published by the repository that builds the desktop
-   (`PI_HOST_RELEASE_REPO`,
-   [ADR 0339](../../adr/0339-fork-release-pi-host-source.md)), so the bundle
-   carries that build's static host-core.
+   The source repository remains `PI_HOST_RELEASE_REPO` (ADR 0339).
 3. It starts `pi-host` bound to loopback and receives a single-use pairing
    token over the SSH channel.
 4. It forwards a local port to the Host's loopback port and connects
@@ -190,19 +185,33 @@ descriptors without a Host ID remain readable. Disconnect does not kill a Host
 that other clients may use. Readiness is used for offline browse/files/shell
 discovery; tool execution itself never reconnects and replays a failed call.
 
-**Version realignment.** A paired Host is pinned to the release that installed
-it, so a desktop upgrade leaves it behind. Readiness therefore compares the
-running Host against *this desktop's* release — never against the version
-recorded at pairing time — and the RACP handshake is checked for the additive
-workspace services a remote project needs. On a mismatch the desktop re-runs the
-same verified SSH install from the stored SSH descriptor and the encrypted login
-password, adopts the forward it opened, and re-pairs in place (ADR 0327).
-Automatic attempts are limited to one per release per host with a cooldown after
-a failure, an explicit user reconnect may retry, and a realignment that does not
-help surfaces the original mismatch instead of hiding it. A direct URL pairing,
-and a password descriptor whose stored secret is gone, are never touched, and the
-artifact is still fetched from the desktop's release and verified against the
-published SHA-256 before installation.
+**On-demand preparation.** Explicit remote-project opening, folder browsing and
+remote workspace readiness compare the live Host with this Desktop's exact
+release and required RACP workspace capabilities. Passive startup and inventory
+loading never install or upgrade. First download requires a visible action;
+subsequent upgrades reuse saved consent. The same-version policy includes beta
+identifiers; newer remote releases and ambiguous/cross-channel versions fail
+without downgrade. Direct-URL hosts and missing SSH credentials are not managed.
+
+One preparation job serves independent caller IDs per Host. Progress is exposed
+as `RemoteHostSummary.preparation` through the existing host-list refresh event.
+`remoteHostPrepare` accepts `{hostKey, requestId, allowDownload?,
+allowLegacyMaintenance?, retry?}`; `remoteHostPrepareCancel` releases only the
+matching caller. Closing the last caller aborts pending local work and SSH
+observation; a detached remote transaction remains responsible for completion or
+recovery. Late success cannot navigate an abandoned view. Failures cool down for
+ten minutes; explicit retry can bypass the cooldown. Success is recorded only
+after the original device token authenticates to the prepared Host and required
+capabilities are verified. Every later use still checks live readiness.
+
+Upgrades preserve Host ID, device token, SSH credentials and data. Before
+activation, the owner-only maintenance interface requires zero other clients
+and no active work, then fences new admission with a bounded lease. Legacy Hosts
+require explicit confirmation of an idle maintenance window. Busy Hosts are
+left running. No forced kill or automatic database rollback is permitted.
+Interrupted deployment records whether startup may have touched persistent data;
+unsafe or ambiguous recovery fails closed with `HOST_RECOVERY_REQUIRED`.
+See [on-demand preparation ADR](../../adr/remote-host-on-demand-preparation.md).
 
 Provider configuration is copied only after explicit selection and consent in
 Settings. Electron Main reads the selected eligible secrets and sends a bounded

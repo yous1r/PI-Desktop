@@ -3,8 +3,10 @@ import { useTranslation } from "react-i18next";
 import type { RemoteHostSummary } from "@pi-desktop/shared";
 import { api } from "../../lib/api";
 import { remoteHostErrorKey } from "../../lib/remote-host-errors";
+import { useRemoteHostPreparation } from "../../hooks/use-remote-host-preparation";
 import { Button, Field, Input, Select } from "../ui";
 import { RemoteFolderDialog } from "./RemoteFolderDialog";
+import { RemoteHostPreparationNotice } from "./RemoteHostPreparationNotice";
 
 export type RemoteProjectSelection = { hostKey: string; hostLabel: string; path: string };
 
@@ -26,6 +28,9 @@ export function RemoteProjectPicker({ busy, initialHostKey, onChange, onBrowsing
   const browsingCallback = useRef(onBrowsingChange);
   browsingCallback.current = onBrowsingChange;
   const host = hosts.find((item) => item.hostKey === hostKey);
+  // Phases are shown here because Main reports them per Host, not per dialog.
+  const preparation = useRemoteHostPreparation();
+  const preparationView = hostKey ? preparation.view(hostKey) : undefined;
 
   useEffect(() => {
     let active = true;
@@ -55,6 +60,9 @@ export function RemoteProjectPicker({ busy, initialHostKey, onChange, onBrowsing
     </Field>
     {host ? <>
       {!host.connected ? <p role="status">{t("remote:reconnectOnUse")}</p> : null}
+      <RemoteHostPreparationNotice hostKey={hostKey} view={preparationView}
+        onPrepare={(key, options) => { if (key === hostKey) preparation.prepare(key, options); }}
+        onCancel={(key) => preparation.cancel(key)} />
       <Field label={t("remote:projectFolder")}>
         <div className="remote-folder-dialog-path-entry">
           <Input value={path} aria-label={t("remote:projectFolder")} placeholder={t("remote:pathPlaceholder")} disabled={busy}

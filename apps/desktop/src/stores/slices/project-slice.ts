@@ -38,6 +38,19 @@ import type { AppState } from "../app-state";
 import type { SessionRuntime } from "../runtime/session-runtime";
 import type { StoreAccess } from "./types";
 import { closeTerminalForSession, closeTerminalForTabs } from "../../lib/terminal-sessions";
+import { remoteProjectActivation } from "../../lib/remote-project-activation";
+
+/** Display name for the project a user is opening, for the preparation dialog. */
+function projectLabel(
+  state: Pick<AppState, "openProjects" | "projectMeta">,
+  path: string,
+): string | undefined {
+  const key = normalizeProjectPath(path);
+  if (!key) return undefined;
+  const name = state.projectMeta[key]?.name
+    ?? state.openProjects.find((project) => normalizeProjectPath(project.path) === key)?.name;
+  return name && name !== key ? name : undefined;
+}
 
 export type ProjectSliceDependencies = StoreAccess & {
   runtime: SessionRuntime;
@@ -288,6 +301,31 @@ export function createProjectSlice({
       const preserveConversation = runtime.isSessionSelectionForIntent(intent);
       const requestedPath = path.trim();
       if (!requestedPath) return null;
+      if (opts?.prepareRemoteHost !== false) {
+        // Opening a saved remote project is a user action, so the Host backing it
+        // is prepared first: a Stop becomes one visible decision instead of a
+        // failed activation, and the same project (and this call) continues once
+        // the user answers. Local folders resolve to no binding and pay no IPC.
+        const selected = normalizeProjectPath(get().activeProjectPath);
+        const gate = await remoteProjectActivation.open({
+          path: requestedPath,
+          known: get().openProjects,
+          ...(opts?.remoteHostKey ? { hostKey: opts.remoteHostKey } : {}),
+          ...(projectLabel(get(), requestedPath)
+            ? { label: projectLabel(get(), requestedPath) }
+            : {}),
+          activate: (target) =>
+            get().activateProject(target, {
+              prepareRemoteHost: false,
+              navigationIntent: intent,
+            }),
+          isCurrent: () => runtime.navigationIntentIsCurrent(intent),
+          isStillWanted: () =>
+            normalizeProjectPath(get().activeProjectPath) === selected,
+        });
+        if (gate.status === "opened") return gate.workspace;
+        if (gate.status === "stopped") return null;
+      }
       const result = await api.setProject(requestedPath);
       if (!runtime.navigationIntentIsCurrent(intent)) return null;
       const workspace = result.workspace
@@ -370,7 +408,7 @@ export function createProjectSlice({
       return applied ? workspace : null;
     },
 
-    openProjectPath: async (path) => get().activateProject(path),
+    openProjectPath: async (path, opts) => get().activateProject(path, opts),
     switchProjectPath: async (path) => get().activateProject(path),
 
     closeProjectPath: async (path) => {
@@ -426,7 +464,12 @@ export function createProjectSlice({
       const intent = runtime.beginNavigationIntent();
       const { group } = await api.createRemoteProjectGroup(normalizedName, hostKey, path);
       if (!runtime.navigationIntentIsCurrent(intent)) return;
-      const workspace = await get().activateProject(group.primaryPath, { navigationIntent: intent });
+      // The group was just created against this Host, so its binding is known
+      // here; the preparation gate uses it instead of a second catalog read.
+      const workspace = await get().activateProject(group.primaryPath, {
+        navigationIntent: intent,
+        remoteHostKey: hostKey,
+      });
       if (!workspace || !runtime.navigationIntentIsCurrent(intent)) return;
       get().renameProject(group.primaryPath, normalizedName);
       const onboarding = await api.getOnboarding();

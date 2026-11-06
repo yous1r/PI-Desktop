@@ -14,6 +14,7 @@ import {
   latestPlanProposal,
   terminalizeMissingPlan,
 } from "../../lib/plan-mode-state";
+import { remoteProjectActivation } from "../../lib/remote-project-activation";
 import {
   EMPTY_SESSION_WINDOW,
   sessionIsReusableEmpty,
@@ -454,7 +455,12 @@ export function createSessionSlice({
               navigationIntent: intent,
             });
             if (!runtime.navigationIntentIsCurrent(intent)) return false;
-            if (!workspace) throw new Error(i18n.t("errors.workspaceActivationFailed"));
+            if (!workspace) {
+              // A Host waiting on the user is not a failed activation: the
+              // preparation dialog owns the next step and reopens the project.
+              if (remoteProjectActivation.stoppedFor(projectPath)) return false;
+              throw new Error(i18n.t("errors.workspaceActivationFailed"));
+            }
           }
         } else if (get().workspace) {
           await get().clearProject({ navigationIntent: intent });
@@ -688,7 +694,11 @@ export function createSessionSlice({
             navigationIntent: intent,
           });
           if (!runtime.navigationIntentIsCurrent(intent)) return;
-          if (!workspace) throw new Error(i18n.t("errors.workspaceActivationFailed"));
+          if (!workspace) {
+            // A Host waiting on the user is not a failed activation.
+            if (remoteProjectActivation.stoppedFor(requestedProjectPath)) return;
+            throw new Error(i18n.t("errors.workspaceActivationFailed"));
+          }
         }
         if (requestedProjectPath === null && get().workspace) {
           await get().clearProject({ navigationIntent: intent });
@@ -750,7 +760,11 @@ export function createSessionSlice({
             navigationIntent: intent,
           });
           if (!runtime.navigationIntentIsCurrent(intent)) return;
-          if (!workspace) throw new Error(i18n.t("errors.workspaceActivationFailed"));
+          if (!workspace) {
+            // A Host waiting on the user is not a failed activation.
+            if (remoteProjectActivation.stoppedFor(source.projectPath)) return;
+            throw new Error(i18n.t("errors.workspaceActivationFailed"));
+          }
         }
       } else if (state.workspace) {
         await get().clearProject({ navigationIntent: intent });

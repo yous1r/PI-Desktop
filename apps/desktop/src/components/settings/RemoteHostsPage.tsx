@@ -14,7 +14,18 @@ import { useTranslation } from "react-i18next";
 import type { RemoteHostSshAuth, RemoteHostSummary } from "@pi-desktop/shared";
 import { api } from "../../lib/api";
 import { remoteHostErrorKey } from "../../lib/remote-host-errors";
+import {
+  rememberRemoteHostDraft,
+  takeRemoteHostDraft,
+  clearRemoteHostDraft,
+  type RemoteHostSshDraft,
+} from "../../lib/remote-host-draft";
+import {
+  useRemoteHostPreparation,
+  useRemoteHostPreparationSync,
+} from "../../hooks/use-remote-host-preparation";
 import { useAppStore } from "../../stores/app-store";
+import { RemoteHostPreparationNotice } from "../remote/RemoteHostPreparationNotice";
 import { OverlayBackdrop,
   Badge,
   Button,
@@ -84,6 +95,11 @@ export function RemoteHostsPage() {
   const pairAddActionRef = useRef<HTMLButtonElement>(null);
   const pendingAddFocus = useRef<HTMLButtonElement | null>(null);
   const sshIdentityFileInput = useRef<HTMLInputElement>(null);
+  const setSettingsTab = useAppStore((state) => state.setSettingsTab);
+  const setSettingsAnchor = useAppStore((state) => state.setSettingsAnchor);
+  // Preparation is owned per Host by Main; this page only asks and displays.
+  const preparation = useRemoteHostPreparation();
+  useRemoteHostPreparationSync(true);
 
   const refresh = useCallback(async () => {
     const generation = ++refreshGeneration.current;
@@ -106,8 +122,41 @@ export function RemoteHostsPage() {
     return () => { alive.current = false; refreshGeneration.current++; unsubscribe(); };
   }, [refresh]);
 
+
+  // Returning from Settings › General › Network: restore the Add draft instead
+  // of a blank form, so the shortcut is a round trip, not a reset.
+  useEffect(() => {
+    const draft = takeRemoteHostDraft();
+    if (!draft) return;
+    setSshForm((previous) => ({ ...previous, ...draft.ssh }));
+    setAddMode(draft.mode);
+  }, []);
+
+  const sshDraft = useCallback((): RemoteHostSshDraft => ({
+    label: sshForm.label,
+    host: sshForm.host,
+    user: sshForm.user,
+    port: sshForm.port,
+    identityFile: sshForm.identityFile,
+    auth: sshForm.auth,
+  }), [sshForm]);
+
+  /**
+   * The one global proxy shortcut: preparation downloads the release on this
+   * machine, so the SSH form points at the existing Network row instead of
+   * copying proxy fields per Host. The draft survives the tab change.
+   */
+  const openNetworkSettings = useCallback(() => {
+    rememberRemoteHostDraft({
+      mode: addMode === "pair" ? "pair" : "ssh",
+      ssh: sshDraft(),
+    });
+    setSettingsTab("general");
+    setSettingsAnchor("settings.network");
+  }, [addMode, setSettingsAnchor, setSettingsTab, sshDraft]);
   const closeAddForm = useCallback(() => {
     pendingAddFocus.current = addMode === "pair" ? pairAddActionRef.current : sshAddActionRef.current;
+    clearRemoteHostDraft();
     setAddMode(null);
     setForm(EMPTY_FORM);
     setSshForm(EMPTY_SSH_FORM);
@@ -362,6 +411,18 @@ export function RemoteHostsPage() {
                     : t("settings.remoteHosts.remove")}
                 </Button>
               </span>
+              <RemoteHostPreparationNotice
+                className="is-compact"
+                hostKey={host.hostKey}
+                view={preparation.view(host.hostKey)}
+                onPrepare={(key, options) => preparation.prepare(key, options)}
+                onCancel={preparation.cancel}
+                proxyHint={
+                  preparation.view(host.hostKey)?.phase === "awaiting-download"
+                  || preparation.view(host.hostKey)?.errorCode === "HOST_DOWNLOAD_REQUIRED"
+                }
+                onOpenNetworkSettings={openNetworkSettings}
+              />
             </article>
           ))
         )}
@@ -536,6 +597,12 @@ export function RemoteHostsPage() {
                   </Field>
                 )}
 
+                <div className="settings-remote-host-download-note">
+                  <p className="settings-remote-host-meta">{remoteT("preparation.downloadHint")}</p>
+                  <Button type="button" variant="ghost" disabled={installing} onClick={openNetworkSettings}>
+                    {remoteT("preparation.proxyAction")}
+                  </Button>
+                </div>
                 <div className="settings-remote-host-form-actions">
                   <Button type="button" variant="ghost" disabled={installing} onClick={closeAddForm}>
                     {t("common.cancel")}

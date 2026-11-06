@@ -23,6 +23,8 @@ import { FilesTab } from "../../apps/desktop/src/components/workpanel/FilesTab";
 import { ProjectEditDialog } from "../../apps/desktop/src/components/ProjectEditDialog";
 import { useAppStore } from "../../apps/desktop/src/stores/app-store";
 import { remoteEn } from "../../apps/desktop/src/locales/remote";
+import { RemoteProjectPreparationGate } from "../../apps/desktop/src/components/remote/RemoteProjectPreparationGate";
+import { isBlockingOverlayActive } from "../../apps/desktop/src/lib/blocking-overlay";
 import "../../apps/desktop/src/styles/project-create-dialog.css";
 
 await i18n.use(initReactI18next).init({ lng: "en", keySeparator: false,
@@ -40,6 +42,8 @@ window.piDesktop = { platform: "darwin", channels: IPC, on() { return () => {}; 
   calls.push({ channel, input });
   const data = await (async () => { switch (channel) {
    case IPC.invoke.remoteHostList: return { hosts: [{ hostKey: "h1", label: "Server 1", connected: true }, { hostKey: "h2", label: "Server 2", connected: true }, { hostKey: "offline", label: "Offline", connected: false }] };
+   case IPC.invoke.remoteHostPrepare: return { host: { hostKey: input.hostKey, label: input.hostKey, connected: true, preparation: { hostKey: input.hostKey, targetVersion: "1.0.0", phase: "ready" } } };
+   case IPC.invoke.remoteHostPrepareCancel: return { ok: true };
    case IPC.invoke.remoteHostBrowseProjects:
     if (input.hostKey === "h1") return new Promise((resolve) => { releaseOldBrowse = () => resolve({ path: "/old", entries: [{ name: "stale", path: "/old/stale" }] }); });
     if (input.path === "/missing") throw Object.assign(new Error("private diagnostic ppt1.secret"), { errorCode: "REMOTE_PATH_NOT_FOUND" });
@@ -69,6 +73,8 @@ function input(node, value) { flushSync(() => { Object.getOwnPropertyDescriptor(
 const picker = () => document.querySelector(".remote-folder-dialog");
 window.remoteProjectProbe = async () => {
  useAppStore.setState({ workspace: { path: "/local/app", name: "app" }, activeProjectPath: "/local/app", openProjectPaths: ["/local/app"], openProjects: [{ path: "/local/app", name: "app" }], sessions: [], page: "settings" });
+ flushSync(() => view.render(React.createElement(RemoteProjectPreparationGate)));
+ check(!isBlockingOverlayActive(), "hidden preparation gate blocked native views");
  flushSync(() => view.render(React.createElement(React.Fragment, null, React.createElement(RemoteHostsPage), React.createElement(ProjectCreateDialog))));
  await until(() => document.querySelectorAll(".settings-remote-host-card").length === 3, "remote host inventory did not load");
  const hostCard = [...document.querySelectorAll(".settings-remote-host-card")].find((card) => card.textContent.includes("Server 2"));
