@@ -180,3 +180,39 @@ unit suite and unrelated E2E suites were not run. `verify:ui:*` was not invoked.
 A process failure before a durable acknowledgement can lose the unacknowledged
 interval; failed writes retain their draft and visibly block normal quit until
 saved or the user cancels quitting.
+
+
+## PR #14 CI follow-up
+
+The initial PR run had three red checks with two root causes. Both JS unit
+checks and Docs checks failed because the new English IPC table was absent
+from the Chinese mirror. Trusted extensions Electron E2E selected the first
+CDP page and connected to the new personal-todo surface, where the Settings
+navigation does not exist. The first fatal error was `cannot click
+button[data-nav="settings"]: missing`; GPU/plugin errors followed runner cleanup.
+
+The follow-up synchronizes all six personal-todo spec additions in the Chinese
+mirrors. Both affected E2E connectors now share an explicit production main-page
+selector: a file URL ending in `/renderer/index.html` without a `surface` query
+parameter. Missing or ambiguous main pages fail before connection. Four tests
+exercise the actual connectors with widgets, encoded surface parameters, plugin
+pages, remote pages and ambiguous lists. The tests failed before the correction
+and pass after it; the docs locale check also reproduced before the correction.
+
+Local follow-up results:
+
+- Main-page connector and personal-todo regression selection: 19 tests passed.
+- All documentation tests: 13 passed.
+- Locale check: 88 English/Chinese pairs verified; docs check: 610 pages verified.
+- VitePress site build: passed using the existing host dependency environment.
+- Full trusted extensions Electron/Host journey: 64/64 passed on Windows with
+  a deterministic local provider and a canonical isolated run root. The default
+  Windows temporary short path caused three path-comparison failures on the
+  first attempt; the canonical-path rerun passed without changing app logic.
+- File Manager light/dark theme user path: passed.
+- Project Biome lint, explicit changed-test lint, architecture and diff checks:
+  passed. No production runtime code, provider settings or dependency manifests
+  changed in this follow-up.
+
+The follow-up updates the existing feature branch and PR. Remote CI still needs
+its own Linux integration result; local Windows results do not claim that result.

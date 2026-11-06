@@ -1143,3 +1143,12 @@ schedule，Manual 转 Hourly 继续使用现有默认间隔行为。
 保存和读取工作区绑定时统一使用现有项目路径规范化规则。在 Windows 上，
 斜杠方向、大小写、末尾分隔符和扩展路径前缀的差异不会再让同项目会话看不到任务。
 缺失的旧版绑定与显式 null 仍保持不同语义；其他项目的工具不能查询或修改绑定任务。
+
+## 全局浮动个人待办
+
+`personalTodos.get({})` 返回原始的版本化个人面板文档。
+`personalTodos.replace({items, expectedRevision, mutationId})` 返回已提交的原始文档。
+未知或缺失字段、错误类型或 ID、超过上限、revision 冲突及不一致的幂等 token 重用都会失败，
+不会覆盖数据。它是本地 Desktop 数据服务，不是 Agent 工具或远程会话操作。
+内容属于本地数据目录，无须活动会话。
+参见[存储规格](04-data-storage.md)和[ADR](/adr/global-floating-personal-todos)。
