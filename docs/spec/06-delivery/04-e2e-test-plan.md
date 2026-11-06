@@ -16119,23 +16119,32 @@ plugin-form fixtures in an isolated temporary directory at runtime.
 
 - **Preconditions**: An enabled fixture extension registering command `greet`
   that calls `ui.input`, then `ui.select`, then `ui.confirm`, then
-  `ui.notify`, and renames the session.
+  `ui.notify`, and renames the session. The same fixture registers a non-model
+  `runtime_probe` command that records its arguments and working directory.
 - **Steps**: 1) Open global search and inspect the Commands section. 2) Run
   `/greet` from the composer. 3) Answer each prompt. 4) Run `/greet` again and
   abort the turn while the input prompt is open. 5) Run `/greet` with no
   active session. 6) Attach a remote controller (fixture) and run `/greet`.
+  7) In a newly created session, run `/runtime_probe` before any chat message.
+  Move that session to another test project (disposing its runtime), then run
+  the command again without sending a message. 8) Create another empty session
+  and run the message-sending `/queue` command; observe its first reply.
 - **Expected**: `greet` is listed after built-in and plugin commands with the
   extension label; each prompt shows the extension label and path; answers
   reach the extension in order; the toast appears; the session is renamed
   and `session_info_changed` fires; the aborted prompt resolves `undefined`
   and the command ends; with no session the entry is disabled with a tooltip;
   under remote control the prompt fails with `UNSUPPORTED` and the command
-  reports it.
+  reports it. Fresh and disposed sessions execute the probe in their current
+  workspace without `RUNTIME_NOT_FOUND`, a provider request, or a transcript
+  message. A subsequent normal chat still restores extensions and completes.
+  A message-sending command also starts and completes the first turn in a new
+  session through the Host-owned queue.
 - **Specs linked**: `07-plugins/16-trusted-extensions.md` §8, §9, §10;
   `07-plugins/09-plugin-command-palette.md`
 - **Acceptance**: A (app control), Quality
 - **Milestone**: Post-MVP (R7 v1)
-- **Status**: Partially automated (`pnpm test:e2e:trusted-extensions`); global/composer command discovery, prompt broker round-trip, abort, session rename, exec, and Host-owned queue pass, while no-session and remote-control cases remain additional validation.
+- **Status**: Partially automated (`pnpm test:e2e:trusted-extensions`); fresh/disposed runtime preparation, first-turn command queue delivery, global/composer command discovery, prompt broker round-trip, abort, session rename, exec, and Host-owned queue pass, while no-session and remote-control cases remain additional validation.
 
 #### E2E-TRUSTED-EXTENSION-temporary-session-cwd-is-scratch: Extensions in a temporary session work in its scratch
 

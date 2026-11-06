@@ -6,6 +6,7 @@ import type { AgentSidecar } from "../agent-sidecar";
 import type { HostProcess } from "../host-process";
 import { ROUTE_LOCAL, type BackendRouter } from "../remote/backend-router";
 import { registerAgentExtensionIpc } from "../agent-extensions-ipc";
+import { runAgentExtensionCommand } from "../agent-extension-command";
 import { readNpmPath, writeNpmPath } from "../npm-preferences";
 import { registerAgentIpc } from "./agent-ipc";
 import { registerAppIpc } from "./app-ipc";
@@ -419,11 +420,12 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
       sendToRenderer(IPC.event.pluginChanged, { reason: "importExtension", pluginId: loaded.plugin?.id });
       return loaded;
     },
-    runCommand: async (input) => {
-      const currentSidecar = getSidecar();
-      if (!currentSidecar) throw new Error("agent sidecar unavailable");
-      return currentSidecar.call<{ handled: boolean }>("extensions.command.run", input);
-    },
+    runCommand: (input) => runAgentExtensionCommand(input, {
+      getHost,
+      getSidecar,
+      acquireSessionOperation,
+      resolveAgentRuntimeLaunch,
+    }),
   });
   registerAgentIpc({
     registrar,
