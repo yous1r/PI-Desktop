@@ -11,6 +11,7 @@ export const ptBREntries: ChangelogEntry[] = [
       "O editor de instruções detecta alterações feitas fora do app e mantém seu rascunho não salvo em vez de sobrescrever qualquer uma das versões.",
       "Hosts remotos via SSH instalam o pi-host vinculado estaticamente a partir da própria versão desta compilação, para que hosts com uma glibc mais antiga iniciem corretamente.",
       "Abra várias abas de terminal pela barra de ferramentas e feche cada shell separadamente; os demais continuam em execução ao alternar abas.",
+      "Os terminais de projetos locais do Windows abrem corretamente, e o seletor de shell segue o tema do aplicativo.",
     ],
   },
   {

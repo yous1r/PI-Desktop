@@ -75,6 +75,19 @@ window.multiTerminalProbe=async()=>{
   render();
   if(kind==="remote-session")click([...document.querySelectorAll("button")].find(node=>node.textContent.trim()==="Terminal"));
   await ready();const first=tabs()[0];const firstShell=terminalHandleFor(first.id).terminalId;
+  // The shell picker must be the themed menu select: a native select popup is
+  // drawn by the OS and ignores the surface tokens.
+  check(!document.querySelector(".terminal-tab__bar select"),"Shell picker fell back to a native select");
+  const shellTrigger=document.querySelector(".terminal-tab__bar .settings-menu-select-trigger");
+  check(shellTrigger&&shellTrigger.textContent.includes("Bash"),"Shell picker trigger missing");
+  click(shellTrigger);
+  await until(()=>document.querySelector(".settings-menu-select-menu.is-open"),"Shell menu did not open");
+  const shellMenu=document.querySelector(".settings-menu-select-menu.is-open");
+  check(shellMenu.querySelectorAll('[role="option"]').length===1,"Shell menu options missing");
+  const menuSurface=getComputedStyle(shellMenu);
+  check(menuSurface.backgroundColor===getComputedStyle(document.body).getPropertyValue("--ds-bg-elevated-opaque").trim()||menuSurface.backgroundColor!=="rgba(0, 0, 0, 0)","Shell menu ignored the themed surface");
+  document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",bubbles:true,cancelable:true}));
+  await until(()=>!document.querySelector(".settings-menu-select-menu.is-open"),"Escape did not close the shell menu");
   click(button("New terminal"));await ready();const second=tabs()[1];const secondShell=terminalHandleFor(second.id).terminalId;
   click(button("New terminal"));let thirdShell;
   if(kind==="remote-session"){

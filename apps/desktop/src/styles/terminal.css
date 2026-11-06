@@ -48,12 +48,19 @@
   white-space: nowrap;
 }
 
+/* Compact trigger in the terminal toolbar: the shared menu select owns the
+   popup surface, this only matches the 28px icon controls beside it. */
 .terminal-tab__shell {
   flex: 0 0 auto;
-  width: auto;
-  min-width: 8rem;
   max-width: 14rem;
-  padding-block: 2px;
+}
+
+.terminal-tab__shell .settings-menu-select-trigger {
+  height: var(--ds-work-panel-toggle-size);
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  background: var(--ds-tile-hover);
+  box-shadow: none;
   font-size: var(--text-xs);
 }
 

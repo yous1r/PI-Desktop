@@ -29,7 +29,8 @@ import {
   terminalHandleFor,
 } from "../../lib/terminal-sessions";
 import { IconPlug, IconRefresh } from "../icons";
-import { Badge, Select, TooltipButton } from "../ui";
+import { Badge, TooltipButton } from "../ui";
+import { SettingsMenuSelect } from "../settings/SettingsMenuSelect";
 import { TerminalTabActions } from "./TerminalTabActions";
 
 /**
@@ -497,13 +498,15 @@ export function TerminalTab({
             {identity.detail}
           </span>
         ) : null}
-        <Select
+        {/* A native <select> popup is drawn by the OS and ignores the theme, so
+            the shell picker uses the shared anchored menu select instead. */}
+        <SettingsMenuSelect
           className="terminal-tab__shell"
-          aria-label={t("panel.terminal.shell")}
+          label={t("panel.terminal.shell")}
           value={shellId ?? ""}
           disabled={busy || shells.length === 0}
-          onChange={(event) => {
-            const next = event.target.value;
+          options={shells.map((profile) => ({ id: profile.id, label: profile.label }))}
+          onChange={(next) => {
             if (next === shellId) return;
             // A different shell is a different process: end the old one instead
             // of detaching it with no view that could ever reach it again.
@@ -511,13 +514,7 @@ export function TerminalTab({
             terminalIdRef.current = null;
             setShellId(next);
           }}
-        >
-          {shells.map((profile) => (
-            <option key={profile.id} value={profile.id}>
-              {profile.label}
-            </option>
-          ))}
-        </Select>
+        />
         <span className="terminal-tab__status" role="status" aria-live="polite">
           {statusLabel(status, exitCode, failure, overflowed, t)}
         </span>

@@ -3,9 +3,10 @@ import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import * as Value from "typebox/value";
 import { WorkspaceTerminalService, ShellRegistry, type WorkspacePtyModule } from "@pi-desktop/host-runtime";
-import { WorkspaceTerminalEventSchema, WorkspaceTerminalRequestSchema, isTerminalOpenResult, isTerminalShellProfile,
+import { WorkspaceTerminalEventSchema, WorkspaceTerminalRequestSchema, isTerminalOpenResult, isTerminalShellProfile, parseTerminalWorkspaceId,
   type TerminalTargetContext, type WorkspaceExecutionContext, type WorkspaceTerminalRequest, type WorkspaceTerminalEvent } from "@pi-desktop/shared";
 import { createWorkspaceExecutionResolver } from "../workspace-execution-context";
+import { sameWorkspacePath } from "../workspace-path";
 import { parseRemoteSessionId } from "../remote/backend-router";
 import type { RemoteHostClient } from "../remote/remote-host-connection";
 
@@ -72,6 +73,9 @@ export class WorkspaceTerminalRouter {
   private checkHint(target: TerminalTargetContext, context: WorkspaceExecutionContext): void {
     if (!target.workspaceId) return;
     const primary = context.roots.find(root => root.primary)!.path;
+    const hint = parseTerminalWorkspaceId(target.workspaceId);
+    if (context.authority.kind === "local" && hint && !hint.hostKey
+      && sameWorkspacePath(hint.path, primary, context.platform)) return;
     const expected = context.authority.kind === "local" ? [`local:${primary}`, context.workspaceId]
       : [`ssh:${context.authority.hostKey}:${primary}`, `ssh:${context.authority.hostKey}:remote-project:${context.projectId}`, context.workspaceId];
     if (!expected.includes(target.workspaceId)) throw fail("WORKSPACE_CHANGED", "Terminal target differs from its owning project");

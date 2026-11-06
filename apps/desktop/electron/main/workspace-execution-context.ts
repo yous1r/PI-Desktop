@@ -1,5 +1,6 @@
 import { basename, isAbsolute, posix } from "node:path";
 import type { ProjectGroupRecord, WorkspaceExecutionContext } from "@pi-desktop/shared";
+import { sameWorkspacePath } from "./workspace-path";
 
 type WorkspaceHost = { call<T>(method: string, input?: unknown): Promise<T> };
 export type WorkspaceRemoteState = {
@@ -27,6 +28,7 @@ export function createWorkspaceExecutionResolver(deps: {
   const revisions = new Map<string, { fingerprint: string; generation: number }>();
   let nextGeneration = 0;
   let previousHost: WorkspaceHost | null = null;
+  const samePath = (left: string, right: string) => sameWorkspacePath(left, right, deps.platform);
   return async (input: WorkspaceInvocationOwner = {}): Promise<WorkspaceExecutionContext | null> => {
     const host = deps.getHost();
     if (!host) throw fail("HOST_UNAVAILABLE", "Workspace owner is unavailable");
@@ -43,16 +45,16 @@ export function createWorkspaceExecutionResolver(deps: {
       const { session } = await host.call<{ session?: { projectPath?: string } }>("session.get", { id: input.sessionId, messageLimit: 1 });
       if (!session) throw fail("NOT_FOUND", "The originating session is unavailable");
       workspacePath = session.projectPath;
-      if (input.workspacePath && input.workspacePath !== workspacePath) throw fail("WORKSPACE_CHANGED", "The originating workspace has changed");
+      if (input.workspacePath && (!workspacePath || !samePath(input.workspacePath, workspacePath))) throw fail("WORKSPACE_CHANGED", "The originating workspace has changed");
     } else if (pinned) {
       workspacePath = pinnedGroup?.primaryPath ?? pinned.roots.find(root => root.primary)?.path;
     } else {
       workspacePath = deps.currentWorkspacePath() ?? undefined;
-      if (input.workspacePath && input.workspacePath !== workspacePath) throw fail("WORKSPACE_CHANGED", "The selected workspace has changed");
+      if (input.workspacePath && (!workspacePath || !samePath(input.workspacePath, workspacePath))) throw fail("WORKSPACE_CHANGED", "The selected workspace has changed");
     }
     if (deps.getHost() !== host) throw fail("HOST_UNAVAILABLE", "Workspace owner was replaced");
     if (!workspacePath) return null;
-    const group = groups.find(item => item.primaryPath === workspacePath || item.roots.some(root => root.path === workspacePath));
+    const group = groups.find(item => samePath(item.primaryPath, workspacePath!) || item.roots.some(root => samePath(root.path, workspacePath!)));
     const remote = group?.remote;
     if (workspacePath.startsWith("remote-project:") && !remote) throw fail("NOT_FOUND", "Remote workspace binding is unavailable");
     if (remote && !workspacePath.startsWith("remote-project:")) throw fail("INVALID_WORKSPACE_CONTEXT", "Remote workspace identity is invalid");
@@ -85,10 +87,10 @@ export function createWorkspaceExecutionResolver(deps: {
       };
     } else {
       if (!isAbsolute(workspacePath)) throw fail("INVALID_WORKSPACE_CONTEXT", "Local workspace path is invalid");
-      const ordered = group?.roots.slice().sort((a, b) => Number(b.path === workspacePath) - Number(a.path === workspacePath) || a.position - b.position);
+      const ordered = group?.roots.slice().sort((a, b) => Number(samePath(b.path, workspacePath!)) - Number(samePath(a.path, workspacePath!)) || a.position - b.position);
       context = {
         workspaceId: id, projectId: id, authority: { kind: "local" },
-        roots: ordered?.length ? ordered.map(root => ({ path: root.path, name: root.name, primary: root.path === workspacePath })) : [{ path: workspacePath, name: basename(workspacePath), primary: true }],
+        roots: ordered?.length ? ordered.map(root => ({ path: root.path, name: root.name, primary: samePath(root.path, workspacePath!) })) : [{ path: workspacePath, name: basename(workspacePath), primary: true }],
         platform: deps.platform ?? (process.platform === "win32" ? "win32" : process.platform === "darwin" ? "darwin" : "linux"),
         connectionState: "connected",
       };
