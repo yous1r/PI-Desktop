@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const zhTWEntries: ChangelogEntry[] = [
   {
+    version: "0.22.2",
+    date: "2026-11-06",
+    highlights: [
+      "開啟 SSH 遠端專案時按需準備相符版本的 Host；確認下載或重試後繼續原本的操作。",
+      "Host 下載使用桌面全域代理；升級保留身分、憑證、專案與資料，並拒絕降級或中斷執行中的工作。",
+      "在獨立驗證的目錄中修復損壞的 Host 安裝，保留原始檔案以供復原。",
+      "使用附有備註的全域浮動待辦視窗，一起複製標題與備註，並在重新啟動後還原已儲存的項目。",
+      "為 HTTPS MCP 伺服器設定私有 CA，無須變更系統信任或重新啟動應用程式。",
+      "獨立開啟與關閉多個終端分頁，可靠處理 Windows 專案路徑，Shell 選擇器配合應用程式主題。",
+    ],
+  },
+  {
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [

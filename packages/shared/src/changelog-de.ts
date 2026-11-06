@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const deEntries: ChangelogEntry[] = [
   {
+    version: "0.22.2",
+    date: "2026-11-06",
+    highlights: [
+      "Beim Öffnen eines SSH-Projekts wird die passende Host-Version bei Bedarf vorbereitet; nach Download-Zustimmung oder erneutem Versuch geht die ursprüngliche Aktion weiter.",
+      "Host-Downloads nutzen den globalen Desktop-Proxy. Updates erhalten Identität, Zugangsdaten, Projekte und Daten und verweigern Downgrades oder das Unterbrechen laufender Arbeit.",
+      "Beschädigte Host-Pakete werden in einem separat geprüften Verzeichnis repariert; die Originaldateien bleiben für die Wiederherstellung erhalten.",
+      "Nutze ein globales schwebendes Aufgabenfenster mit Notizen, kopiere Titel und Notiz zusammen und stelle gespeicherte Aufgaben nach einem Neustart wieder her.",
+      "Konfiguriere eine private CA für einen HTTPS-MCP-Server, ohne den Systemvertrauensspeicher zu ändern oder die App neu zu starten.",
+      "Öffne und schließe mehrere Terminal-Tabs unabhängig, mit zuverlässigen Windows-Projektpfaden und einer Shell-Auswahl im App-Design.",
+    ],
+  },
+  {
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [

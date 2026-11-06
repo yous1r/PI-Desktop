@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const frEntries: ChangelogEntry[] = [
   {
+    version: "0.22.2",
+    date: "2026-11-06",
+    highlights: [
+      "Ouvrir un projet distant SSH prépare à la demande la version correspondante du Host ; après autorisation du téléchargement ou nouvelle tentative, l’action initiale reprend.",
+      "Les téléchargements du Host utilisent le proxy global de l’application ; les mises à jour préservent identité, identifiants, projets et données et refusent les rétrogradations ou l’interruption du travail en cours.",
+      "Réparez les paquets Host endommagés dans un répertoire vérifié séparément tout en conservant les fichiers d’origine pour la récupération.",
+      "Gardez une fenêtre flottante globale de tâches avec des notes, copiez ensemble titre et note et retrouvez les éléments enregistrés après redémarrage.",
+      "Configurez une autorité de certification privée pour un serveur MCP HTTPS sans modifier la confiance système ni redémarrer l’application.",
+      "Ouvrez et fermez plusieurs onglets de terminal indépendamment, avec des chemins de projet Windows fiables et un sélecteur de shell adapté au thème.",
+    ],
+  },
+  {
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [

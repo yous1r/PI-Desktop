@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const trEntries: ChangelogEntry[] = [
   {
+    version: "0.22.2",
+    date: "2026-11-06",
+    highlights: [
+      "SSH uzak projesi açılırken eşleşen Host sürümü gerektiğinde hazırlanır; indirme onayı veya yeniden deneme sonrasında ilk işlem sürdürülür.",
+      "Host indirmeleri masaüstünün genel proxy ayarını kullanır; yükseltmeler kimliği, kimlik bilgilerini, projeleri ve verileri korur, sürüm düşürmeyi veya etkin işi kesintiye uğratmayı reddeder.",
+      "Bozuk Host paketlerini ayrı olarak doğrulanmış bir dizinde onarın ve kurtarma için özgün dosyaları koruyun.",
+      "Notlar içeren genel bir yüzen yapılacaklar penceresi kullanın, başlık ve notu birlikte kopyalayın ve kaydedilen öğeleri yeniden başlatma sonrasında geri yükleyin.",
+      "Sistem güvenini değiştirmeden veya uygulamayı yeniden başlatmadan bir HTTPS MCP sunucusu için özel CA yapılandırın.",
+      "Birden çok terminal sekmesini bağımsız olarak açıp kapatın; Windows proje yollarını güvenilir biçimde ve uygulama temasına uyan kabuk seçicisiyle kullanın.",
+    ],
+  },
+  {
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [
