@@ -15831,6 +15831,12 @@ browser milestones are scheduled.
   restart and Host removal. Corrupt cached bytes/metadata and verify a checked
   refresh, cancellation cleanup and bounded cache retention. Accept actual ISO
   pairing expiry and complete the journal through the `current` directory link.
+  Use an archive containing an unusable old deployment worker: Desktop's bundled
+  worker must still install it. Recover an interrupted post-start journal with
+  an expired pairing; refuse a busy Host, then acquire an idle lease and refresh
+  pairing. A valid token retry must not restart the Host. Reject mismatched
+  transaction, digest, identity, version and owner credentials. Verify the
+  journal stays `awaiting-racp` until the real authenticated completion.
 - **Expected**: Exact client release only; no automatic downgrade or re-pairing.
   Existing work is never force-killed. Safe staging failure preserves `current`;
   uncertain/new-start failures preserve data and require recovery rather than
@@ -15840,7 +15846,8 @@ browser milestones are scheduled.
 - **Automation**: `remote-host-demand-policy`, `remote-host-prepare`,
   `remote-host-prepare-ipc`, `remote-host-realign`, `remote-host-artifact-transfer`,
   `remote-host-preparation-ui`, `remote-host-pairing-output`,
-  `pi-host-deploy-entry` and `remote-project-dialog-user-path` Desktop suites.
+  `pi-host-deploy-entry`, `pi-host-client-worker`, `remote-host-bundled-worker`
+  and `remote-project-dialog-user-path` Desktop suites.
   `node scripts/test-host-download-proxy.mjs` runs real Electron HTTPS
   traffic through local proxy fixtures, including a controlled Chromium PAC;
   it does not configure or qualify the operating system's PAC discovery.

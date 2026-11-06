@@ -1,3 +1,5 @@
+import { writeDeploymentWorkerScript } from "./pi-host-deployment-worker.js";
+
 /** Generated POSIX-shell bridge that verifies upload then starts the detached deployment worker. */
 export function buildPiHostTransactionScript(): string {
   return String.raw`step() { printf '%s\n' "PI_HOST_BOOTSTRAP $1"; }
@@ -25,12 +27,6 @@ chmod 700 "$base" "$work" "$transactions" 2>/dev/null || die "deployment-permiss
 for directory in "$base" "$work" "$transactions"; do
   [ ! -L "$directory" ] && [ -d "$directory" ] || die "unsafe-deployment-directory"
 done
-state="$work/deployment-state.json"
-if [ -e "$state" ] || [ -L "$state" ]; then
-  [ -f "$state" ] && [ ! -L "$state" ] || die "HOST_RECOVERY_REQUIRED"
-  phase=$(grep -o '"phase":"[^"]*"' "$state" 2>/dev/null | head -n 1 | cut -d '"' -f 4) || die "HOST_RECOVERY_REQUIRED"
-  case "$phase" in complete|failed-safe) ;; *) die "HOST_RECOVERY_REQUIRED" ;; esac
-fi
 case "$ARTIFACT_PATH" in "$base"/.upload.*/artifact.tar.gz) ;; *) die "invalid-artifact-path" ;; esac
 [ -f "$ARTIFACT_PATH" ] && [ ! -L "$ARTIFACT_PATH" ] || die "upload-missing"
 chmod 600 "$ARTIFACT_PATH" 2>/dev/null || die "artifact-permissions"
@@ -51,8 +47,38 @@ mkdir "$prepare/unpack"
 tar -xzf "$ARTIFACT_PATH" -C "$prepare/unpack" || die "extract-failed"
 bundle="$prepare/unpack/$BUNDLE_DIR"
 [ -d "$bundle" ] && [ ! -L "$bundle" ] || die "unexpected-archive-layout"
-[ -x "$bundle/bin/node" ] && [ -f "$bundle/deploy.mjs" ] || die "missing-deployment-worker"
+[ -x "$bundle/bin/node" ] || die "missing-deployment-worker"
 sh "$bundle/install.sh" --verify >/dev/null 2>&1 || die "bundle-verification-failed"
+worker_node="$bundle/bin/node"
+worker_dir="$prepare"
+${writeDeploymentWorkerScript()}
+state="$work/deployment-state.json"
+if [ -e "$state" ] || [ -L "$state" ]; then
+  [ -f "$state" ] && [ ! -L "$state" ] || die "HOST_RECOVERY_REQUIRED"
+  phase=$(grep -o '"phase":"[^"]*"' "$state" 2>/dev/null | head -n 1 | cut -d '"' -f 4) || die "HOST_RECOVERY_REQUIRED"
+  case "$phase" in
+    complete|failed-safe) ;;
+    recovery-required|awaiting-racp)
+      recovery_reply=$(NODE_OPTIONS= NODE_PATH= flock -w 15 "$base/.deploy.lock" "$bundle/bin/node" "$prepare/deploy.mjs" --begin-recovery "$VERSION" "$EXISTING_HOST_ID" "$EXPECTED_DEVICE_TOKEN_HASH" "$PRESERVE_PAIRING" "$EXPECTED_SHA256") || die "HOST_RECOVERY_REQUIRED"
+      recovery_job=$(printf '%s\n' "$recovery_reply" | sed -n 's/^PI_HOST_RECOVERY_JOB //p')
+      printf '%s\n' "$recovery_job" | grep -Eq '^[a-f0-9]{32}/recovery-[a-f0-9]{32}$' || die "HOST_RECOVERY_REQUIRED"
+      recovery_dir="$transactions/$recovery_job"
+      waited=0
+      while [ "$waited" -lt "$((READY_TIMEOUT_SEC + 720))" ]; do
+        if [ -f "$recovery_dir/failure.json" ]; then
+          case "$(cat "$recovery_dir/failure.json")" in
+            *HOST_BUSY*) die "HOST_BUSY" ;; *HOST_AUTH_FAILED*) die "HOST_AUTH_FAILED" ;;
+            *HOST_VERSION_MISMATCH*) die "HOST_VERSION_MISMATCH" ;; *) die "HOST_RECOVERY_REQUIRED" ;;
+          esac
+        fi
+        if [ -f "$recovery_dir/done.json" ]; then cat "$recovery_dir/output.txt"; exit 0; fi
+        sleep 1
+        waited=$((waited + 1))
+      done
+      die "HOST_RECOVERY_REQUIRED" ;;
+    *) die "HOST_RECOVERY_REQUIRED" ;;
+  esac
+fi
 transaction_id=$(NODE_OPTIONS= NODE_PATH= "$bundle/bin/node" -e 'process.stdout.write(require("node:crypto").randomBytes(16).toString("hex"))') || die "transaction-id-failed"
 case "$transaction_id" in *[!a-f0-9]*|'') die "transaction-id-failed" ;; esac
 [ "${"${"}#transaction_id}" -eq 32 ] || die "transaction-id-failed"
@@ -60,8 +86,8 @@ txdir="$transactions/$transaction_id"
 mkdir "$txdir" || die "transaction-create-failed"
 chmod 700 "$txdir" || die "transaction-permissions"
 cp "$ARTIFACT_PATH" "$txdir/artifact.tar.gz" || die "upload-copy-failed"
-cp "$bundle/deploy.mjs" "$txdir/deploy.mjs" || die "worker-copy-failed"
-cp "$bundle/deploy-recovery.mjs" "$txdir/deploy-recovery.mjs" || die "worker-copy-failed"
+cp "$prepare/deploy.mjs" "$txdir/deploy.mjs" || die "worker-copy-failed"
+cp "$prepare/deploy-recovery.mjs" "$txdir/deploy-recovery.mjs" || die "worker-copy-failed"
 cp "$bundle/bin/node" "$txdir/node" || die "worker-copy-failed"
 chmod 700 "$txdir/node" || die "transaction-permissions"
 chmod 600 "$txdir/artifact.tar.gz" "$txdir/deploy.mjs" "$txdir/deploy-recovery.mjs" || die "transaction-permissions"

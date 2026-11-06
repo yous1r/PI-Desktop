@@ -11,6 +11,7 @@ import {
   admitOfflineHost, admitVersionEvidence, compareVersions, findOwnerDevice, isVersionDirName,
   lastReady, parseReadyLine, sameReleaseChannel,
   validateMaintenanceLease, admitFreshInstallation, deploymentNeedsPairing,
+  admitInterruptedDeployment, pairingRecordUsable,
 } from "../../pi-host/scripts/deploy-recovery.mjs";
 
 const HOST_ID = "host_abc";
@@ -190,4 +191,35 @@ test("first install requires an empty identity boundary and repair never pairs a
   assert.throws(() => admitFreshInstallation({ ...fresh, processState: "unidentified" }), { code: "HOST_PROCESS_UNIDENTIFIED" });
   assert.equal(deploymentNeedsPairing(false), true);
   assert.equal(deploymentNeedsPairing(true), false);
+});
+
+test("interrupted deployment resumes only matching post-start identity and release evidence", () => {
+  const transactionId = "d".repeat(32);
+  const input = { record: { protocol: 1, transactionId, phase: "recovery-required", version: "0.22.2",
+    hostId: HOST_ID, failureCode: "HOST_RECOVERY_REQUIRED" }, request: { transactionId, version: "0.22.2" },
+    identity: { hostId: HOST_ID }, ready: { hostId: HOST_ID, version: "0.22.2" }, targetVersion: "0.22.2" };
+  assert.deepEqual(admitInterruptedDeployment(input), { hostId: HOST_ID });
+  for (const phase of ["queued", "starting", "activating", "failed-safe", "complete"]) {
+    assert.equal(code(() => admitInterruptedDeployment({ ...input, record: { ...input.record, phase } })), "HOST_RECOVERY_REQUIRED");
+  }
+  assert.equal(code(() => admitInterruptedDeployment({ ...input, request: { ...input.request, transactionId: "e".repeat(32) } })), "HOST_RECOVERY_REQUIRED");
+  assert.equal(code(() => admitInterruptedDeployment({ ...input, targetVersion: "0.22.1" })), "HOST_VERSION_MISMATCH");
+  assert.equal(code(() => admitInterruptedDeployment({ ...input, ready: { ...input.ready, hostId: "other" } })), "HOST_AUTH_FAILED");
+  assert.equal(code(() => admitInterruptedDeployment({ ...input, expectedHostId: "other" })), "HOST_AUTH_FAILED");
+  assert.equal(code(() => admitInterruptedDeployment({ ...input, request: { ...input.request, preservePairing: true } })), "HOST_AUTH_FAILED");
+  const enrolled = { ...input, preservePairing: true, expectedHostId: HOST_ID, expectedDeviceTokenHash: TOKEN_HASH, credentialsText: credentials([OWNER]) };
+  assert.deepEqual(admitInterruptedDeployment(enrolled), { hostId: HOST_ID });
+  assert.equal(code(() => admitInterruptedDeployment({ ...enrolled, credentialsText: credentials([{ ...OWNER, revokedAt: "now" }]) })), "HOST_AUTH_FAILED");
+});
+
+test("recovery reuses only an unexpired and unconsumed persisted pairing", () => {
+  const now = 1_800_000_000_000, tokenHash = "f".repeat(64), pairing = { token: "fixture", expiresAt: now + 60_000 };
+  const record = { tokenHash, expiresAt: new Date(now + 60_000).toISOString() };
+  assert.equal(pairingRecordUsable(pairing, { pairings: [record] }, tokenHash, now), true);
+  for (const candidate of [{ ...record, consumedAt: "now" }, { ...record, tokenHash: "other" },
+    { ...record, expiresAt: new Date(now - 1).toISOString() }]) {
+    assert.equal(pairingRecordUsable(pairing, { pairings: [candidate] }, tokenHash, now), false);
+  }
+  assert.equal(pairingRecordUsable({ ...pairing, expiresAt: now }, { pairings: [record] }, tokenHash, now), false);
+  assert.equal(pairingRecordUsable(null, {}, tokenHash, now), false);
 });

@@ -8,6 +8,10 @@
   expose idle-window confirmation when adding a legacy SSH Host.
 - Accept ISO pairing expiry and execute deployment completion through the
   installed `current` link, avoiding false recovery failures after startup.
+- Ship deployment control scripts with Desktop so fixes also apply when the
+  exact published Host archive predates them. Recover verified running
+  post-start transactions, refreshing expired enrollment only under an idle
+  maintenance lease and completing only after RACP authentication.
 
 - Prepare the exact Desktop-version Host when a user opens or uses an SSH remote
   project. First download requires consent; later compatible upgrades reuse it.
