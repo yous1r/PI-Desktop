@@ -72,11 +72,12 @@ are independent of similarly named files in a published Host archive. The
 archive remains authenticated by its published SHA-256 and supplies the Host
 runtime/install files; the Desktop worker supplies orchestration and recovery.
 An interrupted post-start transaction may resume only when its transaction id,
-archive digest, installed directory, process, Host ID, version evidence and
-owner credentials all match. An expired pairing may be reissued only after an
-idle maintenance lease; recovery returns to the authenticated completion
-boundary and never clears the journal early. A busy or ambiguous Host remains
-in recovery-required.
+archive digest, installed directory, process, Host ID and version evidence match.
+Existing enrollment additionally requires its saved owner credential. Only a
+transaction already permitting new enrollment may refresh an expired pairing,
+and only under an idle maintenance lease. Recovery returns to authenticated
+completion without clearing the journal early. Busy restarts are refused and
+ambiguous transactions retain recovery state.
 
 ## Consequences
 

@@ -24,6 +24,10 @@ and prepared their saved records again. Original identities and all device
 records were preserved, and both journals cleared only after authentication.
 Each run made zero release requests. A further `dev` installation started with
 no journal and also completed against the unchanged official archive.
+The final committed worker also completed a normal official-archive installation
+on the screenshot target. Both Hosts then passed fresh saved-record connection
+and directory browsing. All temporary validation devices were revoked through
+authenticated RACP; every pre-validation device record remained unchanged.
 
 The Linux integration fixture contains deliberately unusable published workers.
 It exercises installation, busy refusal without stopping the Host, expired
