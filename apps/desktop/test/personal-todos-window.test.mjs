@@ -24,7 +24,7 @@ export class BrowserWindow extends EventEmitter {
  constructor(options={}){super();this.options=options;this.visible=false;this.dead=false;this.pinned=options.alwaysOnTop;this.bounds={x:options.x??0,y:options.y??0,width:options.width??360,height:options.height??480};
  this.webContents=Object.assign(new EventEmitter(),{id:windows.length+1,mainFrame:{url:''},sent:[],isDestroyed:()=>this.dead,isCrashed:()=>false,send:(channel,payload)=>{this.webContents.sent.push({channel,payload});this.onSend?.(channel,payload);},setWindowOpenHandler:(handler)=>{this.openHandler=handler;}});windows.push(this);}
  async loadURL(url){if(BrowserWindow.loadGate)await BrowserWindow.loadGate;this.url=url;this.webContents.mainFrame.url=url;this.webContents.emit('did-finish-load');}
- setMenu(){} setVisibleOnAllWorkspaces(){} setMinimumSize(){} setBounds(bounds){this.bounds=bounds;} getBounds(){return this.bounds;}
+ setMenu(){} setVisibleOnAllWorkspaces(){} setMinimumSize(){} setResizable(value){this.resizable=value;} setBounds(bounds){this.setBoundsCalls=(this.setBoundsCalls??0)+1;this.bounds={...bounds};} getBounds(){return {...this.bounds};}
  isDestroyed(){return this.dead;} show(){this.visible=true;} showInactive(){this.visible=true;this.inactive=true;} hide(){this.visible=false;} focus(){this.focused=true;} setAlwaysOnTop(value){this.pinned=value;}
  destroy(){this.dead=true;this.emit('closed');}
  close(){let prevented=false;this.emit('close',{preventDefault(){prevented=true;}});if(!prevented)this.destroy();}
@@ -57,7 +57,8 @@ test('singleton native window is independent, pinned by default, and its close c
  assert.equal(widget.options.webPreferences.sandbox,true);assert.equal(widget.options.webPreferences.contextIsolation,true);assert.equal(widget.options.webPreferences.nodeIntegration,false);
  assert.match(widget.options.webPreferences.preload,/personal-todos\.cjs$/);assert.equal(widget.options.parent,undefined);
  f.main.hide();assert.equal(widget.visible,true);
- widget.close();assert.equal(widget.dead,false);assert.equal(widget.visible,false);
+ widget.close();assert.equal(widget.dead,false);assert.equal(widget.visible,true);
+ assert.equal((await f.invoke('get',widget)).collapsed,true);
  await f.invoke('window',f.main,{action:'open'});assert.equal(widget.visible,true);
  await f.invoke('window',widget,{action:'pin',value:false});assert.equal(widget.pinned,false);
  assert.deepEqual(widget.openHandler({url:'https://example.com'}),{action:'deny'});
@@ -103,4 +104,53 @@ test('concurrent opens wait for renderer loading before displaying the singleton
   release();await Promise.all([first,second]);
   assert.equal(widget.visible,true);
  } finally {release();await Promise.allSettled(opens);BrowserWindow.loadGate=null;f.runtime.dispose();}
+});
+
+test('repeated titlebar opens preserve expanded geometry without native resize feedback',async()=>{
+ const f=fixture();
+ try {
+  await f.runtime.open();const widget=windows.at(-1);const bounds=widget.getBounds();
+  const calls=widget.setBoundsCalls??0;
+  for(let i=0;i<25;i++)await f.invoke('window',f.main,{action:'open'});
+  assert.deepEqual(widget.getBounds(),bounds);
+  assert.equal(widget.setBoundsCalls??0,calls,'opening an already visible board must not round-trip native bounds');
+ }finally{f.runtime.dispose();}
+});
+
+test('startup docks a compact strip and collapse restores the independently remembered editor',async()=>{
+ const f=fixture();
+ try {
+  await f.runtime.open(false);const widget=windows.at(-1);
+  assert.equal((await f.invoke('get',widget)).collapsed,true);
+  assert.equal(widget.getBounds().y,0);assert.ok(widget.getBounds().height<=100);
+  assert.equal(widget.options.transparent,true);assert.equal(widget.options.hasShadow,false);
+  await f.invoke('window',widget,{action:'open'});
+  widget.bounds={x:800,y:240,width:440,height:560};
+  const expanded=widget.getBounds();
+  for(let i=0;i<5;i++){
+   await f.invoke('window',widget,{action:'collapse'});
+   assert.equal(widget.visible,true);assert.equal(widget.getBounds().y,0);
+   assert.ok(widget.getBounds().height<=100);
+   screen.emit('display-metrics-changed');
+   assert.ok(widget.getBounds().height<=100);
+   await f.invoke('window',widget,{action:'open'});
+   assert.deepEqual(widget.getBounds(),expanded);
+   assert.equal((await f.invoke('get',widget)).collapsed,false);
+  }
+ }finally{f.runtime.dispose();}
+});
+
+test('fractional-DPI native rounding does not accumulate across collapse and reopen',async()=>{
+ const f=fixture();
+ try {
+  await f.runtime.open(false);const widget=windows.at(-1);
+  widget.setBounds=function(bounds){this.bounds={...bounds,width:bounds.width+1,height:bounds.height+1};};
+  await f.invoke('window',widget,{action:'open'});
+  const expanded=widget.getBounds();
+  for(let i=0;i<10;i++){
+   await f.invoke('window',widget,{action:'collapse'});
+   await f.invoke('window',widget,{action:'open'});
+   assert.deepEqual(widget.getBounds(),expanded);
+  }
+ }finally{f.runtime.dispose();}
 });

@@ -14,11 +14,15 @@ by a blank line and its full note (only the title when the note is empty).
 Copy uses the latest draft, including a collapsed note. The toolbar has icon-only
 Pin and Collapse buttons. Every icon has a localized tooltip and accessible name.
 
-The native single-instance window initially measures 360x480 DIP, is draggable
-and resizable, and remembers bounds and pin preference. First launch is pinned.
-Every process launch opens the board expanded without stealing keyboard focus;
-an explicit second launch also opens the existing board. Collapse is runtime-only.
-A global titlebar icon beside the work-panel toggle and a tray action reopen it.
+The expanded native editor initially measures 360x480 DIP, is draggable and
+resizable, and remembers its own bounds and pin preference. First launch is pinned.
+Every process launch now starts as a compact top-docked strip without stealing
+keyboard focus. It shows only the first ordered title on one line, capped at
+100 CSS px with ellipsis. Collapse retains the strip and independent editor bounds.
+The chat top-toolbar entry moves and appears with that toolbar; the strip and
+tray action also expand the same editor. Repeated opens preserve native dimensions.
+This supersedes the original expanded-startup and shell-fixed-entry presentation
+recorded in the historical validation below.
 Main-window minimize or close-to-tray does not hide the board. Explicit app quit
 retains the app's existing lifecycle and flushes personal edits before teardown.
 The board's own close action means collapse. Normal desktop windows are covered

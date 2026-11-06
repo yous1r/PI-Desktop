@@ -401,10 +401,14 @@ selection. See [ADR tray-session-shortcuts](/adr/tray-session-shortcuts).
 ## Global floating personal todos
 
 Main owns one separate personal-todo BrowserWindow and an in-memory draft writer.
-After normal startup the window opens expanded, initially pinned; explicit second
-launches reopen it. It is not parented to the main window and survives main
-minimize/close-to-tray. Its close action hides it. Tray/titlebar open reuses it.
-Only bounds and pin preference survive restart. Screen changes clamp its bounds.
+After normal startup it shows a compact strip docked to the display work area's
+top edge, initially pinned; explicit open actions expand it. It is not parented
+to the main window and survives main minimize/close-to-tray. Its close action
+collapses to the strip. Tray/titlebar open reuses it without resizing an already
+expanded editor. Only expanded bounds and pin preference survive restart; compact
+bounds never overwrite editor placement. Native DIP rounding is kept separate from
+requested bounds so repeated collapse/expand cycles cannot accumulate size drift.
+Screen changes clamp expanded bounds or redock the compact strip.
 
 Drafts are handed to Main immediately. The Main timer flushes after 500ms idle
 or 2s oldest-dirty age; a 5s acknowledgement deadline surfaces failure. Blur,

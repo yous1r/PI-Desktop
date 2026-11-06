@@ -4596,12 +4596,21 @@ instructions, memory and OAuth dialogs retain their existing bounded layouts.
 
 ## Global floating personal todos
 
-A global checklist icon sits immediately left of the work-panel control, with
-reserved chrome width on chat and non-chat routes. It opens one profile-global
-personal board. The native window initially measures 360x480 DIP, supports drag
-and resize, and remembers placement and pin preference. Every process launch is
-expanded; first use is pinned. Collapse only hides it until explicitly reopened
-or the next process launch. The tray offers Open personal todos.
+The personal checklist entry belongs to the top toolbar: the chat action cluster,
+the route titlebar, or the maximized preview toolbar. It shares their positioning
+and visibility: opening the work panel moves it with neighboring actions, while
+Settings hides the owning toolbar without leaving a separate floating entry.
+
+The profile-global native window starts as a pinned compact strip docked to the
+top of its display's work area. The strip shows only the first ordered todo title
+(or the board title when empty), on one line at most 100 CSS px wide with ellipsis.
+Its native footprint is 200x52 DIP; the text and chevron expand the editor, while
+the checklist icon is a drag handle. The expanded editor initially measures
+360x480 DIP and preserves its own placement, resize dimensions and pin preference.
+Collapse and native close return to the compact strip without replacing saved
+editor geometry. Tray/titlebar open expands the same window; repeated opens do
+not resize it. Rounded themed surfaces, a subtle border and CSS shadow sit inside
+a transparent native window without an additional OS shadow.
 
 Each ordered row contains a completion checkbox, editable title, independently
 expandable multiline plain-text note, and icon-only Copy/Delete controls. Title

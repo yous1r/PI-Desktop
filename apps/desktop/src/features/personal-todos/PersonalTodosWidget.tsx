@@ -17,7 +17,7 @@ import {
   IconPlus,
   IconTrash,
 } from "../../components/icons";
-import { Checkbox, Input, Textarea, TooltipButton } from "../../components/ui";
+import { Button, Checkbox, Input, Textarea, TooltipButton } from "../../components/ui";
 import { loadRendererCatalog } from "../../lib/renderer-catalogs";
 import { flattenCatalog, resolveLocale } from "@pi-desktop/i18n/locale-info";
 import "../../styles/personal-todos.css";
@@ -118,7 +118,7 @@ export function PersonalTodosWidget() {
     if (!view.document) {
       if (!viewRef.current?.document) {
         viewRef.current = null;
-        setState((old) => ({ ...old, view: null, loading: view.saveStatus === "loading",
+        setState((old) => ({ ...old, view, loading: view.saveStatus === "loading",
           error: view.error ? t("personalTodos.loadingFailed") : null }));
       }
       return;
@@ -371,10 +371,14 @@ export function PersonalTodosWidget() {
   const remaining = state.items.filter((item) => !item.completed).length;
   const saveStatusKey = state.conflict || state.saveError || state.error ? "saveFailed" : state.saving ? "saving" : view?.saveStatus === "saved" ? "saved" : "saveDelayed";
 
-  if (state.error && !view) {
+  if (view?.collapsed) {
+    const first = state.items[0];
+    const title = state.error ? t("personalTodos.loadingFailed") : first ? first.title || t("personalTodos.untitled") : t("personalTodos.title");
+    return <CompactTodo title={title} preparingQuit={preparingQuit} onOpen={() => void invoke<PersonalTodoView>(IPC.invoke.personalTodosWindow, { action: "open" }).then(applyView).catch(() => setStatusAnnouncement(t("personalTodos.loadingFailed")))} announcement={statusAnnouncement} />;
+  }
+  if (state.error && !view?.document) {
     return <main className="personal-todos personal-todos-state" role="alert"><p>{t("personalTodos.loadingFailed")}</p><TooltipButton type="button" className="personal-todos-text-action" tooltip={t("personalTodos.retry")} onClick={() => void load()}><IconCheck size={15} />{t("personalTodos.retry")}</TooltipButton></main>;
   }
-
   return (
     <main className="personal-todos" aria-label={t("personalTodos.title")} inert={preparingQuit}>
       <header className="personal-todos-header">
@@ -414,4 +418,20 @@ export function PersonalTodosWidget() {
       </div>
     </main>
   );
+}
+
+function CompactTodo({ title, preparingQuit, onOpen, announcement }: {
+  title: string;
+  preparingQuit: boolean;
+  onOpen(): void;
+  announcement?: string | null;
+}) {
+  const { t } = useTranslation();
+  return <main className="personal-todos is-collapsed" aria-label={t("personalTodos.title")} inert={preparingQuit}>
+    <span className="personal-todos-drag"><IconListChecks size={16} /></span>
+    <Button className="personal-todos-expand" variant="ghost" aria-label={t("personalTodos.open")} title={title} onClick={onOpen}>
+      <span className="personal-todos-summary">{title}</span><IconChevronDown size={16} />
+    </Button>
+    <span className="personal-todos-visually-hidden" role="status">{announcement}</span>
+  </main>;
 }
