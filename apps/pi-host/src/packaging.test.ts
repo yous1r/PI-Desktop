@@ -254,7 +254,8 @@ describe("pi-host packaging", () => {
     expect(install().status).not.toBe(0);
     expect(readlinkSync(join(root, "current"))).toBe(original);
     expect(readFileSync(join(original, "pi-host.js"), "utf8")).toBe("damaged installed file");
-  });
+  // Two install attempts copy and hash bundled Node with the slower Perl fallback.
+  }, 30_000);
 
   it("preserves a non-symlink current directory on publication failure", () => {
     const f = fixture();
