@@ -216,3 +216,22 @@ Local follow-up results:
 
 The follow-up updates the existing feature branch and PR. Remote CI still needs
 its own Linux integration result; local Windows results do not claim that result.
+
+
+### Remaining source-contract assertions
+
+PR head `46b78df4a81554b7d8351d68af272c0b34ac9776` passed Docs, Trusted
+extensions Electron E2E, Rust, Windows Host, base and package checks. The now
+unblocked full Linux JS run completed 4,768 Desktop tests successfully and
+reported exactly two failed source assertions. Both still described behavior
+from before this feature: zero titlebar padding with the work panel open, and
+a shutdown guard without the todo-preparation phase. Both failures reproduced
+locally. The assertions now require the approved two-control header reserve
+and the todo preparation/idempotence ordering; no production code changed.
+
+The updated contract suites, shutdown behavior suite and renderer-target suite
+passed together (46 tests). Changed-test lint and diff checks passed. A full
+Windows Desktop test attempt also encountered unrelated POSIX-path assumptions,
+a native process/fixture failure, a GenUI protocol loader failure and an S3 UI
+fixture timeout; it is not recorded as passing. The Linux PR run remains the
+full-suite acceptance check for this follow-up.
