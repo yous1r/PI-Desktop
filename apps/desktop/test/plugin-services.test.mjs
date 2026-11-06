@@ -150,6 +150,35 @@ test("a declared service starts in the plugin process and reports running", asyn
   );
 });
 
+test("resident service SDK calls outlive startup while panel descendants still expire", async (t) => {
+  const { dir } = writeServicePlugin({
+    main: `
+      let releaseWorker, worker, releasePanel, panel;
+      const readPermissions = () => pi.plugin.getPermissions().catch(error => ({code:error.code}));
+      module.exports = {
+        async onLoad() {
+          pi.services.register({ id: "worker", start() {
+            worker = new Promise(resolve => { releaseWorker = resolve; }).then(readPermissions);
+          } });
+        },
+        async onPanelInvoke(channel) {
+          if (channel === "worker") { releaseWorker(); return worker; }
+          if (channel === "arm") {
+            panel = new Promise(resolve => { releasePanel = resolve; }).then(readPermissions);
+            return true;
+          }
+          releasePanel(); return panel;
+        },
+      };
+    `,
+  });
+  const { runtime } = createRuntime(t);
+  await runtime.loadFromPath(dir);
+  assert.deepEqual(await runtime.invokePanelBridge("com.example.service", "worker", {}), ["background.service"]);
+  await runtime.invokePanelBridge("com.example.service", "arm", {});
+  assert.deepEqual(await runtime.invokePanelBridge("com.example.service", "flush", {}), { code: "PLUGIN_CALL_EXPIRED" });
+});
+
 test("a service without background.service never starts", async (t) => {
   const { dir, startsFile } = writeServicePlugin({
     permissions: [],

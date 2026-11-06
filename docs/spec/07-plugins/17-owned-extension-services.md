@@ -40,6 +40,11 @@ Owner previews emit the existing `fs.readPreview` audit record with plugin, boun
 
 `runtimeId` is independent of a persisted conversation. Retirement reasons are `reconfigure`, `session-close`, and `app-quit`. Shutdown callbacks have a bounded two-second budget; app quit invokes graceful sidecar shutdown before plugin services and Host persistence stop. Unresponsive callbacks cannot hold the application open. An instance retiring after a model or mode change is not evidence that the user's task completed. Integrations must not automatically create a final handoff on every shutdown.
 
+Resident services started by the Host may issue SDK calls after `service.start`
+returns. Their background tasks belong to the loaded plugin's service lifecycle,
+not the completed startup RPC. Unload and current permissions still gate every
+call. Ordinary panel/tool/owner descendants retain their originating-call expiry.
+
 For extensions declaring owner capability, `agent_end` notification handlers have a two-second total budget. Turn settlement waits for these handlers and status remains busy while they complete, so a subsequent turn/retirement cannot cancel a timely local receipt. Expired callbacks remain cancelled. Extensions without owner capability retain their existing notification timing.
 
 The retiring generation freezes its last admitted turn identity. A replacement launch cannot relabel that final event. During the two-second retirement window each extension may invoke its declared `retire` operation once; other owner operations and repeated terminal calls are rejected. The live Host mode and current plugin grant still apply, including Agent-to-Plan transitions. Unknown Host modes fail closed; legacy `chat` is read-only Plan. An unloaded plugin invalidates old generations; a later idle launch retires the stale runtime before rebuilding it. Active turns are not interrupted merely to reload an extension.
@@ -68,6 +73,11 @@ Only GET/POST methods and exact approved relative paths under the base URL are a
 
 The Host injects the stored bearer credential only after checking ownership, current grant, revision and destination. Returned text redacts exact credential values and transport failures expose fixed diagnostic codes. Plugins still treat all remote content as untrusted data. Request success does not imply exactly-once server persistence; domain adapters own reconciliation and write compatibility.
 
-## Reference integration
+## Independent integrations
 
-`examples/plugins/ai-memory` demonstrates explicit project opt-in, a versioned private journal, filtered event capture, bounded context recall, exact-ID handoff actions, and upstream capability gates. It defaults to coexistence with existing MCP tools and never edits those configurations. Its operations and compatibility matrix are documented in that plugin's own docs; these generic Host interfaces do not promise compatibility with arbitrary server versions.
+`local.ai-memory` is developed and packaged in the separate `PI-AI-Memory`
+repository. Its source, upstream compatibility matrix, domain tests and release
+workflow are owned there. Desktop retains only the generic owner-call, managed
+connection, file-scope and lifecycle contracts and their synthetic host tests.
+Installing or updating the plugin remains an explicit plugin installation;
+Desktop does not bundle it or promise compatibility with arbitrary memory servers.

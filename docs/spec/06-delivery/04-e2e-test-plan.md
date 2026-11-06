@@ -19237,39 +19237,29 @@ their separate platform acceptance.
 - **Status**: Automated offline; native UI clicking and live providers are
   outside this fixture's coverage.
 
-### E2E-PLUGIN-owned-memory-service
+### E2E-PLUGIN-owned-extension-service
 
-Run the request candidate in an isolated profile with synthetic credentials,
-an HTTP model fixture, the real plugin subprocess and Agent extension Runner.
-Do not attach to the user's Desktop or use a paid provider. Record candidate
-base, executable identity, platform and suites with the results.
-
-1. Load the local package, grant its permissions, configure a native managed
-   connection and explicitly bind two projects. Unbound projects send nothing.
-2. Seed a historical page on an isolated pinned ai-memory server. Start a task;
-   assert the actual model request includes bounded, sourced historical content
-   once, while the raw transcript has no injected memory row.
-3. Capture opted-in prompt/tool/final events, restart plugin and server, and
-   inspect persisted observations and delivery receipts. Simulate a lost write
-   response; the queue must show uncertainty and refuse blind replay.
-4. Preview handoffs without consumption. Accept one exact ID explicitly,
-   rebuild the runtime, and restore its accepted payload from the recovery log.
-   Check session-start side effects separately for every supported release.
-5. Exercise concurrent projects, same-ID recreation, model/mode changes, Stop,
-   credential rotation, disable and app quit. Old callbacks must not mutate the
-   new generation; Plan/Goal cannot capture or write.
-6. Verify owner file reads use the session worktree or remote Host binding and
-   fail closed on conflicting markers, missing remote support or revoked scope.
-7. Check native connection add/edit/delete and credential re-entry. Assert no
-   token appears in plugin settings, diagnostics, model requests or package.
-8. Inject schema/version/transport failures and future state versions. Writes
-   pause with actionable diagnostics, readable capabilities degrade separately,
-   and existing `mem` configuration and server memory remain unchanged.
-
-Contract and component tests cover controls and security boundaries; targeted
-process tests cover IPC and real HTTP. `verify:ui:*` remains separately opt-in.
-See [owned extension services](../07-plugins/17-owned-extension-services.md) and
-the reference plugin's requirements/compatibility docs for the R1–R12 mapping.
+- **Preconditions:** Isolated temporary profile, synthetic plugin subprocess,
+  loopback HTTP service and credentials. No production memory or paid model.
+- **Steps:** Grant a synthetic plugin owner-call and managed-connection
+  permissions. Register a runtime, invoke read-only and mutating operations,
+  read a permitted session-owned file, and cancel/unload during a pending call.
+  Add, edit, rotate and delete a native connection; retry stale revisions.
+- **Expected:** Host-owned session/project identity reaches only the owning
+  plugin; Plan/Goal reject mutation. Cancellation and unload revoke descendant
+  authority. File reads respect session/worktree scope. Credentials remain in
+  Host storage, and connection ownership, route, TLS and revision checks hold.
+- **Automation:** `plugin-services.test.mjs` proves resident SDK calls continue
+  after startup while panel descendants still expire;
+  `plugin-extension-owner-process.test.mjs`,
+  `plugin-owner-files.test.mjs`, `plugin-connections-user-path.test.mjs` and
+  `plugin-connection-transport.test.mjs` in `apps/desktop/test/`.
+- **Specs:** [Owned extension services](../07-plugins/17-owned-extension-services.md).
+- **Acceptance:** Plugin isolation, lifecycle and native connection contracts.
+- **Milestone:** Maintenance.
+- **Status:** Synthetic process/service coverage. The independent
+  `PI-AI-Memory` repository owns memory recall/capture/handoff, real-server
+  compatibility and full plugin Desktop journeys.
 
 ## Workspace plugin candidate acceptance (ADR 0340)
 
@@ -19310,6 +19300,28 @@ substitute for native Linux packaging or SSH acceptance.
 - **Milestone:** Maintenance.
 - **Status:** Automated isolated Electron and service regression coverage;
   this does not assert live SSH or installed-application acceptance.
+
+### E2E-MCP-private-ca
+
+- **Preconditions:** Candidate worktree, isolated Electron profile and loopback
+  HTTPS MCP fixture with a private CA; no user service or global trust changes.
+- **Steps:** Open the real MCP editor, replace and save its PEM CA, reopen it,
+  reject plaintext HTTP with a CA, clear the CA and switch to stdio. Save and
+  reload the record through Rust. Connect without/with/after clearing the CA;
+  discover and call a tool while its SSE response remains open. Attempt a
+  hostname mismatch, cross-origin redirect and cancelled proxy connection.
+- **Expected:** The CA survives edits/reload and clears explicitly; only the
+  configured HTTPS origin receives additive trust. Default and hostname checks
+  still reject invalid chains. SSE replies arrive before body completion.
+  Proxy routing, compressed bodies and cancellation retain their contracts.
+- **Automation:** `node scripts/e2e-mcp-timeout-clear.mjs`,
+  `node --test apps/desktop/test/mcp-certificates.test.mjs`, and
+  `cargo test -p host-core --locked mcp_servers::tests`.
+- **Specs:** [MCP IPC](../03-runtime/01-ipc-protocol.md#12a-user-mcp-server-api-d193).
+- **Acceptance:** Connection configuration, TLS isolation and compatibility.
+- **Milestone:** Maintenance.
+- **Status:** Automated isolated component, network and persistence coverage;
+  installed application and live memory endpoint acceptance remain separate.
 
 ### E2E-TERMINAL-multiple-tabs
 
