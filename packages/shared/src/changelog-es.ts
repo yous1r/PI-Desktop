@@ -11,6 +11,7 @@ export const esEntries: ChangelogEntry[] = [
       "El editor de instrucciones detecta cambios hechos fuera de la aplicación y conserva tu borrador sin guardar en lugar de sobrescribir cualquiera de las versiones.",
       "Los hosts remotos por SSH instalan el pi-host enlazado estáticamente desde la propia versión de esta compilación, de modo que los hosts con una glibc más antigua se inician correctamente.",
       "Abra varias pestañas de terminal desde la barra de herramientas y cierre cada shell por separado; las demás siguen ejecutándose al cambiar de pestaña.",
+      "Los terminales de proyectos locales de Windows se abren de forma fiable y el selector de shell sigue el tema de la aplicación.",
     ],
   },
   {

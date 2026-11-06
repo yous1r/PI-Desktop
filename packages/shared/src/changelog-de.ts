@@ -11,6 +11,7 @@ export const deEntries: ChangelogEntry[] = [
       "Der Anweisungseditor erkennt Änderungen außerhalb der App und behält deinen ungespeicherten Entwurf, statt eine der beiden Fassungen zu überschreiben.",
       "SSH-Remote-Hosts installieren das statisch gelinkte pi-host aus dem eigenen Release dieses Builds, sodass auch Hosts mit älterer glibc korrekt starten.",
       "Öffnen Sie mehrere Terminal-Tabs direkt über die Symbolleiste und schließen Sie jede Shell einzeln; beim Tabwechsel laufen die anderen weiter.",
+      "Terminals lokaler Windows-Projekte starten zuverlässig, und die Shell-Auswahl folgt dem App-Theme.",
     ],
   },
   {

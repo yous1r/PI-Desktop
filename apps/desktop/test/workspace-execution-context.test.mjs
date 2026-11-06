@@ -104,3 +104,32 @@ test("captured pages reject rebindings and terminal reattachment only relaxes th
   f.setRemote({hostKey:"another-host",path:"/project/repo"});
   await assert.rejects(f.resolver({context,allowReconnect:true}),{code:"WORKSPACE_CHANGED"});
 });
+
+test("Windows native workspace paths retain their durable project and selected root", { skip: process.platform !== "win32" }, async () => {
+  const native = String.raw`D:\Packages\PI-Desktop`;
+  const stored = "D:/Packages/PI-Desktop";
+  let selected = native;
+  let groups = [{ id: "project", name: "Project", primaryPath: stored, roots: [
+    { path: stored, name: "Primary", position: 0 },
+    { path: "D:/Packages/member", name: "Member", position: 1 },
+  ] }];
+  const host = { call: async method => method === "session.get"
+    ? { session: { projectPath: stored } } : { groups } };
+  const resolver = createWorkspaceExecutionResolver({
+    getHost: () => host, currentWorkspacePath: () => selected,
+    remoteState: async () => { throw Error("Unexpected remote lookup"); },
+  });
+  const context = await resolver({ workspacePath: stored });
+  assert.equal(context.projectId, "project");
+  assert.equal(context.roots.find(root => root.primary).path, stored);
+  assert.deepEqual(await resolver({ sessionId: "s", workspacePath: native }), context);
+  selected = String.raw`D:\Other`;
+  assert.deepEqual(await resolver({ context }), context);
+  selected = String.raw`D:\Packages\member`;
+  const member = await resolver();
+  assert.equal(member.projectId, "project");
+  assert.equal(member.roots[0].path, "D:/Packages/member");
+  assert.equal(member.roots[0].primary, true);
+  groups = [];
+  await assert.rejects(resolver({ context }), { code: "WORKSPACE_CHANGED" });
+});

@@ -19322,3 +19322,24 @@ substitute for native Linux packaging or SSH acceptance.
   [workspace terminals](../07-plugins/18-workspace-execution.md).
 - **Status:** Automated component/user-path coverage; installed app and real
   SSH process acceptance are not implied.
+
+### E2E-TERMINAL-workspace-target-paths
+
+- **Entry:** `node --test apps/desktop/test/workspace-terminal-user-path.e2e.mjs`
+  with an available native `node-pty`.
+- **Steps:** Open a terminal with and without a session using the native Windows
+  workspace path while the durable project/session record stores forward
+  slashes. List shells, create one, execute arithmetic, observe output, resize
+  and replay. Switch the selected project, run another command in the retained
+  terminal, close the tab and confirm the handle is gone.
+- **Expected:** No `WORKSPACE_CHANGED` for equivalent Windows paths; input,
+  output and cleanup succeed and a later selection change cannot retarget the
+  live PTY. POSIX spellings, case and other roots/Hosts stay exact.
+- **Coverage:** `workspace-path.test.mjs` pins the comparison rules;
+  `workspace-terminal-router.test.mjs` covers remote identity, actual-path hints,
+  remote sessions and disconnect/reconnect.
+- **Environment:** Production IPC handlers, router, shell discovery and PTY
+  service with a real local shell and isolated temporary directories; only Host
+  records and the Electron sender are fixtures.
+- **Specs:** [Workspace execution](../07-plugins/18-workspace-execution.md).
+- **Status:** Automated process/user-path regression.

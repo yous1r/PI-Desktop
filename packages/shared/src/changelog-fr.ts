@@ -11,6 +11,7 @@ export const frEntries: ChangelogEntry[] = [
       "L'éditeur d'instructions détecte les modifications faites hors de l'application et conserve votre brouillon non enregistré au lieu d'écraser l'une ou l'autre version.",
       "Les hôtes distants SSH installent le pi-host lié statiquement depuis la version propre à cette build, si bien que les hôtes dotés d'une glibc plus ancienne démarrent correctement.",
       "Ouvrez plusieurs onglets de terminal depuis la barre d’outils et fermez chaque shell séparément ; les autres restent actifs lorsque vous changez d’onglet.",
+      "Les terminaux des projets Windows locaux s’ouvrent correctement et le sélecteur de shell suit le thème de l’application.",
     ],
   },
   {

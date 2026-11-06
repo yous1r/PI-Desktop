@@ -159,6 +159,17 @@ use the same tab lifecycle while retaining the legacy two-shell session limit;
 workspace terminals retain the eight-per-device limit. Failed or still-starting
 tabs remain closable, and a late create result for a closed tab is reclaimed.
 
+Built-in terminal target hints are checked against the Host-owned session/project
+binding before shell discovery or creation. Local Windows paths compare native
+backslashes with persisted forward slashes, including the drive-path extended
+prefix and trailing separator; project lookup uses the same comparison so a tab
+opened without a session retains its durable project identity. This does not
+fold case, reinterpret POSIX paths, admit another root or Host, or change the
+actual working directory. SSH host keys, remote paths and `remote-project:*`
+identities remain exact matches, and a failed remote request never falls back to
+a local PTY. The shell picker is the shared anchored menu select rather than a
+native `<select>`, so its popup uses the app surface tokens in both themes.
+
 Trusted Agent extension `pi.exec` routes default/relative/workspace cwd to the
 session's remote workspace. `target:"local"` and legacy explicit absolute outside-root
 helper cwd remain local; `target:"workspace"` forces workspace enforcement. Raw Node
