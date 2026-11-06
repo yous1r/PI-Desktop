@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 import { repositoryRoot } from "../../../scripts/e2e/boot.mjs";
+import { rawSourcePlugin } from "./helpers/raw-source-plugin.mjs";
 
 const root = repositoryRoot();
 const { build } = createRequire(join(root, "packages/agent-runtime/package.json"))("esbuild");
@@ -32,6 +33,7 @@ test("an isolated session launches in its worktree with its project's configurat
       format: "esm",
       packages: "external",
       nodePaths: [join(root, "apps/desktop/node_modules")],
+      plugins: [rawSourcePlugin],
     });
     const { createSessionLaunchRuntime } = await import(pathToFileURL(bundle).href);
 
