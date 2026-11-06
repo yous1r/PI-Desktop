@@ -5,6 +5,7 @@ export const ptBREntries: ChangelogEntry[] = [
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [
+      "Configure um certificado CA privado para um servidor MCP HTTPS sem alterar a confiança do sistema; os certificados salvos permanecem após a edição e podem ser removidos.",
       "Veja as habilidades dos plugins instalados em Configurações → Habilidades, agrupadas por plugin, com busca e contagens.",
       "Instalar, ativar ou recarregar um plugin atualiza seus servidores MCP sem reiniciar o app; turnos em andamento não são interrompidos.",
       "Plugins podem manter um bloco gerenciado no AGENTS.md global enquanto você continua editando tudo ao redor.",
