@@ -2747,6 +2747,7 @@ sklm: {
       "insecureHttpWarning": "Esta conexión HTTP no está cifrada. Es posible que se intercepten credenciales y llamadas a herramientas.",
       "headers": "Encabezados",
       "headersHint": "Enviados con cada solicitud a este punto final.",
+      caRequiresHttps: "Un certificado CA personalizado requiere una dirección HTTPS.",
       "addHeader": "Agregar encabezado",
       "valuePlaceholder": "Valor",
       "removeRow": "Eliminar fila",

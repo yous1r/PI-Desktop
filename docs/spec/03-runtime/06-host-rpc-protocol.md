@@ -842,6 +842,13 @@ against a live host, and replaying one after the final row would be wrong.
   `mcp.setEnabled` / `mcp.setScope` / `mcp.transfer` — user MCP server
   definitions (`MCP_INVALID`)
 
+MCP records may include `caCertificate`, a public PEM bundle for an HTTPS
+endpoint. `mcp.upsert` preserves it when absent and clears it for null/empty
+input; stdio and plaintext HTTP reject custom CA input. The bundle is bounded
+to 64 KiB and 16 certificates and remains in the existing configuration file,
+including transfers. Existing records without it retain platform trust. See
+[the MCP IPC contract](01-ipc-protocol.md#12a-user-mcp-server-api-d193).
+
 `skills.transfer` and `mcp.transfer` take `{ id, from, to }`, each end a
 `{ level, projectPath? }` target (`projectPath` is required for the project
 level), and return `{ skill }` / `{ server }` for the document where it landed.

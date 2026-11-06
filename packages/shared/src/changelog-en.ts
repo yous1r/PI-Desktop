@@ -5,6 +5,7 @@ export const enEntries: ChangelogEntry[] = [
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [
+      "Configure a private CA certificate for an HTTPS MCP server without changing system trust; saved certificates survive editing and can be cleared.",
       "See installed plugin skills in Settings → Skills, grouped by plugin with search and counts.",
       "Installing, enabling, or reloading a plugin refreshes its MCP servers without restarting the app; running turns are not interrupted.",
       "Plugins can keep a managed block in the global AGENTS.md while you keep editing everything around it.",

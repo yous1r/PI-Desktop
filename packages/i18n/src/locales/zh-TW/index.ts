@@ -2742,6 +2742,7 @@ sklm: {
       insecureHttpWarning: "此 HTTP 連線未加密，憑據和工具呼叫可能被截獲。",
       headers: "請求頭",
       headersHint: "每次請求這個地址時都會帶上。",
+      caRequiresHttps: "設定自訂 CA 憑證時必須使用 HTTPS 位址。",
       addHeader: "新增請求頭",
       valuePlaceholder: "值",
       removeRow: "刪除這一行",

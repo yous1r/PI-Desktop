@@ -2800,6 +2800,7 @@ importConfirm: "Imported extensions run inside the agent process with the same a
         "This HTTP connection is not encrypted. Credentials and tool calls may be intercepted.",
       headers: "Headers",
       headersHint: "Sent with every request to this endpoint.",
+      caRequiresHttps: "A custom CA certificate requires an HTTPS address.",
       addHeader: "Add header",
       valuePlaceholder: "Value",
       removeRow: "Remove row",

@@ -1561,6 +1561,16 @@ application-local `<data>/agent-capabilities/mcp.json` state file.
 - `McpServerInput.timeoutSeconds` accepts an integer from 1 through 600.
   Omitting it preserves the current value during an edit; sending `null` clears
   the override and restores the runtime default.
+- `McpServerInput.caCertificate` accepts a public PEM CA bundle (at most 64 KiB
+  and 16 certificates) for HTTPS MCP only. Missing input preserves the saved
+  value; `null` or empty input clears it. The editor exposes this field for HTTP
+  transports and returns existing public CA text when reopened. The public PEM
+  travels with the MCP configuration on transfer; no private key is accepted.
+  Changing or clearing it invalidates existing connections. Trust is additive
+  to default/system roots and confined to the configured HTTPS origin; hostname
+  and certificate verification remain enabled. Cross-origin redirects with a
+  custom CA fail closed. Desktop uses its existing proxy/PAC/bypass route.
+  The field is optional and old configurations require no migration.
 - `mcp.remove({ id, level, projectPath? })`
 - `mcp.setEnabled({ id, enabled, level, projectPath? })`
 - `mcp.setScope` remains a compatibility-shaped call; the Settings page uses

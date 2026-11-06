@@ -491,6 +491,7 @@ export class UserMcpRuntime {
         headers,
       },
       values: record.transport === "stdio" ? (record.env ?? {}) : headers,
+      caCertificate: record.transport === "http" ? record.caCertificate : undefined,
       audit: this.options.audit,
       auditScope: "mcp",
       connectTimeoutMs: customTimeoutMs ?? this.options.connectTimeoutMs,
@@ -554,6 +555,7 @@ export function configurationChanged(before: McpServerRecord, after: McpServerRe
     JSON.stringify(before.args ?? []) !== JSON.stringify(after.args ?? []) ||
     JSON.stringify(before.env ?? {}) !== JSON.stringify(after.env ?? {}) ||
     before.url !== after.url ||
+    before.caCertificate !== after.caCertificate ||
     JSON.stringify(before.headers ?? {}) !== JSON.stringify(after.headers ?? {}) ||
     before.timeoutSeconds !== after.timeoutSeconds
   );
