@@ -50,7 +50,7 @@ test("the optional MCP control server reuses IPC and synchronizes renderer state
   assert.match(api, /selectSessionId\?: string/);
   assert.match(app, /event\.projectPath/);
   assert.match(app, /event\.selectSessionId/);
-  assert.match(app, /openProjectPath\(event\.projectPath\)/);
+  assert.match(app, /openProjectPath\(event\.projectPath,\s*\{\s*prepareRemoteHost: false,?\s*\}\)/);
 });
 
 test("native picker handlers and secret-write channels stay out of the MCP catalog", () => {

@@ -227,17 +227,20 @@ test("list surface strips device tokens even when the record is on disk", async 
     deviceToken: "device-secret",
   });
   const listed = await boot.list();
-  // The summary contains routing/status fields only; the device credential
-  // remains private. SSH metadata defaults to the direct transport.
+  // The summary contains public routing/status/preparation fields only; the
+  // device credential remains private. SSH metadata defaults to direct transport.
   assert.deepEqual(Object.keys(listed[0]).sort(), [
     "connected",
     "hostKey",
     "label",
+    "preparation",
     "status",
     "transport",
     "url",
   ]);
   assert.equal(listed[0].transport, "direct");
+  assert.equal(listed[0].preparation, undefined, "direct hosts have no preparation job");
+  assert.equal(JSON.stringify(listed).includes("device-secret"), false);
   await boot.closeAll();
   await cleanup();
 });
