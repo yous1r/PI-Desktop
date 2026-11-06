@@ -5,6 +5,7 @@ export const deEntries: ChangelogEntry[] = [
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [
+      "Konfigurieren Sie ein privates CA-Zertifikat für einen HTTPS-MCP-Server, ohne das Systemvertrauen zu ändern; gespeicherte Zertifikate bleiben beim Bearbeiten erhalten und können entfernt werden.",
       "Installierte Plugin-Skills unter Einstellungen → Skills ansehen, nach Plugin gruppiert, mit Suche und Anzahl.",
       "Das Installieren, Aktivieren oder Neuladen eines Plugins aktualisiert seine MCP-Server ohne Neustart der App; laufende Turns werden nicht unterbrochen.",
       "Plugins können einen verwalteten Block in der globalen AGENTS.md pflegen, während du alles drumherum weiter bearbeitest.",
