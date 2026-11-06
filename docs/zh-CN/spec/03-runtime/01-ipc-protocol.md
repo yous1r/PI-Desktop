@@ -87,6 +87,12 @@ Main 按 Host 共享准备任务。进度通过 `sessionsChanged` 和主机列�
 已经开始的远程事务自行负责有时限的完成或恢复。取消不会重放远程修改，也不保证回滚。
 参见 [准备流程 ADR](/adr/remote-host-on-demand-preparation)。
 
+`remoteHostBootstrap` 也接受可选布尔值 `allowLegacyMaintenance`。省略时仍拒绝
+未确认的旧版维护操作。添加 SSH Host 的表单保留失败尝试，只有用户确认空闲维护
+窗口后才携带 `true` 重试；修改任意表单值会清除确认。非布尔值在 SSH 执行前拒绝。
+命中已校验的本地安装包缓存时，不再请求下载确认，也不发起发布资源网络请求；
+缓存命中不会绕过维护准入检查。
+
 ## 3.1 逻辑项目组
 
 逻辑项目组是渲染器使用的 ChatGPT 风格项目容器。宿主拥有其 id、显示名称、

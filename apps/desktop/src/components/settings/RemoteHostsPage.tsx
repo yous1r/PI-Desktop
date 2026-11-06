@@ -90,6 +90,8 @@ export function RemoteHostsPage() {
   const [removing, setRemoving] = useState<string | null>(null);
   const [sshForm, setSshForm] = useState<SshForm>(EMPTY_SSH_FORM);
   const [installing, setInstalling] = useState(false);
+  const [maintenanceForm, setMaintenanceForm] = useState<SshForm | null>(null);
+  const installPending = useRef(false);
   const [addMode, setAddMode] = useState<AddMode | null>(null);
   const sshAddActionRef = useRef<HTMLButtonElement>(null);
   const pairAddActionRef = useRef<HTMLButtonElement>(null);
@@ -160,6 +162,7 @@ export function RemoteHostsPage() {
     setAddMode(null);
     setForm(EMPTY_FORM);
     setSshForm(EMPTY_SSH_FORM);
+    setMaintenanceForm(null);
   }, [addMode]);
 
   const reconnect = async (host: RemoteHostSummary) => {
@@ -249,8 +252,8 @@ export function RemoteHostsPage() {
   );
 
   const submitSsh = useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+    async (allowLegacyMaintenance = false) => {
+      if (installPending.current) return;
       const label = sshForm.label.trim();
       const host = sshForm.host.trim();
       if (!host || !label) return;
@@ -262,6 +265,8 @@ export function RemoteHostsPage() {
       const user = sshForm.user.trim();
       const port = sshForm.port.trim();
       const identityFile = sshForm.identityFile;
+      installPending.current = true;
+      setMaintenanceForm(null);
       setInstalling(true);
       try {
         // Empty optional fields are dropped rather than sent blank, so main
@@ -274,21 +279,30 @@ export function RemoteHostsPage() {
           ...(port ? { port: Number(port) } : {}),
           ...(!passwordMode && identityFile ? { identityFile } : {}),
           ...(passwordMode && password ? { password } : {}),
+          ...(allowLegacyMaintenance ? { allowLegacyMaintenance: true } : {}),
         });
+        if (!alive.current) return;
         showToast(t("settings.remoteHosts.sshSucceeded", { label: result.host.label }), {
           variant: "info",
         });
         closeAddForm();
         await refresh();
       } catch (caught) {
+        if (!alive.current) return;
+        if (remoteHostErrorKey(caught) === "remote:preparation.error.maintenanceRequired") {
+          setMaintenanceForm(sshForm);
+          return;
+        }
         const message = t(remoteHostErrorKey(caught));
         showToast(t("settings.remoteHosts.sshFailed", { message }), { variant: "error" });
       } finally {
-        setInstalling(false);
+        installPending.current = false;
+        if (alive.current) setInstalling(false);
       }
     },
     [closeAddForm, sshForm, refresh, showToast, t],
   );
+  const maintenanceRequired = maintenanceForm === sshForm;
   const busy = installing || pairing;
 
   useEffect(() => {
@@ -457,7 +471,7 @@ export function RemoteHostsPage() {
                 aria-labelledby="settings-remote-host-add-dialog-title"
                 hidden={addMode !== "ssh"}
                 className="settings-remote-host-form settings-remote-host-add-panel"
-                onSubmit={submitSsh}
+                onSubmit={(event) => { event.preventDefault(); void submitSsh(maintenanceRequired); }}
               >
                 <div className="settings-remote-host-form-row">
                   <Field label={t("settings.remoteHosts.fieldLabel")}>
@@ -597,6 +611,12 @@ export function RemoteHostsPage() {
                   </Field>
                 )}
 
+                {maintenanceRequired && !installing ? (
+                  <div role="alert" className="remote-preparation">
+                    <p>{remoteT("preparation.error.maintenanceRequired")}</p>
+                    <p className="remote-preparation-hint">{remoteT("preparation.legacyHint")}</p>
+                  </div>
+                ) : null}
                 <div className="settings-remote-host-download-note">
                   <p className="settings-remote-host-meta">{remoteT("preparation.downloadHint")}</p>
                   <Button type="button" variant="ghost" disabled={installing} onClick={openNetworkSettings}>
@@ -610,7 +630,8 @@ export function RemoteHostsPage() {
                   <Button type="submit" variant="primary" disabled={sshSubmitDisabled}>
                     {installing
                       ? t("settings.remoteHosts.sshRunning")
-                      : t("settings.remoteHosts.sshAction")}
+                      : maintenanceRequired ? remoteT("preparation.maintenanceAction")
+                        : t("settings.remoteHosts.sshAction")}
                   </Button>
                 </div>
               </form>

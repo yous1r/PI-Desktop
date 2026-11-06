@@ -142,6 +142,9 @@ export function registerRemoteHostIpc(options: RegisterRemoteHostIpcOptions): vo
       const boot = requireBoot(getRemoteHostsBoot());
       const host = trim(request?.host);
       if (!host) throw invalid("host is required", "host");
+      if (request.allowLegacyMaintenance !== undefined && typeof request.allowLegacyMaintenance !== "boolean") {
+        throw invalid("allowLegacyMaintenance must be a boolean", "allowLegacyMaintenance");
+      }
       const label = trim(request?.label) || host;
       // The descriptor's own validation (empty and leading-dash fields, port
       // range) lives with the bootstrap, which is the only place that knows

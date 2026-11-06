@@ -158,7 +158,9 @@ test("offline admission requires identity, owner device and version evidence", (
   assert.equal(code(() => admitOfflineHost({ ...base, credentialsText: "not json" })), "HOST_RECOVERY_REQUIRED");
   // Version checks still apply to the offline path.
   assert.equal(code(() => admitOfflineHost({ ...base, candidateVersion: "0.22.1-beta.4" })), "HOST_VERSION_MISMATCH");
-  assert.equal(code(() => admitOfflineHost({ ...base, candidateVersion: "0.22.1" })), "HOST_VERSION_MISMATCH");
+  assert.equal(admitOfflineHost({ ...base, candidateVersion: "0.22.1" }).version, "0.22.1-beta.5");
+  assert.equal(admitOfflineHost({ ...base, candidateVersion: "0.22.2" }).hostId, HOST_ID);
+  assert.equal(code(() => admitOfflineHost({ ...base, readyVersion: "0.22.1", candidateVersion: "0.22.2-beta.1" })), "HOST_VERSION_MISMATCH");
   // Without a required device (intact install, stopped process), identity and
   // version alone gate the upgrade; no credential is read or minted.
   const withoutDevice = admitOfflineHost({

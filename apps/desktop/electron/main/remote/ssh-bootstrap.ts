@@ -44,6 +44,7 @@ import { racpUrlForLocalPort } from "./ssh-tunnel.js";
 import { installPiHost } from "./pi-host-installer.js";
 import type { uploadSshArtifact } from "./ssh-artifact-transfer.js";
 import { completeHostDeployment } from "./remote-host-deployment.js";
+import { acquirePiHostArtifact } from "./pi-host-artifact-cache.js";
 
 /** Progress the Settings surface can render while a bootstrap runs. */
 export type SshBootstrapStep =
@@ -66,6 +67,8 @@ export type SshBootstrapDeps = {
   fetchChecksum?: (url: string, signal?: AbortSignal) => Promise<string>;
   /** Production injects Electron fetch after the global proxy has been applied. */
   fetchArtifact?: typeof fetch;
+  /** Optional private persistent cache for verified pi-host release archives. */
+  artifactCacheDir?: string;
   beforeDownload?: () => Promise<void>;
   verifyConnection?: (input: { url: string; deviceToken: string; expectedHostId: string }) => Promise<void>;
   uploadArtifact?: typeof uploadSshArtifact;
@@ -288,6 +291,7 @@ export function createSshBootstrap(deps: SshBootstrapDeps): SshBootstrap {
       signal?.throwIfAborted();
       const label = String(request?.label ?? "").trim() || "remote host";
       const target = validateTarget(request);
+      const remotePort = resolveRemotePort(request);
       const hostKey = (request?.hostKey ?? "").trim() || synthesizeSshHostKey(target, label);
       if (hostKey.includes(":")) {
         throw fail("hostKey must not contain ':'", ErrorCodes.INVALID_ARGUMENT, { field: "hostKey" });
@@ -324,32 +328,46 @@ export function createSshBootstrap(deps: SshBootstrapDeps): SshBootstrap {
             { target: targetKey(remoteTarget) },
           );
         }
-
-        // 2. Resolve the artifact and the digest the release published for it.
-        await deps.beforeDownload?.();
-        signal?.throwIfAborted();
+        // 2. Resolve and verify an exact release; the optional cache eliminates all release requests on a verified hit.
         mark("resolve-release");
         const urls = piHostArtifactUrls(deps.version, remoteTarget);
         const artifactName = piHostArtifactName(deps.version, remoteTarget);
-        mark("download-checksum");
-        const expectedSha256 = parseChecksumFile(await fetchChecksum(urls.checksum, signal), artifactName);
-        signal?.throwIfAborted();
-        if (!expectedSha256) {
-          throw fail(
-            `no usable SHA-256 published for ${artifactName}`,
-            "HOST_INTEGRITY_FAILED",
-            { url: urls.checksum },
-          );
+        let expectedSha256: string;
+        let artifactPath: string | undefined;
+        let releaseArtifact: (() => Promise<void>) | undefined;
+        if (deps.artifactCacheDir) {
+          const artifact = await acquirePiHostArtifact({
+            directory: deps.artifactCacheDir,
+            url: urls.tarball,
+            artifactName,
+            signal,
+            fetchChecksum,
+            fetchArtifact: deps.fetchArtifact,
+            beforeDownload: deps.beforeDownload,
+            onChecksumDownload: () => mark("download-checksum"),
+            onDownload: () => mark("download"),
+          });
+          expectedSha256 = artifact.expectedSha256;
+          artifactPath = artifact.path;
+          releaseArtifact = artifact.release;
+        } else {
+          await deps.beforeDownload?.();
+          signal?.throwIfAborted();
+          mark("download-checksum");
+          expectedSha256 = parseChecksumFile(await fetchChecksum(urls.checksum, signal), artifactName) ?? "";
+          signal?.throwIfAborted();
+          if (!expectedSha256) {
+            throw fail(`no usable SHA-256 published for ${artifactName}`, "HOST_INTEGRITY_FAILED", { url: urls.checksum });
+          }
         }
 
-        // 3. Download through Desktop's global network policy, verify, then upload.
         const scriptInput: PiHostBootstrapScriptInput = {
           version: deps.version,
           artifactUrl: urls.tarball,
           artifactName,
           bundleDir: piHostBundleDir(deps.version, remoteTarget),
           expectedSha256,
-          port: resolveRemotePort(request),
+          port: remotePort,
           pairingLifetimeMs: 600_000,
           readyTimeoutSec,
           ...(options.existing ? { existingHostId: options.existing.hostId,
@@ -361,42 +379,31 @@ export function createSshBootstrap(deps: SshBootstrapDeps): SshBootstrap {
         try {
           result = await installPiHost(transport, scriptInput, {
             timeoutMs: installTimeoutMs, signal, uploadArtifact: deps.uploadArtifact, fetchArtifact: deps.fetchArtifact,
-            onDownload: () => mark("download"), onUpload: () => mark("upload"), onInstall: () => mark("install"), log,
+            ...(artifactPath ? { artifactPath } : {}),
+            onDownload: () => { if (!deps.artifactCacheDir) mark("download"); },
+            onUpload: () => mark("upload"), onInstall: () => mark("install"), log,
           });
         } catch (error) {
-          // The script names the step it failed at on stdout even when it
-          // exits non-zero, and the transport carries that stdout on the
-          // error. Surfacing it is the difference between "exit code 1" and
-          // "checksum-mismatch" in the user's toast.
-          const reported = parseBootstrapOutput(
-            String((error as { stdout?: unknown }).stdout ?? ""),
-          );
+          const reported = parseBootstrapOutput(String((error as { stdout?: unknown }).stdout ?? ""));
           if (!reported.failure) throw error;
-          throw fail(remoteStepMessage(reported.failure), bootstrapFailureCode(reported.failure), { step: reported.failure,
-          });
+          throw fail(remoteStepMessage(reported.failure), bootstrapFailureCode(reported.failure), { step: reported.failure });
+        } finally {
+          await releaseArtifact?.();
         }
         const parsed = parseBootstrapOutput(result.stdout);
-        if (parsed.failure) {
-          throw fail(remoteStepMessage(parsed.failure), bootstrapFailureCode(parsed.failure), { step: parsed.failure,
-          });
-        }
+        if (parsed.failure) throw fail(remoteStepMessage(parsed.failure), bootstrapFailureCode(parsed.failure), { step: parsed.failure });
         if (result.code !== 0) throw fail("Remote Host deployment failed", "HOST_BOOTSTRAP_FAILED");
         if (!parsed.ready || (!options.existing && !parsed.pairing)) {
-          throw fail(
-            "the remote bootstrap produced no ready/pairing output",
-            "HOST_START_FAILED",
-          );
+          throw fail("the remote bootstrap produced no ready/pairing output", "HOST_START_FAILED");
         }
         if (options.existing && parsed.ready.hostId !== options.existing.hostId) {
           throw fail("Remote Host identity changed during upgrade", "HOST_AUTH_FAILED");
         }
         if (!versionsMatch(parsed.ready.version, deps.version)) {
-          throw fail(
-            `the remote host runs ${parsed.ready.version}; this desktop runs ${deps.version}`,
-            ErrorCodes.HOST_VERSION_MISMATCH,
-            { remote: parsed.ready.version, local: deps.version },
-          );
+          throw fail(`the remote host runs ${parsed.ready.version}; this desktop runs ${deps.version}`,
+            ErrorCodes.HOST_VERSION_MISMATCH, { remote: parsed.ready.version, local: deps.version });
         }
+
 
         // 4. Forward a loopback port to the host's loopback port.
         mark("forward");

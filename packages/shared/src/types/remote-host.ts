@@ -163,6 +163,8 @@ export type RemoteHostBootstrapRequest = {
    * first line break — so such a value is rejected with `INVALID_ARGUMENT`.
    */
   password?: string;
+  /** Explicit consent for this installation attempt on a legacy Host. */
+  allowLegacyMaintenance?: boolean;
 };
 
 export type RemoteHostBootstrapResult = {

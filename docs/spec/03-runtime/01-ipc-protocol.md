@@ -93,6 +93,13 @@ remote transaction owns its bounded completion/recovery. Cancellation never
 replays a remote mutation or guarantees rollback. See the
 [preparation ADR](../../adr/remote-host-on-demand-preparation.md).
 
+`remoteHostBootstrap` also accepts optional boolean `allowLegacyMaintenance`.
+Omitting it preserves the maintenance refusal. The Add SSH Host form retains the
+failed attempt and retries with `true` only after the user confirms its idle
+window; any form edit clears this confirmation. Nonboolean flags are rejected
+before SSH. A verified local archive hit does not request download consent again
+and makes no release network request; it does not bypass maintenance admission.
+
 ## 3.1 Logical project groups
 
 A project group is the ChatGPT-style project container used by the renderer.

@@ -189,9 +189,16 @@ discovery; tool execution itself never reconnects and replays a failed call.
 remote workspace readiness compare the live Host with this Desktop's exact
 release and required RACP workspace capabilities. Passive startup and inventory
 loading never install or upgrade. First download requires a visible action;
-subsequent upgrades reuse saved consent. The same-version policy includes beta
-identifiers; newer remote releases and ambiguous/cross-channel versions fail
-without downgrade. Direct-URL hosts and missing SSH credentials are not managed.
+subsequent upgrades reuse saved consent. Exact matching includes prerelease
+identifiers. An older prerelease may advance to a newer stable Desktop release;
+newer remote releases, stable-to-prerelease changes, different prerelease tracks
+and ambiguous ordering fail without downgrade. Direct-URL hosts and missing SSH
+credentials are not managed.
+
+Verified archives persist in Desktop's private `cache/pi-host`, independently of
+Host records. Exact release/platform hits are rehashed and uploaded without
+checksum/archive requests. Cache misses use the applied global proxy. Atomic
+publication excludes partial downloads; bounds are eight releases and 1 GiB.
 
 One preparation job serves independent caller IDs per Host. Progress is exposed
 as `RemoteHostSummary.preparation` through the existing host-list refresh event.
@@ -209,8 +216,15 @@ activation, the owner-only maintenance interface requires zero other clients
 and no active work, then fences new admission with a bounded lease. Legacy Hosts
 require explicit confirmation of an idle maintenance window. Busy Hosts are
 left running. No forced kill or automatic database rollback is permitted.
+The Add SSH Host form retains its values on `HOST_MAINTENANCE_REQUIRED` and sends
+`allowLegacyMaintenance: true` only after confirmation; editing the form clears
+that confirmation.
 Interrupted deployment records whether startup may have touched persistent data;
 unsafe or ambiguous recovery fails closed with `HOST_RECOVERY_REQUIRED`.
+Readiness accepts the Host's ISO pairing expiry and legacy numeric expiry,
+rejecting malformed records. Deployment completion resolves `current` to its
+physical directory before invoking the CLI, including for older installed
+workers whose entry guard does not recognize a symbolic link.
 See [on-demand preparation ADR](../../adr/remote-host-on-demand-preparation.md).
 
 Provider configuration is copied only after explicit selection and consent in

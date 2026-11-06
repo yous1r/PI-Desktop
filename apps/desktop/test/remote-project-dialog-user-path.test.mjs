@@ -27,7 +27,11 @@ import { RemoteProjectPreparationGate } from "../../apps/desktop/src/components/
 import { isBlockingOverlayActive } from "../../apps/desktop/src/lib/blocking-overlay";
 import "../../apps/desktop/src/styles/project-create-dialog.css";
 
-await i18n.use(initReactI18next).init({ lng: "en", keySeparator: false,
+// Mirrors apps/desktop/src/main.tsx: the "remote" namespace keeps its nested
+// shape (useTranslation("remote") resolves dotted paths there), while the
+// flattened "translation" catalog still answers flat keys through
+// ignoreJSONStructure. keySeparator: false would break every remoteT() label.
+await i18n.use(initReactI18next).init({ lng: "en", fallbackLng: "en",
   resources: { en: { translation: flattenCatalog(catalogs.en), remote: remoteEn } },
   interpolation: { escapeValue: false } });
 const calls = [];
@@ -42,6 +46,9 @@ window.piDesktop = { platform: "darwin", channels: IPC, on() { return () => {}; 
   calls.push({ channel, input });
   const data = await (async () => { switch (channel) {
    case IPC.invoke.remoteHostList: return { hosts: [{ hostKey: "h1", label: "Server 1", connected: true }, { hostKey: "h2", label: "Server 2", connected: true }, { hostKey: "offline", label: "Offline", connected: false }] };
+   case IPC.invoke.remoteHostBootstrap:
+    if (input.allowLegacyMaintenance !== true) throw Object.assign(new Error("maintenance required"), { errorCode: "HOST_MAINTENANCE_REQUIRED" });
+    return { host: { hostKey: "added", label: input.label, connected: true }, ssh: {}, steps: [] };
    case IPC.invoke.remoteHostPrepare: return { host: { hostKey: input.hostKey, label: input.hostKey, connected: true, preparation: { hostKey: input.hostKey, targetVersion: "1.0.0", phase: "ready" } } };
    case IPC.invoke.remoteHostPrepareCancel: return { ok: true };
    case IPC.invoke.remoteHostBrowseProjects:
@@ -63,7 +70,10 @@ window.piDesktop = { platform: "darwin", channels: IPC, on() { return () => {}; 
  }
 };
 const view = createRoot(document.getElementById("root"));
-const frame = () => new Promise(requestAnimationFrame);
+// A hidden BrowserWindow can be treated as occluded, which throttles
+// requestAnimationFrame to ~1 Hz; keep frame waits bounded so a throttled
+// window cannot stall the probe until the harness kills Electron.
+const frame = () => Promise.race([new Promise(requestAnimationFrame), new Promise((resolve) => setTimeout(resolve, 16))]);
 async function settle() { await frame(); await frame(); }
 function check(condition, message) { if (!condition) throw new Error(message); }
 async function until(predicate, message) { for (let n=0;n<120;n++) { if (predicate()) return; await frame(); } throw new Error(message + " body=" + document.body.textContent + " calls=" + JSON.stringify(calls)); }
@@ -77,6 +87,25 @@ window.remoteProjectProbe = async () => {
  check(!isBlockingOverlayActive(), "hidden preparation gate blocked native views");
  flushSync(() => view.render(React.createElement(React.Fragment, null, React.createElement(RemoteHostsPage), React.createElement(ProjectCreateDialog))));
  await until(() => document.querySelectorAll(".settings-remote-host-card").length === 3, "remote host inventory did not load");
+ document.querySelector('#remote-host-add-ssh').click();
+ await until(() => document.querySelector('#remote-host-add-panel-ssh:not([hidden])'), "SSH form missing");
+ const sshForm = () => document.querySelector('#remote-host-add-panel-ssh');
+ const fields = sshForm().querySelectorAll('input');
+ input(fields[0], "Legacy server"); input(fields[1], "legacy.example");
+ sshForm().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+ sshForm().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+ const installs = () => calls.filter((entry) => entry.channel === IPC.invoke.remoteHostBootstrap);
+ await until(() => button(remoteEn.preparation.maintenanceAction, sshForm()), "maintenance failure has no confirmation action");
+ check(installs().length === 1 && installs()[0].input.allowLegacyMaintenance === undefined, "initial install bypassed consent or submitted twice");
+ check(sshForm().textContent.includes(remoteEn.preparation.legacyHint), "legacy maintenance warning missing");
+ input(sshForm().querySelectorAll('input')[1], "other.example");
+ check(!button(remoteEn.preparation.maintenanceAction, sshForm()), "changed SSH target retained old maintenance consent");
+ sshForm().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+ await until(() => button(remoteEn.preparation.maintenanceAction, sshForm()), "changed target did not request fresh consent");
+ check(installs()[1].input.allowLegacyMaintenance === undefined, "new target auto-confirmed maintenance");
+ button(remoteEn.preparation.maintenanceAction, sshForm()).click();
+ await until(() => !document.querySelector('.settings-remote-host-add-dialog'), "confirmed legacy installation did not finish");
+ check(installs().length === 3 && installs()[2].input.allowLegacyMaintenance === true && installs()[2].input.host === "other.example", "confirmed install lost consent or target");
  const hostCard = [...document.querySelectorAll(".settings-remote-host-card")].find((card) => card.textContent.includes("Server 2"));
  check(hostCard, "requested host card missing");
  const createButton = button("New project", hostCard);
@@ -99,7 +128,7 @@ window.remoteProjectProbe = async () => {
  picker().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
  await until(() => !picker(), "Escape did not close picker"); await settle();
  check(document.querySelector('.project-create-dialog'), "Escape closed parent project dialog");
- check(document.activeElement === button("Browse folders"), "cancel did not restore browse focus");
+ await until(() => document.activeElement === button("Browse folders"), "cancel did not restore browse focus");
  choose(document.querySelector("select"), "offline");
  button("Browse folders").click();
  await until(() => picker()?.querySelector(".remote-project-browser-path")?.textContent === "/home/user", "offline paired host did not browse after restore");
@@ -132,7 +161,7 @@ window.remoteProjectProbe = async () => {
  await until(() => !picker(), "choose did not close folder dialog"); await settle();
  check(document.querySelector(".remote-project-picker input").value === "/home/user/app", "chosen path not retained");
  check(document.querySelector("#project-create-name").value === "My server app", "folder name overrode local project name");
- check(document.activeElement === button("Browse folders"), "choose did not restore browse focus");
+ await until(() => document.activeElement === button("Browse folders"), "choose did not restore browse focus");
  button("Browse folders").click();
  await until(() => picker()?.querySelector(".remote-project-browser-path")?.textContent === "/home/user/app", "picker did not reopen selected folder");
  input(picker().querySelector("input"), "/home/user");
@@ -227,7 +256,7 @@ app.whenReady().then(async () => {
 });`);
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
-    const child = spawn(resolveElectronBinary(root).electronBinary, [join(temp, "main.cjs")], { env, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(resolveElectronBinary(root).electronBinary, [`--user-data-dir=${join(temp, "profile")}`, join(temp, "main.cjs")], { env, stdio: ["ignore", "pipe", "pipe"] });
     let output = "";
     for (const stream of [child.stdout, child.stderr]) {
       stream.setEncoding("utf8");

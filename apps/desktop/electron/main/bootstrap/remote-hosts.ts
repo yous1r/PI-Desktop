@@ -480,7 +480,9 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
     async bootstrapHost(request) {
       assertOpen();
       const controller = new AbortController();
-      const task = bootstrap.bootstrap(request, { signal: controller.signal });
+      const task = bootstrap.bootstrap(request, {
+        signal: controller.signal, allowLegacyMaintenance: request.allowLegacyMaintenance === true,
+      });
       bootstraps.set(controller, task);
       const outcome = await task.finally(() => { bootstraps.delete(controller); });
       let adopted = false;

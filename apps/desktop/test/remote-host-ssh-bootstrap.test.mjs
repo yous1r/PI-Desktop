@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { register } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-
 const here = dirname(fileURLToPath(import.meta.url));
 register(pathToFileURL(join(here, "helpers/ts-import-hooks.mjs")));
 
@@ -13,11 +15,10 @@ const { createSshBootstrap, synthesizeSshHostKey } = await import(
 const { sshHostRecord, sshMetadataOf, transportOf } = await import(
   "../electron/main/bootstrap/remote-hosts.ts"
 );
-
 const VERSION = "0.15.1-beta.5";
+const DIGEST = createHash("sha256").update("archive").digest("hex");
 const ARTIFACT_NAME = `pi-host-${VERSION}-linux-x64.tar.gz`;
 const ARTIFACT_URL = `https://github.com/yous1r/PI-Desktop/releases/download/v${VERSION}/${ARTIFACT_NAME}`;
-const DIGEST = "0123456789abcdef".repeat(4);
 const RESERVED_PORT = 49_152;
 
 /** The two lines the remote script prints on success, with `41234` as the
@@ -107,6 +108,40 @@ async function catchError(run) {
   }
   throw new Error("expected the call to reject");
 }
+
+test("persistent verified artifact is reused by a later bootstrap without any release fetch", async () => {
+  const cacheDirectory = await mkdtemp(join(tmpdir(), "pi-host-bootstrap-cache-"));
+  try {
+    let checksumFetches = 0, artifactFetches = 0;
+    const make = () => {
+      const transport = fakeTransport();
+      const fixture = harness({ transport });
+      const bootstrap = createSshBootstrap({
+        version: VERSION,
+        artifactCacheDir: cacheDirectory,
+        buildTransport: () => transport,
+        uploadArtifact: async (_transport, input) => {
+          assert.ok(input.artifactPath);
+          assert.equal(input.expectedSha256, DIGEST);
+          return { path: "/home/test/.pi-desktop/pi-host/.upload.ABC123/artifact.tar.gz", cleanup: async () => {} };
+        },
+        fetchChecksum: async () => { checksumFetches++; return `${DIGEST}  ${ARTIFACT_NAME}\n`; },
+        fetchArtifact: async () => {
+          artifactFetches++;
+          const bytes = Buffer.from("archive");
+          assert.equal(createHash("sha256").update(bytes).digest("hex"), DIGEST);
+          return new Response(bytes);
+        },
+        reservePort: async () => RESERVED_PORT,
+        exchangePairing: async () => "dt_secret",
+      });
+      return { ...fixture, bootstrap };
+    };
+    await make().bootstrap.bootstrap(request());
+    await make().bootstrap.bootstrap(request());
+    assert.deepEqual([checksumFetches, artifactFetches], [1, 1]);
+  } finally { await rm(cacheDirectory, { recursive: true, force: true }); }
+});
 
 test("bootstrap probes, installs, forwards, and pairs in order", async () => {
   const { bootstrap, built, fetched, pairings, progress, transport } = harness();

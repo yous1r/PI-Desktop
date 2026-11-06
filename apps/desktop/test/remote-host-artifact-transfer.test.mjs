@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, writeFile, rm, stat } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile, rm, stat, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { register } from "node:module";
 register(new URL("./helpers/ts-import-hooks.mjs", import.meta.url));
 const { uploadSshArtifact } = await import("../electron/main/remote/ssh-artifact-transfer.ts");
 const { createSshBootstrap } = await import("../electron/main/remote/ssh-bootstrap.ts");
+const { acquirePiHostArtifact, piHostCachePaths } = await import("../electron/main/remote/pi-host-artifact-cache.ts");
 const { createSystemSshTransport } = await import("../electron/main/remote/ssh-transport.ts");
 const bytes = Buffer.from([0, 255, 10, 13, 42, 0, 123]);
 const digest = createHash("sha256").update(bytes).digest("hex");
@@ -24,6 +25,21 @@ function transferFixture(overrides = {}) {
   };
   return { transport, commands, uploads };
 }
+test("upload consumes a verified cached path without redownloading or deleting its borrowed file", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-host-upload-cache-"));
+  try {
+    const cachedPath = join(directory, "verified.tar.gz");
+    await writeFile(cachedPath, bytes, { mode: 0o600 });
+    let fetches = 0;
+    const f = transferFixture();
+    const artifact = await uploadSshArtifact(f.transport, { url, expectedSha256: digest,
+      artifactPath: cachedPath, fetchArtifact: async () => { fetches++; throw new Error("must use cache"); } });
+    assert.deepEqual(f.uploads[0].data, bytes);
+    assert.equal(fetches, 0);
+    await assert.doesNotReject(readFile(cachedPath));
+    await artifact.cleanup();
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
 test("verified bytes stream over SSH, temporary local bytes are removed, cleanup is idempotent", async () => {
   const f = transferFixture();
   const artifact = await uploadSshArtifact(f.transport, { url, expectedSha256: digest,
@@ -76,6 +92,132 @@ test("release, network, integrity and upload failures keep distinct safe codes",
   const f = transferFixture({ execWithFile: async () => ({ code: 1, stdout: "", stderr: "secret" }) });
   await assert.rejects(uploadSshArtifact(f.transport, { url, expectedSha256: digest,
     fetchArtifact: async () => new Response(bytes) }), { errorCode: "HOST_UPLOAD_FAILED" });
+});
+const cacheVersion = "1.2.3";
+const cacheArtifact = `pi-host-${cacheVersion}-linux-x64.tar.gz`;
+const cacheUrl = `https://github.com/yous1r/PI-Desktop/releases/download/v${cacheVersion}/${cacheArtifact}`;
+const cacheChecksum = `${digest}  ${cacheArtifact}\n`;
+async function acquireCache(directory, overrides = {}) {
+  return acquirePiHostArtifact({ directory, url: cacheUrl, artifactName: cacheArtifact,
+    fetchChecksum: async () => cacheChecksum, fetchArtifact: async () => new Response(bytes), ...overrides });
+}
+test("verified archive cache survives a new instance and hit avoids checksum/artifact network", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-host-cache-"));
+  try {
+    let checksumFetches = 0, artifactFetches = 0;
+    const first = await acquireCache(directory, {
+      fetchChecksum: async () => { checksumFetches++; return cacheChecksum; },
+      fetchArtifact: async () => { artifactFetches++; return new Response(bytes); },
+    });
+    await first.release();
+    const second = await acquireCache(directory, {
+      fetchChecksum: async () => { checksumFetches++; throw new Error("cache hit requested checksum"); },
+      fetchArtifact: async () => { artifactFetches++; throw new Error("cache hit requested artifact"); },
+    });
+    assert.equal(second.expectedSha256, digest);
+    assert.deepEqual(await readFile(second.path), bytes);
+    assert.deepEqual([checksumFetches, artifactFetches], [1, 1]);
+    await second.release();
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+test("cache identities separate version and platform release URLs", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-host-cache-"));
+  try {
+    const base = await acquireCache(directory); await base.release();
+    const armName = `pi-host-${cacheVersion}-linux-arm64.tar.gz`;
+    const armUrl = `https://github.com/yous1r/PI-Desktop/releases/download/v${cacheVersion}/${armName}`;
+    let fetches = 0;
+    const arm = await acquirePiHostArtifact({ directory, url: armUrl, artifactName: armName,
+      fetchChecksum: async () => { fetches++; return `${digest}  ${armName}\n`; },
+      fetchArtifact: async () => { fetches++; return new Response(bytes); } });
+    await arm.release();
+    const nextVersion = "1.2.4", nextName = `pi-host-${nextVersion}-linux-x64.tar.gz`;
+    const nextUrl = `https://github.com/yous1r/PI-Desktop/releases/download/v${nextVersion}/${nextName}`;
+    const next = await acquirePiHostArtifact({ directory, url: nextUrl, artifactName: nextName,
+      fetchChecksum: async () => { fetches++; return `${digest}  ${nextName}\n`; },
+      fetchArtifact: async () => { fetches++; return new Response(bytes); } });
+    assert.notEqual(piHostCachePaths(directory, cacheUrl, cacheArtifact).manifest,
+      piHostCachePaths(directory, armUrl, armName).manifest);
+    assert.notEqual(piHostCachePaths(directory, cacheUrl, cacheArtifact).manifest,
+      piHostCachePaths(directory, nextUrl, nextName).manifest);
+    assert.equal(fetches, 4);
+    await next.release();
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+test("corrupt cached bytes are never returned and are refreshed only against published digest", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-host-cache-"));
+  try {
+    const first = await acquireCache(directory); const cachedPath = first.path; await first.release();
+    await writeFile(cachedPath, "corruption");
+    let checksumFetches = 0, artifactFetches = 0;
+    const refreshed = await acquireCache(directory, {
+      fetchChecksum: async () => { checksumFetches++; return cacheChecksum; },
+      fetchArtifact: async () => { artifactFetches++; return new Response(bytes); },
+    });
+    assert.deepEqual(await readFile(refreshed.path), bytes);
+    assert.deepEqual([checksumFetches, artifactFetches], [1, 1]);
+    await refreshed.release();
+    await writeFile(refreshed.path, "again-corrupt");
+    await assert.rejects(acquireCache(directory, { fetchChecksum: async () => `${"0".repeat(64)}  ${cacheArtifact}\n`,
+      fetchArtifact: async () => new Response(bytes) }), { errorCode: "HOST_INTEGRITY_FAILED" });
+    await assert.rejects(readFile(refreshed.path), { code: "ENOENT" });
+    const files = await readdir(join(directory, "archives"));
+    assert.ok(files.every(name => !name.startsWith(".partial-")));
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+test("invalid cached release metadata is discarded before a verified refresh", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-host-cache-"));
+  try {
+    const first = await acquireCache(directory); await first.release();
+    const { manifest } = piHostCachePaths(directory, cacheUrl, cacheArtifact);
+    const metadata = JSON.parse(await readFile(manifest, "utf8"));
+    await writeFile(manifest, JSON.stringify({ ...metadata, url: "https://invalid.example/archive" }));
+    let downloads = 0;
+    const refreshed = await acquireCache(directory, { fetchArtifact: async () => {
+      downloads++; return new Response(bytes);
+    } });
+    try { assert.equal(downloads, 1); assert.deepEqual(await readFile(refreshed.path), bytes); }
+    finally { await refreshed.release(); }
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+test("failed or cancelled artifact downloads leave no partial or reusable manifest", async () => {
+  for (const mode of ["failure", "abort"]) {
+    const directory = await mkdtemp(join(tmpdir(), "pi-host-cache-"));
+    try {
+      const controller = new AbortController();
+      const fetchArtifact = async () => {
+        if (mode === "failure") return new Response(new ReadableStream({
+          start(stream) { stream.enqueue(bytes.subarray(0, 3)); stream.error(new Error("network interrupted")); },
+        }));
+        return new Response(new ReadableStream({
+          start(stream) { stream.enqueue(bytes.subarray(0, 3)); controller.abort(); },
+        }));
+      };
+      await assert.rejects(acquireCache(directory, { fetchArtifact, signal: controller.signal }),
+        mode === "abort" ? { name: "AbortError" } : { errorCode: "HOST_DOWNLOAD_FAILED" });
+      const releases = await readdir(join(directory, "releases"));
+      const archives = await readdir(join(directory, "archives"));
+      assert.deepEqual(releases, []); assert.ok(archives.every(name => !name.startsWith(".partial-")));
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  }
+});
+test("concurrent callers serialize safely and the waiter reuses the verified result", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-host-cache-"));
+  try {
+    let artifactFetches = 0;
+    const first = await acquireCache(directory, { fetchArtifact: async () => {
+      artifactFetches++; return new Response(bytes);
+    } });
+    let secondFetches = 0;
+    const secondPending = acquireCache(directory, { fetchChecksum: async () => {
+      secondFetches++; return cacheChecksum;
+    }, fetchArtifact: async () => { secondFetches++; return new Response(bytes); } });
+    await new Promise(resolvePromise => setImmediate(resolvePromise));
+    await first.release();
+    const second = await secondPending;
+    assert.equal(artifactFetches, 1); assert.equal(secondFetches, 0); assert.equal(first.path, second.path);
+    await second.release();
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });
 function bootstrapFixture(step) {
   const scripts = [], uploads = [], paired = [];
@@ -138,4 +280,25 @@ test("system SSH file transport preserves binary stdin", { skip: process.platfor
     assert.deepEqual(await readFile(dest), bytes);
     await assert.rejects(transport.execWithFile("cat >/dev/null", join(dir, "missing")), { errorCode: "HOST_BOOTSTRAP_FAILED" });
   } finally { transport.dispose(); await rm(dir, { recursive: true, force: true }); }
+});
+
+test("cache retention stays bounded and keeps the just-acquired archive", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-host-cache-bound-"));
+  try {
+    let latest;
+    for (let patch = 0; patch < 10; patch++) {
+      const version = `2.0.${patch}`, artifactName = `pi-host-${version}-linux-x64.tar.gz`;
+      const content = Buffer.from(`release-${patch}`), hash = createHash("sha256").update(content).digest("hex");
+      const lease = await acquirePiHostArtifact({ directory, artifactName,
+        url: `https://github.com/yous1r/PI-Desktop/releases/download/v${version}/${artifactName}`,
+        fetchChecksum: async () => `${hash}  ${artifactName}`,
+        fetchArtifact: async () => new Response(content),
+      });
+      try { assert.deepEqual(await readFile(lease.path), content); latest = lease.path; }
+      finally { await lease.release(); }
+    }
+    assert.equal((await readdir(join(directory, "releases"))).length, 8);
+    assert.equal((await readdir(join(directory, "archives"))).length, 8);
+    assert.deepEqual(await readFile(latest), Buffer.from("release-9"));
+  } finally { await rm(directory, { recursive: true, force: true }); }
 });

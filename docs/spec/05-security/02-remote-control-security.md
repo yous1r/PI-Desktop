@@ -156,6 +156,11 @@ pairing only binds a desktop device to the Host it started.
   fallback, per-Host proxy or reverse proxy tunnel is allowed. Do not bypass
   SSH host-key checks, TLS validation or proxy authentication. SHA-256 is relative
   to the trusted release, not independent signature verification.
+  Desktop MAY reuse its private verified archive cache after rehashing every
+  hit. Cache metadata must match the exact trusted release/platform URL; archive
+  paths derive from SHA-256 only. Hits require no network. Corrupt entries must
+  refresh through the same proxy and integrity checks. Publish atomically, limit
+  archives to 512 MiB each, and retain at most eight releases / 1 GiB.
 - New bundles include native Node >=22 and `SHA256SUMS`. Stage privately, reject
   unsafe manifest entries and special files, verify installed files, and switch
   content-addressed `current` atomically under deployment/install locks. Reuse
@@ -166,8 +171,9 @@ pairing only binds a desktop device to the Host it started.
 - Passive startup and inventory loading MUST NOT install or upgrade. Explicit
   remote-project readiness MAY prepare a missing, damaged or older compatible
   managed installation. The first download requires consent; later upgrades
-  reuse it. Exact version matching includes prereleases. Newer remote releases,
-  cross-channel versions and unknown ordering MUST NOT be downgraded.
+  reuse it. Exact version matching includes prereleases. Older prereleases may
+  advance to a newer stable release. Newer remote releases, stable-to-prerelease
+  changes, other prerelease tracks and unknown ordering MUST NOT be replaced.
 - Preparation MUST preserve saved Host ID, device token, SSH secrets and data.
   Authenticate a running old Host before replacement. Upgrades MUST NOT pair
   again or recreate identity. A direct URL or missing encrypted SSH password
