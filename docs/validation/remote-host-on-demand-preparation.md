@@ -88,5 +88,5 @@ removed before further development.
   publication remain unperformed. Local fixture results do not satisfy those gates.
 
 See [decision](../adr/remote-host-on-demand-preparation.md),
-[Host operations](../../apps/pi-host/README.md) and
-[unreleased changes](../../apps/pi-host/CHANGELOG.md).
+[Host operations](https://github.com/yous1r/PI-Desktop/blob/feat/remote-host-demand-update/apps/pi-host/README.md) and
+[unreleased changes](https://github.com/yous1r/PI-Desktop/blob/feat/remote-host-demand-update/apps/pi-host/CHANGELOG.md).
