@@ -18,7 +18,7 @@ const stubPort = Number(process.env.STUB_PORT || 47123);
 
 rmSync(dataDir, { recursive: true, force: true });
 rmSync(pluginsDir, { recursive: true, force: true });
-for (const dir of [dataDir, extDir, pluginsDir, join(project, "src")]) mkdirSync(dir, { recursive: true });
+for (const dir of [dataDir, extDir, pluginsDir, join(project, "src"), join(root, "moved-project")]) mkdirSync(dir, { recursive: true });
 writeFileSync(join(project, "src", "hello.txt"), "hello\n");
 writeFileSync(join(root, "hooks.log"), "");
 
@@ -58,6 +58,9 @@ write("greet.ts", `import { appendFileSync } from "node:fs";
 const log = (line: string) => appendFileSync(${JSON.stringify(hookLog)}, line + "\\n");
 export default function (pi: any) {
   pi.on("before_agent_start", (e) => ({ systemPrompt: e.systemPrompt + "\\n\\nE2E-MARKER-greet" }));
+  pi.registerCommand("runtime_probe", { description: "Checks command session preparation", handler(args: string, ctx: any) {
+    log("runtime_probe " + JSON.stringify({ args, cwd: ctx.cwd }));
+  } });
   pi.registerCommand("greet", { description: "Greets you", async handler(args: string, ctx: any) {
     const name = await ctx.ui.input("Your name?", "e.g. Ann");
     const color = await ctx.ui.select("Favourite colour", ["red", "blue"]);
