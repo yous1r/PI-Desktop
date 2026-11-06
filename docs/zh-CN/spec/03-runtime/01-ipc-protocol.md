@@ -39,6 +39,7 @@
 | `notification` | 持久收件箱 list/read/clear 和 new/activated 事件 |
 | `stats` | 已完成回合的 token 历史（host RPC；仪表板由插件拥有） |
 | `voice/live` | 应用管理的实时语音通话、无凭证状态/设置 DTO 与每通电话专用媒体端口 |
+| `remoteHost` | 已配对远程主机列表、显式 SSH 准备，以及可独立取消的等待请求 |
 
 ## 3. 通道约定
 
@@ -66,6 +67,25 @@ event: pi-desktop/<domain>/event/<name>
 - `pi-desktop/project-group/memory/get` / `save`
 - `pi-desktop/project-group/instructions/get` / `save`
 - `pi-desktop/session/collaboration`
+
+### 远程 Host 准备
+
+`pi-desktop/remoteHost/prepare` 接受
+`{hostKey, requestId, allowDownload?, allowLegacyMaintenance?, retry?}`，
+准备就绪后返回 `{host: RemoteHostSummary}`。`hostKey` 是不含冒号的非空有界字符串；
+`requestId` 最多 128 个字符。可选标志必须为布尔值，未知字段会被拒绝。
+`prepareCancel` 仅接受 `{hostKey, requestId}`，返回 `{ok:true}`，只取消对应调用者的等待。
+
+Main 按 Host 共享准备任务。进度通过 `sessionsChanged` 和主机列表中的可选
+`preparation` 对象传递：`{hostKey, targetVersion, currentVersion?, phase, errorCode?}`。
+阶段涵盖检查、下载确认、下载、上传、安装、等待空闲或维护确认、启动与连接、就绪、
+失败和取消。现有客户端可以忽略此新增字段。对象不包含凭据、代理 URL、原始 SSH
+输出或虚构的完成百分比。
+
+首次下载和旧版主机维护需要用户操作明确设置授权标志。重试只绕过失败冷却时间。
+被动启动和列表刷新不会调用安装器。最后一个等待者关闭时会中止待处理的本地工作；
+已经开始的远程事务自行负责有时限的完成或恢复。取消不会重放远程修改，也不保证回滚。
+参见 [准备流程 ADR](/adr/remote-host-on-demand-preparation)。
 
 ## 3.1 逻辑项目组
 
