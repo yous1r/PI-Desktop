@@ -2706,3 +2706,27 @@ Only the displayed request accepts a response. Queued, duplicate, stale, or
 foreign-window responses cannot grant execution. Renderer unmount/navigation,
 process loss, window close, plugin unload and shutdown deny pending requests.
 The existing host RPC and grant file format are unchanged.
+
+## Global floating personal todos
+
+The `personalTodos` channel family is additive:
+
+| Invoke suffix | Payload | Result data | Sender |
+| --- | --- | --- | --- |
+| get | none | PersonalTodoView | Main shell or widget |
+| edit | items, expectedEditVersion | accepted PersonalTodoView | Widget |
+| flush | none | saved PersonalTodoView | Widget |
+| window | action=open/collapse, or action=pin with boolean value | PersonalTodoView | Widget; main may open |
+| copy | title, note | copied=true | Widget |
+| quitReady | requestId | accepted=true | Widget |
+
+Prefix: `pi-desktop/personalTodos/`. Invokes use the normal Result envelope.
+`event/changed` carries the current view, edit/saved versions, save status,
+error, window state and safe appearance subset. `event/prepareQuit` asks the
+editor to pause input and drain unsent edits before acknowledging quitReady.
+Its payload is `{ requestId: string | null }`; null resumes input when quit
+preparation fails or is cancelled. Main then freezes new writes and flushes
+before Host teardown. The narrow widget preload exposes
+only these calls/events; sender identity includes webContents, main frame and
+exact renderer URL. Copy writes current text and full note separated by a blank
+line, preserving note newlines; empty notes produce just the title.

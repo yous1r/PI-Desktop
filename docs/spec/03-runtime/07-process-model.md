@@ -397,3 +397,19 @@ only the last organization copy, which is replaced after renderer bootstrap.
 Menu command readiness is acknowledged after bootstrap's initial navigation,
 so a tray click cannot be overwritten by the startup draft or pending-plan
 selection. See [ADR tray-session-shortcuts](/adr/tray-session-shortcuts).
+
+## Global floating personal todos
+
+Main owns one separate personal-todo BrowserWindow and an in-memory draft writer.
+After normal startup the window opens expanded, initially pinned; explicit second
+launches reopen it. It is not parented to the main window and survives main
+minimize/close-to-tray. Its close action hides it. Tray/titlebar open reuses it.
+Only bounds and pin preference survive restart. Screen changes clamp its bounds.
+
+Drafts are handed to Main immediately. The Main timer flushes after 500ms idle
+or 2s oldest-dirty age; a 5s acknowledgement deadline surfaces failure. Blur,
+collapse and quit request immediate flush. The confirmed quit path drains editor
+messages and saves while Host is alive, before disposing any application resources.
+A failed save keeps the app alive for Retry or Cancel. The window, timers and
+screen listeners are disposed on application quit. Stacking uses native pin state,
+not focus/raise polling. See [ADR](../../adr/global-floating-personal-todos.md).

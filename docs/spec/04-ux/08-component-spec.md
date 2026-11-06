@@ -4593,3 +4593,29 @@ Input, selection, submission and dismissal semantics remain unchanged.
 Project-delete descriptions and plugin dialog headings/outcomes also wrap long
 project or plugin names instead of overflowing their existing widths. Project
 instructions, memory and OAuth dialogs retain their existing bounded layouts.
+
+## Global floating personal todos
+
+A global checklist icon sits immediately left of the work-panel control, with
+reserved chrome width on chat and non-chat routes. It opens one profile-global
+personal board. The native window initially measures 360x480 DIP, supports drag
+and resize, and remembers placement and pin preference. Every process launch is
+expanded; first use is pinned. Collapse only hides it until explicitly reopened
+or the next process launch. The tray offers Open personal todos.
+
+Each ordered row contains a completion checkbox, editable title, independently
+expandable multiline plain-text note, and icon-only Copy/Delete controls. Title
+and note edits save as typed, including blank drafts. Completed rows stay in place.
+Copy includes current title and complete note even when collapsed or unsaved.
+Pin and Collapse are icon-only toolbar controls. Icons use 28px minimum hit boxes,
+localized tooltips and accessible names. The window follows app language/theme.
+
+Save states distinguish loading, pending, saving, saved and error. Saved requires
+Host confirmation; a late response never marks newer input saved. Errors retain
+input and expose Retry. The 5s save target includes continuous typing under normal
+writable storage. App quit waits for pending edits; failure offers retry/cancel.
+Native secure desktops and OS compositor restrictions are outside stacking control.
+
+The personal todo surface follows language and font preferences and system/light/
+dark appearance. Plugin theme CSS is not exported through its narrow bridge;
+plugin theme preferences therefore fall back to system light/dark.

@@ -7,12 +7,14 @@ import {
   useState,
 } from "react";
 import { ConversationTopbar } from "../../components/ConversationTopbar";
+import { IPC } from "@pi-desktop/shared";
 import { ExtensionPromptHost } from "../../components/ExtensionPromptDialog";
 import { PluginRendererHost } from "../../plugins/renderer-host/PluginRendererHost";
 import {
   IconNewSession,
   IconPanel,
   IconPanelOpen,
+  IconListChecks,
 } from "../../components/icons";
 import { LifecycleConfirmationDialog } from "../../components/LifecycleConfirmationDialog";
 import { WorkspacePluginConsentDialog } from "../../components/plugins/WorkspacePluginConsentDialog";
@@ -385,6 +387,18 @@ export function AppShell() {
       {(ready && !showSplash) || startupPhase !== "starting" ? (
         <WindowControls />
       ) : null}
+      <TooltipButton
+        type="button"
+        className="app-personal-todos-toggle no-drag"
+        tooltip={t("personalTodos.open")}
+        ariaLabel={t("personalTodos.open")}
+        onClick={() => {
+          void window.piDesktop?.invoke(IPC.invoke.personalTodosWindow, { action: "open" })
+            .catch((error: unknown) => console.error("Failed to open personal todos", error));
+        }}
+      >
+        <IconListChecks size={15} />
+      </TooltipButton>
       <ProjectCreateDialog />
       <LifecycleConfirmationDialog />
       <WorkspacePluginConsentDialog />

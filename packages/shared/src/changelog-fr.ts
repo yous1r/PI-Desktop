@@ -5,6 +5,7 @@ export const frEntries: ChangelogEntry[] = [
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [
+      "Utilisez une liste de tâches flottante globale avec notes par tâche, copie groupée, enregistrement automatique et restauration au redémarrage.",
       "Configurez un certificat CA privé pour un serveur MCP HTTPS sans modifier la confiance du système ; les certificats enregistrés survivent aux modifications et peuvent être supprimés.",
       "Consultez les compétences des plugins installés dans Réglages → Compétences, groupées par plugin, avec recherche et compteurs.",
       "Installer, activer ou recharger un plugin actualise ses serveurs MCP sans redémarrer l'application ; les tours en cours ne sont pas interrompus.",
