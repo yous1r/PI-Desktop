@@ -2774,6 +2774,7 @@ importConfirm: "가져온 확장은 에이전트 프로세스 안에서 에이�
         "이 HTTP 연결은 암호화되지 않았습니다. 자격 증명과 도구 호출이 가로채일 수 있습니다.",
       headers: "헤더",
       headersHint: "이 엔드포인트로 보내는 모든 요청에 포함됩니다.",
+      caRequiresHttps: "사용자 지정 CA 인증서에는 HTTPS 주소가 필요합니다.",
       addHeader: "헤더 추가",
       valuePlaceholder: "값",
       removeRow: "행 제거",

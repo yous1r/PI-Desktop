@@ -2774,6 +2774,7 @@ importConfirm: "İçe aktarılan uzantılar ajan sürecinde, ajanın kendi araç
         "Bu HTTP bağlantısı şifreli değil. Kimlik bilgileri ve araç çağrıları ele geçirilebilir.",
       headers: "Üstbilgiler",
       headersHint: "Bu uç noktaya her istekle gönderilir.",
+      caRequiresHttps: "Özel CA sertifikası için HTTPS adresi gerekir.",
       addHeader: "Üstbilgi ekle",
       valuePlaceholder: "Değer",
       removeRow: "Satırı kaldır",

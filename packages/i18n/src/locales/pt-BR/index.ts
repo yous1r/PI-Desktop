@@ -2711,6 +2711,7 @@ export const ptBR = {
       insecureHttpWarning: "Esta conexão HTTP não é criptografada. Credenciais e chamadas de ferramentas podem ser interceptadas.",
       headers: "Cabeçalhos",
       headersHint: "Enviados com cada requisição para este endpoint.",
+      caRequiresHttps: "Um certificado CA personalizado exige um endereço HTTPS.",
       addHeader: "Adicionar cabeçalho",
       valuePlaceholder: "Valor",
       removeRow: "Excluir linha",

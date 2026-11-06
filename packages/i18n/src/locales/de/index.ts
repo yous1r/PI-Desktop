@@ -2747,6 +2747,7 @@ sklm: {
       "insecureHttpWarning": "Diese HTTP-Verbindung ist nicht verschlüsselt. Anmeldeinformationen und Toolaufrufe können abgefangen werden.",
       "headers": "Header",
       "headersHint": "Wird mit jeder Anfrage an diesen Endpunkt gesendet.",
+      caRequiresHttps: "Ein eigenes CA-Zertifikat erfordert eine HTTPS-Adresse.",
       "addHeader": "Header hinzufügen",
       "valuePlaceholder": "Wert",
       "removeRow": "Zeile entfernen",

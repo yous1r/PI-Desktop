@@ -2748,6 +2748,7 @@ sklm: {
       "insecureHttpWarning": "Cette connexion HTTP n'est pas cryptée. Les informations d’identification et les appels d’outils peuvent être interceptés.",
       "headers": "En-têtes",
       "headersHint": "Envoyés avec chaque demande adressée à ce point de terminaison.",
+      caRequiresHttps: "Un certificat CA personnalisé nécessite une adresse HTTPS.",
       "addHeader": "Ajouter un en-tête",
       "valuePlaceholder": "Valeur",
       "removeRow": "Supprimer la ligne",

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** Exercise timeout validation and clearing through the production MCP editor in Electron. */
+/** Exercise timeout and private CA editing through the production MCP editor in Electron. */
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
@@ -10,7 +10,7 @@ import { repositoryRoot, resolveElectronBinary } from "./e2e/boot.mjs";
 
 const root = repositoryRoot();
 const { build } = createRequire(join(root, "packages/agent-runtime/package.json"))("esbuild");
-const temp = await mkdtemp(join(tmpdir(), "pi-mcp-timeout-clear-"));
+const temp = await mkdtemp(join(process.env.PI_SCRATCH_DIR ?? tmpdir(), "pi-mcp-editor-"));
 try {
   await build({
     entryPoints: [join(root, "scripts/e2e/mcp-timeout-clear.tsx")],
@@ -20,7 +20,7 @@ try {
     format: "iife",
     jsx: "automatic",
     define: { "process.env.NODE_ENV": '"production"', "import.meta.env.DEV": "false" },
-    loader: { ".css": "empty" },
+    loader: { ".css": "empty", ".pem": "text" },
     alias: {
       "@pi-desktop/i18n": join(root, "packages/i18n/src/index.ts"),
       react: join(root, "apps/desktop/node_modules/react"),
@@ -46,6 +46,8 @@ app.whenReady().then(async () => {
     await window.loadFile(path.join(__dirname, "index.html"));
     const result = await window.webContents.executeJavaScript("window.mcpTimeoutClearProbe()");
     console.log("MCP_TIMEOUT_CLEAR " + JSON.stringify(result));
+    const certificates = await window.webContents.executeJavaScript("window.mcpCertificateProbe()");
+    console.log("MCP_CERTIFICATES " + JSON.stringify(certificates));
     app.exit(0);
   } catch (error) {
     console.error("MCP_TIMEOUT_CLEAR " + (error?.stack ?? String(error)));
@@ -88,6 +90,14 @@ app.whenReady().then(async () => {
     invalidValueBlocked: true,
     clearedValueEnabled: true,
     savedTimeoutSeconds: null,
+  });
+  const certificateLine = output.split(/\r?\n/).find(item => item.startsWith("MCP_CERTIFICATES "));
+  assert(certificateLine, output.slice(-3000));
+  const certificates = JSON.parse(certificateLine.slice("MCP_CERTIFICATES ".length));
+  console.log(certificateLine);
+  assert.deepEqual(certificates, {
+    existingCertificateVisible: true, certificateSavedAndReopened: true,
+    plainHttpBlocked: true, clearedCertificateReopenedEmpty: true, stdioHidesCertificate: true,
   });
 } finally {
   await rm(temp, { recursive: true, force: true });

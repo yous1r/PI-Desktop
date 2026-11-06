@@ -62,6 +62,8 @@ export type McpServerRecord = {
   /** http: absolute endpoint; HTTP is allowed for local and LAN servers. */
   url?: string;
   headers?: Record<string, string>;
+  /** Public CA PEM trusted only by this MCP endpoint. */
+  caCertificate?: string;
   /** Handshake/connection timeout in seconds (optional override). */
   timeoutSeconds?: number;
   enabled: boolean;
@@ -83,6 +85,8 @@ export type McpServerInput = {
   env?: Record<string, string>;
   url?: string;
   headers?: Record<string, string>;
+  /** Undefined preserves the CA; null clears it. */
+  caCertificate?: string | null;
   /** Set to null to clear an existing server-specific timeout override. */
   timeoutSeconds?: number | null;
   enabled?: boolean;

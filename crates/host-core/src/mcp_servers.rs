@@ -10,6 +10,8 @@ use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::Path;
 
+mod certificates;
+
 const MAX_SERVERS: usize = 128;
 const MAX_ARGS: usize = 64;
 const MAX_ENV_ENTRIES: usize = 64;
@@ -42,6 +44,8 @@ pub struct McpServerRecord {
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub headers: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ca_certificate: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_seconds: Option<u64>,
     pub enabled: bool,
     #[serde(default)]
@@ -71,6 +75,8 @@ struct McpConfig {
     #[serde(default)]
     headers: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    ca_certificate: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     timeout_seconds: Option<u64>,
 }
 
@@ -88,6 +94,8 @@ pub struct McpServerInput {
     pub env: Option<BTreeMap<String, String>>,
     pub url: Option<String>,
     pub headers: Option<BTreeMap<String, String>>,
+    #[serde(default, deserialize_with = "certificates::deserialize_ca_override")]
+    pub ca_certificate: Option<Option<String>>,
     #[serde(default, deserialize_with = "deserialize_timeout_override")]
     pub timeout_seconds: Option<Option<u64>>,
     pub enabled: Option<bool>,
@@ -257,6 +265,7 @@ impl McpServerRegistry {
                 env: config.env,
                 url: config.url,
                 headers: config.headers,
+                ca_certificate: config.ca_certificate,
                 timeout_seconds: config.timeout_seconds,
                 enabled,
                 scope: scope_for(level, owner_project_path.as_deref()),
@@ -339,6 +348,9 @@ impl McpServerRegistry {
             if !(1..=600).contains(&timeout) {
                 bail!("MCP_INVALID: timeoutSeconds must be between 1 and 600");
             }
+        }
+        if let Some(pem) = &config.ca_certificate {
+            certificates::validate_ca(pem, &config.transport, config.url.as_deref())?;
         }
         match config.transport.as_str() {
             "stdio" => {
@@ -441,6 +453,9 @@ impl McpServerRegistry {
             if input.url.is_some() || input.headers.is_some() {
                 bail!("MCP_INVALID: a stdio server must not set url or headers");
             }
+            if input.ca_certificate.flatten().is_some() {
+                bail!("MCP_INVALID: a stdio server must not set caCertificate");
+            }
             config.command = input
                 .command
                 .map(|value| value.trim().to_string())
@@ -467,6 +482,13 @@ impl McpServerRegistry {
                 .headers
                 .or_else(|| previous_same_transport.map(|record| record.headers.clone()))
                 .unwrap_or_default();
+            config.ca_certificate = input
+                .ca_certificate
+                .unwrap_or_else(|| {
+                    previous_same_transport.and_then(|record| record.ca_certificate.clone())
+                })
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty());
         }
         Self::validate_config(&config)?;
         if same_level.len() >= MAX_SERVERS && existing.is_none() {

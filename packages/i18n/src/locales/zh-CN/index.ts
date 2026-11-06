@@ -2743,6 +2743,7 @@ sklm: {
       insecureHttpWarning: "此 HTTP 连接未加密，凭据和工具调用可能被截获。",
       headers: "请求头",
       headersHint: "每次请求这个地址时都会带上。",
+      caRequiresHttps: "配置自定义 CA 证书时必须使用 HTTPS 地址。",
       addHeader: "添加请求头",
       valuePlaceholder: "值",
       removeRow: "删除这一行",

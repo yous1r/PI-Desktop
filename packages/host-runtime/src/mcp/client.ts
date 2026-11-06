@@ -1,4 +1,5 @@
 import { createHttpTransport } from "./http-transport.js";
+import { createMcpTlsFetch, type McpTlsTunnel } from "./tls.js";
 import { MCP_PROTOCOL_VERSION, mcpError, type McpError, type JsonRpcMessage, type McpTransport, type McpTransportHandlers } from "./transport.js";
 export { MCP_PROTOCOL_VERSION, type JsonRpcMessage, type McpTransport, type McpTransportHandlers } from "./transport.js";
 import { spawn as nodeSpawn, type ChildProcess } from "node:child_process";
@@ -258,6 +259,9 @@ export type McpServerClientOptions = {
   callTimeoutMs?: number;
   /** Budget for the whole `tools/list` traversal, however many pages it spans. */
   discoveryTimeoutMs?: number;
+  /** User-configured public CA trust, scoped to the configured HTTPS origin. */
+  caCertificate?: string;
+  tlsTunnel?: McpTlsTunnel;
   /** Test seams. */
   spawnImpl?: typeof nodeSpawn;
   fetchImpl?: typeof fetch;
@@ -433,7 +437,9 @@ export class McpServerClient {
         url: String(this.opts.server.url ?? ""),
         headers: this.opts.values,
         timeoutMs,
-        fetchImpl: this.opts.fetchImpl,
+        fetchImpl: this.opts.caCertificate
+          ? createMcpTlsFetch(this.opts.caCertificate, String(this.opts.server.url ?? ""), this.opts.tlsTunnel)
+          : this.opts.fetchImpl,
         assertUrlAllowed: this.opts.assertUrlAllowed,
       },
       handlers,

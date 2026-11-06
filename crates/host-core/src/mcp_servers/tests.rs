@@ -100,6 +100,7 @@ fn disabled_project_server_shadows_global_server() {
         env: BTreeMap::new(),
         url: None,
         headers: BTreeMap::new(),
+        ca_certificate: None,
         timeout_seconds: None,
         enabled: true,
         scope: ActivationScope::default(),
@@ -467,5 +468,109 @@ fn moving_one_projects_server_to_global_keeps_another_projects_state() {
         assert!(!registry
             .state
             .enabled(MCP_KIND, CapabilityLevel::Global, "files", None));
+    });
+}
+
+#[test]
+fn ca_certificate_survives_save_reload_and_can_be_cleared() {
+    let home = tempdir().unwrap();
+    let app = tempdir().unwrap();
+    let ca =
+        include_str!("../../../../scripts/e2e/fixtures/certificates/localhost-cert.pem").trim();
+    test_support::with_global_agents(home.path(), || {
+        let mut registry = McpServerRegistry::new(app.path());
+        let input = serde_json::from_value(serde_json::json!({
+            "id": "private", "transport": "http", "url": "https://localhost/mcp", "caCertificate": ca
+        })).unwrap();
+        let saved = registry.upsert(input).unwrap();
+        assert_eq!(serde_json::to_value(&saved).unwrap()["caCertificate"], ca);
+        let mut registry = McpServerRegistry::new(app.path());
+        let preserved = registry
+            .upsert(
+                serde_json::from_value(serde_json::json!({ "id": "private", "label": "Renamed" }))
+                    .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(
+            serde_json::to_value(preserved).unwrap()["caCertificate"],
+            ca
+        );
+        let cleared = registry
+            .upsert(
+                serde_json::from_value(
+                    serde_json::json!({ "id": "private", "caCertificate": null }),
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert!(serde_json::to_value(cleared)
+            .unwrap()
+            .get("caCertificate")
+            .is_none());
+    });
+}
+
+#[test]
+fn ca_certificate_rejects_http_keys_and_oversized_input() {
+    let home = tempdir().unwrap();
+    let app = tempdir().unwrap();
+    let ca = include_str!("../../../../scripts/e2e/fixtures/certificates/localhost-cert.pem");
+    test_support::with_global_agents(home.path(), || {
+        let mut registry = McpServerRegistry::new(app.path());
+        for (url, pem) in [
+            ("http://localhost/mcp", ca.to_string()),
+            (
+                "https://localhost/mcp",
+                "-----BEGIN PRIVATE KEY-----".into(),
+            ),
+            ("https://localhost/mcp", "x".repeat(65537)),
+        ] {
+            let input = serde_json::from_value(serde_json::json!({ "id": "private", "transport": "http", "url": url, "caCertificate": pem })).unwrap();
+            assert!(registry.upsert(input).is_err());
+        }
+    });
+}
+
+#[test]
+fn ca_certificate_survives_transfer_with_destination_collision() {
+    let home = tempdir().unwrap();
+    let app = tempdir().unwrap();
+    let project = tempdir().unwrap();
+    let ca =
+        include_str!("../../../../scripts/e2e/fixtures/certificates/localhost-cert.pem").trim();
+    test_support::with_global_agents(home.path(), || {
+        let mut registry = McpServerRegistry::new(app.path());
+        let source = serde_json::from_value(serde_json::json!({
+            "id": "private", "transport": "http", "url": "https://localhost/mcp", "caCertificate": ca
+        })).unwrap();
+        registry.upsert(source).unwrap();
+        let mut collision = stdio("private");
+        collision.level = Some("project".into());
+        collision.project_path = Some(project.path().to_string_lossy().into());
+        registry.upsert(collision).unwrap();
+        let moved = registry
+            .transfer(
+                "private",
+                &CapabilityTarget {
+                    level: CapabilityLevel::Global,
+                    project_path: None,
+                },
+                &CapabilityTarget {
+                    level: CapabilityLevel::Project,
+                    project_path: Some(project.path().to_string_lossy().into()),
+                },
+            )
+            .unwrap();
+        assert_eq!(moved.id, "private-2");
+        assert_eq!(moved.ca_certificate.as_deref(), Some(ca));
+        assert!(registry
+            .list(CapabilityLevel::Global, None)
+            .unwrap()
+            .is_empty());
+        let raw = fs::read_to_string(moved.path.unwrap()).unwrap();
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&raw).unwrap()["caCertificate"],
+            ca
+        );
     });
 }

@@ -12,7 +12,7 @@ import {
   type McpTransport,
   type ProjectRecord,
 } from "@pi-desktop/shared";
-import { Button, Field, HelpIcon, Input, SettingsToggle, TooltipButton, cx, portalOverlay } from "../ui";
+import { Button, Field, HelpIcon, Input, SettingsToggle, Textarea, TooltipButton, cx, portalOverlay } from "../ui";
 import { IconPlay, IconServer, IconTerminal, IconX } from "../icons";
 import { ScopeControl } from "./ScopeControl";
 import { KeyValueRows, pairsToRecord, recordToPairs, type KeyValuePair } from "./KeyValueRows";
@@ -47,6 +47,7 @@ export type McpDraft = {
   env: KeyValuePair[];
   url: string;
   headers: KeyValuePair[];
+  caCertificate: string;
   enabled: boolean;
   scope: ActivationScope;
   timeoutSeconds: string;
@@ -63,6 +64,7 @@ export function emptyMcpDraft(): McpDraft {
     env: [],
     url: "",
     headers: [],
+    caCertificate: "",
     enabled: true,
     scope: GLOBAL_SCOPE,
     timeoutSeconds: "",
@@ -80,6 +82,7 @@ export function draftFromRecord(record: McpServerRecord): McpDraft {
     env: recordToPairs(record.env),
     url: record.url ?? "",
     headers: recordToPairs(record.headers),
+    caCertificate: record.caCertificate ?? "",
     enabled: record.enabled,
     scope: resolveScope(record.scope),
     timeoutSeconds: record.timeoutSeconds !== undefined ? String(record.timeoutSeconds) : "",
@@ -159,6 +162,7 @@ export function draftToInput(
       transport: "http",
       url: draft.url.trim(),
       headers: pairsToRecord(draft.headers),
+      caCertificate: draft.caCertificate.trim() || null,
     };
   }
   return {
@@ -234,6 +238,7 @@ export function mcpDraftError(draft: McpDraft): string | null {
   } catch {
     return "extensions.mcp.errorUrlShape";
   }
+  if (draft.caCertificate.trim() && parsed.protocol !== "https:") return "extensions.mcp.caRequiresHttps";
   if (parsed.protocol === "http:" || parsed.protocol === "https:") return null;
   return "extensions.mcp.errorUrlScheme";
 }
@@ -500,6 +505,15 @@ export function McpEditorSheet({
                   addLabel={t("extensions.mcp.addHeader")}
                 />
               </div>
+              <Field label={t("plugins.connections.caField")} hint={t("plugins.connections.caHint")}>
+                <Textarea
+                  aria-label={t("plugins.connections.caField")}
+                  value={draft.caCertificate}
+                  placeholder={t("plugins.connections.caPlaceholder")}
+                  rows={3}
+                  onChange={(event) => set("caCertificate", event.target.value)}
+                />
+              </Field>
             </>
           )}
 

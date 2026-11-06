@@ -1,4 +1,4 @@
-import { managedConnectionTransport } from "../plugin-connection-network";
+import { managedConnectionTransport, managedConnectionTunnel } from "../plugin-connection-network";
 import { createOwnerFileReader } from "../plugin-owner-files";
 import { dialog, globalShortcut, shell, type BrowserWindow } from "electron";
 import { join } from "node:path";
@@ -572,7 +572,7 @@ export function createPluginServices({
     },
   });
   userMcp = new UserMcpRuntime({
-    createClient: (config) => new McpServerClient(config),
+    createClient: (config) => new McpServerClient({ ...config, tlsTunnel: managedConnectionTunnel }),
     oauth: mcpOAuth,
     connectTimeoutMs: MCP_CONNECT_TIMEOUT_MS,
     callTimeoutMs: MCP_CALL_TIMEOUT_MS,
