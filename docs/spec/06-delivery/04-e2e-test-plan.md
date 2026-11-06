@@ -19408,15 +19408,22 @@ substitute for native Linux packaging or SSH acceptance.
 - Preconditions: dedicated latest-main candidate, built Desktop/Host, disposable
   profile, no provider accounts or access to the user's running app.
 - Entry: `node scripts/e2e-personal-todos.mjs` (new focused suite).
-- Steps: start and observe expanded/pinned board; add title and per-item multiline
+- Steps: start and observe the compact pinned top-docked strip; expand; repeatedly
+  click the titlebar entry; switch light/dark themes; add title and per-item multiline
   Chinese note, type continuously, copy unsaved draft, complete/delete rows; collapse
-  and reopen from shell; hide main; unpin; quit immediately after editing; relaunch.
+  to the first-title summary (one line, <=100 CSS px, ellipsis); repeatedly reopen
+  from strip/shell; hide main; unpin; quit immediately after editing; relaunch.
+  Open/close the work panel and enter/leave Settings: the todo entry belongs to
+  the top toolbar and follows its positioning/visibility without a floating copy.
   Also exercise unauthorized IPC, storage failure/retry and stale responses in
   targeted production-handler tests.
 - Expected: one board independent of session; icon-only actions; content persists
   within 5s including continued input; copied text matches latest title/note; collapse
-  does not exit; pinned window survives main hiding; restart expands and restores
-  content/geometry/pin; no loss on normal immediate quit; failed saves never show
+  remains visible as the compact strip; pinned window survives main hiding;
+  restart starts compact and restores content/pin and the independent editor geometry;
+  repeated opens and collapse/expand cycles never grow it, including fractional DPI;
+  both themes retain rounded corners, a subtle border and CSS shadow without an
+  opaque native surround; no loss on normal immediate quit; failed saves never show
   saved and cannot silently discard drafts during exit.
 - Coverage: `personal-todos-main.test.mjs`, `personal-todos-window.test.mjs`, widget
   user-path tests, Rust `personal_todos` repository/RPC tests, focused Electron suite.

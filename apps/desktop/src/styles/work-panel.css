@@ -143,7 +143,9 @@
   /* Keep the fixed work-panel toggle in its own hit-target lane. The reserve is
      spent from the toggle's size/inset tokens plus the header's own control
      gap, so the last panel control ends exactly one button gap before the
-     toggle instead of behind a divider. */
+     toggle instead of behind a divider. The personal board entry is a toolbar
+     action on the conversation topbar, not an overlay here, so this header
+     reserves nothing for it. */
   padding: 0
     calc(
       var(--ds-work-panel-toggle-size) + var(--ds-work-panel-toggle-inset) +

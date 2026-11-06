@@ -14,11 +14,19 @@ applications or remain visible when the main window hides.
 
 ## Decision
 
-Create one native personal-todo window per local Desktop profile. It opens on
-startup, defaults to pinned, remembers geometry/pin preference, and collapses to
-a global titlebar icon. Collapse lasts only for this process. A tray action also
-opens the window. Main-window visibility does not own the widget's visibility.
-The widget's close action collapses it; app quit still follows ordered shutdown.
+Create one native personal-todo window per local Desktop profile. It starts as a
+compact top-docked strip, defaults to pinned, and remembers independent expanded
+geometry/pin preference. The strip shows only the first ordered title; opening it
+or the chat toolbar/tray entry expands the same editor. Main-window visibility
+does not own the widget's visibility. Close collapses to the strip; app quit still
+follows ordered shutdown. A transparent native surface lets the renderer own
+themed rounding and a soft shadow without stacking an OS shadow behind it.
+
+The additive optional `PersonalTodoView.collapsed` flag communicates presentation
+through the existing narrow bridge. Older views without the flag remain expanded.
+The native window stays visible in both modes; persistence and sender permissions
+are unchanged. Requested geometry is retained separately from native DIP rounding
+to avoid cumulative growth when reopening or restoring an editor.
 
 The Host stores one versioned document and last-mutation fingerprint atomically
 in a dedicated `kv` namespace. CAS revision checks and an idempotency token make

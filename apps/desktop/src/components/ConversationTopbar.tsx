@@ -19,6 +19,7 @@ import {
   scheduledReturnFor,
   scheduledReturnUsesHistory,
 } from "../features/scheduled/scheduled-return";
+import { PersonalTodosTitlebarAction } from "../features/app/chrome";
 import {
   IconChevronLeft,
   IconFolder,
@@ -340,6 +341,10 @@ export function ConversationTopbar({
           >
             <IconSearch size={15} />
           </TooltipButton>
+          {/* The board is a toolbar action: it sits in this cluster, on this
+              flex line, so it moves with New Task and Search when the work
+              panel takes width from the pane. */}
+          <PersonalTodosTitlebarAction />
         </div>
       </div>
     </div>

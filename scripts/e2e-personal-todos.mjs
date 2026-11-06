@@ -29,7 +29,7 @@ async function waitFor(fn,label,timeout=20000){
 }
 async function freePort(){const server=createServer();await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));const port=server.address().port;await new Promise(resolve=>server.close(resolve));return port;}
 await writeFile(fixture,`
-const {app,BrowserWindow,clipboard}=require('electron');
+const {app,BrowserWindow,clipboard,screen}=require('electron');
 app.setPath('appData',${JSON.stringify(profile)});
 app.setPath('home',${JSON.stringify(testHome)});
 app.setPath('userData',${JSON.stringify(profile)});
@@ -39,7 +39,7 @@ process.on('message',async message=>{
   const todo=windows.find(w=>w.webContents.getURL().includes('surface=personal-todos'));
   const main=windows.find(w=>w.webContents.getURL().includes('renderer/index.html')&&!w.webContents.getURL().includes('surface='));
   let value;
-  if(message.action==='inspect')value={count:windows.filter(w=>w.webContents.getURL().includes('surface=personal-todos')).length,visible:todo?.isVisible(),pinned:todo?.isAlwaysOnTop(),bounds:todo?.getBounds(),clipboard:clipboard.readText()};
+  if(message.action==='inspect')value={count:windows.filter(w=>w.webContents.getURL().includes('surface=personal-todos')).length,visible:todo?.isVisible(),pinned:todo?.isAlwaysOnTop(),bounds:todo?.getBounds(),workArea:todo?screen.getDisplayMatching(todo.getBounds()).workArea:null,clipboard:clipboard.readText()};
   else if(message.action==='hideMain'){main?.hide();value=true;}
   else if(message.action==='closeTodo'){todo?.close();value=true;}
   else if(message.action==='forceExit'){value=true;setImmediate(()=>app.exit(1));}
@@ -79,15 +79,54 @@ async function launch(){
  const targets=await waitFor(async()=>{try{const response=await fetch(`http://127.0.0.1:${port}/json/list`,{signal:AbortSignal.timeout(500)});const list=await response.json();return list.some(t=>t.url.includes('surface=personal-todos'))&&list.some(t=>t.url.includes('renderer/index.html')&&!t.url.includes('surface='))?list:null;}catch{return null;}},'both production windows',45000);
  const widget=await connect(targets.find(t=>t.url.includes('surface=personal-todos')).webSocketDebuggerUrl);
  const main=await connect(targets.find(t=>t.url.includes('renderer/index.html')&&!t.url.includes('surface=')).webSocketDebuggerUrl);
- await waitFor(()=>widget.eval(`Boolean(document.querySelector('.personal-todos-add:not(:disabled)'))`),'widget ready');
+ await waitFor(()=>widget.eval(`Boolean(document.querySelector('.personal-todos-expand'))`),'compact widget ready');
  return {widget,main};
 }
-async function quit(){const exited=once(child,'exit');await command('quit');await Promise.race([exited.then(([code])=>assert.equal(code,0)),delay(45000).then(()=>{throw Error('Normal quit timed out');})]);for(const c of connections)c.close();connections=[];child=null;}
+async function quit(){const exited=once(child,'exit');await command('quit');await Promise.race([exited.then(([code])=>assert.equal(code,0)),delay(45000,undefined,{ref:false}).then(()=>{throw Error('Normal quit timed out');})]);for(const c of connections)c.close();connections=[];child=null;}
 async function readDisk(){const host=new Host(binary,dataDir,{quiet:true,env:{PI_DESKTOP_AGENTS_DIR:join(testHome,'.agents')}});try{await host.start();return await host.call('personalTodos.get',{});}finally{await host.stop();}}
 try{
- const seed=new Host(binary,dataDir,{quiet:true,env:{PI_DESKTOP_AGENTS_DIR:join(testHome,'.agents')}});try{await seed.start();await seed.call('settings.set',{language:'en',theme:'dark',updatePreference:'manual'});}finally{await seed.stop();}
+ const seed=new Host(binary,dataDir,{quiet:true,env:{PI_DESKTOP_AGENTS_DIR:join(testHome,'.agents')}});try{await seed.start();await seed.call('settings.set',{language:'en',theme:'dark',updatePreference:'manual'});await seed.call('session.create',{title:'Todo toolbar layout',mode:'agent'});}finally{await seed.stop();}
  let {widget,main}=await launch();
  let native=await command('inspect');assert.equal(native.count,1);assert.equal(native.visible,true);assert.equal(native.pinned,true);
+ assert.ok(native.bounds.height<=100);assert.equal(native.bounds.y,native.workArea.y);
+ await widget.click('.personal-todos-expand');
+ await waitFor(()=>widget.eval(`Boolean(document.querySelector('.personal-todos-add:not(:disabled)'))`),'expanded editor ready');
+ const expandedBounds=(await command('inspect')).bounds;
+ await waitFor(()=>main.eval(`Boolean(document.querySelector('.app-personal-todos-toggle'))`),'titlebar entry');
+ await waitFor(()=>main.eval(`Boolean(document.querySelector('[data-sidebar-session-row]'))`),'test session row');
+ await main.click('[data-sidebar-session-row]');
+ await waitFor(()=>main.eval(`Boolean(document.querySelector('.app-work-panel-toggle:not(:disabled)'))`),'session toolbar');
+ if(await main.eval(`Boolean(document.querySelector('.conversation-topbar.ct-work-panel-open'))`)){
+  await main.click('.app-work-panel-toggle');
+  await waitFor(()=>main.eval(`!document.querySelector('.conversation-topbar.ct-work-panel-open')`),'initial panel closed');
+ }
+ const toolbarGeometry=()=>main.eval(`(async()=>{await Promise.all(document.getAnimations().map(a=>a.finished.catch(()=>{})));await new Promise(requestAnimationFrame);const entry=document.querySelector('.ct-actions .app-personal-todos-toggle');if(!entry)throw Error('Todo entry is outside the toolbar');const buttons=[...entry.parentElement.querySelectorAll('button')],prior=buttons[buttons.indexOf(entry)-1];return {entry:entry.getBoundingClientRect().x,prior:prior.getBoundingClientRect().x};})()`);
+ const closedToolbar=await toolbarGeometry();
+ await main.click('.app-work-panel-toggle');
+ await waitFor(()=>main.eval(`Boolean(document.querySelector('.conversation-topbar.ct-work-panel-open'))`),'work panel opened');
+ await waitFor(()=>main.eval(`Boolean(document.querySelector('.work-panel-header'))`),'work panel content ready');
+ const openToolbar=await waitFor(async()=>{const position=await toolbarGeometry();return position.entry<closedToolbar.entry-50?position:null;},'toolbar follows resized chat pane');
+ assert.ok(openToolbar.entry<closedToolbar.entry-50,'todo entry moves left with the toolbar when the panel opens: '+JSON.stringify({closedToolbar,openToolbar}));
+ assert.ok(Math.abs((openToolbar.entry-closedToolbar.entry)-(openToolbar.prior-closedToolbar.prior))<=1,'toolbar neighbors move together');
+ await main.click('.app-work-panel-toggle');
+ await waitFor(()=>main.eval(`!document.querySelector('.conversation-topbar.ct-work-panel-open')`),'work panel closed');
+ await toolbarGeometry();
+ await main.click('[data-nav="settings"]');
+ await waitFor(()=>main.eval(`Boolean(document.querySelector('.settings-mode')&&document.querySelector('[data-nav="back-to-app"]')?.checkVisibility())`),'settings route ready');
+ assert.equal(await main.eval(`[...document.querySelectorAll('.app-personal-todos-toggle')].some(e=>e.checkVisibility())`),false,'settings does not leave a floating todo entry');
+ await main.click('[data-nav="back-to-app"]');
+ await waitFor(()=>main.eval(`Boolean(document.querySelector('.ct-actions .app-personal-todos-toggle')?.checkVisibility())`),'toolbar restored');
+ for(let i=0;i<20;i++)await main.click('.app-personal-todos-toggle');
+ assert.deepEqual((await command('inspect')).bounds,expandedBounds,'repeated titlebar clicks must not grow the window');
+ const colors=[];
+ for(const theme of ['light','dark']){
+  const result=await main.eval(`window.piDesktop.invoke('pi-desktop/settings/set',{theme:${JSON.stringify(theme)}})`);
+  assert.equal(result.ok,true);
+  await waitFor(()=>widget.eval(`document.documentElement.dataset.theme===${JSON.stringify(theme)}`),'widget theme '+theme);
+  const style=await widget.eval(`(()=>{const s=getComputedStyle(document.querySelector('.personal-todos'));return {background:s.backgroundColor,border:s.borderTopWidth,radius:s.borderRadius,shadow:s.boxShadow,body:getComputedStyle(document.body).backgroundColor};})()`);
+  assert.equal(style.border,'1px');assert.notEqual(style.radius,'0px');assert.notEqual(style.shadow,'none');assert.equal(style.body,'rgba(0, 0, 0, 0)');colors.push(style.background);
+ }
+ assert.notEqual(colors[0],colors[1]);
  await widget.click('.personal-todos-add');await waitFor(()=>widget.eval(`document.querySelectorAll('.personal-todo-row').length===1`),'added row');
  expectedTitle='计划与验收';expectedNote='单条备注第一行\n第二行：完整复制';
  await widget.fill('.personal-todo-title',expectedTitle);await widget.click('.personal-todo-note-toggle');await widget.fill('.personal-todo-note',expectedNote);
@@ -103,17 +142,32 @@ try{
  await widget.click('.personal-todo-check input');await waitFor(async()=>(await widget.view()).items[0]?.completed===true,'complete row');
  await widget.click('.personal-todos-add');await waitFor(()=>widget.eval(`document.querySelectorAll('.personal-todo-row').length===2`),'second row');
  await widget.click('.personal-todo-row:last-child .personal-todo-delete');await waitFor(()=>widget.eval(`document.querySelectorAll('.personal-todo-row').length===1`),'delete row');
- await widget.click('.personal-todos-toolbar button:last-child');await waitFor(async()=>!(await command('inspect')).visible,'collapse');
- await waitFor(()=>main.eval(`Boolean(document.querySelector('.app-personal-todos-toggle'))`),'global titlebar entry');await main.click('.app-personal-todos-toggle');
- await waitFor(async()=>(await command('inspect')).visible,'reopen via shell');
+ await widget.click('.personal-todos-toolbar button:last-child');
+ await waitFor(()=>widget.eval(`Boolean(document.querySelector('.personal-todos-summary'))`),'collapse to strip');
+ native=await command('inspect');assert.equal(native.visible,true);assert.ok(native.bounds.height<=100);assert.equal(native.bounds.y,native.workArea.y);
+ const summary=await widget.eval(`(()=>{const e=document.querySelector('.personal-todos-summary');const r=e.getBoundingClientRect(),s=getComputedStyle(e);return {text:e.textContent,width:r.width,height:r.height,lineHeight:parseFloat(s.lineHeight),overflow:s.textOverflow,whiteSpace:s.whiteSpace,scrollWidth:e.scrollWidth};})()`);
+ assert.equal(summary.text,expectedTitle);assert.ok(summary.width<=100);assert.ok(summary.height<=summary.lineHeight+1);assert.equal(summary.overflow,'ellipsis');assert.equal(summary.whiteSpace,'nowrap');assert.ok(summary.scrollWidth>summary.width);
+ await widget.click('.personal-todos-expand');
+ await waitFor(()=>widget.eval(`Boolean(document.querySelector('.personal-todos-add'))`),'reopen via strip');
+ for(let i=0;i<5;i++){
+  await widget.click('.personal-todos-toolbar button:last-child');
+  await waitFor(()=>widget.eval(`Boolean(document.querySelector('.personal-todos-expand'))`),'compact cycle');
+  await main.click('.app-personal-todos-toggle');
+  await waitFor(()=>widget.eval(`Boolean(document.querySelector('.personal-todos-add'))`),'expanded cycle');
+  assert.deepEqual((await command('inspect')).bounds,expandedBounds,'collapse/open must restore the same expanded geometry');
+ }
  await command('hideMain');native=await command('inspect');assert.equal(native.visible,true);assert.equal(native.pinned,true);
  await widget.click('.personal-todos-toolbar button:first-child');await waitFor(async()=>!(await command('inspect')).pinned,'unpin');
  expectedTitle='退出前最后一次编辑';await widget.fill('.personal-todo-title',expectedTitle);await quit();
  let disk=await readDisk();assert.equal(disk.items.length,1);assert.equal(disk.items[0].title,expectedTitle);assert.equal(disk.items[0].note,expectedNote);assert.equal(disk.items[0].completed,true);
  ({widget,main}=await launch());native=await command('inspect');assert.equal(native.visible,true);assert.equal(native.pinned,false);assert.equal(native.count,1);
+ assert.ok(native.bounds.height<=100);
+ await widget.click('.personal-todos-expand');
+ await waitFor(()=>widget.eval(`Boolean(document.querySelector('.personal-todo-title'))`),'restored editor');
+ assert.deepEqual((await command('inspect')).bounds,expandedBounds,'restart preserves expanded geometry');
  assert.equal(await widget.eval(`document.querySelector('.personal-todo-title').value`),expectedTitle);
- await command('closeTodo');await waitFor(async()=>!(await command('inspect')).visible,'native close collapses');await quit();
+ await command('closeTodo');await waitFor(()=>widget.eval(`Boolean(document.querySelector('.personal-todos-expand'))`),'native close docks strip');await quit();
  ({widget}=await launch());assert.equal((await command('inspect')).visible,true);await quit();
- console.log('PASS: real Electron/Host personal todos: edit, notes, clipboard, continuous save, complete/delete, collapse/reopen, pin, immediate quit, restart.');
+ console.log('PASS: real Electron/Host personal todos: compact startup, stable repeated opens/collapse/restart, one-line summary, light/dark surface, edit, notes, clipboard, continuous save, complete/delete, pin, immediate quit.');
 } catch(error){console.error(error);console.error(output.slice(-6000));process.exitCode=1;}
-finally{for(const c of connections)c.close();if(child&&child.exitCode===null){const exited=once(child,'exit');await command('forceExit').catch(()=>child.kill());await Promise.race([exited,delay(5000)]);}await rm(temp,{recursive:true,force:true,maxRetries:8,retryDelay:250});}
+finally{for(const c of connections)c.close();if(child&&child.exitCode===null){const exited=once(child,'exit');await command('forceExit').catch(()=>child.kill());await Promise.race([exited,delay(5000,undefined,{ref:false})]);}await rm(temp,{recursive:true,force:true,maxRetries:8,retryDelay:250});}

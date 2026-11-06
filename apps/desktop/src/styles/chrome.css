@@ -467,6 +467,17 @@
   padding-left: max(0px, calc(var(--ds-window-lead-inset) - 12px));
 }
 
+/* The route band's action cluster. Same role as the conversation topbar's
+   `.ct-right`: it is where a route-owned titlebar keeps its chrome controls, so
+   the personal board entry is a member of the row instead of an overlay. */
+.main-titlebar-right {
+  pointer-events: auto;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--ds-work-panel-control-gap);
+}
+
 /* Preview- and route-band actions take the shared chrome-control geometry from
    the `.ct-icon-btn` group below (28px square, `--radius-md`, transparent seat,
    hover wash). Only the press feedback belongs to the lane itself. */
@@ -493,7 +504,13 @@
   align-items: center;
   justify-content: flex-end;
   padding: 0 12px;
-  padding-right: calc(12px + var(--ds-work-panel-toggle-size) * 2 + var(--ds-work-panel-control-gap) * 2);
+  /* Closed, the only control the band must clear is the viewport-fixed
+   * work-panel toggle, one control gap before the band's own actions. The
+   * board entry is one of those actions, so it is not part of this reserve. */
+  padding-right: calc(
+    var(--ds-work-panel-toggle-size) + var(--ds-work-panel-toggle-inset) +
+      var(--ds-work-panel-control-gap)
+  );
   background: var(--ds-bg-primary);
   /* Keep the shell continuous; titlebar hierarchy comes from spacing and
    * surface color instead of a hard lower rule. */
@@ -501,8 +518,11 @@
   -webkit-app-region: drag;
 }
 
+/* The open panel's header owns the titlebar lane, so this band reserves nothing
+   for controls that float over the panel instead of over the pane. Only the
+   closed state pays for the lane (see the rule above). */
 .main-titlebar.work-panel-open {
-  padding-right: calc(var(--ds-work-panel-toggle-inset) + var(--ds-work-panel-toggle-size) * 2 + var(--ds-work-panel-control-gap) * 2);
+  padding-right: 12px;
 }
 
 /* Conversation top bar (Codex/WorkBuddy-style): replaces the empty chat
@@ -565,8 +585,12 @@
   padding-right: calc(36px + var(--ds-work-panel-toggle-size) + var(--ds-work-panel-control-gap));
 }
 
+/* Closed, the lane floats over this pane's own right edge, so the action cluster
+   stops short of it. Open, the lane travels with the panel header instead: the
+   cluster keeps only the topbar's gutter rather than reserving space nothing
+   occupies. */
 .conversation-topbar.ct-work-panel-open .ct-right {
-  padding-right: calc(var(--ds-work-panel-toggle-inset) + var(--ds-work-panel-toggle-size) * 2 + var(--ds-work-panel-control-gap) * 2);
+  padding-right: 0;
 }
 
 .conversation-topbar .ct-title-wrap {
@@ -730,13 +754,19 @@
 }
 
 /* One geometry and one seat for every chrome icon control: the topbar's dock
-   toggle, the viewport-fixed work-panel toggle, the preview/route-band lane
-   actions, and the work-panel header's create and maximize controls. The seat is
-   transparent at rest, so the icon alone carries the control and only the pointer
-   hover wash paints a surface under it; keyboard focus keeps the global outline.
-   `flex: 0 0` keeps them square when a crowded band would otherwise squeeze
-   them. */
+   toggle, the personal board's toolbar entry, the viewport-fixed work-panel
+   toggle, the preview/route-band lane actions, and the work-panel header's
+   create and maximize controls. The seat is transparent at rest, so the icon
+   alone carries the control and only the pointer hover wash paints a surface
+   under it; keyboard focus keeps the global outline. `flex: 0 0` keeps them
+   square when a crowded band would otherwise squeeze them.
+   The board entry is a member rather than a viewport overlay: whichever
+   titlebar row renders it (the chat topbar's action cluster, the route band's
+   right cluster, the maximized panel's chrome row) lays it out on that row's
+   flex line, so it moves with its neighbours and states no position or lane of
+   its own. */
 .conversation-topbar .ct-icon-btn,
+.app-personal-todos-toggle,
 .app-work-panel-toggle,
 .main-titlebar .title-nav-btn,
 .window-chrome-row .title-nav-btn,
@@ -758,6 +788,7 @@
 }
 
 .conversation-topbar .ct-icon-btn:hover:not(:disabled),
+.app-personal-todos-toggle:hover:not(:disabled),
 .app-work-panel-toggle:hover:not(:disabled),
 .main-titlebar .title-nav-btn:hover:not(:disabled),
 .window-chrome-row .title-nav-btn:hover:not(:disabled),
@@ -792,37 +823,6 @@
   padding: 2px;
   border-radius: var(--radius-md);
   background: var(--ds-tile);
-}
-
-/* The global personal board sits immediately left of the work-panel control.
- * Platform-native controls keep their reserved lane at the far right. */
-.app-personal-todos-toggle {
-  position: fixed;
-  top: 9px;
-  right: calc(var(--ds-work-panel-toggle-inset) + var(--ds-work-panel-toggle-size) + var(--ds-work-panel-control-gap));
-  z-index: 30;
-  display: inline-flex;
-  width: var(--ds-work-panel-toggle-size);
-  height: var(--ds-work-panel-toggle-size);
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--ds-text-secondary);
-  cursor: pointer;
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
-}
-
-.app-personal-todos-toggle:hover {
-  background: var(--ds-bg-hover);
-  color: var(--ds-text-primary);
-}
-
-:root[data-platform="win32"] .app-personal-todos-toggle,
-:root[data-platform="linux"] .app-personal-todos-toggle {
-  right: calc(var(--ds-window-controls-width) + var(--ds-work-panel-toggle-inset) + var(--ds-work-panel-toggle-size) + var(--ds-work-panel-control-gap));
 }
 
 /* Keep the sole work-panel toggle anchored to the viewport while the in-flow
@@ -1260,10 +1260,6 @@
   z-index: 1100;
 }
 
-.app-shell > .app-personal-todos-toggle {
-  z-index: 1101;
-}
-
 .app-shell > .search-overlay {
   z-index: 1200;
 }
@@ -1383,11 +1379,11 @@
 
 .app-shell.work-panel-maximized {
   --preview-chrome-inset: 8px;
-  --preview-chrome-action-lane: calc(var(--ds-control-size) + 8px);
+  --preview-chrome-action-lane: calc(var(--ds-control-size) + var(--ds-work-panel-toggle-size) + var(--ds-work-panel-control-gap) + 8px);
 }
 
 .app-shell.work-panel-maximized.sidebar-collapsed {
-  --preview-chrome-action-lane: var(--ds-preview-action-lane-width);
+  --preview-chrome-action-lane: calc(var(--ds-preview-action-lane-width) + var(--ds-work-panel-toggle-size) + var(--ds-work-panel-control-gap));
 }
 
 :root[data-platform="darwin"] .app-shell.work-panel-maximized.sidebar-collapsed {
@@ -1406,8 +1402,10 @@
   height: var(--ds-toolbar-height);
   align-items: center;
   padding-left: var(--preview-chrome-inset);
+  gap: var(--ds-work-panel-control-gap);
   pointer-events: none;
 }
+
 
 .window-chrome-row.sidebar-expanded {
   left: var(--ds-sidebar-width);
