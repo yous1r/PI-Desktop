@@ -724,8 +724,8 @@ test("preview mode keeps shell actions and restores routes before navigation", (
   assert.doesNotMatch(row + spacer, /app-region:|background:/);
   assert.match(globalStyles, /\.window-chrome-row button \{[^}]*pointer-events:\s*auto;[^}]*app-region:\s*no-drag;/);
   assert.match(globalStyles, /\.window-chrome-row\.sidebar-expanded \{[^}]*left: var\(--ds-sidebar-width\);/);
-  assert.match(globalStyles, /\.app-shell\.work-panel-maximized \{[^}]*--preview-chrome-inset:\s*8px;[^}]*--preview-chrome-action-lane:\s*calc\(var\(--ds-control-size\) \+ 8px\);/);
-  assert.match(globalStyles, /\.app-shell\.work-panel-maximized\.sidebar-collapsed \{[^}]*--preview-chrome-action-lane:\s*var\(--ds-preview-action-lane-width\);/);
+  assert.match(globalStyles, /\.app-shell\.work-panel-maximized \{[^}]*--preview-chrome-inset:\s*8px;[^}]*--preview-chrome-action-lane:\s*calc\(var\(--ds-control-size\) \+ var\(--ds-work-panel-toggle-size\) \+ var\(--ds-work-panel-control-gap\) \+ 8px\);/);
+  assert.match(globalStyles, /\.app-shell\.work-panel-maximized\.sidebar-collapsed \{[^}]*--preview-chrome-action-lane:\s*calc\(var\(--ds-preview-action-lane-width\) \+ var\(--ds-work-panel-toggle-size\) \+ var\(--ds-work-panel-control-gap\)\);/);
   assert.match(globalStyles, /:root\[data-platform="darwin"\] \.app-shell\.work-panel-maximized\.sidebar-collapsed \{[^}]*--preview-chrome-inset:\s*var\(--ds-window-lead-inset\);/);
   assert.match(globalStyles, /\.app-shell\.work-panel-maximized \.work-panel-header \{[^}]*margin-left:\s*calc\(var\(--preview-chrome-inset\) \+ var\(--preview-chrome-action-lane\)\);[^}]*padding-left:\s*0;/);
   assert.match(globalStyles, /\.work-panel-header \{[^}]*app-region:\s*drag;/);

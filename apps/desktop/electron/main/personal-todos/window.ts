@@ -6,14 +6,14 @@ import { randomUUID } from "node:crypto";
 import { IPC, type PersonalTodoView } from "@pi-desktop/shared";
 import { getModuleDirectory } from "../module-path";
 import { suppressLinuxFramelessSystemMenu } from "../frameless-system-menu";
-import { clampTodoBounds, parseTodoPreferences, TODO_DEFAULT_SIZE, type TodoPreferences } from "./geometry";
+import { clampTodoBounds, dockTodoBounds, parseTodoPreferences, TODO_DEFAULT_SIZE, type TodoBounds, type TodoPreferences } from "./geometry";
 import { todoError } from "./validation";
 
 export function createTodoWindow(input: {
   dataDir: string;
   getMainWindow(): BrowserWindow | null;
   getView(): PersonalTodoView;
-  onWindow(value: { visible?: boolean; alwaysOnTop?: boolean }): void;
+  onWindow(value: Partial<Pick<PersonalTodoView, "visible" | "alwaysOnTop" | "collapsed">>): void;
   flush(): Promise<unknown>;
   log(message: string, error: unknown): void;
 }) {
@@ -22,6 +22,8 @@ export function createTodoWindow(input: {
   let disposed = false;
   let ready = false;
   let positionTimer: ReturnType<typeof setTimeout> | null = null;
+  let collapsed = true;
+  let placement: { requested: TodoBounds; actual: TodoBounds } | null = null;
   let quitRequest: { id: string; resolve(): void; reject(error: Error): void } | null = null;
   let closeAllowed = false;
   const statePath = join(input.dataDir, "personal-todo-window.json");
@@ -41,13 +43,31 @@ export function createTodoWindow(input: {
     renameSync(temp, statePath);
   }
   function saveBounds() {
-    if (!window || window.isDestroyed()) return;
-    preferences.bounds = window.getBounds();
+    if (!window || window.isDestroyed() || collapsed) return;
+    preferences.bounds = readBounds(window);
     try { persist(); } catch (error) { input.log("personal todo placement could not be saved", error); }
   }
   function scheduleBounds() {
     if (positionTimer) clearTimeout(positionTimer);
     positionTimer = setTimeout(() => { positionTimer = null; saveBounds(); }, 400);
+  }
+  function readBounds(current: BrowserWindow): TodoBounds {
+    const actual = current.getBounds();
+    if (!placement) return actual;
+    const logical = { ...actual };
+    for (const key of ["x", "y", "width", "height"] as const) {
+      if (actual[key] === placement.actual[key]) logical[key] = placement.requested[key];
+    }
+    return logical;
+  }
+  function applyBounds(current: BrowserWindow, next: TodoBounds) {
+    const bounds = readBounds(current);
+    // Windows may round native bounds by a DIP. Never feed unchanged bounds
+    // back into setBounds on each open: the rounding otherwise accumulates.
+    if (bounds.x !== next.x || bounds.y !== next.y || bounds.width !== next.width || bounds.height !== next.height) {
+      current.setBounds(next);
+      placement = { requested: { ...next }, actual: current.getBounds() };
+    }
   }
   function rendererUrl(): URL {
     const url = process.env.ELECTRON_RENDERER_URL
@@ -74,11 +94,15 @@ export function createTodoWindow(input: {
         x: (mainBounds ? mainBounds.x + mainBounds.width : work.x + work.width) - 380,
         y: (mainBounds?.y ?? work.y) + 60, ...TODO_DEFAULT_SIZE,
       }, work);
+      preferences.bounds = initial;
+      collapsed = true;
+      const compact = dockTodoBounds(initial, work);
       const created = new BrowserWindow({
-        ...initial, minWidth: Math.min(300, work.width), minHeight: Math.min(280, work.height),
-        title: "PI-Desktop Todos", show: false, frame: false, resizable: true,
+        ...compact, minWidth: 1, minHeight: 1,
+        title: "PI-Desktop Todos", show: false, frame: false, resizable: false,
+        transparent: true, hasShadow: false,
         maximizable: false, minimizable: false, fullscreenable: false, skipTaskbar: true,
-        alwaysOnTop: preferences.alwaysOnTop, backgroundColor: "#181818", autoHideMenuBar: true,
+        alwaysOnTop: preferences.alwaysOnTop, backgroundColor: "#00000000", autoHideMenuBar: true,
         ...(process.platform === "darwin" ? { type: "panel" as const } : {}),
         webPreferences: {
           preload: join(getModuleDirectory(import.meta.url), "../preload/personal-todos.cjs"),
@@ -87,6 +111,7 @@ export function createTodoWindow(input: {
         },
       });
       window = created;
+      placement = { requested: compact, actual: created.getBounds() };
       created.setMenu(null);
       suppressLinuxFramelessSystemMenu(created);
       if (process.platform === "darwin") created.setVisibleOnAllWorkspaces(true, {
@@ -126,24 +151,40 @@ export function createTodoWindow(input: {
   async function show(focus = true) {
     const current = await ensureWindow();
     if (current.webContents.isCrashed()) await current.loadURL(rendererUrl().href);
-    const bounds = current.getBounds();
-    current.setBounds(clampTodoBounds(bounds, screen.getDisplayMatching(bounds).workArea));
+    if (disposed || current.isDestroyed()) throw todoError("HOST_UNAVAILABLE", "Personal todo window is closed");
+    if (focus && collapsed) {
+      const bounds = preferences.bounds ?? current.getBounds();
+      const work = screen.getDisplayMatching(bounds).workArea;
+      current.setResizable(true);
+      current.setMinimumSize(Math.min(300, work.width), Math.min(280, work.height));
+      applyBounds(current, clampTodoBounds(bounds, work));
+      collapsed = false;
+    }
     if (focus) { current.show(); current.focus(); } else current.showInactive();
-    input.onWindow({ visible: true });
+    input.onWindow({ visible: true, collapsed });
     publish(input.getView());
   }
   function collapse() {
+    if (!window || window.isDestroyed() || collapsed) return;
     saveBounds();
-    window?.hide();
-    input.onWindow({ visible: false });
+    const bounds = readBounds(window);
+    collapsed = true;
+    window.setMinimumSize(1, 1);
+    window.setResizable(false);
+    applyBounds(window, dockTodoBounds(bounds, screen.getDisplayMatching(bounds).workArea));
+    input.onWindow({ visible: true, collapsed: true });
     void input.flush().catch(() => undefined);
   }
   function displayChanged() {
     if (!window || window.isDestroyed()) return;
-    const bounds = window.getBounds();
+    const bounds = readBounds(window);
     const work = screen.getDisplayMatching(bounds).workArea;
-    window.setMinimumSize(Math.min(300, work.width), Math.min(280, work.height));
-    window.setBounds(clampTodoBounds(bounds, work));
+    if (collapsed) {
+      applyBounds(window, dockTodoBounds(bounds, work));
+    } else {
+      window.setMinimumSize(Math.min(300, work.width), Math.min(280, work.height));
+      applyBounds(window, clampTodoBounds(bounds, work));
+    }
   }
   // Installed after app ready, when the screen module is available.
   let observingDisplays = false;

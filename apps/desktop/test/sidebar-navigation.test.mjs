@@ -66,14 +66,24 @@ test("work panel collapse control is the viewport-fixed shell toggle", () => {
   assert.doesNotMatch(panelSource, /work-panel-toolbar-collapse/);
   assert.doesNotMatch(panelSource, /work-panel-collapse/);
   assert.doesNotMatch(panelSource, /collapsePanel/);
-  assert.match(appSource, /className="app-personal-todos-toggle no-drag"/);
-  const openTitlebar = globalStyles.match(
-    /\.main-titlebar\.work-panel-open\s*\{[^}]*\}/s,
-  )?.[0] ?? "";
+  // The closed titlebar pays for the viewport-fixed toggle's lane and nothing
+  // else: the personal-todos entry is one of this band's own actions, not a
+  // second fixed control (titlebar-personal-todos-entry.test.mjs owns it).
+  const closedTitlebar = (
+    globalStyles.match(/\.main-titlebar\s*\{[^}]*\}/s)?.[0] ?? ""
+  ).replace(/\s+/g, " ");
   assert.match(
-    openTitlebar,
-    /padding-right:\s*calc\(var\(--ds-work-panel-toggle-inset\) \+ var\(--ds-work-panel-toggle-size\) \* 2 \+ var\(--ds-work-panel-control-gap\) \* 2\);/,
+    closedTitlebar,
+    /padding-right: calc\( var\(--ds-work-panel-toggle-size\) \+ var\(--ds-work-panel-toggle-inset\) \+ var\(--ds-work-panel-control-gap\) \);/,
   );
+  assert.doesNotMatch(closedTitlebar, /toggle-size\) \* 2/);
+  // Open, the lane floats over the panel header instead, so the titlebar keeps
+  // only its gutter rather than reserving space nothing occupies.
+  const openTitlebar = (
+    globalStyles.match(/\.main-titlebar\.work-panel-open\s*\{[^}]*\}/s)?.[0] ?? ""
+  ).replace(/\s+/g, " ");
+  assert.match(openTitlebar, /padding-right: 12px;/);
+  assert.doesNotMatch(openTitlebar, /padding-right: calc\(/);
   assert.match(
     globalStyles,
     /:root\[data-platform="win32"\] \.main-titlebar\.work-panel-open,[\s\S]*:root\[data-platform="linux"\] \.main-titlebar\.work-panel-open\s*\{[^}]*right:\s*0;/,

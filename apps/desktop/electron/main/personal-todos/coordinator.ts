@@ -27,7 +27,7 @@ export function createTodoCoordinator(input: {
   const time = input.clock ?? clock;
   let state: PersonalTodoView = {
     document: null, items: [], editVersion: 0, savedEditVersion: 0,
-    saveStatus: "loading", error: null, alwaysOnTop: true, visible: false, appearance: { theme: "system" },
+    saveStatus: "loading", error: null, alwaysOnTop: true, visible: false, collapsed: true, appearance: { theme: "system" },
   };
   let loading: Promise<void> | null = null;
   let writing: Promise<void> | null = null;
@@ -153,7 +153,7 @@ export function createTodoCoordinator(input: {
       return view();
     },
     flush,
-    setWindow(value: { visible?: boolean; alwaysOnTop?: boolean }) {
+    setWindow(value: Partial<Pick<PersonalTodoView, "visible" | "alwaysOnTop" | "collapsed">>) {
       state = { ...state, ...value }; publish();
     },
     setAppearance(appearance: PersonalTodoAppearance) { state.appearance = copy(appearance); publish(); },

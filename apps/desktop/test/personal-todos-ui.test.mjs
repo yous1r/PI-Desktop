@@ -44,8 +44,9 @@ const bridge = {
   if (channel === IPC.invoke.personalTodosCopy) { copies.push(payload); return Promise.resolve({ ok: true, data: undefined }); }
   if (channel === IPC.invoke.personalTodosWindow) {
    if (payload.action === "pin") view = { ...view, alwaysOnTop: payload.value };
-   if (payload.action === "collapse") view = { ...view, visible: false };
-   return Promise.resolve({ ok: true, data: structuredClone(view) });
+   if (payload.action === "collapse") view = { ...view, collapsed: true };
+   if (payload.action === "open") view = { ...view, collapsed: false };
+   publish();return Promise.resolve({ ok: true, data: structuredClone(view) });
   }
   if (channel === IPC.invoke.personalTodosEdit) {
    if (failNextEdit) { failNextEdit = false; return Promise.resolve({ ok: false, error: { code: "TEMPORARY", message: "temporary" } }); }
@@ -116,8 +117,18 @@ window.todoProbe = async () => {
  prepare({requestId:null});await settle();
  check(!document.querySelector('main').inert,'cancelled quit restores editing');
  input(title,'Editing resumed');await settle();check(view.items[0].title==='Editing resumed','input works after quit cancellation');
+ findButton("Add todo").click();await settle();
+ const longTitle='First todo with a deliberately long title that must stay on one line';
+ input(document.querySelector('.personal-todo-title'),longTitle);await settle();
+ input(document.querySelectorAll('.personal-todo-title')[1],'Second todo must remain hidden');await settle();
  findButton("Collapse personal todos").click(); await settle();
- check(view.visible === false, "collapse flushes and requests runtime collapse");
+ check(view.collapsed === true, "collapse flushes and requests a compact runtime view");
+ check(!document.querySelector('.personal-todo-row'), 'collapsed board does not render editor rows');
+ check(document.querySelector('.personal-todos-summary').textContent===longTitle,'summary contains only the first ordered todo');
+ check(!document.querySelector('main').textContent.includes('Second todo'),'summary excludes later items');
+ findButton('Open personal todos').click();await settle();
+ check(document.querySelectorAll('.personal-todo-row').length===2,'summary expands back to the full editor');
+ check(document.querySelector('.personal-todo-title').value===longTitle,'expand preserves the edited title');
  root.unmount();
  return { passed: true };
 };
@@ -142,7 +153,7 @@ test("personal todo widget completes the user path without losing local edits", 
       nodePaths: [join(root, "apps/desktop/node_modules")],
     });
     await writeFile(join(temp, "index.html"), '<!doctype html><meta charset="utf-8"><div id="root"></div><script type="module" src="renderer.js"></script>');
-    await writeFile(join(temp, "main.cjs"), `const { app, BrowserWindow } = require("electron"); const path = require("node:path"); app.setPath("userData", path.join(__dirname,"profile")); app.whenReady().then(async()=>{ const win=new BrowserWindow({show:false,width:480,height:640,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,backgroundThrottling:false}}); try { await win.loadFile(path.join(__dirname,"index.html")); console.log("TODO_PROBE "+JSON.stringify(await win.webContents.executeJavaScript("window.todoProbe()"))); app.exit(0); } catch(error) { console.error(error?.stack??error); app.exit(1); } });`);
+    await writeFile(join(temp, "main.cjs"), `const { app, BrowserWindow } = require("electron"); const path = require("node:path"); app.setPath("userData", path.join(__dirname,"profile")); app.whenReady().then(async()=>{ const win=new BrowserWindow({show:false,width:480,height:640,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,backgroundThrottling:false}}); try { await win.loadFile(path.join(__dirname,"index.html")); win.showInactive(); console.log("TODO_PROBE "+JSON.stringify(await win.webContents.executeJavaScript("window.todoProbe()"))); app.exit(0); } catch(error) { console.error(error?.stack??error); app.exit(1); } });`);
     const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
     const child = spawn(resolveElectronBinary(root).electronBinary, [join(temp, "main.cjs")], { env, stdio: ["ignore", "pipe", "pipe"] });
     let output = "";

@@ -2761,3 +2761,9 @@ before Host teardown. The narrow widget preload exposes
 only these calls/events; sender identity includes webContents, main frame and
 exact renderer URL. Copy writes current text and full note separated by a blank
 line, preserving note newlines; empty notes produce just the title.
+
+`PersonalTodoView.collapsed` is an optional additive presentation flag; absence
+means expanded for older consumers. `visible` still describes the native window,
+so both the compact strip and expanded editor are visible. `window/collapse`
+keeps that window visible as a compact top-docked strip; `window/open` expands it.
+No new invoke permission or stored-document field is introduced.

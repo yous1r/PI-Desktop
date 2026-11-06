@@ -37,6 +37,8 @@ export type PersonalTodoView = {
   error: { code: string; message: string } | null;
   alwaysOnTop: boolean;
   visible: boolean;
+  /** Compact desktop strip; absent in older views means expanded. */
+  collapsed?: boolean;
   appearance: PersonalTodoAppearance;
 };
 export type PersonalTodoEdit = { items: PersonalTodoItem[]; expectedEditVersion: number };

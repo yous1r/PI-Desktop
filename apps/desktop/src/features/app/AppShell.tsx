@@ -7,14 +7,12 @@ import {
   useState,
 } from "react";
 import { ConversationTopbar } from "../../components/ConversationTopbar";
-import { IPC } from "@pi-desktop/shared";
 import { ExtensionPromptHost } from "../../components/ExtensionPromptDialog";
 import { PluginRendererHost } from "../../plugins/renderer-host/PluginRendererHost";
 import {
   IconNewSession,
   IconPanel,
   IconPanelOpen,
-  IconListChecks,
 } from "../../components/icons";
 import { LifecycleConfirmationDialog } from "../../components/LifecycleConfirmationDialog";
 import { WorkspacePluginConsentDialog } from "../../components/plugins/WorkspacePluginConsentDialog";
@@ -32,7 +30,11 @@ import { api } from "../../lib/api";
 import { PortalVisibilityProvider } from "../../lib/portal-visibility";
 import { workPanelLayout } from "../../lib/work-panel-resize";
 import { LiveVoiceStatusHost } from "../voice/live/LiveVoiceStatusHost";
-import { CollapsedTitlebarActions, RoutePending } from "./chrome";
+import {
+  CollapsedTitlebarActions,
+  PersonalTodosTitlebarAction,
+  RoutePending,
+} from "./chrome";
 import { useAppShellRuntime } from "./useAppShellRuntime";
 
 const SettingsPage = lazy(() =>
@@ -195,6 +197,7 @@ export function AppShell() {
                     <IconNewSession size={15} />
                   </TooltipButton>
                 )}
+                <PersonalTodosTitlebarAction />
                 <div className="window-chrome-drag" aria-hidden />
               </div>
             )}
@@ -225,6 +228,12 @@ export function AppShell() {
                         />
                       </div>
                     )}
+                    {/* Route-owned titlebar: the board entry is one of this
+                        row's actions, so it stays on the band's flex line
+                        instead of floating over whatever edge is nearest. */}
+                    <div className="main-titlebar-right no-drag">
+                      <PersonalTodosTitlebarAction />
+                    </div>
                   </div>
                 )}
                 {page !== "settings" ? <UpdateBanner /> : null}
@@ -388,18 +397,6 @@ export function AppShell() {
       {(ready && !showSplash) || startupPhase !== "starting" ? (
         <WindowControls />
       ) : null}
-      <TooltipButton
-        type="button"
-        className="app-personal-todos-toggle no-drag"
-        tooltip={t("personalTodos.open")}
-        ariaLabel={t("personalTodos.open")}
-        onClick={() => {
-          void window.piDesktop?.invoke(IPC.invoke.personalTodosWindow, { action: "open" })
-            .catch((error: unknown) => console.error("Failed to open personal todos", error));
-        }}
-      >
-        <IconListChecks size={15} />
-      </TooltipButton>
       <ProjectCreateDialog />
       <RemoteProjectPreparationGate />
       <LifecycleConfirmationDialog />

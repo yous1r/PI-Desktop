@@ -1,8 +1,16 @@
 html[data-surface="personal-todos"],
 html[data-surface="personal-todos"] body,
 html[data-surface="personal-todos"] #root {
-  background: var(--ds-bg-primary);
+  background: transparent;
   color: var(--ds-text-primary);
+}
+
+html[data-surface="personal-todos"] #root {
+  padding: 8px;
+}
+
+html[data-surface="personal-todos"] #root:has(.is-collapsed) {
+  padding-top: 0;
 }
 
 .personal-todos {
@@ -12,6 +20,10 @@ html[data-surface="personal-todos"] #root {
   min-width: 0;
   flex-direction: column;
   padding: 12px;
+  overflow: hidden;
+  border: 1px solid var(--ds-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--ds-shadow-composer), var(--ds-raised-shadow);
   background: var(--ds-bg-primary);
   color: var(--ds-text-primary);
 }
@@ -266,4 +278,48 @@ html[data-surface="personal-todos"] #root {
   .personal-todos { padding: 8px; }
   .personal-todo-row { gap: 2px; padding-inline: 0; }
   .personal-todos-icon { width: 30px; flex-basis: 30px; }
+}
+
+.personal-todos.is-collapsed {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-top: 0;
+  border-start-start-radius: 0;
+  border-start-end-radius: 0;
+}
+
+.personal-todos-drag {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--ds-text-muted);
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.personal-todos-expand.btn {
+  min-width: 0;
+  min-height: 32px;
+  flex: 1 1 auto;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  color: var(--ds-text-primary);
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.personal-todos-expand > svg {
+  flex: 0 0 auto;
+}
+
+.personal-todos-summary {
+  display: block;
+  min-width: 0;
+  max-width: 100px;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

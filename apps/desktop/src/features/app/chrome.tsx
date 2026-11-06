@@ -1,8 +1,9 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import i18n from "i18next";
 import { useTranslation } from "react-i18next";
+import { IPC } from "@pi-desktop/shared";
 import { TooltipButton } from "../../components/ui";
-import { IconNewSession, IconSidebar } from "../../components/icons";
+import { IconListChecks, IconNewSession, IconSidebar } from "../../components/icons";
 
 export class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -78,5 +79,29 @@ export function RoutePending() {
     <div className="route-pending" role="status" aria-label={t("app.loadingView")}>
       <span className="route-pending-indicator" aria-hidden />
     </div>
+  );
+}
+
+/** Shared action laid out by the owning chat, route, or preview toolbar. */
+export function PersonalTodosTitlebarAction() {
+  const { t } = useTranslation();
+  const label = t("personalTodos.open");
+  return (
+    <TooltipButton
+      type="button"
+      className="app-personal-todos-toggle no-drag"
+      tooltip={label}
+      ariaLabel={label}
+      data-nav="personal-todos"
+      onClick={() => {
+        void window.piDesktop
+          ?.invoke(IPC.invoke.personalTodosWindow, { action: "open" })
+          .catch((error: unknown) =>
+            console.error("Failed to open personal todos", error),
+          );
+      }}
+    >
+      <IconListChecks size={15} />
+    </TooltipButton>
   );
 }
