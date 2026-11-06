@@ -10,6 +10,7 @@ export async function installPiHost(
     timeoutMs: number; signal?: AbortSignal;
     uploadArtifact?: typeof uploadSshArtifact;
     fetchArtifact?: typeof fetch;
+    artifactPath?: string;
     onDownload?: () => void;
     onUpload?: () => void;
     onInstall?: () => void;
@@ -17,10 +18,14 @@ export async function installPiHost(
   },
 ): Promise<SshExecResult> {
   options.signal?.throwIfAborted();
-  options.onDownload?.();
+  if (!options.artifactPath) options.onDownload?.();
   const artifact = await (options.uploadArtifact ?? uploadSshArtifact)(transport, {
-    url: input.artifactUrl, expectedSha256: input.expectedSha256,
-    signal: options.signal, fetchArtifact: options.fetchArtifact, onUpload: options.onUpload,
+    url: input.artifactUrl,
+    expectedSha256: input.expectedSha256,
+    signal: options.signal,
+    fetchArtifact: options.fetchArtifact,
+    ...(options.artifactPath ? { artifactPath: options.artifactPath } : {}),
+    onUpload: options.onUpload,
   });
   try {
     options.signal?.throwIfAborted();

@@ -147,8 +147,9 @@ export function parseBootstrapOutput(stdout: string): PiHostBootstrapOutput {
     const pairing = parseJsonObject(line, "PI_HOST_PAIRING_TOKEN ");
     if (pairing) {
       const { token, expiresAt } = pairing;
-      if (typeof token === "string" && token.length > 0) {
-        output.pairing = { token, expiresAt: typeof expiresAt === "number" ? expiresAt : 0 };
+      const expiry = typeof expiresAt === "string" ? Date.parse(expiresAt) : expiresAt;
+      if (typeof token === "string" && token.length > 0 && typeof expiry === "number" && Number.isFinite(expiry) && expiry > 0) {
+        output.pairing = { token, expiresAt: expiry };
       }
     }
   }

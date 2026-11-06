@@ -23,6 +23,13 @@ test("unknown or cross-channel releases never authorize automatic replacement", 
   }
 });
 
+test("an older prerelease can advance to the matching stable Desktop release", () => {
+  for (const [remote, desktop] of [["0.22.1-beta.6", "0.22.2"], ["0.22.2-beta.6", "0.22.2"]]) {
+    assert.throws(() => probe(remote, desktop), { errorCode: "HOST_VERSION_MISMATCH", remoteVersion: remote });
+  }
+  assert.throws(() => probe("0.23.0-beta.1", "0.22.2"), { errorCode: "HOST_CLIENT_TOO_OLD" });
+});
+
 const input = { version: "1.0.0", artifactUrl: "https://github.com/example/pi-host.tar.gz",
   artifactName: "pi-host.tar.gz", bundleDir: "pi-host", expectedSha256: "a".repeat(64),
   port: 0, pairingLifetimeMs: 600000, readyTimeoutSec: 30 };

@@ -307,9 +307,9 @@ test("parseBootstrapOutput refuses a ready line with an unusable port", () => {
   assert.equal(ready({ ...valid, host: "example.com" }).ready, null);
   assert.equal(parseBootstrapOutput("PI_HOST_READY {not json").ready, null);
 
-  // The pairing line tolerates a missing expiry rather than dropping the token.
+  // Pairing requires a valid expiry; accepting an unusable token hides malformed Host output.
   const pairing = parseBootstrapOutput('PI_HOST_PAIRING_TOKEN {"token":"ppt1.abc"}');
-  assert.deepEqual(pairing.pairing, { token: "ppt1.abc", expiresAt: 0 });
+  assert.equal(pairing.pairing, null);
   assert.equal(parseBootstrapOutput('PI_HOST_PAIRING_TOKEN {"expiresAt":1}').pairing, null);
 });
 

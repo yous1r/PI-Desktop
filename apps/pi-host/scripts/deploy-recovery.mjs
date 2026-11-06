@@ -130,7 +130,8 @@ export function admitVersionEvidence({ candidateVersion, packageVersion, readyVe
   if (!parseSemver(previous)) fail("HOST_RECOVERY_REQUIRED");
   if (!parseSemver(candidateVersion)) fail("HOST_VERSION_MISMATCH");
   if (expectedCurrentVersion && normalizeVersion(expectedCurrentVersion) !== previous) fail("HOST_VERSION_MISMATCH");
-  if (!sameReleaseChannel(candidateVersion, previous)) fail("HOST_VERSION_MISMATCH");
+  const promotesToStable = parseSemver(previous).pre !== null && parseSemver(candidateVersion).pre === null;
+  if (!promotesToStable && !sameReleaseChannel(candidateVersion, previous)) fail("HOST_VERSION_MISMATCH");
   if (compareVersions(candidateVersion, previous) < 0) fail("HOST_VERSION_MISMATCH");
   return {
     version: previous,
@@ -183,3 +184,14 @@ export function admitFreshInstallation({ currentKind, preservePairing, expectedH
 }
 
 export function deploymentNeedsPairing(preservePairing) { return preservePairing !== true; }
+
+/** Pairing output uses an ISO expiry; older workers also emitted epoch milliseconds. */
+export function parsePairingLine(line) {
+  if (typeof line !== "string" || !line.startsWith("PI_HOST_PAIRING_TOKEN ")) return null;
+  let value;
+  try { value = JSON.parse(line.slice("PI_HOST_PAIRING_TOKEN ".length)); } catch { return null; }
+  if (!value || typeof value.token !== "string" || !value.token) return null;
+  const expiry = typeof value.expiresAt === "string" ? Date.parse(value.expiresAt) : value.expiresAt;
+  if (typeof expiry !== "number" || !Number.isFinite(expiry) || expiry <= 0) return null;
+  return { token: value.token, expiresAt: expiry };
+}

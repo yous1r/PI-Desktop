@@ -33,6 +33,13 @@ per-Host proxy setting, reverse proxy tunnel or remote-download fallback. Releas
 selection uses the client's exact version and published Linux architecture,
 including prerelease identifiers; unavailable releases fail explicitly.
 
+Retain verified archives in Desktop's private `cache/pi-host` directory, keyed
+by exact release and platform URL and addressed by SHA-256. Rehash a cache hit
+before upload; it performs no checksum/archive request and survives Host removal
+and Desktop restart. Keep at most eight release entries and 1 GiB of archives.
+Invalid or incomplete entries are discarded and fetched through the same proxy
+policy. A lease prevents eviction while an upload is using the archive.
+
 Share one preparation job per Host with independently cancellable caller IDs.
 Cancelling a view removes only its waiter. The last waiter aborts pending local
 work and SSH observation. A detached deployment that has entered its remote
@@ -44,8 +51,10 @@ Preserve the Host ID, enrolled device token, SSH credentials and data directory.
 Authenticate an existing running Host before upgrade and verify it again over
 RACP before completing preparation. New pairing is restricted to initial
 enrollment. Direct-URL hosts and unusable SSH credentials are not taken over.
-Newer remote releases, cross-channel releases and ambiguous version ordering are
-not automatically replaced.
+Newer remote releases, stable-to-prerelease changes, different prerelease tracks
+and ambiguous version ordering are not automatically replaced. An older
+prerelease may advance to a newer stable Desktop release, including
+`0.22.1-beta.6` to `0.22.2`.
 
 Stage and verify the candidate before activation. The remote owner-only
 maintenance interface admits deployment only while the Host is idle, then fences

@@ -495,3 +495,29 @@ test("shutdown cancels shared readiness and fences every concurrent waiter", asy
     assert.equal((await boot.list())[0].connected, false);
   } finally { await boot.closeAll(); await cleanup(); }
 });
+
+test("bootstrapHost forwards maintenance confirmation to the SSH deployment", async () => {
+  const { dir, cleanup } = await tmpDir();
+  const scripts = [];
+  const boot = createRemoteHostsBoot({ dataDir: dir, encryption: reversibleEncryption(),
+    router: createBackendRouter(), emit() {}, clientInfo: { name: "test", version: "0.22.2" },
+    sshBootstrap: {
+      buildTransport: () => ({
+        exec: async () => ({ code: 0, stdout: "Linux\nx86_64\n", stderr: "" }),
+        execWithInput: async (_command, script) => { scripts.push(script); return {
+          code: 1, stdout: "PI_HOST_BOOTSTRAP_FAILED HOST_MAINTENANCE_UNAVAILABLE\n", stderr: "",
+        }; }, dispose() {},
+      }),
+      fetchChecksum: async () => "a".repeat(64),
+      uploadArtifact: async () => ({ path: "/home/test/.pi-desktop/pi-host/.upload.ABC123/artifact.tar.gz", cleanup: async () => {} }),
+      exchangePairing: () => assert.fail("a maintenance refusal must not pair"),
+    },
+  });
+  try {
+    for (const allowLegacyMaintenance of [false, true]) {
+      await assert.rejects(boot.bootstrapHost({ host: "dev", allowLegacyMaintenance }), { errorCode: "HOST_MAINTENANCE_REQUIRED" });
+    }
+    assert.match(scripts[0], /^ALLOW_LEGACY_MAINTENANCE='false'$/m);
+    assert.match(scripts[1], /^ALLOW_LEGACY_MAINTENANCE='true'$/m);
+  } finally { await boot.closeAll(); await cleanup(); }
+});

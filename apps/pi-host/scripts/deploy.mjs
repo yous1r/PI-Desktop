@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import {
   admitOfflineHost, compareVersions, isVersionDirName, lastReady, normalizeVersion,
   admitFreshInstallation, validateMaintenanceLease, deploymentNeedsPairing,
-  parseReadyLine, sameReleaseChannel,
+  parseReadyLine, parsePairingLine, sameReleaseChannel,
 } from "./deploy-recovery.mjs";
 
 const SCRIPT = fileURLToPath(import.meta.url);
@@ -277,10 +277,7 @@ async function awaitReady(pid, node, entry, tx, root, pairingRequired) {
     if (readyLine && (!pairingRequired || pairingLine)) {
       const ready = parseReady(readyLine, tx.version, tx.expectedHostId);
       if (pairingRequired) {
-        let pairing;
-        try { pairing = JSON.parse(pairingLine.slice("PI_HOST_PAIRING_TOKEN ".length)); }
-        catch { fail("HOST_RECOVERY_REQUIRED"); }
-        if (typeof pairing?.token !== "string" || typeof pairing.expiresAt !== "number") fail("HOST_RECOVERY_REQUIRED");
+        if (!parsePairingLine(pairingLine)) fail("HOST_RECOVERY_REQUIRED");
       } else if (pairingLine) fail("HOST_RECOVERY_REQUIRED");
       writeFileSync(join(tx.transactionDir, "result.txt"), `${readyLine}\n${pairingLine ?? ""}\n`, { mode: 0o600 });
       return ready;
@@ -504,4 +501,4 @@ function main() {
     process.stderr.write(`${code}\n`); process.exitCode = 1;
   }
 }
-if (process.argv[1] && resolve(process.argv[1]) === SCRIPT) main();
+if (process.argv[1] && realpathSync(resolve(process.argv[1])) === SCRIPT) main();

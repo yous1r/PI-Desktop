@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { app, BrowserWindow, crashReporter, Menu, safeStorage } from "electron";
 import { createScheduledRunner } from "../runtime/scheduled-runner";
 import {
@@ -252,7 +253,7 @@ export function registerApplicationStartup(deps: StartupDependencies): void {
       emit: sendToRenderer,
       getLocalHost: getHost,
       clientInfo: { name: APP_NAME, version: APP_VERSION },
-      sshBootstrap: { fetchArtifact: fetchWithNetworkProxy },
+      sshBootstrap: { fetchArtifact: fetchWithNetworkProxy, artifactCacheDir: join(dataDir, "cache", "pi-host") },
       log: (level, message, data) =>
         logger.app("runtime", level, message, { data: formatRemoteLogData(data) }),
     });

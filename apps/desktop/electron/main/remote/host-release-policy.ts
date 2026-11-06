@@ -35,7 +35,10 @@ export function hostReleaseRelation(remote: string, desktop: string): HostReleas
   if (a.normalized === b.normalized) return "match";
   const order = compare(a, b);
   if (order > 0) return "newer";
-  if (a.channel !== b.channel || order === 0) return "unsupported";
+  // A Desktop moving from a prerelease to stable must also promote its Hosts.
+  // Stable-to-prerelease and switching prerelease tracks still need manual action.
+  const promotesToStable = a.pre.length > 0 && b.pre.length === 0;
+  if ((!promotesToStable && a.channel !== b.channel) || order === 0) return "unsupported";
   return "older";
 }
 
