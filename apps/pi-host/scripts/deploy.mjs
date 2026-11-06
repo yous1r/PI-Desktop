@@ -2,7 +2,7 @@
 /** Detached Linux deployment worker for a locally verified pi-host artifact. */
 import { spawn, spawnSync } from "node:child_process";
 import {
-  chmodSync, closeSync, createReadStream, fsyncSync, lstatSync, mkdirSync, openSync,
+  chmodSync, closeSync, copyFileSync, createReadStream, fsyncSync, lstatSync, mkdirSync, openSync,
   readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync,
 } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import {
   admitOfflineHost, compareVersions, isVersionDirName, lastReady, normalizeVersion,
   admitFreshInstallation, validateMaintenanceLease, deploymentNeedsPairing,
-  parseReadyLine, parsePairingLine, sameReleaseChannel,
+  parseReadyLine, parsePairingLine, sameReleaseChannel, admitInterruptedDeployment, pairingRecordUsable,
 } from "./deploy-recovery.mjs";
 
 const SCRIPT = fileURLToPath(import.meta.url);
@@ -472,6 +472,90 @@ function begin(requestPath) {
   }
   process.stdout.write(result.stdout ?? "");
 }
+/** Queue recovery under the same lock, retaining its runtime after SSH exits. */
+function beginRecovery(args) {
+  const root = paths(process.env.HOME), record = readJson(root.state);
+  if (!/^[a-f0-9]{32}$/.test(record.transactionId ?? "") ||
+      !["recovery-required", "awaiting-racp"].includes(record.phase)) fail("HOST_RECOVERY_REQUIRED");
+  const txdir = join(root.transactions, record.transactionId);
+  if (!lstatSync(txdir).isDirectory() || lstatSync(txdir).isSymbolicLink()) fail("HOST_RECOVERY_REQUIRED");
+  const job = `recovery-${randomBytes(16).toString("hex")}`, jobdir = join(txdir, job);
+  privateDirectory(jobdir);
+  copyFileSync(process.execPath, join(jobdir, "node")); chmodSync(join(jobdir, "node"), 0o700);
+  for (const name of ["deploy.mjs", "deploy-recovery.mjs"]) copyFileSync(join(dirname(SCRIPT), name), join(jobdir, name));
+  const out = openSync(join(jobdir, "output.txt"), "wx", 0o600), err = openSync(join(jobdir, "error.txt"), "wx", 0o600);
+  try {
+    const child = spawn("flock", ["-w", "120", root.lock, join(jobdir, "node"), join(jobdir, "deploy.mjs"),
+      "--recover", ...args, record.transactionId], { detached: true, stdio: ["ignore", out, err],
+      env: { ...process.env, NODE_OPTIONS: "", NODE_PATH: "" } });
+    child.on("error", () => { writeJsonAtomic(join(jobdir, "failure.json"), { code: "HOST_RECOVERY_REQUIRED" }); });
+    if (!child.pid) fail("HOST_RECOVERY_REQUIRED");
+    child.unref();
+  } finally { closeSync(out); closeSync(err); }
+  process.stdout.write(`PI_HOST_RECOVERY_JOB ${record.transactionId}/${job}\n`);
+}
+
+/** Called under the deployment lock after Desktop verifies the release archive. */
+async function recover(version, expectedHostId, deviceHash, preservePairing, expectedSha256, expectedTransactionId) {
+  const root = paths(process.env.HOME), record = readJson(root.state);
+  if (record.transactionId !== expectedTransactionId) fail("HOST_RECOVERY_REQUIRED");
+  if (!/^[a-f0-9]{32}$/.test(record.transactionId ?? "") || !["true", "false"].includes(preservePairing) ||
+      !/^[a-f0-9]{64}$/.test(expectedSha256)) fail("HOST_RECOVERY_REQUIRED");
+  const requestPath = join(root.transactions, record.transactionId, "request.json");
+  const tx = { ...validateRequest(readJson(requestPath), root, requestPath), oldVersion: record.oldVersion };
+  if (tx.expectedSha256 !== expectedSha256) fail("HOST_RECOVERY_REQUIRED");
+  const inspected = inspectCurrent(root.base);
+  if (inspected.kind !== "ready" || !directoryHealthy(inspected.dir)) fail("HOST_RECOVERY_REQUIRED");
+  const node = join(inspected.dir, "bin/node"), entry = join(inspected.dir, "pi-host.js");
+  const live = inspectProcess(join(root.work, "pi-host.pid"), node, entry);
+  if (live.state !== "live") fail("HOST_PROCESS_UNIDENTIFIED");
+  const log = readText(join(root.work, "pi-host.log"));
+  const ready = lastReady(log), data = dataDirectory(process.env.HOME);
+  const credentialsText = readText(join(data, "pi-host/credentials.json"));
+  const admission = admitInterruptedDeployment({ record, request: tx,
+    identity: readJson(join(data, "pi-host/identity.json")), ready, targetVersion: version,
+    expectedHostId, preservePairing: preservePairing === "true", expectedDeviceTokenHash: deviceHash,
+    credentialsText });
+  // Prove the running installation is the verified archive's staged content,
+  // not merely a self-consistent directory claiming the same version.
+  const staged = await stageArchive(tx, root);
+  if (realpathSync(staged) !== inspected.dir || !exactHost(live.pid, node, entry)) fail("HOST_RECOVERY_REQUIRED");
+  const status = runMaintenance(node, entry, "status", admission.hostId);
+  if (normalizeVersion(status.version) !== normalizeVersion(version)) fail("HOST_VERSION_MISMATCH");
+  tx.hostId = admission.hostId; tx.expectedHostId = admission.hostId;
+  const pairingRequired = preservePairing !== "true";
+  let pairingLine = log.split(/\r?\n/).filter(line => line.startsWith("PI_HOST_PAIRING_TOKEN ")).at(-1);
+  const pairing = parsePairingLine(pairingLine);
+  const tokenHash = pairing ? createHash("sha256").update(pairing.token).digest("hex") : "";
+  let currentReady = ready;
+  if (pairingRequired && !pairingRecordUsable(pairing, readJson(join(data, "pi-host/credentials.json")), tokenHash)) {
+    if (status.busy) fail("HOST_BUSY");
+    const leaseId = randomBytes(16).toString("hex");
+    const lease = runMaintenance(node, entry, "acquire", admission.hostId, leaseId);
+    validateMaintenanceLease(lease, leaseId);
+    let stopped = false;
+    try {
+      stopHost(live.pid, node, entry); stopped = true;
+      saveState(root, tx, "starting", { pairing: "required", recovering: true });
+      const pid = startHost(node, entry, ["--port", String(ready.port), "--pair", "--pairing-lifetime-ms", String(tx.pairingLifetimeMs)], root);
+      currentReady = await awaitReady(pid, node, entry, tx, root, true);
+      pairingLine = readFileSync(join(tx.transactionDir, "result.txt"), "utf8").split(/\r?\n/)[1];
+    } catch (error) {
+      if (!stopped) {
+        try { runMaintenance(node, entry, "release", admission.hostId, leaseId); } catch { /* The lease expires. */ }
+      }
+      saveState(root, tx, "recovery-required", { failureCode: "HOST_RECOVERY_REQUIRED" });
+      throw error;
+    }
+  }
+  const output = `PI_HOST_READY ${JSON.stringify(currentReady)}\n${pairingRequired ? pairingLine : ""}\n`;
+  writeFileSync(join(tx.transactionDir, "result.txt"), output, { mode: 0o600 });
+  saveState(root, tx, "awaiting-racp", { hostId: admission.hostId, port: currentReady.port,
+    readyVersion: currentReady.version, recovered: true });
+  rmSync(join(tx.transactionDir, "failure.json"), { force: true });
+  process.stdout.write(`${output}PI_HOST_DEPLOYMENT_TRANSACTION ${tx.transactionId}\n`);
+}
+
 function complete(transactionId, expectedHostId) {
   const root = paths(process.env.HOME), record = readJson(root.state);
   if (record.phase !== "awaiting-racp" || record.transactionId !== transactionId || record.hostId !== expectedHostId) fail("HOST_RECOVERY_REQUIRED");
@@ -495,6 +579,14 @@ function main() {
       } catch { /* Preserve the last durable marker if status persistence fails. */ }
     });
     else if (operation === "--complete" && args.length === 2 && /^[a-f0-9]{32}$/.test(args[0])) complete(args[0], args[1]);
+    else if (operation === "--begin-recovery" && args.length === 5) beginRecovery(args);
+    else if (operation === "--recover" && args.length === 6) recover(...args).then(() => {
+      writeJsonAtomic(join(dirname(SCRIPT), "done.json"), { ok: true });
+    }).catch((error) => {
+      const code = FAILURE_CODES.has(error?.code) ? error.code : "DEPLOYMENT_FAILED";
+      writeJsonAtomic(join(dirname(SCRIPT), "failure.json"), { code });
+      process.stderr.write(`${code}\n`); process.exitCode = 1;
+    });
     else fail("DEPLOYMENT_FAILED");
   } catch (error) {
     const code = FAILURE_CODES.has(error?.code) ? error.code : "DEPLOYMENT_FAILED";

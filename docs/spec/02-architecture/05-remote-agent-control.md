@@ -225,6 +225,17 @@ Readiness accepts the Host's ISO pairing expiry and legacy numeric expiry,
 rejecting malformed records. Deployment completion resolves `current` to its
 physical directory before invoking the CLI, including for older installed
 workers whose entry guard does not recognize a symbolic link.
+
+The Desktop transaction script carries the deployment and recovery workers as
+embedded source. A published archive's same-named worker is never trusted to
+orchestrate a Desktop upgrade. Recovery of a post-start journal requires the
+same transaction and archive digest, a verified installed directory and live
+Host process and matching identity/version evidence. Existing enrollment also
+requires the saved owner device; new enrollment can resume only a transaction
+that already permitted pairing. Only that new-enrollment path can refresh an
+expired pairing under an idle maintenance lease. Recovery returns
+`awaiting-racp`; successful RACP authentication and capability verification
+clear the journal.
 See [on-demand preparation ADR](../../adr/remote-host-on-demand-preparation.md).
 
 Provider configuration is copied only after explicit selection and consent in

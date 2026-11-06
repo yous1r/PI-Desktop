@@ -1,5 +1,6 @@
 import { shellQuote } from "./pi-host-bootstrap-script.js";
 import type { SshTransport } from "./ssh-transport.js";
+import { writeDeploymentWorkerScript } from "./pi-host-deployment-worker.js";
 
 /** Called only after RACP authenticates the enrolled identity and capabilities. */
 export async function completeHostDeployment(transport: SshTransport, transactionId: string, hostId: string): Promise<void> {
@@ -7,8 +8,12 @@ export async function completeHostDeployment(transport: SshTransport, transactio
   if (!/^[a-f0-9]{32}$/.test(transactionId) || !hostId || hostId.length > 256 || /[\0\r\n]/.test(hostId)) throw fail();
   const script = `set -eu
 base="$HOME/.pi-desktop/pi-host"
-cd -P "$base/current"
-NODE_OPTIONS= NODE_PATH= flock -w 15 "$base/.deploy.lock" "$PWD/bin/node" "$PWD/deploy.mjs" --complete ${shellQuote(transactionId)} ${shellQuote(hostId)}
+umask 077
+worker_node="$base/current/bin/node"
+worker_dir=$(mktemp -d "$base/.bootstrap/.complete.XXXXXXXX")
+trap 'rm -rf "$worker_dir"' EXIT
+${writeDeploymentWorkerScript()}
+NODE_OPTIONS= NODE_PATH= flock -w 15 "$base/.deploy.lock" "$worker_node" "$worker_dir/deploy.mjs" --complete ${shellQuote(transactionId)} ${shellQuote(hostId)}
 `;
   try {
     const result = await transport.execWithInput("sh -s", script, { timeoutMs: 30_000, maxOutputBytes: 4096 });

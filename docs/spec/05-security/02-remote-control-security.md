@@ -191,6 +191,17 @@ pairing only binds a desktop device to the Host it started.
   Deployment that may have opened persistent data MUST NOT automatically roll
   back binaries against that data. Ambiguous state requires recovery. See the
   [preparation ADR](../../adr/remote-host-on-demand-preparation.md).
+
+- Deployment orchestration and recovery workers MUST come from the verified
+  Desktop transaction script. Same-named files inside a Host release archive
+  are not executed as deployment workers. The archive SHA-256 still
+  authenticates its runtime and install files. Recovery MUST match the exact
+  transaction, archive digest, installed directory, live process, Host ID and
+  version evidence. Existing enrollment also requires its saved owner device.
+  New enrollment may resume only a transaction that already permitted pairing;
+  an expired pairing may be refreshed only under an idle maintenance lease.
+  Unsafe or ambiguous state remains `HOST_RECOVERY_REQUIRED`. Recovery MUST
+  return to RACP identity/capability authentication before deleting its journal.
 - Revoking the device token on the Host, or removing the Host from the
   desktop, ends the pairing; a new pairing needs a new SSH bootstrap.
 - Provider configuration is copied only after explicit selection and consent,

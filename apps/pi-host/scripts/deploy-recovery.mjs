@@ -195,3 +195,28 @@ export function parsePairingLine(line) {
   if (typeof expiry !== "number" || !Number.isFinite(expiry) || expiry <= 0) return null;
   return { token: value.token, expiresAt: expiry };
 }
+
+/** A retry may resume only the same verified, running post-start transaction. */
+export function admitInterruptedDeployment({ record, request, identity, ready, targetVersion,
+  expectedHostId, preservePairing, expectedDeviceTokenHash, credentialsText }) {
+  if (record?.protocol !== 1 || !/^[a-f0-9]{32}$/.test(record?.transactionId ?? "") ||
+      !["recovery-required", "awaiting-racp"].includes(record.phase) ||
+      request?.transactionId !== record.transactionId) fail("HOST_RECOVERY_REQUIRED");
+  if (record.phase === "recovery-required" && record.failureCode !== "HOST_RECOVERY_REQUIRED") fail("HOST_RECOVERY_REQUIRED");
+  if (!parseSemver(targetVersion) || [record.version, request.version, ready?.version]
+      .some(version => normalizeVersion(version) !== normalizeVersion(targetVersion))) fail("HOST_VERSION_MISMATCH");
+  if (!ready || typeof identity?.hostId !== "string" || !identity.hostId || ready.hostId !== identity.hostId ||
+      [record.hostId, request.expectedHostId, expectedHostId].some(id => id && id !== identity.hostId)) fail("HOST_AUTH_FAILED");
+  if (preservePairing) {
+    if (!expectedHostId) fail("HOST_AUTH_FAILED");
+    findOwnerDevice(credentialsText, expectedDeviceTokenHash);
+  } else if (request.preservePairing === true) fail("HOST_AUTH_FAILED");
+  return { hostId: identity.hostId };
+}
+
+/** A logged token is reusable only while its persisted single-use record is live. */
+export function pairingRecordUsable(pairing, credentials, tokenHash, now = Date.now()) {
+  return Boolean(pairing && pairing.expiresAt > now && Array.isArray(credentials?.pairings) &&
+    credentials.pairings.some(record => record?.tokenHash === tokenHash && !record.consumedAt &&
+      Date.parse(record.expiresAt) > now));
+}

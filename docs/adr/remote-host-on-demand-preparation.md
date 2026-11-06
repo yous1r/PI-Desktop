@@ -67,6 +67,17 @@ The deployment journal distinguishes safe pre-activation failure from a failure
 after new code may have opened persistent data. The latter requires recovery;
 automatically repointing `current` does not authorize a database downgrade.
 
+Deployment control workers are carried by the Desktop transaction script and
+are independent of similarly named files in a published Host archive. The
+archive remains authenticated by its published SHA-256 and supplies the Host
+runtime/install files; the Desktop worker supplies orchestration and recovery.
+An interrupted post-start transaction may resume only when its transaction id,
+archive digest, installed directory, process, Host ID, version evidence and
+owner credentials all match. An expired pairing may be reissued only after an
+idle maintenance lease; recovery returns to the authenticated completion
+boundary and never clears the journal early. A busy or ambiguous Host remains
+in recovery-required.
+
 ## Consequences
 
 Preparation is visible as phases with explicit download, maintenance, retry and

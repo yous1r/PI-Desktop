@@ -1,5 +1,38 @@
 # Remote Host preparation follow-up validation
 
+## Published-archive correction
+
+The earlier candidate-only checks below did not qualify the downloaded CI
+Desktop: it still selected worker scripts from the unchanged official 0.22.2
+archive. After the user confirmed the idle window, that old worker rejected
+the Host's ISO pairing expiry and recorded `recovery-required` despite a healthy
+new Host. This was reproduced on `dev` and the user's actual screenshot target,
+which is a separate Host from the previously tested `paas` SSH alias.
+
+Desktop now embeds the current deployment/recovery sources in its build and
+transfers them separately over SSH. Installation, recovery and authenticated
+completion all use those sources. Official archive bytes and checksums remain
+unchanged. Recovery runs independently of the SSH connection, retains the exact
+transaction, checks the archive/installed directory/process/identity, and refreshes
+expired new-enrollment pairing only under an idle maintenance lease. Existing
+enrollment still requires its unrevoked owner credential; unsafe, dead-process,
+cross-version and ambiguous cases retain recovery state.
+
+Using the original official archive digest listed below, real `bootstrapHost`
+recovered both affected Hosts, authenticated, browsed `/root` (14 and 9 entries),
+and prepared their saved records again. Original identities and all device
+records were preserved, and both journals cleared only after authentication.
+Each run made zero release requests. A further `dev` installation started with
+no journal and also completed against the unchanged official archive.
+
+The Linux integration fixture contains deliberately unusable published workers.
+It exercises installation, busy refusal without stopping the Host, expired
+pairing recovery under a lease, valid-token reuse without another restart, and
+completion through Desktop's worker. The four focused Linux suites passed all
+14 tests. Production build and Desktop typecheck passed; worker source embedding
+was checked against the actual built Main chunks. The prior candidate archive
+is retained only as historical evidence, not as proof of this corrected path.
+
 ## Candidate and scope
 
 - Branch: `fix/remote-host-preparation-cache`.
@@ -32,9 +65,9 @@ replacing only `deploy.mjs`, `deploy-recovery.mjs` and their `SHA256SUMS` entrie
 
 It retains the 0.22.2 Host executable and uses a separate candidate cache with
 an injected local artifact provider. It was not published or put into the
-verified official-release cache. Both machines currently run this explicitly
-identified candidate. This is source validation, not qualification of a newly
-published release.
+verified official-release cache. Both machines ran this candidate during that
+earlier test. `dev` and the later screenshot target now run the unchanged
+official bundle following the corrected-path validation above.
 
 ## Real SSH results
 

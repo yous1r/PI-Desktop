@@ -10,7 +10,13 @@
  * Register with:
  *   register(pathToFileURL(join(here, "helpers/ts-import-hooks.mjs")));
  */
+import { readFile } from "node:fs/promises";
+
 export async function resolve(specifier, context, next) {
+  if (specifier.endsWith(".mjs?raw")) {
+    const source = await readFile(new URL(specifier.slice(0, -4), context.parentURL), "utf8");
+    return { url: `data:text/javascript,${encodeURIComponent(`export default ${JSON.stringify(source)}`)}`, shortCircuit: true };
+  }
   if (!specifier.startsWith("./") && !specifier.startsWith("../")) {
     return next(specifier, context);
   }
