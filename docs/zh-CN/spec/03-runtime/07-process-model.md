@@ -271,3 +271,18 @@ only the last organization copy, which is replaced after renderer bootstrap.
 Menu command readiness is acknowledged after bootstrap's initial navigation,
 so a tray click cannot be overwritten by the startup draft or pending-plan
 selection. See [ADR tray-session-shortcuts](/adr/tray-session-shortcuts).
+
+## 全局浮动个人待办
+
+Main 拥有一个独立的个人待办 BrowserWindow 和内存草稿写入器。
+正常启动后窗口展开，首次默认置顶；显式再次启动应用会重新打开现有浮窗。
+浮窗不以主窗口为父窗口，因此主窗口最小化或关闭到托盘后仍可显示。
+浮窗自身关闭表示隐藏，托盘和标题栏入口复用同一窗口。重启只恢复位置、尺寸和置顶偏好。
+显示器变化时会把窗口约束到可见工作区。
+
+编辑立即交给 Main。Main 定时器在空闲 500ms 或最早未保存编辑已等待 2s 时保存；
+5s 内未获持久化确认会显示错误。失焦、收起和退出请求立即保存。
+确认退出时先排空编辑消息，并在 Host 存活、应用资源尚未释放时保存。
+保存失败则保持应用运行，允许重试或取消退出。退出应用时释放窗口、定时器和显示器监听器。
+置顶依赖原生窗口状态，不轮询焦点或反复抬升窗口。
+参见[ADR](/adr/global-floating-personal-todos)。

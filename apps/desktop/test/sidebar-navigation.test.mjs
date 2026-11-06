@@ -66,9 +66,13 @@ test("work panel collapse control is the viewport-fixed shell toggle", () => {
   assert.doesNotMatch(panelSource, /work-panel-toolbar-collapse/);
   assert.doesNotMatch(panelSource, /work-panel-collapse/);
   assert.doesNotMatch(panelSource, /collapsePanel/);
+  assert.match(appSource, /className="app-personal-todos-toggle no-drag"/);
+  const openTitlebar = globalStyles.match(
+    /\.main-titlebar\.work-panel-open\s*\{[^}]*\}/s,
+  )?.[0] ?? "";
   assert.match(
-    globalStyles,
-    /\.main-titlebar\.work-panel-open\s*\{[^}]*padding-right:\s*0;/s,
+    openTitlebar,
+    /padding-right:\s*calc\(var\(--ds-work-panel-toggle-inset\) \+ var\(--ds-work-panel-toggle-size\) \* 2 \+ var\(--ds-work-panel-control-gap\) \* 2\);/,
   );
   assert.match(
     globalStyles,

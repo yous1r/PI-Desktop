@@ -1504,3 +1504,14 @@ metadata. Approval/rejection remain digest-bound. Only the new S3 format is
 supported; there is no old-data detection or migration. Disconnect removes
 only current S3 credentials, keys and local sync metadata/staging; unrelated
 files and remote objects remain intact. See `22-config-sync.md`.
+
+## Global floating personal todos
+
+`personalTodos.get({})` returns the raw versioned personal board.
+`personalTodos.replace({items, expectedRevision, mutationId})` returns the raw
+committed board. Unknown/missing fields, invalid types/IDs, excess limits,
+revision conflicts and conflicting idempotency reuse fail without overwriting
+data. This is a local Desktop data service, not an Agent tool or remote session
+operation. Content belongs to the local profile and requires no active session.
+See [storage](04-data-storage.md) and
+[ADR](../../adr/global-floating-personal-todos.md).

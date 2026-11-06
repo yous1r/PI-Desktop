@@ -493,6 +493,7 @@
   align-items: center;
   justify-content: flex-end;
   padding: 0 12px;
+  padding-right: calc(12px + var(--ds-work-panel-toggle-size) * 2 + var(--ds-work-panel-control-gap) * 2);
   background: var(--ds-bg-primary);
   /* Keep the shell continuous; titlebar hierarchy comes from spacing and
    * surface color instead of a hard lower rule. */
@@ -501,7 +502,7 @@
 }
 
 .main-titlebar.work-panel-open {
-  padding-right: 0;
+  padding-right: calc(var(--ds-work-panel-toggle-inset) + var(--ds-work-panel-toggle-size) * 2 + var(--ds-work-panel-control-gap) * 2);
 }
 
 /* Conversation top bar (Codex/WorkBuddy-style): replaces the empty chat
@@ -561,11 +562,11 @@
 .conversation-topbar .ct-right {
   flex: 0 0 auto;
   justify-content: flex-end;
-  padding-right: 36px;
+  padding-right: calc(36px + var(--ds-work-panel-toggle-size) + var(--ds-work-panel-control-gap));
 }
 
 .conversation-topbar.ct-work-panel-open .ct-right {
-  padding-right: 0;
+  padding-right: calc(var(--ds-work-panel-toggle-inset) + var(--ds-work-panel-toggle-size) * 2 + var(--ds-work-panel-control-gap) * 2);
 }
 
 .conversation-topbar .ct-title-wrap {
@@ -791,6 +792,37 @@
   padding: 2px;
   border-radius: var(--radius-md);
   background: var(--ds-tile);
+}
+
+/* The global personal board sits immediately left of the work-panel control.
+ * Platform-native controls keep their reserved lane at the far right. */
+.app-personal-todos-toggle {
+  position: fixed;
+  top: 9px;
+  right: calc(var(--ds-work-panel-toggle-inset) + var(--ds-work-panel-toggle-size) + var(--ds-work-panel-control-gap));
+  z-index: 30;
+  display: inline-flex;
+  width: var(--ds-work-panel-toggle-size);
+  height: var(--ds-work-panel-toggle-size);
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ds-text-secondary);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.app-personal-todos-toggle:hover {
+  background: var(--ds-bg-hover);
+  color: var(--ds-text-primary);
+}
+
+:root[data-platform="win32"] .app-personal-todos-toggle,
+:root[data-platform="linux"] .app-personal-todos-toggle {
+  right: calc(var(--ds-window-controls-width) + var(--ds-work-panel-toggle-inset) + var(--ds-work-panel-toggle-size) + var(--ds-work-panel-control-gap));
 }
 
 /* Keep the sole work-panel toggle anchored to the viewport while the in-flow
@@ -1226,6 +1258,10 @@
  * stack is not one of them — it lives on the body so a dialog cannot cover it. */
 .app-shell > .window-controls {
   z-index: 1100;
+}
+
+.app-shell > .app-personal-todos-toggle {
+  z-index: 1101;
 }
 
 .app-shell > .search-overlay {

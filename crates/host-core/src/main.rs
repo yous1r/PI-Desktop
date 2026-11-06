@@ -12,6 +12,7 @@ mod network_policy;
 mod network_proxy;
 mod notifications;
 mod permissions;
+mod personal_todos;
 mod plans;
 mod plugin_sessions;
 mod plugin_usage;

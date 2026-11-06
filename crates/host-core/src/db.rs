@@ -50,6 +50,97 @@ pub(crate) use session_fast_mode_migration::migrate_v26_to_v27;
 pub(crate) use session_title_source_migration::migrate_v22_to_v23;
 pub(crate) use worktree_migration::{migrate_v23_to_v24, WORKTREE_DDL};
 
+impl Database {
+    /// Run one immediate transaction with SQLite WAL `synchronous=FULL`, then
+    /// restore this connection's exact previous setting before returning.
+    /// Callers in Host hold the database owner lock around this method.
+    pub(crate) fn with_full_synchronous_immediate_transaction<T>(
+        &self,
+        operation: impl FnOnce(&rusqlite::Connection) -> Result<T>,
+    ) -> Result<T> {
+        let connection = self.conn();
+        let previous: i64 = connection.query_row("PRAGMA synchronous", [], |row| row.get(0))?;
+        connection.pragma_update(None, "synchronous", 2i64)?;
+        let mut synchronous_guard = SynchronousRestoreGuard {
+            connection,
+            previous,
+            restored: false,
+        };
+
+        let result = (|| {
+            connection.execute_batch("BEGIN IMMEDIATE")?;
+            let mut transaction_guard = ImmediateTransactionGuard {
+                connection,
+                committed: false,
+            };
+            let value = operation(connection)?;
+            transaction_guard.commit()?;
+            Ok(value)
+        })();
+        let restore_result = synchronous_guard.restore();
+        match (result, restore_result) {
+            (Ok(value), Ok(())) => Ok(value),
+            (Err(error), Ok(())) => Err(error),
+            (Ok(_), Err(error)) => {
+                Err(error.context("restore SQLite synchronous mode after full-sync transaction"))
+            }
+            (Err(error), Err(restore_error)) => Err(error.context(format!(
+                "also failed to restore SQLite synchronous mode: {restore_error}"
+            ))),
+        }
+    }
+}
+
+struct ImmediateTransactionGuard<'a> {
+    connection: &'a rusqlite::Connection,
+    committed: bool,
+}
+
+impl ImmediateTransactionGuard<'_> {
+    fn commit(&mut self) -> Result<()> {
+        self.connection.execute_batch("COMMIT")?;
+        self.committed = true;
+        Ok(())
+    }
+}
+
+impl Drop for ImmediateTransactionGuard<'_> {
+    fn drop(&mut self) {
+        if !self.committed {
+            if let Err(error) = self.connection.execute_batch("ROLLBACK") {
+                tracing::error!(%error, "failed to roll back personal todo transaction");
+            }
+        }
+    }
+}
+
+struct SynchronousRestoreGuard<'a> {
+    connection: &'a rusqlite::Connection,
+    previous: i64,
+    restored: bool,
+}
+
+impl SynchronousRestoreGuard<'_> {
+    fn restore(&mut self) -> Result<()> {
+        self.connection
+            .pragma_update(None, "synchronous", self.previous)?;
+        self.restored = true;
+        Ok(())
+    }
+}
+
+impl Drop for SynchronousRestoreGuard<'_> {
+    fn drop(&mut self) {
+        if !self.restored {
+            if let Err(error) = self
+                .connection
+                .pragma_update(None, "synchronous", self.previous)
+            {
+                tracing::error!(%error, "failed to restore SQLite synchronous mode");
+            }
+        }
+    }
+}
 pub fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
 }

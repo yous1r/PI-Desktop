@@ -19400,3 +19400,29 @@ substitute for native Linux packaging or SSH acceptance.
   records and the Electron sender are fixtures.
 - **Specs:** [Workspace execution](../07-plugins/18-workspace-execution.md).
 - **Status:** Automated process/user-path regression.
+
+## Global floating personal todos
+
+### E2E-PERSONAL-TODOS: user-authored floating board
+
+- Preconditions: dedicated latest-main candidate, built Desktop/Host, disposable
+  profile, no provider accounts or access to the user's running app.
+- Entry: `node scripts/e2e-personal-todos.mjs` (new focused suite).
+- Steps: start and observe expanded/pinned board; add title and per-item multiline
+  Chinese note, type continuously, copy unsaved draft, complete/delete rows; collapse
+  and reopen from shell; hide main; unpin; quit immediately after editing; relaunch.
+  Also exercise unauthorized IPC, storage failure/retry and stale responses in
+  targeted production-handler tests.
+- Expected: one board independent of session; icon-only actions; content persists
+  within 5s including continued input; copied text matches latest title/note; collapse
+  does not exit; pinned window survives main hiding; restart expands and restores
+  content/geometry/pin; no loss on normal immediate quit; failed saves never show
+  saved and cannot silently discard drafts during exit.
+- Coverage: `personal-todos-main.test.mjs`, `personal-todos-window.test.mjs`, widget
+  user-path tests, Rust `personal_todos` repository/RPC tests, focused Electron suite.
+- Specs: storage, Host RPC, IPC, process model, component spec; personal todo ADR.
+- Acceptance: real isolated Electron and Host journey plus deterministic failure tests.
+- Milestone: personal productivity feature. Status: Windows candidate passed;
+  actual evidence and platform limits are in `docs/project/global-floating-todo.md`.
+- Platform note: DOM/API tests do not prove OS secure-surface/fullscreen precedence;
+  report native platform coverage separately.

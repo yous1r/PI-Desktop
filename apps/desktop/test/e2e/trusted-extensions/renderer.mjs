@@ -1,8 +1,9 @@
+import { selectMainRendererTarget } from "../main-renderer-target.mjs";
+
 /** Inspect the real renderer; assertions wait on observable dialog state. */
 export async function connectRenderer(port) {
   const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
-  const target = targets.find((entry) => entry.type === "page" && entry.webSocketDebuggerUrl);
-  if (!target) throw new Error("Missing Electron renderer target");
+  const target = selectMainRendererTarget(targets);
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
     socket.addEventListener("open", resolve, { once: true });

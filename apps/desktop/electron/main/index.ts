@@ -55,6 +55,7 @@ import { createVoiceService } from "./voice-service";
 import { MicrophoneLeaseRegistry } from "./live-voice/microphone-lease";
 import { createLiveCallService } from "./live-voice/runtime";
 import { createLiveVoiceWidget } from "./live-voice/widget-window";
+import { createPersonalTodos } from "./personal-todos/runtime";
 import { getActiveRemoteHostsBoot } from "./bootstrap/remote-hosts";
 import { installLiveMicrophonePermissionHandlers } from "./live-voice/microphone-permissions";
 import { MainProcessState } from "./bootstrap/main-state";
@@ -501,6 +502,8 @@ installInsecureEndpointNotice(sendToRenderer);
 
 applicationLifecycle = createApplicationLifecycle({
   getRunningSessionIds: () => activeTurns.keys(),
+  openPersonalTodos: () => { void personalTodos.open().catch((error: unknown) => logger.app("lifecycle", "warn", "personal todo open failed", { data: String(error) })); },
+  onAppearanceChanged: () => { void personalTodos.refreshAppearance(); },
   state: windowLifecycleState,
   appState: applicationLifecycleState,
   appearanceState: applicationAppearanceState,
@@ -847,6 +850,7 @@ voiceServiceReference = voiceService;
 // The docked call widget: a desktop-level window that shows the call chrome
 // wherever the user put it and sends every action back to this window, which
 // stays the Live Voice owner (media, microphone lease, work scope).
+const personalTodos = createPersonalTodos({ dataDir, getHost, getMainWindow, log: (message, error) => logger.app("lifecycle", "warn", message, { data: String(error) }) });
 const liveVoiceWidget = createLiveVoiceWidget({
   getMainWindow,
   dataDir,
@@ -989,7 +993,7 @@ function registerIpc() {
     sendToRenderer,
     voiceService,
     liveCallService,
-    liveVoiceWidget,
+    liveVoiceWidget, personalTodos,
   });
 }
 
@@ -1035,7 +1039,7 @@ void app.whenReady().then(() => {
 });
 
 // The widget is chrome for a call this window owns; it must never outlive the app.
-app.once("will-quit", () => liveVoiceWidget.close());
+app.once("will-quit", () => { liveVoiceWidget.close(); personalTodos.dispose(); });
 
 registerApplicationStartup({
   hasSingleInstanceLock,
@@ -1065,6 +1069,7 @@ registerApplicationStartup({
   applyPluginLauncherShortcut,
   applyToggleWindowShortcut,
   ensureWindow,
+  openPersonalTodos: () => personalTodos.open(false),
   bootHostStatus,
   flushPendingApplicationMenuCommands,
   invokeSessionCollaboration: sessionCollaboration.invoke,
@@ -1098,10 +1103,12 @@ registerShutdownHandlers({
   disposePowerSaveBlockers,
   liveCallService,
   disposeSystemProxyRelay,
+  preparePersonalTodosQuit: personalTodos.prepareQuit,
 });
 
 registerApplicationActivation({
   restoreMainWindow,
+  openPersonalTodos: () => { void personalTodos.open().catch((error: unknown) => logger.app("lifecycle", "warn", "personal todo reopen failed", { data: String(error) })); },
   isQuitting: () => mainState.quitting,
   isApplicationBooted: () => applicationLifecycleState.applicationBooted,
   hasVisibleWindow,

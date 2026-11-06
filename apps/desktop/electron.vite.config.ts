@@ -91,6 +91,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, "electron/preload/index.ts"),
           "plugin-panel": resolve(__dirname, "electron/preload/plugin-panel.ts"),
+          "personal-todos": resolve(__dirname, "electron/preload/personal-todos.ts"),
         },
         output: {
           format: "cjs",

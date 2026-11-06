@@ -2,6 +2,7 @@ import { app } from "electron";
 
 export type ApplicationActivationDependencies = {
   restoreMainWindow: () => void;
+  openPersonalTodos?: () => void;
   isQuitting: () => boolean;
   isApplicationBooted: () => boolean;
   hasVisibleWindow: () => boolean;
@@ -10,6 +11,7 @@ export type ApplicationActivationDependencies = {
 /** Register activation paths that restore the existing application window. */
 export function registerApplicationActivation({
   restoreMainWindow,
+  openPersonalTodos,
   isQuitting,
   isApplicationBooted,
   hasVisibleWindow,
@@ -19,7 +21,7 @@ export function registerApplicationActivation({
   // Launching PI-Desktop again is a request to see the app that is already
   // running, not to start another process. Electron hands that launch to the
   // lock holder, so the visible result matches the tray's Show action.
-  app.on("second-instance", restoreMainWindow);
+  app.on("second-instance", () => { restoreMainWindow(); openPersonalTodos?.(); });
 
   // macOS can activate the app without emitting `activate` (Cmd+Tab, App
   // Exposé, and Spotlight). Restore only when no window is visible, so opening

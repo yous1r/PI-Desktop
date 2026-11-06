@@ -1460,3 +1460,22 @@ An unknown price is distinct from a known zero price; partial known costs remain
 on the individual operations. Late usage targets its captured turn and does not
 revive it or debit the currently active turn. Immediate nested parent and owning
 Task remain separate optional transcript/event fields.
+
+## 全局浮动个人待办
+
+每个本地数据目录拥有一个个人待办面板，与会话 TodoWrite 独立。
+Host-core 在专用 `personalTodos` kv 命名空间中保存文档和最近一次变更的指纹。
+文档包含 `schemaVersion: 1`、安全整数 revision、`updatedAt`（面板不存在时为 null），
+以及有序的 `{id,title,note,completed}` 条目。空标题属于可保存的草稿。
+上限为 200 条、每个标题 2000 个 Unicode 标量值、每个备注 20000 个标量值，
+序列化文档不超过 1 MiB。ID 必须非空、唯一，且不超过 128 个标量值。
+
+替换使用 `expectedRevision` 和 `mutationId` 进行原子 compare-and-swap。
+最近一次完全相同的变更可以安全重试；同一 token 携带不同内容或过期 revision 会被拒绝。
+每次提交都会推进 revision，包括清空列表。写入在既有数据库所有者锁下以 FULL 同步模式提交，
+完成后恢复连接原来的同步设置。数据不存在时返回空面板；损坏或不支持的文档会报错，绝不隐式重置。
+不增加表结构迁移，也不建立会话关联。
+
+窗口位置、尺寸和置顶偏好保存在 Main 管理的 `personal-todo-window.json` 中。
+收起状态不持久化。浮窗重载时 Main 保留草稿；只有 Host 成功确认后才显示已保存。
+参见[个人待办 ADR](/adr/global-floating-personal-todos)。

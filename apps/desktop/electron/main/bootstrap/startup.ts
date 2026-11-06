@@ -110,6 +110,7 @@ export type StartupDependencies = {
   applyPluginLauncherShortcut: (keybindings?: KeybindingOverrides) => void;
   applyToggleWindowShortcut: (keybindings?: KeybindingOverrides) => void;
   ensureWindow: () => Promise<boolean>;
+  openPersonalTodos?: () => Promise<void>;
   bootHostStatus: (bootError: unknown) => unknown;
   flushPendingApplicationMenuCommands: () => void;
   getSidecar?: () => unknown;
@@ -351,6 +352,9 @@ export function registerApplicationStartup(deps: StartupDependencies): void {
       applyToggleWindowShortcut();
     }
     await ensureWindow();
+    void deps.openPersonalTodos?.().catch((error: unknown) => {
+      logger.app("lifecycle", "warn", "personal todo window could not open", { data: String(error) });
+    });
     if (process.env.PI_DESKTOP_MCP_CONTROL === "1") {
       try {
         state.mcpControl = new McpControlServer({

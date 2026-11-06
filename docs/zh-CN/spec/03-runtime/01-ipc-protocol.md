@@ -2019,3 +2019,24 @@ unit and byte counts. There is no cleanup phase. Background polls stay silent.
 只有 owner 验证成功后才会创建 `MessagePort`，之后由 preload 中继到 renderer 窗口。owner 在首个 `hello` 中回送每通电话独有的 nonce；Main 仅在 call ID 和 nonce 均匹配时接受该端口一次。二进制帧包含有界 PCM 音频、采集 epoch、释放确认、播放游标和协议就绪信号。它不是通用 IPC 隧道：不会传输 Provider 凭证、任意命令、工作区路径、Agent 消息或持久化字幕。通话结束或 owner 丢失时会关闭端口。
 
 停靠挂件窗口不是通话 owner，也不可能成为 owner：它在所有经过 owner 校验的通道上都会像任何其他 renderer 一样被以 `PERMISSION_DENIED` 拒绝。Main 只在该窗口作为发送方时响应它的两条通道；owner 自身的错误码经由主窗口传入，因为执行操作的是该 frame。挂件操作本身不会改变通话状态：它被转发给 owner frame，结果状态再通过 owner 收到的同一份权威视图回到挂件。
+
+## 全局浮动个人待办
+
+新增独立的 `personalTodos` 通道组：
+
+| Invoke 后缀 | 输入 | Result data | 发送方 |
+| --- | --- | --- | --- |
+| get | 无 | PersonalTodoView | 主窗口或待办浮窗 |
+| edit | items, expectedEditVersion | 已接受的 PersonalTodoView | 待办浮窗 |
+| flush | 无 | 已保存的 PersonalTodoView | 待办浮窗 |
+| window | action=open/collapse，或 action=pin 加布尔值 value | PersonalTodoView | 待办浮窗；主窗口可请求打开 |
+| copy | title, note | copied=true | 待办浮窗 |
+| quitReady | requestId | accepted=true | 待办浮窗 |
+
+通道前缀为 `pi-desktop/personalTodos/`，invoke 沿用现有 Result 信封。
+`event/changed` 携带当前视图、编辑版本与已保存版本、保存状态、错误、窗口状态和安全的外观设置子集。
+`event/prepareQuit` 要求编辑器暂停输入并提交尚未发送的编辑，再通过 `quitReady` 确认。
+其输入为 `{ requestId: string | null }`；退出准备失败或取消时，null 表示恢复编辑。
+Main 随后冻结新编辑，并在关闭 Host 前完成保存。浮窗的专用 preload 只暴露这些调用和事件；
+发送方校验包含 webContents、主 frame 和精确的 renderer URL。
+复制结果为当前标题、一个空行和完整备注，保留备注中的换行；备注为空时只复制标题。
