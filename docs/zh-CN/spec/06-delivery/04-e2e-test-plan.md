@@ -10118,3 +10118,24 @@ PluginPack 产物的解包目录，仅用于开发验证。验收 #1711 前需�
   event/result agreement, batch rejection and delegate restoration.
 - **Status**: Automated offline; native UI clicking and live providers are
   outside this fixture's coverage.
+
+## 全局浮动个人待办
+
+### E2E-PERSONAL-TODOS：用户维护的浮动面板
+
+- 前置条件：基于最新主线的专用候选、已构建 Desktop/Host、临时配置目录；
+  不使用真实 Provider 账号或用户正在运行的应用。
+- 入口：`node scripts/e2e-personal-todos.mjs`。
+- 步骤：启动后检查展开与置顶；添加标题和单条多行中文备注，连续输入，复制当前草稿，完成和删除条目；
+  收起后从标题栏重开；隐藏主窗口；取消置顶；编辑后立即退出，再次启动。
+  未授权 IPC、存储失败/重试和旧响应由针对性生产处理器测试覆盖。
+- 预期：个人面板独立于会话且只有一个实例，操作按钮为图标；连续输入在 5s 内持久化；
+  复制内容与最新标题和备注一致；收起不退出；主窗口隐藏后浮窗仍可显示；
+  重启展开并恢复内容、尺寸、位置和置顶偏好；正常立即退出不丢编辑；
+  保存失败不显示已保存，也不在退出时静默丢弃草稿。
+- 覆盖：`personal-todos-main.test.mjs`、`personal-todos-window.test.mjs`、浮窗用户路径测试、
+  Rust `personal_todos` repository/RPC 测试和专用 Electron 套件。
+- 规格：存储、Host RPC、IPC、进程模型、组件规格及个人待办 ADR。
+- 验收：真实隔离 Electron/Host 用户路径和可控失败测试。
+- 里程碑：个人效率功能；Windows 候选已通过，证据和平台限制见 `docs/project/global-floating-todo.md`。
+- 平台说明：DOM/API 测试不能证明安全桌面和全屏优先级，需单独记录原生平台覆盖情况。
