@@ -222,9 +222,9 @@ that confirmation.
 Interrupted deployment records whether startup may have touched persistent data;
 unsafe or ambiguous recovery fails closed with `HOST_RECOVERY_REQUIRED`.
 Readiness accepts the Host's ISO pairing expiry and legacy numeric expiry,
-rejecting malformed records. Deployment completion resolves `current` to its
-physical directory before invoking the CLI, including for older installed
-workers whose entry guard does not recognize a symbolic link.
+rejecting malformed records. Authenticated deployment completion also uses the
+Desktop-carried worker in a private temporary directory; it never executes an
+older installed worker through `current`.
 
 The Desktop transaction script carries the deployment and recovery workers as
 embedded source. A published archive's same-named worker is never trusted to
