@@ -408,10 +408,11 @@ test("a damaged canonical version is never reused or modified", { skip: HOST_LIM
     assert.equal(current(f.installDir), healthy, "staging leaves the working pointer untouched");
     assert.equal(readFileSync(join(healthy, "pi-host.js"), "utf8"), "damaged-forensic-bytes\n",
       "damaged bytes are preserved for inspection");
-    assert.equal(execFileSync("sh", [join(repaired, "install.sh"), "--verify"], { encoding: "utf8" }).trim(), "",
-      "the repair sibling verifies independently");
+    const verified = install(join(repaired, "install.sh"), f.installDir, "--verify");
+    assert.equal(verified.status, 0, `the repair sibling verifies independently: ${verified.stderr}`);
     // A repeated stage reuses the healthy repair sibling instead of accumulating.
     const again = install(f.installer, f.installDir, "--stage");
+    assert.equal(again.status, 0, again.stderr);
     assert.equal(/^PI_HOST_STAGED (.*)$/m.exec(again.stdout)?.[1], repaired);
   } finally {
     f.cleanup();
