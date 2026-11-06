@@ -78,6 +78,8 @@ export type ApplicationLifecycleDependencies = {
   broadcastPluginPanelEvent: (event: string, payload: unknown) => void;
   getHost: () => HostProcess | null;
   getRunningSessionIds: () => Iterable<string>;
+  openPersonalTodos?: () => void;
+  onAppearanceChanged?: () => void;
 };
 
 export function createApplicationLifecycle({
@@ -111,6 +113,8 @@ export function createApplicationLifecycle({
   broadcastPluginPanelEvent,
   getHost,
   getRunningSessionIds,
+  openPersonalTodos,
+  onAppearanceChanged,
 }: ApplicationLifecycleDependencies) {
   const traySessions = createTraySessions({
     getHost,
@@ -226,6 +230,7 @@ export function createApplicationLifecycle({
     const labels = catalog.tray;
     const template: MenuItemConstructorOptions[] = [
       { label: labels.open, click: restoreMainWindow },
+      ...(openPersonalTodos ? [{ label: catalog.personalTodos.open, click: openPersonalTodos }] : []),
     ];
     for (const group of traySessions.getGroups()) {
       template.push({ type: "separator" }, { label: labels[group.kind], enabled: false });
@@ -640,6 +645,7 @@ export function createApplicationLifecycle({
     } else {
       appearanceState.pluginPanelTheme = nativeTheme.shouldUseDarkColors ? "dark" : "light";
     }
+    onAppearanceChanged?.();
     // Panels mirror the app's palette/language live; push any change now.
     broadcastAppearance();
   }

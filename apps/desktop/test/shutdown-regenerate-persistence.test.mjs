@@ -225,3 +225,62 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
   await state.shutdownPromise;
   assert.equal(state.shutdownComplete, true);
 });
+
+test("personal todo preparation blocks disposal and permits a cancelled quit to retry", async (t) => {
+  app.removeAllListeners();
+  const originalQuit = app.quit;
+  const state = {
+    shutdownComplete: false, shutdownPromise: null, quitting: false,
+    quitConfirmed: true, closeBehavior: "quit", tray: null,
+    pluginLauncherAccelerator: null, toggleWindowAccelerator: null,
+  };
+  const preparations = [];
+  let hostDisposed = false;
+  let releaseResources = false;
+  const dispose = () => undefined;
+  app.quit = () => app.emit("before-quit", { preventDefault() {} });
+  t.after(async () => {
+    for (const pending of preparations) pending.resolve(false);
+    await state.shutdownPromise;
+    app.removeAllListeners();
+    app.quit = originalQuit;
+  });
+  registerShutdownHandlers({
+    hasSingleInstanceLock: true, state,
+    getHost: () => ({ dispose: async () => { hostDisposed = true; } }),
+    getSidecar: () => null, getMcpControl: () => null,
+    activeTurns: new Map(),
+    persistenceOutbox: { flush: async () => {}, size: () => 0 },
+    inflightCheckpointer: { flushAll: async () => {}, dispose },
+    flushEventPersistence: async () => {},
+    pluginPanels: { closeAll: async () => {} },
+    plugins: { disposeAll: async () => {} }, userMcp: { disposeAll: dispose },
+    browserHost: { dispose }, pluginViews: { dispose: async () => {} },
+    updater: { dispose, isInstallingUpdate: () => false }, logger: { app() {} },
+    confirmQuitDialog: async () => true,
+    disposePowerSaveBlockers: () => { releaseResources = true; },
+    preparePersonalTodosQuit: () => {
+      const pending = Promise.withResolvers(); preparations.push(pending); return pending.promise;
+    },
+  });
+  app.quit(); app.quit();
+  assert.equal(preparations.length, 1);
+  assert.equal(state.shutdownPromise, null);
+  assert.equal(releaseResources, false);
+  assert.equal(hostDisposed, false);
+  preparations[0].resolve(false);
+  await Promise.resolve();
+  assert.equal(state.quitting, false);
+  assert.equal(state.quitConfirmed, false);
+  assert.equal(hostDisposed, false);
+  state.quitConfirmed = true;
+  app.quit();
+  assert.equal(preparations.length, 2);
+  preparations[1].resolve(true);
+  await Promise.resolve();
+  assert.ok(state.shutdownPromise);
+  await state.shutdownPromise;
+  assert.equal(releaseResources, true);
+  assert.equal(hostDisposed, true);
+  assert.equal(state.shutdownComplete, true);
+});

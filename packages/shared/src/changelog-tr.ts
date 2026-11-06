@@ -5,6 +5,7 @@ export const trEntries: ChangelogEntry[] = [
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [
+      "Her göreve not ekleyebileceğiniz, birlikte kopyalayabileceğiniz, otomatik kaydedilen ve yeniden açılışta geri yüklenen genel yüzen görev listesini kullanın.",
       "Sistem güvenini değiştirmeden bir HTTPS MCP sunucusu için özel CA sertifikası yapılandırın; kaydedilen sertifikalar düzenlemeden sonra korunur ve kaldırılabilir.",
       "Yüklü eklenti becerilerini Ayarlar → Beceriler bölümünde arama ve sayılarla eklentiye göre gruplanmış olarak görün.",
       "Bir eklentiyi yüklemek, etkinleştirmek veya yeniden yüklemek, uygulamayı yeniden başlatmadan MCP sunucularını yeniler; çalışan turlar kesilmez.",

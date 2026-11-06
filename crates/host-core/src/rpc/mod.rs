@@ -1,5 +1,6 @@
 mod config_sync_rpc;
 mod gen_ui;
+mod personal_todos;
 mod plugin_reviews_rpc;
 mod remote_tools;
 mod scheduled_rpc;
@@ -2864,6 +2865,14 @@ async fn handle_request(
                     .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?,
             )?;
             Ok(json!({ "session": session }))
+        }
+        "personalTodos.get" => {
+            let st = state.lock().await;
+            personal_todos::get_from(&st.db, params)
+        }
+        "personalTodos.replace" => {
+            let st = state.lock().await;
+            personal_todos::replace_from(&st.db, params)
         }
         "todos.get" => {
             let session_id = params

@@ -44,6 +44,7 @@ import type { LiveCallService } from "../live-voice/call-service";
 import type { ComposerSuggestionAnswer } from "../services/composer-suggestion";
 import type { LiveVoiceWidget } from "../live-voice/widget-window";
 import type { IpcRegistrar } from "./types";
+import type { PersonalTodosRuntime } from "../personal-todos/runtime";
 import type { createTraySessions } from "../tray-sessions";
 import type { createTaskbarUnreadBadge } from "../taskbar-unread-badge";
 
@@ -79,6 +80,7 @@ export type RegisterIpcDependencies = {
   completionNoticeTurns: Set<string>;
   liveCallService?: LiveCallService;
   liveVoiceWidget?: LiveVoiceWidget;
+  personalTodos?: PersonalTodosRuntime;
   restartForStorage: () => void;
   mcpOAuth?: McpOAuthManager;
   workspaceConsent: WorkspacePluginConsent;
@@ -263,6 +265,7 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     assertMainWindowSender,
   };
 
+  dependencies.personalTodos?.register(registrar);
   registerWorkspaceTerminals({ registrar, getMainWindow, getHost, currentWorkspacePath });
   registerAppIpc({
     registrar,

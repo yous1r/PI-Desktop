@@ -7,6 +7,7 @@ import { en } from "@pi-desktop/i18n/locales/en";
 import { remoteEn, remoteZh } from "./locales/remote";
 import { MAC_TRAFFIC_LIGHT_EDGE_DIP } from "@pi-desktop/shared";
 import App from "./App";
+
 import { ErrorBoundary, RoutePending } from "./features/app/chrome";
 import { initLanguageSync } from "./lib/app-language";
 import { installScrollbarReveal } from "./lib/scrollbar-reveal";
@@ -57,6 +58,9 @@ function showRendererError(error: unknown): void {
   rootContainer.replaceChildren(panel);
 }
 
+const PersonalTodosWidget = React.lazy(() =>
+  import("./features/personal-todos/PersonalTodosWidget").then((module) => ({ default: module.PersonalTodosWidget })),
+);
 const PluginLauncher = React.lazy(() =>
   import("./components/PluginLauncher").then((module) => ({
     default: module.PluginLauncher,
@@ -91,13 +95,15 @@ async function startRenderer(): Promise<void> {
       <RoutePending />
     </React.StrictMode>,
   );
-  await initLanguageSync();
+  if (rendererSurface !== "personal-todos") await initLanguageSync();
 
   try {
     root.render(
       <React.StrictMode>
         <React.Suspense fallback={<RoutePending />}>
-          {rendererSurface === "plugin-launcher" ? (
+          {rendererSurface === "personal-todos" ? (
+            <ErrorBoundary><PersonalTodosWidget /></ErrorBoundary>
+          ) : rendererSurface === "plugin-launcher" ? (
             <ErrorBoundary>
               <PluginLauncher />
             </ErrorBoundary>

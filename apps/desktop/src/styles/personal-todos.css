@@ -1,0 +1,269 @@
+html[data-surface="personal-todos"],
+html[data-surface="personal-todos"] body,
+html[data-surface="personal-todos"] #root {
+  background: var(--ds-bg-primary);
+  color: var(--ds-text-primary);
+}
+
+.personal-todos {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  flex-direction: column;
+  padding: 12px;
+  background: var(--ds-bg-primary);
+  color: var(--ds-text-primary);
+}
+
+.personal-todos-header,
+.personal-todos-heading,
+.personal-todos-toolbar,
+.personal-todo-actions,
+.personal-todos-footer,
+.personal-todos-add,
+.personal-todos-status {
+  display: flex;
+  align-items: center;
+}
+
+.personal-todos-header {
+  min-height: 36px;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.personal-todos-heading {
+  min-width: 0;
+  gap: 8px;
+  color: var(--ds-text-primary);
+}
+
+.personal-todos-heading h1 {
+  overflow: hidden;
+  margin: 0;
+  font-size: var(--text-md-plus);
+  font-weight: var(--font-weight-semibold);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.personal-todos-toolbar,
+.personal-todo-actions {
+  flex: 0 0 auto;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.personal-todos-icon {
+  display: inline-flex;
+  width: max(var(--ds-control-size), 32px);
+  height: max(var(--ds-control-size), 32px);
+  flex: 0 0 max(var(--ds-control-size), 32px);
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ds-text-secondary);
+  cursor: pointer;
+}
+
+.personal-todos-icon:hover:not(:disabled),
+.personal-todos-add:hover:not(:disabled) {
+  background: var(--ds-bg-hover);
+  color: var(--ds-text-primary);
+}
+
+.personal-todos-icon[aria-pressed="true"] {
+  color: var(--ds-text-primary);
+}
+
+.personal-todo-delete:hover:not(:disabled) {
+  color: var(--ds-error);
+}
+
+.personal-todos-list {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 2px 1px 10px;
+}
+
+.personal-todo-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 4px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  transition: background var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+.personal-todo-row:hover,
+.personal-todo-row:focus-within {
+  background: var(--ds-tile);
+}
+
+.personal-todo-check {
+  display: inline-flex;
+  min-width: 32px;
+  min-height: 36px;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.personal-todo-check input {
+  width: 16px;
+  height: 16px;
+}
+
+.personal-todo-content {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.personal-todo-title.field-input {
+  width: 100%;
+  min-height: 34px;
+  padding: 5px 7px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ds-text-primary);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.personal-todo-title.field-input:hover,
+.personal-todo-title.field-input:focus {
+  border-color: var(--ds-border-default);
+  background: var(--ds-field-inset-bg);
+}
+
+.personal-todo-title.is-completed {
+  color: var(--ds-text-muted);
+  text-decoration: line-through;
+}
+
+.personal-todo-note-toggle {
+  min-height: 30px;
+  padding: 3px 7px;
+  border: 0;
+  background: transparent;
+  color: var(--ds-text-muted);
+  font-size: var(--text-xs);
+  text-align: left;
+  cursor: pointer;
+}
+
+.personal-todo-note-toggle:hover {
+  color: var(--ds-text-primary);
+}
+
+.personal-todo-note.field-textarea {
+  width: 100%;
+  min-height: 64px;
+  margin-top: 3px;
+  padding: 7px;
+  resize: vertical;
+  background: var(--ds-field-inset-bg);
+  color: var(--ds-text-primary);
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.personal-todos-empty,
+.personal-todos-state {
+  color: var(--ds-text-muted);
+  font-size: var(--text-sm);
+}
+
+.personal-todos-empty {
+  margin: 16px 8px;
+  text-align: center;
+}
+
+.personal-todos-footer {
+  min-height: 42px;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid var(--ds-border-subtle);
+}
+
+.personal-todos-add {
+  min-height: 32px;
+  gap: 6px;
+  padding: 4px 9px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ds-text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.personal-todos-remaining {
+  color: var(--ds-text-muted);
+  font-size: var(--text-xs);
+}
+
+.personal-todos-status {
+  min-height: 24px;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ds-text-muted);
+  font-size: var(--text-xs);
+}
+
+.personal-todos-status.is-error {
+  color: var(--ds-error);
+}
+
+.personal-todos-retry,
+.personal-todos-text-action {
+  min-height: 28px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--ds-tile);
+  color: inherit;
+  cursor: pointer;
+}
+
+.personal-todos-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.personal-todos-state {
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.personal-todos-state .personal-todos-text-action {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+}
+
+/* A narrow window may be manually resized; preserve edit and action targets. */
+@media (max-width: 320px) {
+  .personal-todos { padding: 8px; }
+  .personal-todo-row { gap: 2px; padding-inline: 0; }
+  .personal-todos-icon { width: 30px; flex-basis: 30px; }
+}

@@ -56,6 +56,7 @@ export type ShutdownDependencies = {
   disposePowerSaveBlockers: () => void;
   liveCallService?: Pick<LiveCallService, "endForLifecycle">;
   disposeSystemProxyRelay?: () => Promise<void>;
+  preparePersonalTodosQuit?: () => Promise<boolean>;
 };
 
 /** Register the last-window and before-quit resource lifecycle handlers. */
@@ -82,8 +83,11 @@ export function registerShutdownHandlers({
   disposePowerSaveBlockers,
   liveCallService,
   disposeSystemProxyRelay,
+  preparePersonalTodosQuit,
 }: ShutdownDependencies): void {
   let quitConfirmationPending = false;
+  let todoPreparationPending = false;
+  let todosPrepared = false;
   app.on("window-all-closed", () => {
     // The D216 tray is resident on every platform, so its presence says nothing
     // about whether the app should survive a closed window — the user's close
@@ -102,7 +106,7 @@ export function registerShutdownHandlers({
     if (!hasSingleInstanceLock) return;
     if (state.shutdownComplete) return;
     event.preventDefault();
-    if (state.shutdownPromise || quitConfirmationPending) return;
+    if (state.shutdownPromise || quitConfirmationPending || todoPreparationPending) return;
 
     // Show a confirmation dialog on the first explicit quit (Cmd+Q, tray quit,
     // application-menu Quit). The data-saving shutdown runs after confirmation.
@@ -142,6 +146,19 @@ export function registerShutdownHandlers({
       return;
     }
 
+    if (preparePersonalTodosQuit && !todosPrepared) {
+      todoPreparationPending = true;
+      void preparePersonalTodosQuit().then((prepared) => {
+        todoPreparationPending = false;
+        if (prepared) { todosPrepared = true; app.quit(); }
+        else state.quitConfirmed = false;
+      }, (error: unknown) => {
+        todoPreparationPending = false;
+        state.quitConfirmed = false;
+        logger.app("lifecycle", "warn", "personal todo save blocked quit", { data: String(error) });
+      });
+      return;
+    }
     state.quitting = true;
     // Persist the confirmed shutdown before any awaited cleanup so a forced
     // process termination still leaves an observable lifecycle boundary.

@@ -1997,3 +1997,26 @@ An unknown price is distinct from a known zero price; partial known costs remain
 on the individual operations. Late usage targets its captured turn and does not
 revive it or debit the currently active turn. Immediate nested parent and owning
 Task remain separate optional transcript/event fields.
+
+## Global floating personal todos
+
+The local profile owns one personal-todo board, separate from session TodoWrite.
+Host-core stores its document and latest mutation fingerprint in the dedicated
+`personalTodos` kv namespace. Documents carry `schemaVersion: 1`, a safe-integer
+revision, `updatedAt` (null for an absent board), and ordered `{id,title,note,
+completed}` items. Blank titles are persisted drafts. At most 200 items, 2000
+Unicode scalar values per title, 20000 per note, and 1 MiB serialized document
+are allowed. IDs are nonempty, unique and bounded to 128 scalar values.
+
+Replacement is an atomic compare-and-swap using `expectedRevision` and
+`mutationId`. The most recent identical mutation may be replayed; token reuse
+with changed content and stale revisions fail. Every committed replacement,
+including an empty list, advances revision. FULL-synchronous commit covers the
+write under the existing DB owner lock, then restores the connection's previous
+setting. Missing data is empty; malformed/unsupported data is an error, never an
+implicit reset. No table-schema migration or session linkage is introduced.
+
+Window bounds/pin preference live in Main-owned `personal-todo-window.json`.
+Collapsed state is never persisted. Main retains drafts across widget reload;
+only successful Host acknowledgements are labelled saved. See
+[personal todo ADR](../../adr/global-floating-personal-todos.md).

@@ -401,3 +401,5 @@ Each ADR includes:
 | 0339 | [The remote bundle comes from the repository that builds the desktop](0339-fork-release-pi-host-source.md) | Accepted (amends ADR 0326 decision 2) |
 
 | model-reasoning-effort-override | [Model reasoning effort override](model-reasoning-effort-override.md) | Proposed |
+
+| global-floating-personal-todos | [Global floating personal todos](global-floating-personal-todos.md) | Accepted for implementation |
