@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const enEntries: ChangelogEntry[] = [
   {
+    version: "0.22.2",
+    date: "2026-11-06",
+    highlights: [
+      "Opening an SSH remote project prepares the matching Host release on demand; download consent and retry resume the original action.",
+      "Host downloads use the Desktop global proxy, while upgrades preserve identity, credentials, projects and data and refuse downgrades or active work.",
+      "Repair damaged Host bundles in a separately verified directory while preserving the original files for recovery.",
+      "Keep a global floating todo window with notes, copy each title and note together, and restore saved items after restart.",
+      "Configure a private CA for an HTTPS MCP server without changing system trust or restarting the app.",
+      "Open and close multiple terminal tabs independently, with reliable Windows project paths and a themed shell picker.",
+    ],
+  },
+  {
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [

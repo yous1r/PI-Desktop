@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const ptBREntries: ChangelogEntry[] = [
   {
+    version: "0.22.2",
+    date: "2026-11-06",
+    highlights: [
+      "Ao abrir um projeto remoto por SSH, a versão correspondente do Host é preparada sob demanda; aceitar o download ou tentar novamente retoma a ação original.",
+      "Os downloads do Host usam o proxy global do aplicativo; as atualizações preservam identidade, credenciais, projetos e dados e recusam downgrades ou interromper trabalhos ativos.",
+      "Repare pacotes do Host danificados em um diretório verificado separadamente, preservando os arquivos originais para recuperação.",
+      "Use uma janela flutuante global de tarefas com notas, copie título e nota juntos e restaure os itens salvos após reiniciar.",
+      "Configure uma CA privada para um servidor MCP HTTPS sem alterar a confiança do sistema nem reiniciar o aplicativo.",
+      "Abra e feche várias abas de terminal de forma independente, com caminhos de projetos Windows confiáveis e um seletor de shell integrado ao tema.",
+    ],
+  },
+  {
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [

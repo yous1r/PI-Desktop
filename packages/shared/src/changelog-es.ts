@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const esEntries: ChangelogEntry[] = [
   {
+    version: "0.22.2",
+    date: "2026-11-06",
+    highlights: [
+      "Al abrir un proyecto remoto por SSH se prepara la versión correspondiente del Host; aceptar la descarga o reintentar permite continuar la acción original.",
+      "Las descargas del Host usan el proxy global de la aplicación; las actualizaciones conservan identidad, credenciales, proyectos y datos, y rechazan versiones anteriores o interrumpir trabajo activo.",
+      "Repara paquetes del Host dañados en un directorio verificado por separado y conserva los archivos originales para la recuperación.",
+      "Usa una ventana flotante global de tareas con notas, copia juntos el título y la nota y recupera los elementos guardados al reiniciar.",
+      "Configura una CA privada para un servidor MCP HTTPS sin cambiar la confianza del sistema ni reiniciar la aplicación.",
+      "Abre y cierra varias pestañas de terminal de forma independiente, con rutas de proyectos Windows fiables y un selector de shell adaptado al tema.",
+    ],
+  },
+  {
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [

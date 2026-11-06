@@ -2,6 +2,18 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const zhCNEntries: ChangelogEntry[] = [
   {
+    version: "0.22.2",
+    date: "2026-11-06",
+    highlights: [
+      "打开 SSH 远程项目时按需准备匹配版本的 Host；确认下载或重试后继续原来的操作。",
+      "Host 下载复用桌面全局代理；升级保留身份、凭据、项目和数据，并拒绝降级或中断正在执行的工作。",
+      "在独立验证的目录中修复损坏的 Host 安装，保留原始文件以便恢复。",
+      "使用带备注的全局悬浮待办窗口，一起复制标题和备注，并在重启后恢复已保存的事项。",
+      "为 HTTPS MCP 服务器配置私有 CA，无需修改系统信任或重启应用。",
+      "独立打开和关闭多个终端标签，可靠处理 Windows 项目路径，Shell 选择器跟随应用主题。",
+    ],
+  },
+  {
     version: "0.22.1",
     date: "2026-11-01",
     highlights: [
