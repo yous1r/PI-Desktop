@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 import { repositoryRoot } from "../../../scripts/e2e/boot.mjs";
+import { rawSourcePlugin } from "./helpers/raw-source-plugin.mjs";
 
 const root = repositoryRoot();
 const { build } = createRequire(join(root, "packages/agent-runtime/package.json"))("esbuild");
@@ -23,6 +24,7 @@ test("session launch sends Fast mode only for a model the user allowed it on (AD
       format: "esm",
       packages: "external",
       nodePaths: [join(root, "apps/desktop/node_modules")],
+      plugins: [rawSourcePlugin],
     });
     const { createSessionLaunchRuntime } = await import(pathToFileURL(bundle).href);
     const provider = {
