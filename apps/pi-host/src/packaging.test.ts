@@ -236,15 +236,18 @@ describe("pi-host packaging", () => {
     expect(bundle(f).status).toBe(0);
     const path = join(f.root, "shell-tools");
     mkdirSync(path);
-    for (const tool of ["shasum", "uname", ...(process.platform === "linux" ? ["flock"] : []), "dirname", "mkdir", "mktemp", "cp", "awk", "find", "wc", "tr", "mv", "ln", "rm", "cmp"]) {
+    for (const tool of ["shasum", "uname", ...(process.platform === "linux" ? ["flock"] : []), "dirname", "mkdir", "mktemp", "cp", "awk", "find", "wc", "tr", "mv", "ln", "rm", "rmdir", "cmp"]) {
       const found = spawnSync("/bin/sh", ["-c", `command -v ${tool}`], { encoding: "utf8" });
       expect(found.status, tool).toBe(0);
       symlinkSync(found.stdout.trim(), join(path, tool));
     }
+    expect(existsSync(join(path, "node"))).toBe(false);
+    expect(existsSync(join(path, "sha256sum"))).toBe(false);
     const root = join(f.root, "installed");
     const install = () => spawnSync("/bin/sh", [join(f.out, "install.sh")], { env: { ...process.env, PATH: path, PI_HOST_INSTALL_DIR: root }, encoding: "utf8" });
     const result = install();
     expect(result.status, result.stderr).toBe(0);
+    expect(readdirSync(root).filter((name) => name.startsWith(".activate."))).toEqual([]);
     const original = readlinkSync(join(root, "current"));
     // An already published damaged version must never be silently repaired in place.
     write(join(original, "pi-host.js"), "damaged installed file");
