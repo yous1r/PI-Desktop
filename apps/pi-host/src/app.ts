@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { AgentHost, type ApprovalPort } from "@pi-desktop/agent-host";
+import { AgentHost, MaintenanceAdmission, type ApprovalPort } from "@pi-desktop/agent-host";
 import {
   AgentSidecar, WorkspaceTerminalService, ShellRegistry, WorkspacePluginService,
   HostProcess,
@@ -24,6 +24,7 @@ import { createHostOperations } from "./host-operations.js";
 import { createLogger, type HostLogger } from "./logger.js";
 import { TerminalService, loadPty } from "./terminal.js";
 import { prepareAdminDirectory, startAdminSocket } from "./admin-socket.js";
+import { handleMaintenanceRequest, MAINTENANCE_PROTOCOL, type MaintenanceRequest, type MaintenanceResponse } from "./maintenance.js";
 
 export type PiHostApp = {
   hostId: string;
@@ -33,6 +34,8 @@ export type PiHostApp = {
   authenticator: DeviceTokenAuthenticator;
   server: RacpServer;
   log: HostLogger;
+  /** Maintenance admission protocol this Host serves on its admin channel. */
+  maintenance: typeof MAINTENANCE_PROTOCOL;
   /** Mint a single-use pairing token for the bootstrap channel. */
   issuePairingToken(lifetimeMs: number): Promise<{ token: string; expiresAt: string }>;
   stop(): Promise<void>;
@@ -59,6 +62,8 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
   const getHost = () => state.host;
   const getSidecar = () => state.sidecar;
 
+  // Closed before the first inspection await, so no new work can slip in.
+  const maintenanceGate = new MaintenanceAdmission();
   const launch = createHeadlessLaunchResolver({ getHost, dataDir: config.dataDir, log: (level, message, data) => log(level, message, data) });
   const runtime = new RuntimeService({ getHost, getSidecar, launch, log });
 
@@ -94,8 +99,9 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     approvals,
     queueStore: createHostQueueStore(getHost),
     localApprovalLifetimeMs: APPROVAL_REQUEST_TIMEOUT_MS,
+    gate: maintenanceGate,
   });
-  const plans = new PlanExecutionDispatcher({ getHost, getSidecar, launch, runtime, log });
+  const plans = new PlanExecutionDispatcher({ getHost, getSidecar, launch, runtime, log, gate: maintenanceGate });
 
   // Every runtime event feeds the module; a settled turn closes it there too.
   const abortingSessions = new Set<string>();
@@ -211,8 +217,37 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     },
   });
 
-  // Claim the owner-only channel before spawning the sole SQLite writer.
-  const admin = process.platform === "win32" ? undefined : await startAdminSocket({ dataDir: config.dataDir, getHost, log });
+  // The admin channel is claimed first, so it reads the owners through late
+  // bindings instead of keeping a second copy of their state.
+  const owners: {
+    clients: () => number;
+    tools: () => number;
+    processes: () => number;
+    terminals: () => number;
+    plugins: () => number;
+  } = { clients: () => 0, tools: () => 0, processes: () => 0, terminals: () => 0, plugins: () => 0 };
+  let maintenanceReady = false;
+  const maintenanceInspect = async () => {
+    if (!maintenanceReady || state.stopping) throw new Error("Host maintenance is unavailable during lifecycle transitions");
+    const counts = agentHost.maintenanceBusyCounts();
+    return {
+      clients: owners.clients(),
+      turns: counts.turns + counts.admissions,
+      queuedTurns: counts.queuedTurns,
+      plans: plans.inFlightCount(),
+      tools: owners.tools(),
+      processes: owners.processes(),
+      terminals: owners.terminals(),
+      plugins: owners.plugins(),
+    };
+  };
+  const maintenance = {
+    // The owner-only channel is claimed before host-core, so it reads owners lazily.
+    handle: (request: MaintenanceRequest): Promise<MaintenanceResponse> =>
+      handleMaintenanceRequest({ hostId, version: APP_VERSION, gate: maintenanceGate, inspect: maintenanceInspect }, request),
+    isClosed: () => maintenanceGate.isClosed(),
+  };
+  const admin = process.platform === "win32" ? undefined : await startAdminSocket({ dataDir: config.dataDir, getHost, log, maintenance });
   try {
     await startHost();
     await startSidecar();
@@ -220,6 +255,7 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     await plans.drainApprovedPlanExecutions().catch((error: unknown) => log("warn", "queued approved plan drain failed", { error: String(error) }));
   } catch (error) {
     state.stopping = true;
+    maintenanceGate.dispose();
     await admin?.close();
     plans.dispose();
     await runtime.dispose();
@@ -251,6 +287,9 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     .map(url => fileURLToPath(url)).find(path => existsSync(path));
   const workspaceProcesses = new WorkspaceProcessService();
   const workspacePlugins = runner ? new WorkspacePluginService({ dataDir: config.dataDir, runner, pty: () => pty }) : undefined;
+  owners.processes = () => workspaceProcesses.inUse();
+  owners.terminals = () => (terminal?.inUse() ?? 0) + (workspaceTerminal?.inUse() ?? 0);
+  owners.plugins = () => workspacePlugins?.inUse() ?? 0;
   if (!runner) log("warn", "Workspace plugin runner is missing; workspace plugins are disabled");
   const operations: RacpHostOperations = {
     ...createHostOperations({
@@ -258,6 +297,7 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
       runtime,
       browseRoot: config.browseRoot,
       dataDir: config.dataDir,
+      gate: maintenanceGate,
       disposeSession: async (sessionId) => {
         const sidecar = getSidecar();
         if (!sidecar) return;
@@ -275,12 +315,15 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     ...(workspacePlugins ? { workspacePlugins } : {}),
     workspaceProcesses,
   };
-  const server = new RacpServer({ agentHost, operations, authenticator, hostId, serverVersion: APP_VERSION, log });
+  owners.tools = () => (operations.workspaceTools as { inUse?: () => number } | undefined)?.inUse?.() ?? 0;
+  const server = new RacpServer({ agentHost, operations, authenticator, hostId, serverVersion: APP_VERSION, log, admission: maintenanceGate });
+  owners.clients = () => server.connectionCount();
   let binding: WsBinding;
   try {
     binding = await bindRacpWebSocket({ server: server, authenticator, host: config.host, port: config.port, log });
   } catch (error) {
     state.stopping = true;
+    maintenanceGate.dispose();
     await admin?.close();
     server.close();
     workspaceTerminal?.dispose();
@@ -293,6 +336,7 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     throw error;
   }
   log("info", "pi-host ready", { hostId, host: binding.address.host, port: binding.address.port, version: APP_VERSION, terminal: Boolean(terminal) });
+  maintenanceReady = true;
 
   return {
     hostId,
@@ -301,11 +345,13 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     runtime,
     authenticator,
     server,
+    maintenance: MAINTENANCE_PROTOCOL,
     log,
     issuePairingToken: (lifetimeMs) => authenticator.issuePairingToken(lifetimeMs),
     async stop() {
       if (state.stopping) return;
       state.stopping = true;
+      maintenanceGate.dispose();
       log("info", "pi-host stopping");
       await admin?.close();
       server.close();

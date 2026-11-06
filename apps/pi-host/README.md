@@ -10,9 +10,9 @@ Use a Desktop and Host bundle built from the same candidate.
 
 1. Open **Settings → Remote Hosts (Experimental)**. Developer mode is not required.
 2. Add an SSH host using your existing SSH key/configuration, or password where
-   supported. Remote download is preferred; only a classified download failure
-   permits one bounded, locally verified upload. New bundles include Node 22+
-   and do not require remote Node or outbound release access.
+   supported. The release downloads on Desktop through its global network proxy,
+   is verified locally, then uploaded and verified over SSH. New bundles include
+   Node 22+ and do not require remote Node or outbound release access.
 3. Return to Chat home and open **Create project**. Choose the connected Host,
    open the directory-selection dialog, and choose or enter the remote directory.
    Name the project locally, exactly as for a local project.
@@ -115,6 +115,34 @@ See [remote architecture](../../docs/spec/02-architecture/05-remote-agent-contro
 - Remote project bindings are additive local project metadata. Existing local
   sessions and provider configuration are preserved. Full R2 and publication are
   not implied.
-- An SSH bootstrap already downloading/installing has no mid-step cancellation
-  interface yet. Closing prevents late registration and releases a returned forward,
-  but does not undo or immediately interrupt an already-started remote installation.
+- Opening a remote project prepares the exact Desktop release on demand. The
+  first download asks for consent; later upgrades reuse it. Startup and passive
+  host-list refresh never install. Upgrades preserve Host ID, device token,
+  projects and persistent data. Busy Hosts wait for an explicit retry.
+- Cancel releases only that view's waiter. After remote deployment begins,
+  cancelling observation cannot undo an installation; its detached worker owns
+  bounded completion and recovery. A newer Host is never downgraded.
+
+## Preparation troubleshooting
+
+Use **Settings → General → Network** to change System / Direct / Custom proxy
+mode, then return to Remote Hosts or the folder picker and retry. The proxy runs
+on the Desktop computer; a loopback proxy does not need to be reachable remotely.
+There is no per-Host proxy configuration.
+
+- `HOST_RELEASE_UNAVAILABLE`: publish the exact Desktop-version Linux artifact
+  and checksum. The client never substitutes `latest` or a nearby version.
+- `HOST_BUSY`: close other clients and wait for remote work, terminals and
+  background processes to finish, then retry. Do not force-kill the Host.
+- `HOST_MAINTENANCE_REQUIRED`: an older Host cannot prove atomic idle admission.
+  Arrange an idle maintenance window before confirming the one deployment attempt.
+- `HOST_CLIENT_TOO_OLD`: update Desktop. Do not point old code at newer Host data.
+- `HOST_RECOVERY_REQUIRED`: retain the data directory and deployment journal
+  under `~/.pi-desktop/pi-host/.bootstrap`. Inspect the failed transaction and
+  Host logs before recovery; do not delete data or repoint `current` as a database
+  rollback. A startup attempt may already have migrated persistent state.
+
+`node scripts/test-host-download-proxy.mjs` validates local HTTPS downloads with
+HTTP, SOCKS5, authenticated proxies, Direct and a controlled Chromium PAC. It uses
+an isolated Electron profile, fixed test certificate and loopback fixtures.
+It does not change the system proxy or qualify a Linux SSH deployment.

@@ -19,6 +19,7 @@ import {
 import { LifecycleConfirmationDialog } from "../../components/LifecycleConfirmationDialog";
 import { WorkspacePluginConsentDialog } from "../../components/plugins/WorkspacePluginConsentDialog";
 import { ProjectCreateDialog } from "../../components/ProjectCreateDialog";
+import { RemoteProjectPreparationGate } from "../../components/remote/RemoteProjectPreparationGate";
 import { SearchDialog } from "../../components/SearchDialog";
 import { Sidebar } from "../../components/Sidebar";
 import { StartupRecovery } from "../../components/StartupRecovery";
@@ -400,6 +401,7 @@ export function AppShell() {
         <IconListChecks size={15} />
       </TooltipButton>
       <ProjectCreateDialog />
+      <RemoteProjectPreparationGate />
       <LifecycleConfirmationDialog />
       <WorkspacePluginConsentDialog />
       {splash}

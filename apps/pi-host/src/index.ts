@@ -4,3 +4,5 @@ export * from "./credentials.js";
 export * from "./host-operations.js";
 export * from "./logger.js";
 export * from "./terminal.js";
+export * from "./maintenance.js";
+export * from "./maintenance-cli.js";

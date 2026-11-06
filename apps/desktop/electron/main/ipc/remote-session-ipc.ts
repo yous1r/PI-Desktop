@@ -24,6 +24,24 @@ function hostKey(input: Record<string, unknown>): string {
 
 /** The remote-only entry points never dispatch arbitrary RACP method names. */
 export function registerRemoteSessionIpc(registrar: IpcRegistrar, getBoot: () => RemoteHostsBoot): void {
+  registrar.handle(IPC.invoke.remoteHostPrepare, async (request: unknown) => {
+    const input = object(request);
+    const key = hostKey(input);
+    const requestId = text(input.requestId, "requestId", 128);
+    for (const field of ["allowDownload", "allowLegacyMaintenance", "retry"]) {
+      if (input[field] !== undefined && typeof input[field] !== "boolean") invalid(field);
+    }
+    if (Object.keys(input).some(field => !["hostKey", "requestId", "allowDownload", "allowLegacyMaintenance", "retry"].includes(field))) invalid("request");
+    return { host: await getBoot().prepareHost({ hostKey: key, requestId,
+      allowDownload: input.allowDownload === true, allowLegacyMaintenance: input.allowLegacyMaintenance === true,
+      retry: input.retry === true }) };
+  });
+  registrar.handle(IPC.invoke.remoteHostPrepareCancel, async (request: unknown) => {
+    const input = object(request);
+    if (Object.keys(input).some(field => !["hostKey", "requestId"].includes(field))) invalid("request");
+    getBoot().cancelPreparation(hostKey(input), text(input.requestId, "requestId", 128));
+    return { ok: true };
+  });
   registrar.handle(IPC.invoke.remoteHostReconnect, async (request: unknown) => {
     const key = hostKey(object(request));
     return { host: await getBoot().reconnectHost(key) };

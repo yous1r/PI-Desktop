@@ -99,6 +99,18 @@ export type NavigationOptions = {
   navigationIntent?: number;
 };
 
+/**
+ * Activating a project may need its remote Host prepared first. Passive
+ * surfaces (a `projectPath` reveal, hydration, restoration) pass
+ * `prepareRemoteHost: false`; only a user opening the project lets the gate
+ * prepare, so nothing installs on a background refresh.
+ */
+export type ProjectActivationOptions = NavigationOptions & {
+  prepareRemoteHost?: boolean;
+  /** Host binding the caller already knows, e.g. a remote group it just made. */
+  remoteHostKey?: string;
+};
+
 export type RefreshSessionsOptions = {
   /** Restore archived project presentation state for newly imported sessions. */
   revealImportedProjects?: boolean;
@@ -304,9 +316,12 @@ export type AppState = {
   refreshProject: (path: string) => Promise<ProjectWorkspace | null>;
   activateProject: (
     path: string,
-    opts?: NavigationOptions,
+    opts?: ProjectActivationOptions,
   ) => Promise<ProjectWorkspace | null>;
-  openProjectPath: (path: string) => Promise<ProjectWorkspace | null>;
+  openProjectPath: (
+    path: string,
+    opts?: ProjectActivationOptions,
+  ) => Promise<ProjectWorkspace | null>;
   switchProjectPath: (path: string) => Promise<ProjectWorkspace | null>;
   closeProjectPath: (path: string) => Promise<void>;
   clearProject: (opts?: NavigationOptions) => Promise<void>;

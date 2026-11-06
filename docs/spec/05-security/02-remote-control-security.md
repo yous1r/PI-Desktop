@@ -149,15 +149,13 @@ pairing only binds a desktop device to the Host it started.
   device as `owner` of that Host.
 - The Host binds loopback only and accepts a device token only from a
   loopback peer; a non-loopback bind requires TLS and the same device token.
-- Resolve the same-version published target and trusted release SHA-256 over
-  HTTPS. Prefer remote download; only `download-failed` permits one bounded
-  Desktop download, local verification and SSH upload of the same artifact.
-  Authentication, integrity and version failures MUST NOT authorize fallback.
-  Remote verification precedes extraction/install on either path. This limited
-  executable-upload exception amends the original prohibition under
-  [ADR 0326](../../adr/0326-verified-ssh-host-installation.md); it does not permit
-  arbitrary executable uploads or bypass SSH host-key checks. SHA-256 is relative
-  to the trusted release, not an independent signature-verification scheme.
+- Resolve the exact client release, published target and trusted SHA-256 over
+  HTTPS. Desktop MUST download checksum and archive using its applied global
+  proxy settings, verify locally, then upload through authenticated SSH. The
+  remote MUST verify again before extraction/install. No remote-download
+  fallback, per-Host proxy or reverse proxy tunnel is allowed. Do not bypass
+  SSH host-key checks, TLS validation or proxy authentication. SHA-256 is relative
+  to the trusted release, not independent signature verification.
 - New bundles include native Node >=22 and `SHA256SUMS`. Stage privately, reject
   unsafe manifest entries and special files, verify installed files, and switch
   content-addressed `current` atomically under deployment/install locks. Reuse
@@ -165,19 +163,28 @@ pairing only binds a desktop device to the Host it started.
   digest plus read-only file verification; version equality alone is insufficient.
   System Node and remote GitHub access are not required for new bundles, but
   supported Linux ABI, POSIX/hash/archive tools and Linux `flock` still are.
-- Daily readiness MUST NOT reinstall, re-pair or reset credentials — unless the
-  running Host cannot serve this desktop release at all, which triggers the
-  version realignment below. Validate loopback readiness/version and saved Host
-  ID before forwarding, then validate the RACP identity. A legacy descriptor
-  without Host ID remains readable.
-- One version realignment per desktop release per host MAY re-run that same
-  verified bootstrap from the stored SSH descriptor and the encrypted login
-  password ([ADR 0327](../../adr/0327-remote-host-version-realignment.md)). The
-  secret is read only from the encrypted record, is never returned to the
-  renderer and never logged, a password host whose stored secret is gone is never
-  replayed, a failed attempt waits out a cooldown before the next automatic try,
-  and an explicit user reconnect may retry immediately. The artifact trust path
-  is unchanged: same release, same published SHA-256, same remote verification.
+- Passive startup and inventory loading MUST NOT install or upgrade. Explicit
+  remote-project readiness MAY prepare a missing, damaged or older compatible
+  managed installation. The first download requires consent; later upgrades
+  reuse it. Exact version matching includes prereleases. Newer remote releases,
+  cross-channel versions and unknown ordering MUST NOT be downgraded.
+- Preparation MUST preserve saved Host ID, device token, SSH secrets and data.
+  Authenticate a running old Host before replacement. Upgrades MUST NOT pair
+  again or recreate identity. A direct URL or missing encrypted SSH password
+  never authorizes takeover. Post-install RACP identity/capabilities must pass
+  before success is recorded; a previous receipt never replaces live checks.
+- Stage before activation. An owner-only maintenance lease MUST atomically
+  require idle state and fence new work. Other clients, turns, queued work,
+  plans, tools, terminals, processes and plugin resources block deployment.
+  Legacy Hosts require explicit confirmation of an idle maintenance window.
+  Never force-kill an active Host to complete an upgrade. Detached deployment
+  owns its bounded lifecycle, locks and recovery records after SSH disconnect.
+- Caller cancellation MUST NOT cancel another caller's shared preparation or
+  navigate after abandonment. Failure cooldown is ten minutes; explicit retry
+  bypasses only the cooldown, never authorization, integrity or version checks.
+  Deployment that may have opened persistent data MUST NOT automatically roll
+  back binaries against that data. Ambiguous state requires recovery. See the
+  [preparation ADR](../../adr/remote-host-on-demand-preparation.md).
 - Revoking the device token on the Host, or removing the Host from the
   desktop, ends the pairing; a new pairing needs a new SSH bootstrap.
 - Provider configuration is copied only after explicit selection and consent,

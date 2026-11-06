@@ -1,31 +1,10 @@
-import { REMOTE_DEPLOY_LOCK_SCRIPT } from "./remote-deploy-lock.js";
+import { buildPiHostTransactionScript } from "./pi-host-transaction-script.js";
 
-/**
- * The bootstrap script the desktop uploads over SSH (spec §5.2 step 2, §3.4).
- *
- * The script is the only artifact that runs on the remote machine. It downloads
- * the bundle the desktop pinned, verifies it against the digest the desktop
- * read from the published `.sha256`, installs it under the user's home, starts
- * `pi-host` on loopback with a single-use pairing token, and echoes the two
- * machine-readable lines the desktop parses.
- *
- * Two properties matter and both are tested:
- *
- * - The pairing token only ever lands in a `umask 077` file inside the
- *   bootstrap work directory on the remote machine, and on stdout of the SSH
- *   channel. It is never written to a world-readable path and never appears in
- *   a URL (security §3.4).
- * - Every failure exits non-zero with a `PI_HOST_BOOTSTRAP_FAILED <step>` line
- *   so the desktop can report a typed error instead of a bare exit code.
- *
- * Inputs are interpolated as single-quoted shell literals by
- * {@link shellQuote}; callers never build the script from untrusted text.
- */
-
+/** Input contract for the generated, transaction-aware pi-host deployment. */
 export type PiHostBootstrapScriptInput = {
   /** Desktop version; the bundle must exist for this tag. */
   version: string;
-  /** Asset URL on GitHub Releases. */
+  /** Release URL retained for callers and diagnostics; remote download is disabled. */
   artifactUrl: string;
   /** Tarball file name, e.g. `pi-host-0.15.1-beta.5-linux-x64.tar.gz`. */
   artifactName: string;
@@ -33,7 +12,7 @@ export type PiHostBootstrapScriptInput = {
   bundleDir: string;
   /** Lower-case hex digest from the published `.sha256`. */
   expectedSha256: string;
-  /** Verified local-download fallback, already uploaded through SSH. */
+  /** Verified uploaded artifact path; required by transactional deployments. */
   artifactPath?: string;
   /** Loopback port for `pi-host`; `0` lets it pick a free port and report it. */
   port: number;
@@ -41,218 +20,59 @@ export type PiHostBootstrapScriptInput = {
   pairingLifetimeMs: number;
   /** How long the script waits for the ready and pairing lines. */
   readyTimeoutSec: number;
+  /** Existing paired Host identity required for an in-place upgrade. */
+  existingHostId?: string;
+  /** Version the existing Host is expected to report. */
+  expectedCurrentVersion?: string;
+  /** Explicit opt-in for maintenance-less legacy Host upgrades. */
+  allowLegacyMaintenance?: boolean;
+  /** Preserve Host ID and paired-device credentials without issuing a pair token. */
+  preservePairing?: boolean;
+  /**
+   * Lower-case SHA-256 of the desktop's saved device token. Only the hash is
+   * sent; it lets a repair prove the saved owner device before a new Host starts.
+   */
+  expectedDeviceTokenHash?: string;
 };
 
-/** Smallest Node major the bundle is built for (`bundle.mjs --target=node22`). */
-const MIN_NODE_MAJOR = 22;
-
-/** POSIX-safe single-quoted literal; `'` becomes `'\''`. */
+/** POSIX-safe single-quoted literal; `'` becomes `'\\''`. */
 export function shellQuote(value: string): string {
   return `'${value.replace(/'/g, "'\\''")}'`;
 }
-/** Script variables in declaration order; the template interpolates the block. */
-const SCRIPT_VARIABLES = [
-  "VERSION",
-  "ARTIFACT_URL",
-  "ARTIFACT_NAME",
-  "BUNDLE_DIR",
-  "EXPECTED_SHA256",
-  "PORT",
-  "PAIRING_LIFETIME_MS",
-  "READY_TIMEOUT_SEC",
-  "MIN_NODE_MAJOR",
-  "ARTIFACT_PATH",
-] as const;
 
+/**
+ * Build a deterministic remote script. A missing artifactPath is a hard failure:
+ * the remote host never fetches executable bytes from a URL itself.
+ */
 export function buildBootstrapScript(input: PiHostBootstrapScriptInput): string {
-  const values: string[] = [
-    input.version,
-    input.artifactUrl,
-    input.artifactName,
-    input.bundleDir,
-    input.expectedSha256,
-    String(input.port),
-    String(input.pairingLifetimeMs),
-    String(input.readyTimeoutSec),
-    String(MIN_NODE_MAJOR),
-    input.artifactPath ?? "",
-  ];
-  const assignments = SCRIPT_VARIABLES.map(
-    (name, index) => `${name}=${shellQuote(values[index] ?? "")}`,
-  ).join("\n");
-
+  const values: Record<string, string> = {
+    VERSION: input.version,
+    ARTIFACT_URL: input.artifactUrl,
+    ARTIFACT_NAME: input.artifactName,
+    BUNDLE_DIR: input.bundleDir,
+    EXPECTED_SHA256: input.expectedSha256,
+    PORT: String(input.port),
+    PAIRING_LIFETIME_MS: String(input.pairingLifetimeMs),
+    READY_TIMEOUT_SEC: String(input.readyTimeoutSec),
+    ARTIFACT_PATH: input.artifactPath ?? "",
+    EXISTING_HOST_ID: input.existingHostId ?? "",
+    EXPECTED_CURRENT_VERSION: input.expectedCurrentVersion ?? "",
+    ALLOW_LEGACY_MAINTENANCE: input.allowLegacyMaintenance ? "true" : "false",
+    PRESERVE_PAIRING: input.preservePairing ? "true" : "false",
+    EXPECTED_DEVICE_TOKEN_HASH: input.expectedDeviceTokenHash ?? "",
+  };
+  const assignments = Object.entries(values)
+    .map(([name, value]) => `${name}=${shellQuote(value)}`)
+    .join("\n");
   return `#!/bin/sh
-# pi-host bootstrap — generated by PI-Desktop. Reuses verified releases,
-# restarts the host it previously started, and prints a fresh pairing token.
+# pi-host transactional deployment — generated by PI-Desktop.
 set -eu
 umask 077
 
 ${assignments}
 
-step() { printf '%s\\n' "PI_HOST_BOOTSTRAP $1"; }
-die() {
-  printf '%s\\n' "PI_HOST_BOOTSTRAP_FAILED $1" >&2
-  printf '%s\\n' "PI_HOST_FAILED {\\"code\\":\\"HOST_BOOTSTRAP_FAILED\\",\\"step\\":\\"$1\\"}"
-  exit 1
+${buildPiHostTransactionScript()}`;
 }
-
-need() {
-  command -v "$1" >/dev/null 2>&1 || die "missing-$1"
-}
-
-[ -n "\${HOME:-}" ] || die "no-home"
-
-need tar
-
-base="$HOME/.pi-desktop/pi-host"
-work="$base/.bootstrap"
-mkdir -p "$work"
-chmod 700 "$work" 2>/dev/null || die "bootstrap-permissions"
-${REMOTE_DEPLOY_LOCK_SCRIPT}
-stage=""
-cleanup() {
-  [ -z "$stage" ] || rm -rf "$stage"
-  release_deploy_lock
-}
-trap cleanup EXIT
-trap 'exit 1' HUP INT TERM
-stage=$(mktemp -d "$base/.stage.XXXXXX") || die "stage-failed"
-log="$work/pi-host.log"
-err="$work/pi-host.err"
-pidfile="$work/pi-host.pid"
-
-sha256_of() {
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$1" | cut -d ' ' -f 1
-  elif command -v shasum >/dev/null 2>&1; then
-    shasum -a 256 "$1" | cut -d ' ' -f 1
-  else
-    return 127
-  fi
-}
-# The archive trust anchor and installed manifest must both match. Keep the
-# receipt outside immutable version contents, which reject extra files.
-receipt="$base/.release.sha256"
-reuse=0
-if [ -x "$base/current/bin/node" ] && [ -f "$base/current/SHA256SUMS" ] && [ -f "$receipt" ]; then
-  manifest_sha256=$(sha256_of "$base/current/SHA256SUMS") || die "missing-sha256-tool"
-  expected_receipt="$VERSION $EXPECTED_SHA256 $manifest_sha256"
-  if [ "$(cat "$receipt")" = "$expected_receipt" ] && \\
-     sh "$base/current/install.sh" --verify >/dev/null 2>&1; then
-    reuse=1
-    step "reuse"
-  fi
-fi
-if [ "$reuse" = 0 ]; then
-# --- download the pinned bundle -------------------------------------------
-step "download"
-http_get() {
-  if command -v curl >/dev/null 2>&1; then
-    curl -fsSL --max-time 600 -o "$2" "$1"
-  elif command -v wget >/dev/null 2>&1; then
-    wget -q --timeout=600 -O "$2" "$1"
-  else
-    return 127
-  fi
-}
-
-tarball="$stage/$ARTIFACT_NAME"
-if [ -n "$ARTIFACT_PATH" ]; then
-  case "$ARTIFACT_PATH" in "$base"/.upload.*/artifact.tar.gz) ;; *) die "invalid-artifact-path" ;; esac
-  cp "$ARTIFACT_PATH" "$tarball" || die "upload-missing"
-else
-  http_get "$ARTIFACT_URL" "$tarball" || die "download-failed"
-fi
-chmod 600 "$tarball" 2>/dev/null || die "artifact-permissions"
-
-# --- verify the published digest ------------------------------------------
-step "verify"
-actual_sha256=$(sha256_of "$tarball") || die "missing-sha256-tool"
-[ "$actual_sha256" = "$EXPECTED_SHA256" ] || die "checksum-mismatch"
-
-# --- install under the user's home ----------------------------------------
-step "install"
-unpack="$stage/unpack"
-mkdir -p "$unpack"
-tar -xzf "$tarball" -C "$unpack" || die "extract-failed"
-[ -d "$unpack/$BUNDLE_DIR" ] || die "unexpected-archive-layout"
-sh "$unpack/$BUNDLE_DIR/install.sh" >/dev/null || die "install-failed"
-  if [ -x "$base/current/bin/node" ] && [ -f "$base/current/SHA256SUMS" ]; then
-    sh "$base/current/install.sh" --verify >/dev/null 2>&1 || die "installed-verification-failed"
-    manifest_sha256=$(sha256_of "$base/current/SHA256SUMS") || die "missing-sha256-tool"
-    printf '%s\\n' "$VERSION $EXPECTED_SHA256 $manifest_sha256" > "$stage/receipt"
-    mv -f "$stage/receipt" "$receipt" || die "receipt-failed"
-  fi
-fi
-
-# Bundles carry Node; only older bundles need a system runtime.
-node="$base/current/bin/node"
-if [ ! -x "$node" ]; then
-  need node
-  node=$(command -v node)
-fi
-node_major=$("$node" -p 'process.versions.node.split(".")[0]' 2>/dev/null || printf '0')
-[ "$node_major" -ge "$MIN_NODE_MAJOR" ] 2>/dev/null || die "node-too-old"
-
-# --- (re)start on loopback with a fresh pairing token ----------------------
-step "start"
-if [ -f "$pidfile" ]; then
-  previous=$(cat "$pidfile" 2>/dev/null || true)
-  # The pidfile is never removed, so a recycled PID could name an unrelated
-  # process owned by the same user. Only signal it when it is still our
-  # pi-host; anything else is left alone.
-  if [ -n "$previous" ] && kill -0 "$previous" 2>/dev/null && \\
-     ps -p "$previous" -o command= 2>/dev/null | grep -q 'pi-host.js'; then
-    kill "$previous" 2>/dev/null || true
-    waited=0
-    while kill -0 "$previous" 2>/dev/null && [ "$waited" -lt 10 ]; do
-      sleep 1
-      waited=$((waited + 1))
-    done
-    kill -0 "$previous" 2>/dev/null && die "host-stop-timeout"
-  fi
-fi
-
-: > "$log"
-: > "$err"
-nohup "$node" "$HOME/.pi-desktop/pi-host/current/pi-host.js" \\
-  --port "$PORT" \\
-  --pair \\
-  --pairing-lifetime-ms "$PAIRING_LIFETIME_MS" \\
-  >"$log" 2>"$err" </dev/null 9>&- &
-host_pid=$!
-printf '%s\\n' "$host_pid" > "$pidfile"
-
-# --- wait for the ready and pairing lines ---------------------------------
-step "await-ready"
-waited=0
-while [ "$waited" -lt "$READY_TIMEOUT_SEC" ]; do
-  if grep -q '^PI_HOST_FAILED ' "$log" 2>/dev/null; then
-    printf '%s\\n' "PI_HOST_FAILED {\\"code\\":\\"HOST_BOOTSTRAP_FAILED\\",\\"step\\":\\"host-start-failed\\"}"
-    exit 1
-  fi
-  ready=$(grep -m1 '^PI_HOST_READY ' "$log" 2>/dev/null || true)
-  token=$(grep -m1 '^PI_HOST_PAIRING_TOKEN ' "$log" 2>/dev/null || true)
-  if [ -n "$ready" ] && [ -n "$token" ]; then
-    printf '%s\\n' "$ready"
-    printf '%s\\n' "$token"
-    step "ok"
-    exit 0
-  fi
-  if ! kill -0 "$host_pid" 2>/dev/null; then
-    printf '%s\\n' "PI_HOST_FAILED {\\"code\\":\\"HOST_BOOTSTRAP_FAILED\\",\\"step\\":\\"host-exited\\"}"
-    exit 1
-  fi
-  sleep 1
-  waited=$((waited + 1))
-done
-die "ready-timeout"
-`;
-}
-
-// ---------------------------------------------------------------------------
-// Output parsing
-// ---------------------------------------------------------------------------
 
 export type PiHostReadyLine = {
   hostId: string;
@@ -273,6 +93,8 @@ export type PiHostBootstrapOutput = {
   steps: string[];
   /** The `step` a `PI_HOST_FAILED` line reported, when the script failed. */
   failure: string | null;
+  /** Detached transaction awaiting the caller's RACP handshake, when present. */
+  transactionId?: string;
 };
 
 function parseJsonObject(line: string, prefix: string): Record<string, unknown> | null {
@@ -287,23 +109,12 @@ function parseJsonObject(line: string, prefix: string): Record<string, unknown> 
   }
 }
 
-/**
- * Read the bootstrap script's stdout. The script owns the format; this parser
- * is deliberately tolerant about interleaved progress lines and hostile about
- * missing fields, so a truncated channel cannot yield a half-built host.
- */
+/** Parse machine-readable readiness/progress while ignoring interleaved SSH noise. */
 export function parseBootstrapOutput(stdout: string): PiHostBootstrapOutput {
-  const output: PiHostBootstrapOutput = {
-    ready: null,
-    pairing: null,
-    steps: [],
-    failure: null,
-  };
-
+  const output: PiHostBootstrapOutput = { ready: null, pairing: null, steps: [], failure: null };
   for (const raw of stdout.split("\n")) {
     const line = raw.trim();
     if (!line) continue;
-
     if (line.startsWith("PI_HOST_BOOTSTRAP_FAILED ")) {
       if (!output.failure) output.failure = line.slice("PI_HOST_BOOTSTRAP_FAILED ".length).trim();
       continue;
@@ -313,25 +124,22 @@ export function parseBootstrapOutput(stdout: string): PiHostBootstrapOutput {
       if (step) output.steps.push(step);
       continue;
     }
+    if (line.startsWith("PI_HOST_DEPLOYMENT_TRANSACTION ")) {
+      const transactionId = line.slice("PI_HOST_DEPLOYMENT_TRANSACTION ".length).trim();
+      if (/^[a-f0-9]{32}$/.test(transactionId)) output.transactionId = transactionId;
+      continue;
+    }
     if (line.startsWith("PI_HOST_FAILED ")) {
       const payload = parseJsonObject(line, "PI_HOST_FAILED ");
-      const code = payload?.code === "HOST_BOOTSTRAP_FAILED" ? payload.step : undefined;
+      const code = payload?.code === "HOST_BOOTSTRAP_FAILED" ? payload.step : payload?.code;
       if (typeof code === "string" && !output.failure) output.failure = code;
       continue;
     }
     const ready = parseJsonObject(line, "PI_HOST_READY ");
     if (ready) {
       const { hostId, host, port, version } = ready;
-      if (
-        typeof hostId === "string" &&
-        hostId.length > 0 &&
-        (host === "127.0.0.1" || host === "::1") &&
-        typeof port === "number" &&
-        Number.isInteger(port) &&
-        port > 0 &&
-        port <= 65535 &&
-        typeof version === "string"
-      ) {
+      if (typeof hostId === "string" && hostId.length > 0 && (host === "127.0.0.1" || host === "::1") &&
+          typeof port === "number" && Number.isInteger(port) && port > 0 && port <= 65535 && typeof version === "string") {
         output.ready = { hostId, host, port, version };
       }
       continue;
@@ -340,28 +148,17 @@ export function parseBootstrapOutput(stdout: string): PiHostBootstrapOutput {
     if (pairing) {
       const { token, expiresAt } = pairing;
       if (typeof token === "string" && token.length > 0) {
-        output.pairing = {
-          token,
-          expiresAt: typeof expiresAt === "number" ? expiresAt : 0,
-        };
+        output.pairing = { token, expiresAt: typeof expiresAt === "number" ? expiresAt : 0 };
       }
     }
   }
-
   return output;
 }
 
-/**
- * Replace the single-use pairing token in the script's stdout before it
- * reaches a log or an error payload. The token is only expected on stdout on
- * the success path, but a diagnostic that leaks a live token is worse than no
- * diagnostic at all.
- */
+/** Remove a single-use token before stdout is logged or returned on error. */
 export function redactBootstrapOutput(stdout: string): string {
   return stdout
     .split("\n")
-    .map((line) =>
-      line.startsWith("PI_HOST_PAIRING_TOKEN ") ? "PI_HOST_PAIRING_TOKEN <redacted>" : line,
-    )
+    .map((line) => line.startsWith("PI_HOST_PAIRING_TOKEN ") ? "PI_HOST_PAIRING_TOKEN <redacted>" : line)
     .join("\n");
 }

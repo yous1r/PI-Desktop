@@ -39,6 +39,20 @@ let activeRelay: AuthenticatedProxyRelay | null = null;
 let relayUpstreamHref: string | null = null;
 let systemProxyRelay: SystemProxyRelay | null = null;
 let systemProxyRelayStart: Promise<SystemProxyRelay> | null = null;
+let proxyApplication: Promise<NetworkProxySettings> | undefined;
+
+/** Downloads must wait for the current settings application, including startup. */
+export const fetchWithNetworkProxy: typeof fetch = async (input, init) => {
+  let pending = proxyApplication;
+  if (!pending) throw Object.assign(new Error("Network settings are not ready"), { errorCode: "HOST_NETWORK_NOT_READY" });
+  for (;;) {
+    try { await pending; }
+    catch { throw Object.assign(new Error("Network proxy could not be applied"), { errorCode: "HOST_DOWNLOAD_FAILED" }); }
+    if (pending === proxyApplication) break;
+    pending = proxyApplication!;
+  }
+  return (net.fetch.bind(net) as typeof fetch)(input, init);
+};
 
 export async function ensureSystemProxyRelay(): Promise<string> {
   if (!systemProxyRelay) {
@@ -72,9 +86,15 @@ export function currentNetworkProxy(): NetworkProxySettings {
   return applied;
 }
 
-export async function applyNetworkProxy(
-  settings: unknown,
-): Promise<NetworkProxySettings> {
+export function applyNetworkProxy(settings: unknown): Promise<NetworkProxySettings> {
+  // Serialize settings writes so a previous relay cannot overwrite a newer one.
+  const pending = (proxyApplication?.catch(() => undefined) ?? Promise.resolve()).then(() => applyNetworkProxyNow(settings));
+  proxyApplication = pending;
+  void pending.catch(() => undefined);
+  return pending;
+}
+
+async function applyNetworkProxyNow(settings: unknown): Promise<NetworkProxySettings> {
   const next = normalizeNetworkProxy(
     settings && typeof settings === "object"
       ? (settings as { networkProxy?: unknown }).networkProxy ?? settings

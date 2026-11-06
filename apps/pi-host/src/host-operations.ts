@@ -49,6 +49,8 @@ export type HostOperationsDeps = {
   browseRoot?: string;
   /** Host credentials and persistence must never be exposed through plugin reads. */
   dataDir?: string;
+  /** Maintenance admission shared with the Host so new tool work is refused while closed. */
+  gate?: { isClosed(): boolean };
 };
 
 function requireHost(getHost: () => HostRpc | null): HostRpc {
@@ -257,7 +259,7 @@ export function createHostOperations(deps: HostOperationsDeps): Omit<RacpHostOpe
     sessions: createSessionCatalog(deps),
     projects: createProjectCatalog(deps),
     workspace: createWorkspaceAccess(deps),
-    workspaceTools: createWorkspaceTools(deps.getHost),
+    workspaceTools: createWorkspaceTools(deps.getHost, deps.gate ? { gate: deps.gate } : {}),
     workspaceFiles: createWorkspaceFiles(),
     workspacePluginFiles: createWorkspacePluginFiles({
       browseRoot: deps.browseRoot ?? homedir(),

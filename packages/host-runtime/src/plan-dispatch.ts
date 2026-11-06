@@ -12,6 +12,8 @@ export type PlanExecutionDispatcherOptions = {
   runtime: Pick<RuntimeService, "withSessionOperation" | "beginTurn" | "finishTurn" | "activeTurnId" | "onTurnEnded">;
   log: RuntimeLogger;
   sleep?: (ms: number) => Promise<void>;
+  /** Maintenance admission; a closed gate never claims or starts a plan execution. */
+  gate?: { isClosed(): boolean };
 };
 
 /**
@@ -55,6 +57,11 @@ export class PlanExecutionDispatcher {
     return this.approvedExecutionIdsBySession.get(sessionId);
   }
 
+  /** Approved executions this process is claiming or running; derived from the existing sets. */
+  inFlightCount(): number {
+    return this.dispatching.size + this.started.size + this.inFlightFinishes.size;
+  }
+
   async finishApprovedExecution(
     executionId: string,
     status: PlanExecutionFinishStatus,
@@ -91,6 +98,7 @@ export class PlanExecutionDispatcher {
   }
 
   async dispatchApprovedPlan(rawExecution: unknown): Promise<void> {
+    if (this.options.gate?.isClosed()) return;
     const initial = planExecutionFromUnknown(rawExecution);
     if (!initial) {
       this.options.log("warn", "approved plan execution descriptor was invalid");
@@ -136,6 +144,7 @@ export class PlanExecutionDispatcher {
         const launch = await this.options.launch.resolve(execution.sessionId, sessionResult.session, settings ?? {}, {
           mode: "agent",
         });
+        if (this.options.gate?.isClosed()) return;
         turnId = await this.options.runtime.beginTurn(execution.sessionId, launch.providerId, launch.modelId);
         this.approvedExecutionIdsBySession.set(execution.sessionId, execution.id);
         this.executionTurns.set(execution.id, { sessionId: execution.sessionId, turnId });

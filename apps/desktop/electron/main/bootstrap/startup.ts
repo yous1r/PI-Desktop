@@ -15,7 +15,7 @@ import { installGenUiProtocol } from "../gen-ui-protocol";
 import { installPluginAssetProtocol } from "../plugin-asset-protocol";
 import { installPluginRendererProtocol } from "../plugin-renderer-protocol";
 import { registerPluginSchemes } from "../plugin-schemes";
-import { applyNetworkProxyFromAppSettings } from "../network-proxy";
+import { applyNetworkProxyFromAppSettings, fetchWithNetworkProxy } from "../network-proxy";
 import { readCloseBehavior } from "../window-preferences";
 import { createAgentHostBridge, type AgentHostBridge } from "../agent-host-bridge";
 import { createBackendRouter, type BackendRouter } from "../remote/backend-router";
@@ -252,6 +252,7 @@ export function registerApplicationStartup(deps: StartupDependencies): void {
       emit: sendToRenderer,
       getLocalHost: getHost,
       clientInfo: { name: APP_NAME, version: APP_VERSION },
+      sshBootstrap: { fetchArtifact: fetchWithNetworkProxy },
       log: (level, message, data) =>
         logger.app("runtime", level, message, { data: formatRemoteLogData(data) }),
     });

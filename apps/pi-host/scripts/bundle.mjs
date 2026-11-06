@@ -1,15 +1,8 @@
 #!/usr/bin/env node
 /**
- * Assemble the self-contained `pi-host` bundle for one native POSIX target:
- *
- *   dist-bundle/pi-host-<version>-<platform>-<arch>/
- *     pi-host.js                 the CLI, esbuild-bundled with every workspace package
- *     agent-runtime/            the complete sidecar bundle (entry, chunks, manifest)
- *     bin/pi-desktop-host-core   the platform host-core binary
- *     bin/node, bin/pi-host      matching Node runtime and launcher
- *     node_modules/node-pty      optional; terminals are disabled without it
- *     package.json               { type: module, version }
- *     install.sh, SHA256SUMS     verified content-addressed installation
+ * Assemble the self-contained `pi-host` bundle for one native POSIX target.
+ * The release contains its own Node runtime, verified installer, and the
+ * transaction worker used for detached Linux upgrades.
  *
  * Usage: node scripts/bundle.mjs [--node <path>] [--host-core <path>] [--platform linux|darwin] [--arch x64|arm64] [--out <dir>]
  */
@@ -101,8 +94,12 @@ here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 exec "$here/node" "$here/../pi-host.js" "$@"
 `);
 chmodSync(join(out, "bin/pi-host"), 0o755);
-writeFileSync(join(out, "package.json"), `${JSON.stringify({ name: "pi-host", version, type: "module", bin: { "pi-host": "./bin/pi-host" } }, null, 2)}\n`);
+writeFileSync(join(out, "package.json"), `${JSON.stringify({ name: "pi-host", version, type: "module", maintenanceProtocol: 1, bin: { "pi-host": "./bin/pi-host" } }, null, 2)}\n`);
 cpSync(join(here, "install.sh"), join(out, "install.sh"));
 chmodSync(join(out, "install.sh"), 0o755);
+for (const helper of ["deploy.mjs", "deploy-recovery.mjs"]) {
+  cpSync(join(here, helper), join(out, helper));
+  chmodSync(join(out, helper), 0o755);
+}
 writePackageManifest(out);
 console.log(`bundled ${out}`);

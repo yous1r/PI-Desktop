@@ -13,6 +13,7 @@
  */
 import { RACP_WS_PATH, type RemoteHostSshMetadata } from "@pi-desktop/shared";
 import { ensureRemoteHostReady } from "./remote-host-supervisor.js";
+import { completeHostDeployment } from "./remote-host-deployment.js";
 import {
   createSystemSshTransport,
   reserveLocalPort,
@@ -48,6 +49,8 @@ export type SshTunnel = {
   /** `ws://127.0.0.1:<localPort>/v1/racp/ws` for this host right now. */
   url: string;
   localPort: number;
+  /** Complete an interrupted deployment only after authenticated RACP verification. */
+  completePreparation?: () => Promise<void>;
 };
 
 export type SshTunnelManagerOptions = {
@@ -154,7 +157,15 @@ export function createSshTunnelManager(options: SshTunnelManagerOptions = {}): S
           forward = await transport.forward({ localPort, remoteHost: ready.host === "::1" ? "[::1]" : ready.host, remotePort: ready.port });
           assertActive();
           log("info", "ssh forward open", { hostKey, localPort: forward.localPort, remotePort: ready.port });
-          return remember(hostKey, ssh, transport, forward);
+          const tunnel = remember(hostKey, ssh, transport, forward);
+          if (ready.transactionId) {
+            tunnel.completePreparation = async () => {
+              assertActive();
+              await completeHostDeployment(transport, ready.transactionId!, ready.hostId);
+              delete tunnel.completePreparation;
+            };
+          }
+          return tunnel;
         } catch (error) {
           try {
             if (forward) await forward.close();

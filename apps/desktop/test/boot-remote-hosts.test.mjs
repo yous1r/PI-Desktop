@@ -362,6 +362,7 @@ test("bootstrapHost closes its unadopted outcome when shutdown rejects its queue
         forward: async () => forward, dispose: () => undefined,
       }),
       fetchChecksum: async () => `${"a".repeat(64)}  pi-host-${version}-linux-x64.tar.gz`,
+      uploadArtifact: async () => ({ path: "/home/test/.pi-desktop/pi-host/.upload.ABC123/artifact.tar.gz", cleanup: async () => {} }),
       reservePort: async () => 1234, exchangePairing: async () => "fixture-device-token",
     },
   });

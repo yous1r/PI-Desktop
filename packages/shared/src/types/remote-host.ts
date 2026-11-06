@@ -65,6 +65,31 @@ export type RemoteHostSshMetadata = {
 
 export type RemoteHostConnectionStatus = "connected" | "connecting" | "reconnecting" | "disconnected" | "action-required";
 
+export type RemoteHostPreparationPhase =
+  | "checking" | "awaiting-download" | "downloading" | "uploading"
+  | "installing" | "waiting-idle" | "awaiting-maintenance" | "starting"
+  | "connecting" | "ready" | "failed" | "cancelled";
+
+/** Redacted progress only; credentials and SSH diagnostics never cross IPC. */
+export type RemoteHostPreparationState = {
+  hostKey: string;
+  targetVersion: string;
+  currentVersion?: string;
+  phase: RemoteHostPreparationPhase;
+  errorCode?: string;
+};
+
+export type RemoteHostPrepareRequest = {
+  hostKey: string;
+  requestId: string;
+  /** Explicit first-download consent; subsequent upgrades reuse it. */
+  allowDownload?: boolean;
+  /** One attempt only, for legacy Hosts without maintenance admission. */
+  allowLegacyMaintenance?: boolean;
+  retry?: boolean;
+};
+export type RemoteHostPrepareCancelRequest = { hostKey: string; requestId: string };
+
 export type RemoteHostSummary = {
   hostKey: string;
   label: string;
@@ -74,6 +99,7 @@ export type RemoteHostSummary = {
   status?: RemoteHostConnectionStatus;
   /** Absent on records written before the SSH bootstrap existed → `direct`. */
   transport?: RemoteHostTransport;
+  preparation?: RemoteHostPreparationState;
 };
 
 /**

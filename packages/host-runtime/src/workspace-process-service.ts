@@ -135,5 +135,7 @@ export class WorkspaceProcessService {
     for(const token of this.admissions)if(token.owner.deviceId===deviceId)token.cancelled=true;
     for(const [id,record] of this.records)if(record.owner.deviceId===deviceId)this.remove(id,record);
   }
+  /** Live children plus admissions still resolving; derived, never a second registry. */
+  inUse() {return this.records.size+this.admissions.size;}
   dispose() {this.sealed=true;for(const token of this.admissions)token.cancelled=true;for(const [id,record] of this.records)this.remove(id,record);}
 }

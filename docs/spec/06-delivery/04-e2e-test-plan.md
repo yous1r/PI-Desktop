@@ -15725,8 +15725,8 @@ browser milestones are scheduled.
   bundle at another version, and a tampered bundle with a wrong checksum.
   The desktop has one local session open, one user MCP server configured,
   and one installed plugin whose tool requires workspace access.
-- **Steps**: 1) Add the remote machine from the desktop and let the uploaded
-  bootstrap script download, verify, and start `pi-host` over SSH.
+- **Steps**: 1) Add the remote machine; Desktop downloads through its global
+  proxy, verifies, uploads and starts the verified `pi-host` over SSH.
   2) Observe the pairing exchange and the resulting device token. 3) Create a
   session under a remote project through `project/list` and
   `session/create`. 4) Start a turn whose fixture reads, edits, and runs a
@@ -15767,9 +15767,9 @@ browser milestones are scheduled.
   with `sshd`, POSIX shell, archive/hash tools and kernel `flock`; no system Node,
   systemd, public listener, production credential or paid model. A controlled
   release fixture serves a matching Host archive and digest.
-- **Steps**: Install through SSH with remote download; repeat bootstrap and verify
-  immutable installed files are reused. In a separate isolated account, block
-  remote release access and verify one bounded Desktop-download/SSH-upload path.
+- **Steps**: Install through a Desktop download and verified SSH upload; repeat
+  preparation and verify immutable installed files are reused. Block remote
+  release access throughout; no remote-download fallback may be attempted.
   Corrupt the archive and alter an installed file; verify integrity failures do
   not fall back or replace a working install. Reboot/kill the Host and repeat
   readiness; rotate Host identity and revoke a device token. Create a local
@@ -15777,9 +15777,9 @@ browser milestones are scheduled.
   `AGENTS.md` with local global instructions, then run Read and permissioned Bash.
   Drop SSH during Write and inspect the remote file before any manual retry.
   Exercise offline project browsing and the Settings connection status labels.
-  Repoint the fixture release so the paired Host no longer matches the desktop,
-  then select a remote folder and verify the Host is realigned over the same
-  verified install, re-paired in place and connected without removing it.
+  Repoint the fixture release so the paired Host is older than Desktop, then
+  select a remote folder and verify on-demand preparation keeps the original
+  Host ID and device token without removing or re-pairing it.
 - **Expected**: Bundled Node starts the Host without a system Node or remote
   release access. Reuse validates the external release receipt and installed
   manifest; failed staging leaves the previous `current` intact. Daily readiness
@@ -15789,10 +15789,10 @@ browser milestones are scheduled.
   local; workspace tools/files and root-only repository instructions come from
   the remote canonical root. A lost mutation reply reports
   `REMOTE_MUTATION_OUTCOME_UNKNOWN` and is not replayed or executed locally. A
-  Host that falls behind the desktop release is realigned over the same verified
-  install and re-paired in place — once per release per host, and again on an
-  explicit user reconnect — while a Host that still cannot serve this desktop
-  keeps the upgrade message instead of looping or dropping the pairing.
+  Host that falls behind Desktop is prepared after download consent and idle
+  maintenance admission. Success is recorded only after RACP verification.
+  Each later use still checks live readiness; failure cooldown is bypassed only
+  by explicit retry. A newer Host never triggers downgrade.
 - **Automation**: `remote-host-realign.test.mjs`,
   `remote-host-supervisor.test.mjs`, SSH bootstrap shell,
   packaging, artifact transfer, concurrent readiness/auth lifecycle and UI
@@ -15804,6 +15804,42 @@ browser milestones are scheduled.
   not claim reverse-relay, interactive-terminal or complete R2 acceptance.
 - **Status**: Candidate implementation; Linux SSH and release qualification
   pending.
+
+#### E2E-REMOTE-HOST-PREPARATION: Demand, proxy, maintenance and recovery
+
+- **Preconditions**: Dedicated candidate worktree, isolated Desktop profile,
+  controlled versioned release service, and Linux SSH x64/arm64 targets with
+  private test data. No production credentials or paid models.
+- **Steps**: Start Desktop and refresh inventory with an outdated Host; assert
+  zero installation attempts. Open a remote project or folder picker, accept the
+  first download and observe checking/download/upload/install/connect phases.
+  Repeat after a Desktop upgrade, with remote release egress blocked. Exercise
+  global Direct, HTTP, SOCKS5, authenticated proxy and system/PAC settings and a
+  failing proxy without direct fallback. Return from Network settings and retry.
+  Open two callers, cancel one, then all; release late replies and confirm no
+  abandoned project opens. Run with another client, active turn, queued task,
+  plan, tool, terminal, background process and plugin resource: deployment must
+  remain busy. Verify lease expiry and new-work rejection during maintenance.
+  For a legacy Host require explicit idle-window confirmation. Cut SSH during
+  staging, stopping, activation and startup; inspect journal, lock and data.
+  Inject unavailable release, invalid checksum, wrong identity, revoked token,
+  newer beta, post-start failure and failed RACP capability verification.
+- **Expected**: Exact client release only; no automatic downgrade or re-pairing.
+  Existing work is never force-killed. Safe staging failure preserves `current`;
+  uncertain/new-start failures preserve data and require recovery rather than
+  blind rollback. Cancellation affects only its caller until the final waiter
+  leaves; detached deployment remains bounded and does not strand an ambiguous
+  install as success. No failed mutation is replayed or executed locally.
+- **Automation**: `remote-host-demand-policy`, `remote-host-prepare`,
+  `remote-host-prepare-ipc`, `remote-host-realign`, `remote-host-artifact-transfer`,
+  `remote-host-preparation-ui` and `remote-project-dialog-user-path` Desktop
+  suites. `node scripts/test-host-download-proxy.mjs` runs real Electron HTTPS
+  traffic through local proxy fixtures, including a controlled Chromium PAC;
+  it does not configure or qualify the operating system's PAC discovery.
+  Release gate tests cover version and x64/arm64 artifact parity.
+- **Status**: Linux SSH transaction/recovery acceptance is a separate required
+  run; local fixture success is not evidence that the real SSH gate passed.
+
 
 #### E2E-REMOTE-HOST-ssh-password-authentication
 

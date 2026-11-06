@@ -33,6 +33,7 @@ Each ADR includes:
 | s3-only-configuration-backup-sync | [S3-only encrypted configuration backup and synchronization](s3-only-configuration-backup-sync.md) | Accepted; supersedes WebDAV decisions in 0300 / 0301 |
 | remote-provider-import | [Explicit provider import into a running remote Host](remote-provider-import.md) | Accepted for the experimental SSH MVP |
 | remote-project-home-workflow | [Remote projects in the shared Chat home workflow](remote-project-home-workflow.md) | Accepted |
+| remote-host-on-demand-preparation | [On-demand remote Host preparation](remote-host-on-demand-preparation.md) | Implemented candidate; Linux SSH qualification pending |
 | parallel-read-batches | [Ordered preparation and parallel read batches](parallel-read-batches.md) | Proposed |
 | composer-mcp-invocations | [Composer MCP Invocations](composer-mcp-invocations.md) | Accepted |
 | chronological-system-transcript | [Preserve chronological model system state](chronological-system-transcript.md) | Accepted |
@@ -384,7 +385,7 @@ Each ADR includes:
 | 0324 | [Make Composer Prompt Enhancement an Optional Plugin](0324-plugin-owned-composer-prompt-enhancement.md) | Accepted (D653; supersedes ADR 0121) |
 | 0325 | [Smooth Windows main-window corner compositing](0325-windows-window-corner-compositing.md) | Proposed (implementation candidate; Windows E2E pending) |
 | 0326 | [Verified SSH Host installation and daily startup](0326-verified-ssh-host-installation.md) | Accepted for experimental implementation (amends ADR 0292; Linux SSH qualification and publication pending) |
-| 0327 | [Automatic remote Host version realignment](0327-remote-host-version-realignment.md) | Accepted for experimental implementation (amends ADR 0326 item 6; Linux SSH qualification pending) |
+| 0327 | [Automatic remote Host version realignment](0327-remote-host-version-realignment.md) | Superseded by on-demand remote Host preparation |
 | 0328 | [Open arbitrary local files in the embedded Browser](0328-browser-arbitrary-local-files.md) | Accepted (D657; amends ADR 0170; issue #1627) |
 | 0329 | [Isolate parallel sessions of one project in git worktrees](0329-session-worktree-isolation.md) | Accepted (Windows E2E pending) |
 | 0330 | [Open scoped HTML files in the work-panel Browser from plugins](0330-open-html-files-in-work-panel-browser-from-plugins.md) | Accepted |

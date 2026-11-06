@@ -154,9 +154,8 @@ Deliverables:
 
 - the `pi-host` bundle: the module, the Node pi sidecar, and the platform's
   host-core binary, versioned with the desktop, bound to loopback, downloaded
-  from GitHub Releases by a bootstrap script the desktop uploads over SSH
-  with the published SHA-256 verified before install, then started and paired
-  over that SSH session;
+  from GitHub Releases by Desktop through its global proxy, verified locally,
+  uploaded over SSH and verified remotely before installation and initial pairing;
 - the desktop RACP client adapter in Electron Main under `lib/api.ts`, so the
   renderer needs no transport knowledge and a remote session renders like a
   local one;
@@ -187,11 +186,12 @@ Design decisions (D375, recorded 2026-09-10):
    that require workspace or filesystem access are excluded.
 3. The work-panel terminal ships in this milestone as the `terminal/*`
    operations, running on the remote machine.
-4. `pi-host` is downloaded from GitHub Releases per platform at the desktop's
-   version by a bootstrap script the desktop uploads over SSH, with the
-   published SHA-256 verified; a version mismatch is `PROTOCOL_MISMATCH`
-   and the desktop offers to re-run the download. A machine without outbound
-   access to GitHub is not supported in the first version.
+4. `pi-host` is downloaded on Desktop from the exact versioned release through
+   the global proxy and uploaded over SSH. Remote internet access is unnecessary.
+   Explicit project use prepares an older compatible Host, preserving identity
+   and data. First-download consent, maintenance admission, no downgrade and
+   transactional recovery supersede the original D375 deployment choice; see
+   [on-demand preparation](../../adr/remote-host-on-demand-preparation.md).
 5. The SSH-paired desktop device holds `owner` and is exempt from the remote
    permission ceiling unless the Host policy `applyCeilingToPairedDevices`
    is enabled.
