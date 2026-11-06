@@ -261,8 +261,8 @@ never in Electron main, the renderer, or a plugin host process.
   extension author sees when pi runs several sessions in one process. This
   is documented, not worked around, in v1.
 - Enabling, disabling, or rescanning invalidates every Runner; affected
-  sessions reload extensions at the next turn boundary. A running turn is
-  never interrupted by a reload.
+  sessions reload extensions at the next turn boundary or idle command
+  preparation. A running turn is never interrupted by a reload.
 
 ### 4.4 Load failures
 
@@ -435,9 +435,16 @@ the UI broker's own prompt timeout does not extend that budget.
    `/<name>` with the extension's label as the source, after built-in and
    plugin commands.
 2. A command runs in the sidecar with the extension command context bound to
-   the active session. It requires an active session whose runtime has
-   loaded extensions in this app run; otherwise the composer reports that a
-   chat must be started first.
+   the active Desktop session. Main prepares an idle session through the same
+   launch resolver used by prompts, including the current model, mode,
+   workspace and enabled extensions. The sidecar creates or reuses its runtime
+   and restores history without opening a turn or calling the model. A fresh
+   session, or one whose runtime was discarded, needs no preliminary chat.
+   Preparation holds the session operation lock; the command handler runs
+   after releasing it so interactive prompts and queued messages can progress.
+   A running turn keeps its existing runtime. Missing sessions, invalid model
+   configuration and unregistered commands retain their normal errors. Native
+   Pi sessions do not enter this Desktop extension path.
 3. Commands typed in the composer as `/<name>` resolve in this order:
    built-in, prompt template, plugin, extension. Collisions are diagnostics.
 4. A running command blocks composer submission the same way a plugin command
@@ -500,6 +507,16 @@ All channels are sender-validated like other plugin channels. The MCP
 control plane exposes `extensions/commands/run` (write) and
 `extensions/ui/respond` (dangerous, confirm required); the import is a native
 picker and stays local. Main audits each prompt id in `logs/app/plugin.log`.
+
+### 10.3 Main → sidecar command preparation
+
+Main calls `extensions.command.prepare` with the trusted launch parameters
+resolved for an idle Desktop session. It returns `{ ready: true }` after the
+runtime and its extensions load, without opening a model turn. Main releases
+the session operation lock before calling the existing
+`extensions.command.run` with `{ sessionId, name, args }`. Renderer input never
+supplies launch configuration. Running turns continue directly to command
+execution with their existing runtime.
 
 ## 11. Plugin row surface
 

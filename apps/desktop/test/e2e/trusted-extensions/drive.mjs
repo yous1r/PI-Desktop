@@ -2,7 +2,7 @@
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
 import { connectRenderer } from "./renderer.mjs";
 import { connectRenderer as connectUiRenderer } from "../plugin-ui-slots/clients.mjs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 const root = process.env.E2E_ROOT || "/tmp/pi-ext-e2e";
 const dataDir = join(root, "data");
@@ -99,6 +99,25 @@ await tool("pi_project_open", { path: project });
 const created = await tool("pi_session_create", { title: "ext e2e", projectPath: project, mode: "agent" });
 const sessionId = created?.session?.id ?? created?.id;
 check("session created", !!sessionId, sessionId);
+
+// E2E-243: commands initialize fresh/restored runtimes without a seed model turn.
+const probe = async (args, expectedCwd) => {
+  const result = await invoke("extensions/commands/run", { sessionId, name: "runtime_probe", args });
+  const lines = readFileSync(join(root, "hooks.log"), "utf8").split("\n");
+  const entry = lines.filter(line => line.startsWith("runtime_probe ")).at(-1);
+  const observed = entry ? JSON.parse(entry.slice("runtime_probe ".length)) : {};
+  check(args + " command uses its session workspace", result?.ok === true && observed.args === args && resolve(observed.cwd || ".") === resolve(expectedCwd), JSON.stringify(observed));
+};
+await probe("fresh", project);
+const requestsBeforePrompt = () => existsSync(join(root, "requests.jsonl")) ? readRequests().length : 0;
+check("fresh command preparation does not call the model", requestsBeforePrompt() === 0);
+const movedProject = join(root, "moved-project");
+await invoke("session/moveProject", { sessionId, projectPath: movedProject });
+check("moving the session disposes the command runtime", readFileSync(join(root, "hooks.log"), "utf8").includes("session_shutdown"));
+await probe("restored", movedProject);
+const emptySession = await tool("pi_session_get", { id: sessionId });
+check("restored command adds no model request or transcript message", requestsBeforePrompt() === 0 && (emptySession?.session?.messages ?? []).length === 0);
+await invoke("session/moveProject", { sessionId, projectPath: project });
 
 // 1) tool + hooks (E2E-242)
 const firstPrompt = await tool("pi_agent_prompt", { sessionId, content: "please add 20 and 22" });
@@ -416,6 +435,14 @@ const aliasPrompt = await tool("pi_agent_prompt", { sessionId, content: "say hi 
 await waitForTurn(sessionId, aliasPrompt?.turnId);
 const aliasAssistant = await waitForReply(sessionId, "say hi through the alias");
 check("the alias provider's transport served the turn", /alias-transport-ok/.test(aliasAssistant?.content ?? ""), aliasAssistant?.content);
+
+// A workflow command can start the first turn through sendUserMessage.
+const coldQueueSession = await tool("pi_session_create", { title: "cold workflow command", projectPath: project, mode: "agent" });
+const coldQueueSessionId = coldQueueSession?.session?.id ?? coldQueueSession?.id;
+const coldQueued = await invoke("extensions/commands/run", { sessionId: coldQueueSessionId, name: "queue", args: "" });
+check("a fresh session accepts a message-sending command", coldQueued?.ok === true);
+const coldReply = await waitForReply(coldQueueSessionId, "please add 20 and 22 (queued)");
+check("a fresh workflow command starts and completes its first turn", /Sum is 42/.test(messageText(coldReply)), messageText(coldReply));
 
 console.log("RESULTS " + JSON.stringify(results));
 console.log(`SUMMARY ${results.filter((r) => r.ok).length}/${results.length} passed`);

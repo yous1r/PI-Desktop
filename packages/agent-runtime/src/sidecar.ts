@@ -595,6 +595,10 @@ async function handle(method: string, params: any): Promise<unknown> {
       }
       return runtime.resolveAskTool(params as AskToolResolution);
     }
+    case "extensions.command.prepare": {
+      await runtimeFor(params);
+      return { ready: true };
+    }
     case "extensions.command.run": {
       const sessionId = String(params.sessionId ?? "");
       const runtime = runtimes.get(sessionId);
