@@ -711,7 +711,9 @@ async function handleParentCall(method, payload, invocationId, callId) {
       // Idempotent: a restart of the host process re-runs start, but a second
       // start inside one process must not spawn a duplicate worker.
       if (entry.running) return { ok: true, alreadyRunning: true };
-      await entry.start({ log: (msg) => log("info", msg) });
+      // Resident work belongs to the loaded plugin, not the startup RPC.
+      // Keep ordinary callback descendants bound to their originating call.
+      await parentCallContext.run(undefined, () => entry.start({ log: (msg) => log("info", msg) }));
       entry.running = true;
       return { ok: true };
     }

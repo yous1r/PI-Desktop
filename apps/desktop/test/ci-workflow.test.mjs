@@ -38,10 +38,8 @@ test("PR package builds review artifacts without publishing a release", () => {
   assert.match(prPackageWorkflowSource, /cargo build --release --locked -p host-core/);
   assert.match(prPackageWorkflowSource, /pnpm install --frozen-lockfile/);
   assert.match(prPackageWorkflowSource, /run: pnpm --filter @pi-desktop\/desktop run dist:win -- --x64/);
-  assert.match(prPackageWorkflowSource, /plugin-devkit\/dist\/cli\.js pack dist --out release/);
+  assert.doesNotMatch(prPackageWorkflowSource, /ai-memory|examples\/plugins|plugin-devkit/);
   assert.match(prPackageWorkflowSource, /name: pi-desktop-windows-x64/);
-  assert.match(prPackageWorkflowSource, /name: ai-memory-plugin/);
-  assert.match(prPackageWorkflowSource, /829eee8dc90490d9671554b5cfd075976b61195221576ef8adec9732d3a94fef/);
   assert.doesNotMatch(prPackageWorkflowSource, /contents: write|action-gh-release|secrets\.|--publish always|tags:/);
   // electron-builder's Windows wrapper forces --publish never for every target.
   assert.match(desktopPackageSource, /"dist:win": "[^"]*build-desktop-release\.mjs win"/);
