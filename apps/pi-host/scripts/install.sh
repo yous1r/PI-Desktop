@@ -15,8 +15,9 @@ else
   exit 1
 fi
 verify() (
-  cd "$1"
-  [ -f SHA256SUMS ] && [ ! -L SHA256SUMS ]
+  # Conditional callers suppress shell errexit, so propagate every failed check.
+  cd "$1" || return 1
+  [ -f SHA256SUMS ] && [ ! -L SHA256SUMS ] || return 1
   # No absolute/traversal/escaped names, duplicate records, or special files.
   awk '
     length($1) != 64 || $1 ~ /[^0-9a-f]/ { exit 1 }
@@ -24,14 +25,15 @@ verify() (
     $2 ~ /^\// || $2 ~ /(^|\/)\.\.?($|\/)/ || $2 ~ /\/\// { exit 1 }
     $2 == "SHA256SUMS" || seen[$2]++ { exit 1 }
     END { if (NR == 0) exit 1 }
-  ' SHA256SUMS
-  [ -z "$(find . ! -type f ! -type d -print)" ]
-  [ "$(find . -type f | wc -l | tr -d ' ')" = "$(($(wc -l < SHA256SUMS) + 1))" ]
-  check
+  ' SHA256SUMS || return 1
+  special_files=$(find . ! -type f ! -type d -print) || return 1
+  [ -z "$special_files" ] || return 1
+  [ "$(find . -type f | wc -l | tr -d ' ')" = "$(($(wc -l < SHA256SUMS) + 1))" ] || return 1
+  check || return 1
   for executable in bin/node bin/pi-host bin/pi-desktop-host-core install.sh; do
-    [ -x "$executable" ]
+    [ -x "$executable" ] || return 1
   done
-  [ -f pi-host.js ]
+  [ -f pi-host.js ] || return 1
 )
 
 # install   stage + atomically switch current (default, unchanged contract)
