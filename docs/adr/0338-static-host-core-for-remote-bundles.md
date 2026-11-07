@@ -56,14 +56,23 @@ error path named glibc.
 4. The desktop's own Linux package keeps the glibc 2.35 build. Its floor is
    Electron's, its JIT and GPU paths cannot live in a static musl process, and
    its local host-core is already bound to that floor.
+5. Remote Node and terminal addons retain the glibc 2.28 baseline. This is not
+   a fully musl Node distribution: a musl addon cannot be loaded into the glibc
+   Node executable. Build `node-pty` in native manylinux_2_28 x64/arm64 images
+   and pass that isolated package to `bundle.mjs --pty`; never ship the runner's
+   Ubuntu-built addon by accident. Static host-core remains mandatory on every
+   subsequent release.
+6. Before archiving, `check-linux-pi-host-runtime.mjs` reruns the static host-core
+   gate, checks imported Node/PTY symbol versions against glibc 2.28 and the
+   corresponding C++ ABI, and runs a real shell through the bundled PTY. A
+   version handshake or project browse alone cannot qualify terminal support.
 
 ## Consequences
 
-- host-core on a remote machine no longer depends on glibc at all. The bundled
-  Node runtime still does (Node 24 needs glibc 2.28 or newer), so a musl-only
-  distribution such as Alpine remains an unsupported remote target; the
-  reachable floor becomes Node's, not 2.35, and a machine that passes the Node
-  floor now runs host-core too.
+- host-core on a remote machine no longer depends on glibc at all. Bundled
+  Node and `node-pty` require glibc 2.28 or newer; a musl-only distribution such
+  as Alpine remains unsupported. The floor applies to the complete remote
+  runtime, including terminals, rather than only to Node and host-core.
 - A static binary cannot `dlopen`. host-core loads no plugin, no SQLite
   extension and no NSS module, so nothing in its current surface depends on the
   dynamic loader. Name lookups use the local files only, which matters solely

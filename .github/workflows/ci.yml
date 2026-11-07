@@ -67,6 +67,34 @@ jobs:
       - name: Unit tests
         run: pnpm -r --if-present test
 
+  remote-pty-compat:
+    name: Remote PTY glibc 2.28 (${{ matrix.arch }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            os: ubuntu-22.04
+          - arch: arm64
+            os: ubuntu-22.04-arm
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install build dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build and exercise the baseline terminal addon
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/pi-host-pty-${{ matrix.arch }}"
+          node apps/pi-host/scripts/build-compatible-pty.mjs --arch ${{ matrix.arch }} --out "$out"
+          node scripts/check-linux-pi-host-runtime.mjs --pty "$out"
+
   rust:
     name: Rust host-core format / lint / test
     runs-on: ubuntu-latest

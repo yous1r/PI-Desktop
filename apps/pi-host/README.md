@@ -27,10 +27,9 @@ Use a Desktop and Host bundle built from the same candidate.
 The local Agent and regular Composer are shared with local chats. Host-side model
 configuration, project registration and session creation are not prerequisites.
 Legacy remote-Agent histories still use their original backend. Trusted-extension
-model providers remain local; an extension workspace `pi.exec` needs a remote
-adapter and currently fails explicitly, while a local model helper can specify
-its local cwd. There is no interactive terminal UI (ADR 0108); local Agent Bash
-commands still run against the remote workspace. This is not full R2 acceptance.
+model providers remain local. Terminals use a remote PTY over authenticated
+RACP through the existing SSH tunnel. Their native addon must match both the
+bundled Node ABI and the remote system compatibility baseline.
 
 **Release prerequisite:** automatic SSH install uses published release assets.
 Building this branch does not update an existing release. Publish a matching
@@ -57,6 +56,14 @@ Cargo target path when sharing a host cache. The bundle must contain the complet
 runtime manifest/chunks/assets, not only `sidecar.js`. Native files must match the
 target platform. macOS requires an executable node-pty spawn helper; Linux does
 not require that macOS-only helper.
+
+Published Linux bundles always use statically linked musl host-core. Node and
+the terminal addon remain glibc builds with a **2.28** minimum. The release lane
+builds `node-pty` inside a native manylinux_2_28 container, passes the prepared
+package through `bundle.mjs --pty <directory>`, then runs
+`node scripts/check-linux-pi-host-runtime.mjs <bundle-directory>` before
+archiving. This checks static host-core, imported Node/PTY ABI requirements,
+and actual shell output. Do not upgrade the target's system glibc as a repair.
 
 In linked worktrees where the pnpm launcher rejects linked dependency state,
 run the installed TypeScript compiler for the affected packages, the runtime
@@ -137,6 +144,11 @@ There is no per-Host proxy configuration.
 - `HOST_MAINTENANCE_REQUIRED`: an older Host cannot prove atomic idle admission.
   Arrange an idle maintenance window before confirming the one deployment attempt.
 - `HOST_CLIENT_TOO_OLD`: update Desktop. Do not point old code at newer Host data.
+- `TERMINAL_HOST_UNSUPPORTED`: the Host did not advertise workspace terminals.
+  Check its `pi-host.err` and load `node-pty` with the bundled Node. Missing
+  native modules or an incompatible libc can disable terminals even when the
+  Host version and project browsing are correct; repeatedly reinstalling the
+  same incompatible release cannot fix that failure.
 - `HOST_RECOVERY_REQUIRED`: retain the data directory and deployment journal
   under `~/.pi-desktop/pi-host/.bootstrap`. Inspect the failed transaction and
   Host logs before recovery; do not delete data or repoint `current` as a database

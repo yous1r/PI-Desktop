@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Keep remote host-core statically linked with musl and build the terminal
+  addon against glibc 2.28 on both Linux architectures. Verify bundled Node,
+  native ABI requirements and real PTY output before release archiving.
+
 - Cache verified Desktop-downloaded Host archives across retries, Host removal
   and restart; reuse them over SSH without another release request.
 - Allow older prereleases to advance to a newer stable Desktop release, and

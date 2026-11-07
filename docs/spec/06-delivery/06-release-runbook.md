@@ -696,6 +696,12 @@ Shell smoke on each native runner:
   `x86_64-unknown-linux-musl` and `aarch64-unknown-linux-musl`,
   `scripts/check-linux-host-static.mjs` refuses a dynamically linked binary,
   and `pi-host-bundle` consumes that artifact (ADR 0338).
+  This remains mandatory for every future remote release. The same bundle's
+  Node and `node-pty` must run on glibc 2.28. Build the addon in native
+  manylinux_2_28 x64/arm64 containers using `build-compatible-pty.mjs`, pass
+  `--pty` to `bundle.mjs`, and run `check-linux-pi-host-runtime.mjs` before
+  publishing. That gate checks the complete ABI floor and real PTY output,
+  so a healthy Host handshake cannot hide disabled terminals.
 - Linux arm64 microphone capture works on Raspberry Pi boards only:
   `@picovoice/pvrecorder-node` classifies Linux arm64 by `/proc/cpuinfo` CPU
   part. Speech-to-text (`transcribe-cpp` ships a `linux-arm64-cpu-vulkan`
