@@ -177,6 +177,17 @@ Bootstrap runs over the user's own SSH session, never over RACP:
    device token that the desktop stores in its secure storage.
 5. The Host records the desktop device as `owner` of that Host.
 
+An explicit **Add SSH Host** action may enroll a previously used Host again
+when its installed files still verify but its process has exited and no
+successful readiness record remains. Under the deployment lock, read the
+existing durable identity and installed package version; preserve Host ID,
+all existing devices and data. Only this new SSH enrollment may discover the
+identity without a saved Desktop device. Saved-device upgrades still require
+their original identity and owner credential. Missing/malformed identity,
+conflicting evidence, damaged installation, unidentified process and downgrade
+remain refusals. Startup must report the admitted identity before pairing and
+authenticated RACP capability verification can complete deployment.
+
 Daily reconnect is not bootstrap: SSH readiness starts/reuses the installed Host
 without reinstalling, `--pair`, or resetting device credentials. It discovers
 the current loopback port, checks version and saved Host ID, then rebuilds the

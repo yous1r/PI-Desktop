@@ -275,7 +275,7 @@ async function awaitReady(pid, node, entry, tx, root, pairingRequired) {
     const readyLine = lines.find((line) => line.startsWith("PI_HOST_READY "));
     const pairingLine = lines.find((line) => line.startsWith("PI_HOST_PAIRING_TOKEN "));
     if (readyLine && (!pairingRequired || pairingLine)) {
-      const ready = parseReady(readyLine, tx.version, tx.expectedHostId);
+      const ready = parseReady(readyLine, tx.version, tx.expectedHostId ?? tx.hostId);
       if (pairingRequired) {
         if (!parsePairingLine(pairingLine)) fail("HOST_RECOVERY_REQUIRED");
       } else if (pairingLine) fail("HOST_RECOVERY_REQUIRED");
@@ -310,7 +310,7 @@ function dataDirectory(home) {
   return join(home, ".pi-desktop");
 }
 /** Durable admission without a trusted CLI: identity, saved owner, version. */
-function offlineAdmission(tx, oldDir, recorded, { requireOwnerDevice }) {
+function offlineAdmission(tx, oldDir, recorded, { requireOwnerDevice, allowNewEnrollment = false }) {
   const data = dataDirectory(process.env.HOME);
   const identityText = readText(join(data, "pi-host", "identity.json"));
   if (identityText === null) fail("HOST_RECOVERY_REQUIRED");
@@ -321,10 +321,11 @@ function offlineAdmission(tx, oldDir, recorded, { requireOwnerDevice }) {
   try {
     return admitOfflineHost({
       identityText,
-      credentialsText: credentialsText ?? '{"devices":[]}',
+      credentialsText: allowNewEnrollment ? credentialsText : credentialsText ?? '{"devices":[]}',
       expectedHostId: tx.expectedHostId ?? recorded?.hostId,
       expectedDeviceTokenHash,
       requireOwnerDevice: needsDevice,
+      allowNewEnrollment,
       candidateVersion: tx.version,
       packageVersion: oldDir ? directoryVersion(oldDir) : null,
       readyVersion: recorded?.version,
@@ -361,10 +362,12 @@ async function runTransaction(requestPath) {
       const claimedHostId = tx.expectedHostId ?? recorded?.hostId;
       if (process.state === "unidentified") fail("HOST_PROCESS_UNIDENTIFIED");
       if (process.state === "dead") {
-        // The install is intact but nothing runs. Durable identity and version
-        // evidence still gate the upgrade; no pairing state is re-minted.
-        if (!claimedHostId) fail("HOST_AUTH_FAILED");
-        const admission = offlineAdmission(tx, oldDir, recorded, { requireOwnerDevice: tx.preservePairing === true });
+        // Explicit SSH enrollment may recover a stopped, intact Host's durable
+        // identity even when its last startup overwrote the readiness log.
+        const admission = offlineAdmission(tx, oldDir, recorded, {
+          requireOwnerDevice: tx.preservePairing === true,
+          allowNewEnrollment: tx.preservePairing === false,
+        });
         tx.hostId = admission.hostId; tx.oldVersion = admission.version;
         saveState(root, tx, "offline-admitted", { deviceId: admission.deviceId, evidence: admission.sources });
       } else if (hasMaintenance(oldDir, oldNode, oldEntry)) {

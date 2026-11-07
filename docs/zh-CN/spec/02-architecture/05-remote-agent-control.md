@@ -76,17 +76,21 @@ PI-Desktop (Remote Client)              Remote machine
                             │           └── sshd
 ```
 
-引导只走用户自己的 SSH 会话，不走 RACP：桌面用现有 SSH 配置登录，上传一段引导脚本，由它从
-构建该桌面端的仓库的 GitHub Releases（`PI_HOST_RELEASE_REPO`，[ADR 0339](../../../adr/0339-fork-release-pi-host-source.md)）下载与桌面同版本的 `pi-host` 包并校验公布的 SHA-256，启动它并绑定 loopback，经 SSH 通道拿到一次性
-配对 token，转发本地端口后以 header profile 连接 `RACP-WS`，用配对 token 换取
-设备 token 存入桌面安全存储；Host 把该桌面设备记为 `owner`。远端 Host 的
-provider 配置由引导步骤经 SSH 通道写入，是 Host 本地配置，绝不经过 RACP。
-Host 只绑定 loopback；只有绑定地址与对端地址都是 loopback且出示有效设备 token
-时才接受明文 `ws://`，因为 SSH 通道已提供机密性，SSH 登录也已证明对该机器的
-shell 访问。非 loopback 绑定仍要求 TLS 与设备 token。首版无法引导没有 GitHub 出网能力的机器。
-已配对 Host 的版本落后于桌面时，桌面会复用同一套经校验的 SSH 引导把它升级到桌面版本，并在原处重新配对（ADR 0327）；
-就绪检查比对的是桌面期望的版本，而不是配对时记录的版本，连接后还会核对远端是否提供远程工作区所需的服务。
-自动升级每个桌面版本每台 Host 只尝试一次，失败后冷却，用户手动重连可再试，升级无效时仍显示原来的升级提示。
+引导只走用户自己的 SSH 会话，不走 RACP：桌面使用已有 SSH 配置登录，
+通过全局代理从构建该桌面的仓库下载同版本 `pi-host` 包并校验 SHA-256，
+再经 SSH 上传，由远端再次校验后安装。仓库由 `PI_HOST_RELEASE_REPO` 指定，
+参见 [ADR 0339](../../../adr/0339-fork-release-pi-host-source.md)。远端无需访问 GitHub。
+Host 绑定 loopback，经 SSH 返回一次性配对 token；桌面通过转发端口完成配对，
+把设备 token 存入安全存储。SSH 已证明用户具有远端 shell 访问权限。
+
+已配对 Host 的按需升级保留原 Host ID、设备凭据和数据，不重新配对。
+只有主动使用远程项目或添加 SSH 主机才触发安装；启动和列表刷新不安装。
+在线 Host 必须通过空闲维护检查，旧版要求用户确认空闲窗口。
+用户主动重新添加已停止且安装完整的 Host 时，若旧启动日志只剩失败记录，
+可从持久身份文件与已校验安装包恢复身份和版本，保留原设备、项目和会话。
+已有设备升级仍校验原凭据；身份缺失、证据冲突、安装损坏、未知进程或降级均拒绝。
+启动身份必须与准入身份相同，经 RACP 认证和工作区能力检查后才完成部署。
+准备失败后冷却十分钟；用户显式重试可跳过冷却，但不能跳过授权、身份、完整性或版本检查。
 
 ### 4.3 自托管 Gateway（不排期）
 
