@@ -1,11 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.22.3
 
 - Restore explicit SSH enrollment of an intact, stopped Host when its last
   startup failed and no Desktop pairing record or readiness identity remains.
   Preserve its durable identity, prior devices and data; keep saved-device,
   conflicting-evidence, process and downgrade checks intact.
+
+## 0.22.2
 
 - Keep remote host-core statically linked with musl and build the terminal
   addon against glibc 2.28 on both Linux architectures. Verify bundled Node,

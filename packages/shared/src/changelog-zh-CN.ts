@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const zhCNEntries: ChangelogEntry[] = [
   {
+    version: "0.22.3",
+    date: "2026-11-07",
+    highlights: [
+      "旧版 Host 启动失败后可重新添加 SSH 主机，支持 fnOS 等数据库版本高于旧程序支持范围的场景。",
+      "恢复时保留原 Host 身份、已配对设备和数据，并检查凭据缺失、身份冲突及不安全进程。",
+    ],
+  },
+  {
     version: "0.22.2",
     date: "2026-11-06",
     highlights: [

@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const ptBREntries: ChangelogEntry[] = [
   {
+    version: "0.22.3",
+    date: "2026-11-07",
+    highlights: [
+      "Adicione novamente um Host SSH quando a versão antiga não iniciar, incluindo instalações fnOS com um banco de dados mais recente do que o programa antigo suporta.",
+      "A recuperação preserva a identidade original do Host, os dispositivos pareados e os dados, verificando credenciais ausentes, identidades conflitantes e processos inseguros.",
+    ],
+  },
+  {
     version: "0.22.2",
     date: "2026-11-06",
     highlights: [
