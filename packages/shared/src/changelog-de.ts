@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const deEntries: ChangelogEntry[] = [
   {
+    version: "0.22.3",
+    date: "2026-11-07",
+    highlights: [
+      "Füge einen SSH-Host erneut hinzu, wenn der ältere Host nicht startet, auch bei fnOS-Installationen mit einer Datenbank, die für das alte Programm zu neu ist.",
+      "Die Wiederherstellung erhält die ursprüngliche Host-Identität, gekoppelte Geräte und Daten und prüft fehlende Zugangsdaten, widersprüchliche Identitäten und unsichere Prozesse.",
+    ],
+  },
+  {
     version: "0.22.2",
     date: "2026-11-06",
     highlights: [

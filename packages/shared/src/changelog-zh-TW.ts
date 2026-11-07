@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const zhTWEntries: ChangelogEntry[] = [
   {
+    version: "0.22.3",
+    date: "2026-11-07",
+    highlights: [
+      "舊版 Host 啟動失敗後可重新新增 SSH 主機，支援 fnOS 等資料庫版本高於舊程式支援範圍的情境。",
+      "復原時保留原 Host 身分、已配對裝置與資料，並檢查憑證遺失、身分衝突及不安全程序。",
+    ],
+  },
+  {
     version: "0.22.2",
     date: "2026-11-06",
     highlights: [

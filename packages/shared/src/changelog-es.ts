@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const esEntries: ChangelogEntry[] = [
   {
+    version: "0.22.3",
+    date: "2026-11-07",
+    highlights: [
+      "Vuelve a añadir un Host SSH cuando la versión anterior no pueda iniciarse, incluidas instalaciones fnOS con una base de datos más reciente que la admitida por el programa antiguo.",
+      "La recuperación conserva la identidad original del Host, los dispositivos vinculados y los datos, y comprueba credenciales ausentes, identidades en conflicto y procesos no seguros.",
+    ],
+  },
+  {
     version: "0.22.2",
     date: "2026-11-06",
     highlights: [

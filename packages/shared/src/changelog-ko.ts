@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const koEntries: ChangelogEntry[] = [
   {
+    version: "0.22.3",
+    date: "2026-11-07",
+    highlights: [
+      "이전 Host가 시작되지 않을 때 SSH Host를 다시 추가할 수 있습니다. 기존 프로그램이 지원하는 버전보다 최신 데이터베이스를 사용하는 fnOS 설치도 지원합니다.",
+      "복구 시 원래 Host ID, 페어링된 기기와 데이터를 보존하고, 누락된 자격 증명, ID 충돌 및 안전하지 않은 프로세스를 확인합니다.",
+    ],
+  },
+  {
     version: "0.22.2",
     date: "2026-11-06",
     highlights: [

@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const enEntries: ChangelogEntry[] = [
   {
+    version: "0.22.3",
+    date: "2026-11-07",
+    highlights: [
+      "Add an SSH Host again after an older Host fails to start, including fnOS installations whose database is newer than the old binary supports.",
+      "Keep the original Host identity, paired devices and data during recovery, with checks for missing credentials, conflicting identity and unsafe processes.",
+    ],
+  },
+  {
     version: "0.22.2",
     date: "2026-11-06",
     highlights: [

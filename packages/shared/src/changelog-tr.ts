@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const trEntries: ChangelogEntry[] = [
   {
+    version: "0.22.3",
+    date: "2026-11-07",
+    highlights: [
+      "Eski Host başlatılamadığında SSH sunucusunu yeniden ekleyin; eski programın desteklediğinden daha yeni veritabanı kullanan fnOS kurulumları da desteklenir.",
+      "Kurtarma sırasında özgün Host kimliğini, eşleştirilmiş cihazları ve verileri koruyun; eksik kimlik bilgileri, çelişen kimlikler ve güvenli olmayan süreçler denetlenir.",
+    ],
+  },
+  {
     version: "0.22.2",
     date: "2026-11-06",
     highlights: [

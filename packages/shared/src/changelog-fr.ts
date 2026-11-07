@@ -2,6 +2,14 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const frEntries: ChangelogEntry[] = [
   {
+    version: "0.22.3",
+    date: "2026-11-07",
+    highlights: [
+      "Ajoutez à nouveau un Host SSH après l’échec du démarrage d’une ancienne version, y compris sur fnOS lorsque la base de données est trop récente pour l’ancien programme.",
+      "La récupération préserve l’identité d’origine du Host, les appareils associés et les données, et vérifie les identifiants manquants, les identités contradictoires et les processus non sûrs.",
+    ],
+  },
+  {
     version: "0.22.2",
     date: "2026-11-06",
     highlights: [
