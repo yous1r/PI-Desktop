@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc"><title id="title">OVERVIEW &amp; WORKSPACE TABS</title><desc id="desc">Monitor here. Select a workspace only when you want to enter it.. Proposed design, sample data, not implemented or benchmarked.</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f8997"/></marker></defs><g font-family="Segoe UI, Arial, sans-serif">
+<rect x="0" y="0" width="1600" height="1100" rx="0" fill="#141618" stroke="none" />
+<rect x="42" y="30" width="8" height="8" rx="2" fill="#9bb7e2" stroke="none" />
+<rect x="54" y="30" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="42" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="54" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<text x="77" y="48" font-size="14" fill="#acb5c1" font-weight="600" letter-spacing="1.4">PI-DESKTOP  /  COMMAND CENTER</text>
+<text x="1558" y="48" font-size="14" fill="#7f8997" font-weight="500" text-anchor="end">03 / 10</text>
+<text x="42" y="101" font-size="32" fill="#e7eaef" font-weight="600" >P2 · V2  /  OVERVIEW &amp; WORKSPACE TABS</text>
+<text x="43" y="133" font-size="17" fill="#acb5c1" font-weight="400" >Monitor here. Select a workspace only when you want to enter it.</text>
+<line x1="42" y1="156" x2="1558" y2="156" stroke="#343a42" stroke-width="1.5" />
+<line x1="42" y1="1034" x2="1558" y2="1034" stroke="#343a42" stroke-width="1.5" />
+<text x="42" y="1067" font-size="13" fill="#7f8997" font-weight="500" letter-spacing="1.1">DESIGN CONCEPT  ·  SAMPLE DATA  ·  NOT IMPLEMENTED</text>
+<text x="1558" y="1067" font-size="13" fill="#7f8997" font-weight="400" text-anchor="end">Review v2  /  2026-11-08</text>
+<rect x="42" y="184" width="1516" height="760" rx="12" fill="#1c1f22" stroke="#343a42" />
+<text x="64" y="214" font-size="17" fill="#e7eaef" font-weight="600" >PI-Desktop</text>
+<text x="255" y="214" font-size="16" fill="#acb5c1" font-weight="400" >Monitoring overview</text>
+<line x1="42" y1="233" x2="1558" y2="233" stroke="#343a42" stroke-width="1.5" />
+<line x1="202" y1="233" x2="202" y2="910" stroke="#343a42" stroke-width="1.5" />
+<line x1="42" y1="910" x2="1558" y2="910" stroke="#343a42" stroke-width="1.5" />
+<line x1="1470" y1="210" x2="1484" y2="210" stroke="#7f8997" stroke-width="1.5" />
+<rect x="1501" y="202" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<text x="1532" y="215" font-size="20" fill="#7f8997" font-weight="400" >×</text>
+<rect x="55" y="254" width="134" height="38" rx="7" fill="#263344" stroke="none" />
+<text x="69" y="279" font-size="16" fill="#9bb7e2" font-weight="500" >Overview</text>
+<rect x="55" y="303" width="134" height="38" rx="7" fill="#1c1f22" stroke="none" />
+<text x="69" y="328" font-size="16" fill="#acb5c1" font-weight="500" >History</text>
+<rect x="55" y="848" width="134" height="40" rx="7" fill="#23272c" stroke="#343a42" />
+<text x="68" y="874" font-size="18" fill="#acb5c1" font-weight="400" >⚙</text>
+<text x="96" y="874" font-size="16" fill="#e7eaef" font-weight="500" >Settings</text>
+<circle cx="62" cy="928" r="3" fill="#a7c0ad"/>
+<text x="74" y="933" font-size="12" fill="#acb5c1" font-weight="400" >Local Host</text>
+<text x="1538" y="933" font-size="12" fill="#7f8997" font-weight="400" text-anchor="end">Sample data / review only</text>
+<rect x="220" y="258" width="652" height="310" rx="8" fill="#23272c" stroke="#343a42" />
+<text x="236" y="287" font-size="17" fill="#e7eaef" font-weight="600" >Overview</text>
+<text x="826" y="286" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">24 active</text>
+<rect x="843" y="274" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<line x1="846" y1="277" x2="854" y2="277" stroke="#acb5c1" stroke-width="1.5" />
+<line x1="220" y1="302" x2="872" y2="302" stroke="#343a42" stroke-width="1.5" />
+<rect x="236" y="319" width="132" height="28" rx="14" fill="#342d24" stroke="none" />
+<text x="248" y="338" font-size="13" fill="#d8b582" font-weight="500" >Needs input 3</text>
+<rect x="382" y="319" width="90" height="28" rx="14" fill="#23272c" stroke="none" />
+<text x="394" y="338" font-size="13" fill="#acb5c1" font-weight="500" >All tasks</text>
+<circle cx="240" cy="375" r="3" fill="#9bb7e2"/>
+<text x="253" y="380" font-size="17" fill="#e7eaef" font-weight="600" >Payment refactor</text>
+<text x="253" y="403" font-size="14" fill="#acb5c1" font-weight="400" >Edit adapter / updated 2s ago</text>
+<text x="856" y="380" font-size="13" fill="#acb5c1" font-weight="400" text-anchor="end">Running</text>
+<line x1="236" y1="416" x2="856" y2="416" stroke="#343a42" stroke-width="1.5" />
+<circle cx="240" cy="431" r="3" fill="#d8b582"/>
+<text x="253" y="436" font-size="17" fill="#e7eaef" font-weight="600" >Regression tests</text>
+<text x="253" y="459" font-size="14" fill="#acb5c1" font-weight="400" >Command approval required</text>
+<text x="856" y="436" font-size="13" fill="#d8b582" font-weight="400" text-anchor="end">Needs approval</text>
+<line x1="236" y1="472" x2="856" y2="472" stroke="#343a42" stroke-width="1.5" />
+<circle cx="240" cy="487" r="3" fill="#9bb7e2"/>
+<text x="253" y="492" font-size="17" fill="#e7eaef" font-weight="600" >Research brief</text>
+<text x="253" y="515" font-size="14" fill="#acb5c1" font-weight="400" >Waiting for provider capacity</text>
+<text x="856" y="492" font-size="13" fill="#acb5c1" font-weight="400" text-anchor="end">Waiting</text>
+<rect x="888" y="258" width="652" height="310" rx="8" fill="#23272c" stroke="#343a42" />
+<text x="908" y="289" font-size="18" fill="#e7eaef" font-weight="600" >Workspaces</text>
+<text x="1520" y="288" font-size="13" fill="#acb5c1" font-weight="400" text-anchor="end">Click a tab to enter</text>
+<rect x="908" y="316" width="197.33333333333334" height="66" rx="7" fill="#1c1f22" stroke="#343a42" />
+<text x="922" y="342" font-size="16" fill="#e7eaef" font-weight="600" >A / Payments</text>
+<text x="922" y="365" font-size="13" fill="#acb5c1" font-weight="400" >8 / 12 agents  →</text>
+<rect x="1115.3333333333333" y="316" width="197.33333333333334" height="66" rx="7" fill="#1c1f22" stroke="#343a42" />
+<text x="1129.3333333333333" y="342" font-size="16" fill="#e7eaef" font-weight="600" >B / Auth</text>
+<text x="1129.3333333333333" y="365" font-size="13" fill="#acb5c1" font-weight="400" >10 / 12 agents  →</text>
+<rect x="1322.6666666666667" y="316" width="197.33333333333334" height="66" rx="7" fill="#1c1f22" stroke="#343a42" />
+<text x="1336.6666666666667" y="342" font-size="16" fill="#e7eaef" font-weight="600" >C / Research</text>
+<text x="1336.6666666666667" y="365" font-size="13" fill="#acb5c1" font-weight="400" >6 / 12 agents  →</text>
+<text x="910" y="444" font-size="24" fill="#e7eaef" font-weight="500" >Choose where to work</text>
+<text x="910" y="478" font-size="16" fill="#acb5c1" font-weight="400" >A selected workspace opens as a focused page. The overview keeps</text>
+<text x="910" y="505" font-size="16" fill="#acb5c1" font-weight="400" >only its entry tabs.</text>
+<rect x="220" y="584" width="652" height="285" rx="9" fill="#1a1d20" stroke="#343a42" stroke-dasharray="6 6"/>
+<text x="240" y="615" font-size="16" fill="#7f8997" font-weight="500" >Reserved</text>
+<text x="546" y="730.5" font-size="22" fill="#acb5c1" font-weight="500" text-anchor="middle">To be decided</text>
+<text x="546" y="762.5" font-size="14" fill="#7f8997" font-weight="400" text-anchor="middle">No function assigned</text>
+<rect x="888" y="584" width="652" height="285" rx="9" fill="#1a1d20" stroke="#343a42" stroke-dasharray="6 6"/>
+<text x="908" y="615" font-size="16" fill="#7f8997" font-weight="500" >Reserved</text>
+<text x="1214" y="730.5" font-size="22" fill="#acb5c1" font-weight="500" text-anchor="middle">To be decided</text>
+<text x="1214" y="762.5" font-size="14" fill="#7f8997" font-weight="400" text-anchor="middle">No function assigned</text>
+<text x="45" y="987" font-size="18" fill="#e7eaef" font-weight="600" >01  Monitor first</text>
+<text x="526" y="987" font-size="18" fill="#e7eaef" font-weight="600" >02  Enter through workspace tabs</text>
+<text x="1110" y="987" font-size="18" fill="#e7eaef" font-weight="600" >03  Two lower regions remain open</text>
+</g></svg>

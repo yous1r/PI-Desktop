@@ -1,0 +1,440 @@
+{
+  "status": "proposed",
+  "revision": 3,
+  "method": "deterministic SVG drawing",
+  "width": 1600,
+  "height": 1100,
+  "defaultView": "p2-overview-v3",
+  "stages": [
+    {
+      "id": "p0-scope-layout",
+      "phase": "P0",
+      "title": "Scope & layout",
+      "weeks": "W1–W2",
+      "summary": "Review the permanent overview, three-workspace limit and agent/memory counting.",
+      "questions": [
+        "Does the four-surface model match daily work?",
+        "Are on-demand details sufficient for routine monitoring?",
+        "Confirm that capacity values are targets."
+      ],
+      "revision": 1,
+      "svg": "p0-scope-layout.svg",
+      "png": "p0-scope-layout.png",
+      "hotspots": []
+    },
+    {
+      "id": "p1-execution-architecture",
+      "phase": "P1",
+      "title": "Execution ownership",
+      "weeks": "W2–W5",
+      "summary": "Review independent Host ownership and the desktop/mobile boundaries.",
+      "questions": [
+        "Clients do not own ongoing work.",
+        "Rust remains the only SQLite writer.",
+        "GUI-dependent resources need the interactive bridge."
+      ],
+      "revision": 1,
+      "svg": "p1-execution-architecture.svg",
+      "png": "p1-execution-architecture.png",
+      "hotspots": []
+    },
+    {
+      "id": "p2-overview-v3",
+      "phase": "P2 · V3",
+      "title": "总览与顶部工具栏",
+      "summary": "移除桌面全局左栏；工作区入口和下方两块待定区域保持原意。",
+      "questions": [
+        "顶部图标分别打开总览、历史和设置。",
+        "内容区增加 160px 宽度，左侧不再预留全局导航。",
+        "下方两块依旧待定，不分配新功能。"
+      ],
+      "revision": 3,
+      "svg": "p2-overview-v3.svg",
+      "png": "p2-overview-v3.png",
+      "hotspots": [
+        {
+          "x": 222,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "总览",
+          "target": "p2-overview-v3"
+        },
+        {
+          "x": 268,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "历史会话",
+          "target": "history"
+        },
+        {
+          "x": 314,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "设置",
+          "target": "settings-command-center-v3"
+        },
+        {
+          "x": 828,
+          "y": 316,
+          "w": 224,
+          "h": 66,
+          "label": "进入工作区 A：Payments",
+          "target": "workspace-a-entry-v3"
+        },
+        {
+          "x": 1062,
+          "y": 316,
+          "w": 224,
+          "h": 66,
+          "label": "进入工作区 B：Auth",
+          "target": "workspace-b-entry-v3"
+        },
+        {
+          "x": 1296,
+          "y": 316,
+          "w": 224,
+          "h": 66,
+          "label": "进入工作区 C：Research",
+          "target": "workspace-c-entry-v3"
+        }
+      ],
+      "slot": 2,
+      "weeks": "W3–W6 / revised"
+    },
+    {
+      "id": "settings-command-center-v3",
+      "phase": "Settings · V3",
+      "title": "设置总览",
+      "summary": "顶部齿轮打开设置；本页分类目录保留，内容区使用腾出的全局边栏空间。",
+      "questions": [
+        "全局导航位于顶部，不再重复显示左侧总览与历史。",
+        "设置内部的 Models、Shortcuts、MCP 等分类保留。",
+        "这些是评审控件，不修改实际设置或模型配置。"
+      ],
+      "revision": 3,
+      "svg": "settings-command-center-v3.svg",
+      "png": "settings-command-center-v3.png",
+      "hotspots": [
+        {
+          "x": 222,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "总览",
+          "target": "p2-overview-v3"
+        },
+        {
+          "x": 268,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "历史会话",
+          "target": "history"
+        },
+        {
+          "x": 314,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "设置",
+          "target": "settings-command-center-v3"
+        }
+      ],
+      "slot": 3,
+      "weeks": "New review page"
+    },
+    {
+      "id": "p3-child-intervention",
+      "phase": "P3",
+      "title": "Child intervention",
+      "weeks": "W6–W9",
+      "summary": "Review a maximized workspace and explicit human correction.",
+      "questions": [
+        "The selected child and parent are unambiguous.",
+        "Submitted, accepted and consumed are distinct.",
+        "Stop is explicit and does not imply rollback."
+      ],
+      "revision": 1,
+      "svg": "p3-child-intervention.svg",
+      "png": "p3-child-intervention.png",
+      "hotspots": []
+    },
+    {
+      "id": "p4-native-association",
+      "phase": "P4",
+      "title": "Native applications",
+      "weeks": "W8–W11",
+      "summary": "Review association with a separate operating-system window.",
+      "questions": [
+        "Association is visually distinct from embedding.",
+        "Detach does not close the program.",
+        "Select the required real programs before qualification."
+      ],
+      "revision": 1,
+      "svg": "p4-native-association.svg",
+      "png": "p4-native-association.png",
+      "hotspots": []
+    },
+    {
+      "id": "p5-mobile-control",
+      "phase": "P5",
+      "title": "Mobile control",
+      "weeks": "W10–W14",
+      "summary": "Review overview, intervention and disconnected states on a phone.",
+      "questions": [
+        "Four logical destinations become compact navigation.",
+        "The phone uses the same execution identity.",
+        "A lost connection never silently resends a command."
+      ],
+      "revision": 1,
+      "svg": "p5-mobile-control.svg",
+      "png": "p5-mobile-control.png",
+      "hotspots": []
+    },
+    {
+      "id": "p6-resource-qualification",
+      "phase": "P6",
+      "title": "Resource & release gates",
+      "weeks": "Rolling → W14",
+      "summary": "Review the planned budget and evidence required before release.",
+      "questions": [
+        "The 4 GB limit includes all owned processes.",
+        "36 agents must actually run, not merely queue.",
+        "Every displayed result is NOT RUN."
+      ],
+      "revision": 1,
+      "svg": "p6-resource-qualification.svg",
+      "png": "p6-resource-qualification.png",
+      "hotspots": []
+    },
+    {
+      "id": "macos-platform",
+      "phase": "macOS",
+      "title": "Native macOS adaptation",
+      "weeks": "W18–W21",
+      "summary": "Review platform chrome and shared behavior with native limitations.",
+      "questions": [
+        "Command keys, IME and scaling need native tests.",
+        "External applications use permitted association APIs.",
+        "No universal embedding promise."
+      ],
+      "revision": 1,
+      "svg": "macos-platform.svg",
+      "png": "macos-platform.png",
+      "hotspots": []
+    },
+    {
+      "id": "linux-platform",
+      "phase": "Linux",
+      "title": "Linux capabilities",
+      "weeks": "W22–W25",
+      "summary": "Review explicit X11/Wayland support and fallback.",
+      "questions": [
+        "The core monitoring/control path stays shared.",
+        "Window privileges differ by display server.",
+        "Unsupported operations need visible fallbacks."
+      ],
+      "revision": 1,
+      "svg": "linux-platform.svg",
+      "png": "linux-platform.png",
+      "hotspots": []
+    }
+  ],
+  "auxiliary": [
+    {
+      "id": "workspace-a-entry-v3",
+      "phase": "Workspace A",
+      "title": "Payments 工作区",
+      "summary": "顶部图标负责全局导航；工作区任务列表保留，主要宽度交还对话。",
+      "questions": [
+        "点击网格图标返回总览，齿轮图标进入设置。",
+        "时钟图标打开示例历史会话，不读取真实数据。",
+        "工作区内的任务列表仍用于主会话和子智能体切换。"
+      ],
+      "revision": 3,
+      "svg": "workspace-a-entry-v3.svg",
+      "png": "workspace-a-entry-v3.png",
+      "hotspots": [
+        {
+          "x": 222,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "总览",
+          "target": "p2-overview-v3"
+        },
+        {
+          "x": 268,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "历史会话",
+          "target": "history"
+        },
+        {
+          "x": 314,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "设置",
+          "target": "settings-command-center-v3"
+        },
+        {
+          "x": 916,
+          "y": 258,
+          "w": 201.33333333333334,
+          "h": 38,
+          "label": "进入工作区 A：Payments",
+          "target": "workspace-a-entry-v3"
+        },
+        {
+          "x": 1127.3333333333333,
+          "y": 258,
+          "w": 201.33333333333334,
+          "h": 38,
+          "label": "进入工作区 B：Auth",
+          "target": "workspace-b-entry-v3"
+        },
+        {
+          "x": 1338.6666666666667,
+          "y": 258,
+          "w": 201.33333333333334,
+          "h": 38,
+          "label": "进入工作区 C：Research",
+          "target": "workspace-c-entry-v3"
+        }
+      ]
+    },
+    {
+      "id": "workspace-b-entry-v3",
+      "phase": "Workspace B",
+      "title": "Auth 工作区",
+      "summary": "顶部图标负责全局导航；工作区任务列表保留，主要宽度交还对话。",
+      "questions": [
+        "点击网格图标返回总览，齿轮图标进入设置。",
+        "时钟图标打开示例历史会话，不读取真实数据。",
+        "工作区内的任务列表仍用于主会话和子智能体切换。"
+      ],
+      "revision": 3,
+      "svg": "workspace-b-entry-v3.svg",
+      "png": "workspace-b-entry-v3.png",
+      "hotspots": [
+        {
+          "x": 222,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "总览",
+          "target": "p2-overview-v3"
+        },
+        {
+          "x": 268,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "历史会话",
+          "target": "history"
+        },
+        {
+          "x": 314,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "设置",
+          "target": "settings-command-center-v3"
+        },
+        {
+          "x": 916,
+          "y": 258,
+          "w": 201.33333333333334,
+          "h": 38,
+          "label": "进入工作区 A：Payments",
+          "target": "workspace-a-entry-v3"
+        },
+        {
+          "x": 1127.3333333333333,
+          "y": 258,
+          "w": 201.33333333333334,
+          "h": 38,
+          "label": "进入工作区 B：Auth",
+          "target": "workspace-b-entry-v3"
+        },
+        {
+          "x": 1338.6666666666667,
+          "y": 258,
+          "w": 201.33333333333334,
+          "h": 38,
+          "label": "进入工作区 C：Research",
+          "target": "workspace-c-entry-v3"
+        }
+      ]
+    },
+    {
+      "id": "workspace-c-entry-v3",
+      "phase": "Workspace C",
+      "title": "Research 工作区",
+      "summary": "顶部图标负责全局导航；工作区任务列表保留，主要宽度交还对话。",
+      "questions": [
+        "点击网格图标返回总览，齿轮图标进入设置。",
+        "时钟图标打开示例历史会话，不读取真实数据。",
+        "工作区内的任务列表仍用于主会话和子智能体切换。"
+      ],
+      "revision": 3,
+      "svg": "workspace-c-entry-v3.svg",
+      "png": "workspace-c-entry-v3.png",
+      "hotspots": [
+        {
+          "x": 222,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "总览",
+          "target": "p2-overview-v3"
+        },
+        {
+          "x": 268,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "历史会话",
+          "target": "history"
+        },
+        {
+          "x": 314,
+          "y": 192,
+          "w": 36,
+          "h": 34,
+          "label": "设置",
+          "target": "settings-command-center-v3"
+        },
+        {
+          "x": 916,
+          "y": 258,
+          "w": 201.33333333333334,
+          "h": 38,
+          "label": "进入工作区 A：Payments",
+          "target": "workspace-a-entry-v3"
+        },
+        {
+          "x": 1127.3333333333333,
+          "y": 258,
+          "w": 201.33333333333334,
+          "h": 38,
+          "label": "进入工作区 B：Auth",
+          "target": "workspace-b-entry-v3"
+        },
+        {
+          "x": 1338.6666666666667,
+          "y": 258,
+          "w": 201.33333333333334,
+          "h": 38,
+          "label": "进入工作区 C：Research",
+          "target": "workspace-c-entry-v3"
+        }
+      ]
+    }
+  ]
+}

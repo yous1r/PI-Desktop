@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc"><title id="title">MOBILE CONTROL</title><desc id="desc">The same task, on another device. No second Agent runtime.. Proposed design, sample data, not implemented or benchmarked.</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f8997"/></marker></defs><g font-family="Segoe UI, Arial, sans-serif">
+<rect x="0" y="0" width="1600" height="1100" rx="0" fill="#141618" stroke="none" />
+<rect x="42" y="30" width="8" height="8" rx="2" fill="#9bb7e2" stroke="none" />
+<rect x="54" y="30" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="42" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="54" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<text x="77" y="48" font-size="14" fill="#acb5c1" font-weight="600" letter-spacing="1.4">PI-DESKTOP  /  COMMAND CENTER</text>
+<text x="1558" y="48" font-size="14" fill="#7f8997" font-weight="500" text-anchor="end">06 / 09</text>
+<text x="42" y="101" font-size="32" fill="#e7eaef" font-weight="600" >P5  /  MOBILE CONTROL</text>
+<text x="43" y="133" font-size="17" fill="#acb5c1" font-weight="400" >The same task, on another device. No second Agent runtime.</text>
+<line x1="42" y1="156" x2="1558" y2="156" stroke="#343a42" stroke-width="1.5" />
+<line x1="42" y1="1034" x2="1558" y2="1034" stroke="#343a42" stroke-width="1.5" />
+<text x="42" y="1067" font-size="13" fill="#7f8997" font-weight="500" letter-spacing="1.1">DESIGN CONCEPT  ·  SAMPLE DATA  ·  NOT IMPLEMENTED</text>
+<text x="1558" y="1067" font-size="13" fill="#7f8997" font-weight="400" text-anchor="end">Review v1  /  2026-11-08</text>
+<rect x="70" y="220" width="390" height="704" rx="26" fill="#111315" stroke="#48515d" />
+<rect x="77" y="227" width="376" height="690" rx="21" fill="#1c1f22" stroke="none" />
+<text x="94" y="251" font-size="12" fill="#acb5c1" font-weight="600" >9:41</text>
+<text x="436" y="251" font-size="12" fill="#acb5c1" font-weight="500" text-anchor="end">LTE  ▰</text>
+<text x="92" y="295" font-size="21" fill="#e7eaef" font-weight="600" >Overview</text>
+<line x1="78" y1="316" x2="452" y2="316" stroke="#343a42" stroke-width="1.5" />
+<line x1="78" y1="859" x2="452" y2="859" stroke="#343a42" stroke-width="1.5" />
+<rect x="88" y="872" width="85.5" height="35" rx="7" fill="#263344" stroke="none" />
+<text x="130.75" y="895" font-size="12" fill="#9bb7e2" font-weight="500" text-anchor="middle">Overview</text>
+<rect x="176.5" y="872" width="85.5" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="219.25" y="895" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">A</text>
+<rect x="265" y="872" width="85.5" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="307.75" y="895" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">B</text>
+<rect x="353.5" y="872" width="85.5" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="396.25" y="895" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">C</text>
+<rect x="92" y="338" width="158" height="28" rx="14" fill="#342d24" stroke="none" />
+<text x="104" y="357" font-size="13" fill="#d8b582" font-weight="500" >3 need attention</text>
+<text x="92" y="402" font-size="17" fill="#e7eaef" font-weight="600" >24 active / 3 workspaces</text>
+<circle cx="96" cy="441" r="3" fill="#9bb7e2"/>
+<text x="109" y="446" font-size="15" fill="#e7eaef" font-weight="500" >Payments</text>
+<text x="109" y="469" font-size="13" fill="#7f8997" font-weight="400" >8 / 12 agents</text>
+<text x="438" y="446" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">Running</text>
+<line x1="92" y1="483" x2="438" y2="483" stroke="#343a42" stroke-width="1.5" />
+<circle cx="96" cy="511" r="3" fill="#d8b582"/>
+<text x="109" y="516" font-size="15" fill="#e7eaef" font-weight="500" >Auth recovery</text>
+<text x="109" y="539" font-size="13" fill="#7f8997" font-weight="400" >10 / 12 agents</text>
+<text x="438" y="516" font-size="12" fill="#d8b582" font-weight="400" text-anchor="end">Needs input</text>
+<line x1="92" y1="553" x2="438" y2="553" stroke="#343a42" stroke-width="1.5" />
+<circle cx="96" cy="581" r="3" fill="#9bb7e2"/>
+<text x="109" y="586" font-size="15" fill="#e7eaef" font-weight="500" >Research</text>
+<text x="109" y="609" font-size="13" fill="#7f8997" font-weight="400" >6 / 12 agents</text>
+<text x="438" y="586" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">Running</text>
+<line x1="92" y1="623" x2="438" y2="623" stroke="#343a42" stroke-width="1.5" />
+<rect x="92" y="630" width="346" height="148" rx="8" fill="#342d24" stroke="#635440" />
+<text x="108" y="660" font-size="18" fill="#d8b582" font-weight="600" >Approval needed</text>
+<text x="108" y="692" font-size="16" fill="#acb5c1" font-weight="400" >Regression tests request a</text>
+<text x="108" y="719" font-size="16" fill="#acb5c1" font-weight="400" >test command.</text>
+<rect x="108" y="728" width="314" height="36" rx="6" fill="#23272c" stroke="#343a42" />
+<text x="265" y="752" font-size="14" fill="#e7eaef" font-weight="500" text-anchor="middle">Review request</text>
+<rect x="604" y="220" width="390" height="704" rx="26" fill="#111315" stroke="#48515d" />
+<rect x="611" y="227" width="376" height="690" rx="21" fill="#1c1f22" stroke="none" />
+<text x="628" y="251" font-size="12" fill="#acb5c1" font-weight="600" >9:41</text>
+<text x="970" y="251" font-size="12" fill="#acb5c1" font-weight="500" text-anchor="end">LTE  ▰</text>
+<text x="626" y="295" font-size="21" fill="#e7eaef" font-weight="600" >API compatibility</text>
+<line x1="612" y1="316" x2="986" y2="316" stroke="#343a42" stroke-width="1.5" />
+<line x1="612" y1="859" x2="986" y2="859" stroke="#343a42" stroke-width="1.5" />
+<rect x="622" y="872" width="85.5" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="664.75" y="895" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">Overview</text>
+<rect x="710.5" y="872" width="85.5" height="35" rx="7" fill="#263344" stroke="none" />
+<text x="753.25" y="895" font-size="12" fill="#9bb7e2" font-weight="500" text-anchor="middle">A</text>
+<rect x="799" y="872" width="85.5" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="841.75" y="895" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">B</text>
+<rect x="887.5" y="872" width="85.5" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="930.25" y="895" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">C</text>
+<rect x="626" y="338" width="157" height="28" rx="14" fill="#263344" stroke="none" />
+<text x="638" y="357" font-size="13" fill="#9bb7e2" font-weight="500" >Child / running</text>
+<text x="626" y="403" font-size="15" fill="#acb5c1" font-weight="400" >Payments → API compatibility</text>
+<text x="626" y="444" font-size="13" fill="#9bb7e2" font-weight="400" >Load older messages</text>
+<text x="626" y="488" font-size="17" fill="#e7eaef" font-weight="400" >I found a response change.</text>
+<text x="626" y="516" font-size="17" fill="#e7eaef" font-weight="400" >Checking the public contract</text>
+<text x="626" y="544" font-size="17" fill="#e7eaef" font-weight="400" >next.</text>
+<rect x="626" y="586" width="346" height="112" rx="10" fill="#23272c" stroke="#343a42" />
+<text x="641" y="617" font-size="14" fill="#acb5c1" font-weight="400" >Your correction</text>
+<text x="641" y="649" font-size="17" fill="#e7eaef" font-weight="400" >Preserve the API. Add tests</text>
+<text x="641" y="674" font-size="17" fill="#e7eaef" font-weight="400" >first.</text>
+<rect x="626" y="717" width="346" height="36" rx="6" fill="#263344" stroke="#4b6484" />
+<text x="799" y="741" font-size="14" fill="#9bb7e2" font-weight="500" text-anchor="middle">Send correction</text>
+<text x="626" y="784" font-size="14" fill="#7f8997" font-weight="400" >Receipt appears on desktop too.</text>
+<rect x="1138" y="220" width="390" height="704" rx="26" fill="#111315" stroke="#48515d" />
+<rect x="1145" y="227" width="376" height="690" rx="21" fill="#1c1f22" stroke="none" />
+<text x="1162" y="251" font-size="12" fill="#acb5c1" font-weight="600" >9:41</text>
+<text x="1504" y="251" font-size="12" fill="#acb5c1" font-weight="500" text-anchor="end">LTE  ▰</text>
+<text x="1160" y="295" font-size="21" fill="#e7eaef" font-weight="600" >Connection interrupted</text>
+<line x1="1146" y1="316" x2="1520" y2="316" stroke="#343a42" stroke-width="1.5" />
+<line x1="1146" y1="859" x2="1520" y2="859" stroke="#343a42" stroke-width="1.5" />
+<rect x="1156" y="872" width="85.5" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="1198.75" y="895" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">Overview</text>
+<rect x="1244.5" y="872" width="85.5" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="1287.25" y="895" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">A</text>
+<rect x="1333" y="872" width="85.5" height="35" rx="7" fill="#263344" stroke="none" />
+<text x="1375.75" y="895" font-size="12" fill="#9bb7e2" font-weight="500" text-anchor="middle">B</text>
+<rect x="1421.5" y="872" width="85.5" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="1464.25" y="895" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">C</text>
+<rect x="1160" y="338" width="191" height="28" rx="14" fill="#342d24" stroke="none" />
+<text x="1172" y="357" font-size="13" fill="#d8b582" font-weight="500" >Status may be stale</text>
+<rect x="1160" y="396" width="346" height="161" rx="10" fill="#23272c" stroke="#343a42" />
+<text x="1177" y="430" font-size="17" fill="#e7eaef" font-weight="600" >Host-owned work continues</text>
+<text x="1177" y="466" font-size="16" fill="#acb5c1" font-weight="400" >Your phone is offline. Task</text>
+<text x="1177" y="493" font-size="16" fill="#acb5c1" font-weight="400" >state will refresh after</text>
+<text x="1177" y="520" font-size="16" fill="#acb5c1" font-weight="400" >reconnecting.</text>
+<text x="1160" y="601" font-size="14" fill="#7f8997" font-weight="400" >Pending receipt</text>
+<text x="1160" y="635" font-size="15" fill="#acb5c1" font-weight="400" >Correction / awaiting confirmation</text>
+<rect x="1160" y="677" width="346" height="36" rx="6" fill="#23272c" stroke="#343a42" />
+<text x="1333" y="701" font-size="14" fill="#e7eaef" font-weight="500" text-anchor="middle">Reconnect</text>
+<text x="1160" y="755" font-size="15" fill="#d8b582" font-weight="400" >No automatic resend of</text>
+<text x="1160" y="781" font-size="15" fill="#d8b582" font-weight="400" >commands.</text>
+<line x1="477" y1="506" x2="582" y2="506" stroke="#7f8997" stroke-width="1.5" marker-end="url(#arrow)"/>
+<line x1="1010" y1="506" x2="1116" y2="506" stroke="#7f8997" stroke-width="1.5" marker-end="url(#arrow)"/>
+<text x="265" y="975" font-size="20" fill="#e7eaef" font-weight="600" text-anchor="middle">01  Monitor</text>
+<text x="799" y="975" font-size="20" fill="#e7eaef" font-weight="600" text-anchor="middle">02  Intervene</text>
+<text x="1333" y="975" font-size="20" fill="#e7eaef" font-weight="600" text-anchor="middle">03  Reconnect safely</text>
+</g></svg>

@@ -108,11 +108,19 @@ is doing useful work.
 
 ### FR-02: Four-surface shell and focus
 
-Support one non-closable overview and zero to three workspace surfaces, a default
-2-by-2 arrangement, resizing, keyboard focus movement and maximize/restore.
-Do not permit a fifth surface. The overview can itself maximize. At narrow widths,
-retain the same logical surfaces as tabs instead of shrinking controls below their
-usable minimum. Maximize preserves an overview entry and an urgent-attention count.
+Support one non-closable overview and zero to three logical workspace surfaces,
+with keyboard navigation and workspace maximize/restore. The latest
+[v3 visual review](ai-command-center-visual-review.md#v3-desktop-toolbar-and-settings)
+replaces the default side-by-side workspace previews: the overview shows monitoring
+at upper left and workspace entry tabs at upper right. Selecting a tab enters that
+workspace as a focused page. Both lower overview regions remain undecided and
+non-interactive; no task tree, review view or other feature is assigned to them.
+Do not permit a fourth workspace. Desktop uses top-toolbar icons for Overview,
+History and Settings, with accessible names and hover/focus labels; it has no global
+left navigation sidebar. Host status also appears in the toolbar. Workspace task
+lists and Settings' internal category navigation retain their local purpose.
+Return/maximize preserves attention state, drafts and reading position. Narrow
+displays retain the same logical destinations without forcing four content panes.
 
 Each workspace surface selects one detailed resource: conversation, child history,
 terminal, review, browser/plugin view, or associated-application controls. Switching

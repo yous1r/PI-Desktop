@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc"><title id="title">MONITOR &amp; ATTACH</title><desc id="desc">A compact status overview, with three independently selected resources.. Proposed design, sample data, not implemented or benchmarked.</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f8997"/></marker></defs><g font-family="Segoe UI, Arial, sans-serif">
+<rect x="0" y="0" width="1600" height="1100" rx="0" fill="#141618" stroke="none" />
+<rect x="42" y="30" width="8" height="8" rx="2" fill="#9bb7e2" stroke="none" />
+<rect x="54" y="30" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="42" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="54" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<text x="77" y="48" font-size="14" fill="#acb5c1" font-weight="600" letter-spacing="1.4">PI-DESKTOP  /  COMMAND CENTER</text>
+<text x="1558" y="48" font-size="14" fill="#7f8997" font-weight="500" text-anchor="end">03 / 09</text>
+<text x="42" y="101" font-size="32" fill="#e7eaef" font-weight="600" >P2  /  MONITOR &amp; ATTACH</text>
+<text x="43" y="133" font-size="17" fill="#acb5c1" font-weight="400" >A compact status overview, with three independently selected resources.</text>
+<line x1="42" y1="156" x2="1558" y2="156" stroke="#343a42" stroke-width="1.5" />
+<line x1="42" y1="1034" x2="1558" y2="1034" stroke="#343a42" stroke-width="1.5" />
+<text x="42" y="1067" font-size="13" fill="#7f8997" font-weight="500" letter-spacing="1.1">DESIGN CONCEPT  ·  SAMPLE DATA  ·  NOT IMPLEMENTED</text>
+<text x="1558" y="1067" font-size="13" fill="#7f8997" font-weight="400" text-anchor="end">Review v1  /  2026-11-08</text>
+<rect x="42" y="184" width="1516" height="760" rx="12" fill="#1c1f22" stroke="#343a42" />
+<line x1="42" y1="231" x2="1558" y2="231" stroke="#343a42" stroke-width="1.5" />
+<text x="62" y="213" font-size="15" fill="#e7eaef" font-weight="600" >PI-Desktop</text>
+<line x1="1471" y1="207" x2="1483" y2="207" stroke="#7f8997" stroke-width="1.5" />
+<rect x="1503" y="200" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<line x1="1506" y1="203" x2="1514" y2="203" stroke="#acb5c1" stroke-width="1.5" />
+<text x="1533" y="213" font-size="20" fill="#7f8997" font-weight="400" >×</text>
+<text x="232" y="213" font-size="14" fill="#acb5c1" font-weight="400" >Overview + workspaces</text>
+<line x1="106" y1="231" x2="106" y2="912" stroke="#343a42" stroke-width="1.5" />
+<rect x="55" y="250" width="38" height="35" rx="7" fill="#263344" stroke="none" />
+<text x="74" y="273" font-size="12" fill="#9bb7e2" font-weight="500" text-anchor="middle">OV</text>
+<rect x="55" y="306" width="38" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="74" y="329" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">WS</text>
+<rect x="55" y="362" width="38" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="74" y="385" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">HX</text>
+<rect x="55" y="418" width="38" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="74" y="441" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">ST</text>
+<line x1="42" y1="912" x2="1558" y2="912" stroke="#343a42" stroke-width="1.5" />
+<circle cx="62" cy="929" r="3" fill="#a7c0ad"/>
+<text x="74" y="934" font-size="12" fill="#acb5c1" font-weight="400" >Local Host</text>
+<text x="1540" y="934" font-size="12" fill="#7f8997" font-weight="400" text-anchor="end">Sample workspace data</text>
+<rect x="120" y="245" width="705" height="319.5" rx="8" fill="#23272c" stroke="#343a42" />
+<text x="136" y="274" font-size="17" fill="#e7eaef" font-weight="600" >Overview</text>
+<text x="779" y="273" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">24 active</text>
+<rect x="796" y="261" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<line x1="799" y1="264" x2="807" y2="264" stroke="#acb5c1" stroke-width="1.5" />
+<line x1="120" y1="289" x2="825" y2="289" stroke="#343a42" stroke-width="1.5" />
+<rect x="136" y="306" width="124" height="28" rx="14" fill="#342d24" stroke="none" />
+<text x="148" y="325" font-size="13" fill="#d8b582" font-weight="500" >Needs input 3</text>
+<rect x="274" y="306" width="91" height="28" rx="14" fill="#23272c" stroke="none" />
+<text x="286" y="325" font-size="13" fill="#acb5c1" font-weight="500" >All tasks</text>
+<circle cx="140" cy="358" r="3" fill="#9bb7e2"/>
+<text x="153" y="363" font-size="15" fill="#e7eaef" font-weight="500" >Payment refactor</text>
+<text x="153" y="386" font-size="13" fill="#7f8997" font-weight="400" >Edit adapter / changed 2s ago</text>
+<text x="809" y="363" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">Running</text>
+<line x1="136" y1="400" x2="809" y2="400" stroke="#343a42" stroke-width="1.5" />
+<circle cx="140" cy="414" r="3" fill="#d8b582"/>
+<text x="153" y="419" font-size="15" fill="#e7eaef" font-weight="500" >Regression tests</text>
+<text x="153" y="442" font-size="13" fill="#7f8997" font-weight="400" >Command approval required</text>
+<text x="809" y="419" font-size="12" fill="#d8b582" font-weight="400" text-anchor="end">Needs approval</text>
+<line x1="136" y1="456" x2="809" y2="456" stroke="#343a42" stroke-width="1.5" />
+<circle cx="140" cy="470" r="3" fill="#9bb7e2"/>
+<text x="153" y="475" font-size="15" fill="#e7eaef" font-weight="500" >Research brief</text>
+<text x="153" y="498" font-size="13" fill="#7f8997" font-weight="400" >Waiting for provider capacity</text>
+<text x="809" y="475" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">Waiting</text>
+<line x1="136" y1="512" x2="809" y2="512" stroke="#343a42" stroke-width="1.5" />
+<rect x="839" y="245" width="705" height="319.5" rx="8" fill="#20262e" stroke="#627c9d" />
+<text x="855" y="274" font-size="17" fill="#e7eaef" font-weight="600" >Workspace A / Payments</text>
+<text x="1498" y="273" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">8 / 12 agents</text>
+<rect x="1515" y="261" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<line x1="1518" y1="264" x2="1526" y2="264" stroke="#acb5c1" stroke-width="1.5" />
+<line x1="839" y1="289" x2="1544" y2="289" stroke="#343a42" stroke-width="1.5" />
+<text x="855" y="310" font-size="12" fill="#9bb7e2" font-weight="600" >MAIN SESSION   /   Live</text>
+<text x="1528" y="310" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">Load older messages</text>
+<rect x="855" y="327" width="673" height="46" rx="6" fill="#1c1f22" stroke="none" />
+<text x="867" y="356" font-size="15" fill="#e7eaef" font-weight="400" >Keep the public payment API unchanged.</text>
+<text x="855" y="402" font-size="15" fill="#acb5c1" font-weight="400" >PI  I am updating the adapter and checking callers.</text>
+<text x="855" y="429" font-size="13" fill="#7f8997" font-weight="400" font-family="Consolas, monospace">Edit  src/payments/adapter.ts</text>
+<rect x="855" y="455" width="673" height="65" rx="8" fill="#1c1f22" stroke="#343a42" />
+<text x="869" y="484" font-size="15" fill="#7f8997" font-weight="400" >Add guidance to Payments…</text>
+<text x="1514" y="507" font-size="13" fill="#9bb7e2" font-weight="600" text-anchor="end">Send</text>
+<rect x="120" y="578.5" width="705" height="319.5" rx="8" fill="#23272c" stroke="#343a42" />
+<text x="136" y="607.5" font-size="17" fill="#e7eaef" font-weight="600" >Workspace B / Auth</text>
+<text x="779" y="606.5" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">10 / 12 agents</text>
+<rect x="796" y="594.5" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<line x1="799" y1="597.5" x2="807" y2="597.5" stroke="#acb5c1" stroke-width="1.5" />
+<line x1="120" y1="622.5" x2="825" y2="622.5" stroke="#343a42" stroke-width="1.5" />
+<text x="136" y="643.5" font-size="12" fill="#7f8997" font-weight="600" >TASK TREE</text>
+<circle cx="140" cy="673.5" r="3" fill="#9bb7e2"/>
+<text x="153" y="678.5" font-size="15" fill="#e7eaef" font-weight="500" >Auth recovery</text>
+<text x="153" y="701.5" font-size="13" fill="#7f8997" font-weight="400" >Main task / verify callback path</text>
+<text x="809" y="678.5" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">Running</text>
+<line x1="136" y1="715.5" x2="809" y2="715.5" stroke="#343a42" stroke-width="1.5" />
+<circle cx="160" cy="729.5" r="3" fill="#d8b582"/>
+<text x="173" y="734.5" font-size="15" fill="#e7eaef" font-weight="500" >Test runner</text>
+<text x="173" y="757.5" font-size="13" fill="#7f8997" font-weight="400" >Child / waiting for test approval</text>
+<text x="809" y="734.5" font-size="12" fill="#d8b582" font-weight="400" text-anchor="end">Needs input</text>
+<line x1="156" y1="771.5" x2="809" y2="771.5" stroke="#343a42" stroke-width="1.5" />
+<circle cx="160" cy="785.5" r="3" fill="#9bb7e2"/>
+<text x="173" y="790.5" font-size="15" fill="#e7eaef" font-weight="500" >Contract check</text>
+<text x="173" y="813.5" font-size="13" fill="#7f8997" font-weight="400" >Child / checking response schema</text>
+<text x="809" y="790.5" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">Running</text>
+<line x1="156" y1="827.5" x2="809" y2="827.5" stroke="#343a42" stroke-width="1.5" />
+<rect x="136" y="834.5" width="170" height="36" rx="6" fill="#23272c" stroke="#343a42" />
+<text x="221" y="858.5" font-size="14" fill="#e7eaef" font-weight="500" text-anchor="middle">Open child history</text>
+<rect x="839" y="578.5" width="705" height="319.5" rx="8" fill="#23272c" stroke="#343a42" />
+<text x="855" y="607.5" font-size="17" fill="#e7eaef" font-weight="600" >Workspace C / Research</text>
+<text x="1498" y="606.5" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">6 / 12 agents</text>
+<rect x="1515" y="594.5" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<line x1="1518" y1="597.5" x2="1526" y2="597.5" stroke="#acb5c1" stroke-width="1.5" />
+<line x1="839" y1="622.5" x2="1544" y2="622.5" stroke="#343a42" stroke-width="1.5" />
+<rect x="855" y="635.5" width="77" height="28" rx="14" fill="#263344" stroke="none" />
+<text x="867" y="654.5" font-size="13" fill="#9bb7e2" font-weight="500" >Review</text>
+<rect x="943" y="635.5" width="84" height="28" rx="14" fill="#23272c" stroke="none" />
+<text x="955" y="654.5" font-size="13" fill="#acb5c1" font-weight="500" >Activity</text>
+<text x="855" y="687.5" font-size="17" fill="#e7eaef" font-weight="600" >Research brief / changes</text>
+<text x="855" y="720.5" font-size="14" fill="#a7c0ad" font-weight="400" font-family="Consolas, monospace">+  Clarify compatibility assumptions</text>
+<text x="855" y="748.5" font-size="14" fill="#a7c0ad" font-weight="400" font-family="Consolas, monospace">+  Record unresolved platform limits</text>
+<line x1="855" y1="768.5" x2="1528" y2="768.5" stroke="#343a42" stroke-width="1.5" />
+<text x="855" y="796.5" font-size="15" fill="#acb5c1" font-weight="400" >History is paged. Background work continues.</text>
+<text x="855" y="828.5" font-size="13" fill="#7f8997" font-weight="400" >Selected resource only / no hidden chat wall</text>
+<text x="45" y="986" font-size="18" fill="#e7eaef" font-weight="600" >01  Status before detail</text>
+<text x="530" y="986" font-size="18" fill="#e7eaef" font-weight="600" >02  Attach without restarting</text>
+<text x="1080" y="986" font-size="18" fill="#e7eaef" font-weight="600" >03  Drafts stay with their session</text>
+</g></svg>

@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc"><title id="title">NATIVE DESKTOP ADAPTATION</title><desc id="desc">Shared command-center behavior, with platform-specific window integration.. Proposed design, sample data, not implemented or benchmarked.</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f8997"/></marker></defs><g font-family="Segoe UI, Arial, sans-serif">
+<rect x="0" y="0" width="1600" height="1100" rx="0" fill="#141618" stroke="none" />
+<rect x="42" y="30" width="8" height="8" rx="2" fill="#9bb7e2" stroke="none" />
+<rect x="54" y="30" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="42" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="54" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<text x="77" y="48" font-size="14" fill="#acb5c1" font-weight="600" letter-spacing="1.4">PI-DESKTOP  /  COMMAND CENTER</text>
+<text x="1558" y="48" font-size="14" fill="#7f8997" font-weight="500" text-anchor="end">08 / 09</text>
+<text x="42" y="101" font-size="32" fill="#e7eaef" font-weight="600" >macOS  /  NATIVE DESKTOP ADAPTATION</text>
+<text x="43" y="133" font-size="17" fill="#acb5c1" font-weight="400" >Shared command-center behavior, with platform-specific window integration.</text>
+<line x1="42" y1="156" x2="1558" y2="156" stroke="#343a42" stroke-width="1.5" />
+<line x1="42" y1="1034" x2="1558" y2="1034" stroke="#343a42" stroke-width="1.5" />
+<text x="42" y="1067" font-size="13" fill="#7f8997" font-weight="500" letter-spacing="1.1">DESIGN CONCEPT  ·  SAMPLE DATA  ·  NOT IMPLEMENTED</text>
+<text x="1558" y="1067" font-size="13" fill="#7f8997" font-weight="400" text-anchor="end">Review v1  /  2026-11-08</text>
+<rect x="42" y="195" width="1060" height="685" rx="12" fill="#1c1f22" stroke="#343a42" />
+<line x1="42" y1="242" x2="1102" y2="242" stroke="#343a42" stroke-width="1.5" />
+<circle cx="62" cy="218" r="5" fill="#c6827f"/>
+<circle cx="80" cy="218" r="5" fill="#c7ad78"/>
+<circle cx="98" cy="218" r="5" fill="#90ad98"/>
+<text x="120" y="224" font-size="14" fill="#acb5c1" font-weight="500" >PI-Desktop</text>
+<text x="232" y="224" font-size="14" fill="#acb5c1" font-weight="400" >Command center</text>
+<line x1="106" y1="242" x2="106" y2="848" stroke="#343a42" stroke-width="1.5" />
+<rect x="55" y="261" width="38" height="35" rx="7" fill="#263344" stroke="none" />
+<text x="74" y="284" font-size="12" fill="#9bb7e2" font-weight="500" text-anchor="middle">OV</text>
+<rect x="55" y="317" width="38" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="74" y="340" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">WS</text>
+<rect x="55" y="373" width="38" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="74" y="396" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">HX</text>
+<rect x="55" y="429" width="38" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="74" y="452" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">ST</text>
+<line x1="42" y1="848" x2="1102" y2="848" stroke="#343a42" stroke-width="1.5" />
+<circle cx="62" cy="865" r="3" fill="#a7c0ad"/>
+<text x="74" y="870" font-size="12" fill="#acb5c1" font-weight="400" >Local Host</text>
+<text x="1084" y="870" font-size="12" fill="#7f8997" font-weight="400" text-anchor="end">Sample workspace data</text>
+<rect x="120" y="256" width="478" height="283" rx="8" fill="#23272c" stroke="#343a42" />
+<text x="136" y="285" font-size="17" fill="#e7eaef" font-weight="600" >Overview</text>
+<text x="552" y="284" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">24 active</text>
+<rect x="569" y="272" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<line x1="572" y1="275" x2="580" y2="275" stroke="#acb5c1" stroke-width="1.5" />
+<line x1="120" y1="300" x2="598" y2="300" stroke="#343a42" stroke-width="1.5" />
+<rect x="136" y="319" width="128" height="28" rx="14" fill="#342d24" stroke="none" />
+<text x="148" y="338" font-size="13" fill="#d8b582" font-weight="500" >Needs input 3</text>
+<text x="136" y="375" font-size="15" fill="#e7eaef" font-weight="400" >Payment refactor</text>
+<text x="136" y="401" font-size="15" fill="#e7eaef" font-weight="400" >Auth recovery</text>
+<text x="136" y="427" font-size="15" fill="#e7eaef" font-weight="400" >Research brief</text>
+<text x="346" y="375" font-size="12" fill="#a7c0ad" font-weight="400" >Running</text>
+<text x="346" y="401" font-size="12" fill="#a7c0ad" font-weight="400" >Running</text>
+<text x="346" y="427" font-size="12" fill="#d8b582" font-weight="400" >Waiting</text>
+<rect x="610" y="256" width="478" height="283" rx="8" fill="#20262e" stroke="#627c9d" />
+<text x="626" y="285" font-size="17" fill="#e7eaef" font-weight="600" >Workspace A</text>
+<text x="1042" y="284" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">8 / 12</text>
+<rect x="1059" y="272" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<line x1="1062" y1="275" x2="1070" y2="275" stroke="#acb5c1" stroke-width="1.5" />
+<line x1="610" y1="300" x2="1088" y2="300" stroke="#343a42" stroke-width="1.5" />
+<circle cx="630" cy="327" r="3" fill="#9bb7e2"/>
+<text x="643" y="332" font-size="15" fill="#e7eaef" font-weight="400" >Main task</text>
+<text x="836" y="332" font-size="12" fill="#acb5c1" font-weight="400" >Running</text>
+<circle cx="630" cy="366" r="3" fill="#d8b582"/>
+<text x="643" y="371" font-size="15" fill="#e7eaef" font-weight="400" >Implementation</text>
+<text x="836" y="371" font-size="12" fill="#d8b582" font-weight="400" >Needs input</text>
+<circle cx="630" cy="405" r="3" fill="#9bb7e2"/>
+<text x="643" y="410" font-size="15" fill="#e7eaef" font-weight="400" >Validation</text>
+<text x="836" y="410" font-size="12" fill="#acb5c1" font-weight="400" >Running</text>
+<rect x="626" y="456" width="155" height="36" rx="6" fill="#23272c" stroke="#343a42" />
+<text x="703.5" y="480" font-size="14" fill="#e7eaef" font-weight="500" text-anchor="middle">Open conversation</text>
+<rect x="120" y="551" width="478" height="283" rx="8" fill="#23272c" stroke="#343a42" />
+<text x="136" y="580" font-size="17" fill="#e7eaef" font-weight="600" >Workspace B</text>
+<text x="552" y="579" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">10 / 12</text>
+<rect x="569" y="567" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<line x1="572" y1="570" x2="580" y2="570" stroke="#acb5c1" stroke-width="1.5" />
+<line x1="120" y1="595" x2="598" y2="595" stroke="#343a42" stroke-width="1.5" />
+<circle cx="140" cy="622" r="3" fill="#9bb7e2"/>
+<text x="153" y="627" font-size="15" fill="#e7eaef" font-weight="400" >Main task</text>
+<text x="346" y="627" font-size="12" fill="#acb5c1" font-weight="400" >Running</text>
+<circle cx="140" cy="661" r="3" fill="#d8b582"/>
+<text x="153" y="666" font-size="15" fill="#e7eaef" font-weight="400" >Implementation</text>
+<text x="346" y="666" font-size="12" fill="#d8b582" font-weight="400" >Needs input</text>
+<circle cx="140" cy="700" r="3" fill="#9bb7e2"/>
+<text x="153" y="705" font-size="15" fill="#e7eaef" font-weight="400" >Validation</text>
+<text x="346" y="705" font-size="12" fill="#acb5c1" font-weight="400" >Running</text>
+<rect x="136" y="751" width="155" height="36" rx="6" fill="#23272c" stroke="#343a42" />
+<text x="213.5" y="775" font-size="14" fill="#e7eaef" font-weight="500" text-anchor="middle">Open conversation</text>
+<rect x="610" y="551" width="478" height="283" rx="8" fill="#23272c" stroke="#343a42" />
+<text x="626" y="580" font-size="17" fill="#e7eaef" font-weight="600" >Workspace C</text>
+<text x="1042" y="579" font-size="12" fill="#acb5c1" font-weight="400" text-anchor="end">6 / 12</text>
+<rect x="1059" y="567" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<line x1="1062" y1="570" x2="1070" y2="570" stroke="#acb5c1" stroke-width="1.5" />
+<line x1="610" y1="595" x2="1088" y2="595" stroke="#343a42" stroke-width="1.5" />
+<circle cx="630" cy="622" r="3" fill="#9bb7e2"/>
+<text x="643" y="627" font-size="15" fill="#e7eaef" font-weight="400" >Main task</text>
+<text x="836" y="627" font-size="12" fill="#acb5c1" font-weight="400" >Running</text>
+<circle cx="630" cy="661" r="3" fill="#d8b582"/>
+<text x="643" y="666" font-size="15" fill="#e7eaef" font-weight="400" >Implementation</text>
+<text x="836" y="666" font-size="12" fill="#d8b582" font-weight="400" >Needs input</text>
+<circle cx="630" cy="700" r="3" fill="#9bb7e2"/>
+<text x="643" y="705" font-size="15" fill="#e7eaef" font-weight="400" >Validation</text>
+<text x="836" y="705" font-size="12" fill="#acb5c1" font-weight="400" >Running</text>
+<rect x="626" y="751" width="155" height="36" rx="6" fill="#23272c" stroke="#343a42" />
+<text x="703.5" y="775" font-size="14" fill="#e7eaef" font-weight="500" text-anchor="middle">Open conversation</text>
+<rect x="1140" y="223" width="30" height="30" rx="8" fill="#263344" stroke="none" />
+<text x="1155" y="244" font-size="15" fill="#9bb7e2" font-weight="600" text-anchor="middle">01</text>
+<text x="1183" y="245" font-size="18" fill="#e7eaef" font-weight="600" >Same four destinations</text>
+<text x="1183" y="276" font-size="16" fill="#acb5c1" font-weight="400" >Overview and three workspaces</text>
+<text x="1183" y="301" font-size="16" fill="#acb5c1" font-weight="400" >share Host state and quota with</text>
+<text x="1183" y="326" font-size="16" fill="#acb5c1" font-weight="400" >every client.</text>
+<rect x="1140" y="407" width="30" height="30" rx="8" fill="#263344" stroke="none" />
+<text x="1155" y="428" font-size="15" fill="#9bb7e2" font-weight="600" text-anchor="middle">02</text>
+<text x="1183" y="429" font-size="18" fill="#e7eaef" font-weight="600" >Native interaction</text>
+<text x="1183" y="460" font-size="16" fill="#acb5c1" font-weight="400" >Command-key bindings, focus, text</text>
+<text x="1183" y="485" font-size="16" fill="#acb5c1" font-weight="400" >input and display scaling need a</text>
+<text x="1183" y="510" font-size="16" fill="#acb5c1" font-weight="400" >real Mac.</text>
+<rect x="1140" y="591" width="30" height="30" rx="8" fill="#263344" stroke="none" />
+<text x="1155" y="612" font-size="15" fill="#9bb7e2" font-weight="600" text-anchor="middle">03</text>
+<text x="1183" y="613" font-size="18" fill="#e7eaef" font-weight="600" >Program association</text>
+<text x="1183" y="644" font-size="16" fill="#acb5c1" font-weight="400" >Use permitted native APIs. Do not</text>
+<text x="1183" y="669" font-size="16" fill="#acb5c1" font-weight="400" >promise arbitrary cross-process</text>
+<text x="1183" y="694" font-size="16" fill="#acb5c1" font-weight="400" >embedding.</text>
+<rect x="1140" y="811" width="232" height="28" rx="14" fill="#342d24" stroke="none" />
+<text x="1152" y="830" font-size="13" fill="#d8b582" font-weight="500" >Platform tests pending</text>
+<rect x="42" y="916" width="364.75" height="92" rx="8" fill="#1c1f22" stroke="#343a42" />
+<text x="60" y="946" font-size="13" fill="#7f8997" font-weight="500" >PLANNED QUALIFICATION</text>
+<text x="60" y="981" font-size="22" fill="#e7eaef" font-weight="600" >W18–W21</text>
+<rect x="421.75" y="916" width="364.75" height="92" rx="8" fill="#1c1f22" stroke="#343a42" />
+<text x="439.75" y="946" font-size="13" fill="#7f8997" font-weight="500" >DISPLAY</text>
+<text x="439.75" y="981" font-size="22" fill="#e7eaef" font-weight="600" >Native scaling + input</text>
+<rect x="801.5" y="916" width="364.75" height="92" rx="8" fill="#1c1f22" stroke="#343a42" />
+<text x="819.5" y="946" font-size="13" fill="#7f8997" font-weight="500" >DESKTOP BRIDGE</text>
+<text x="819.5" y="981" font-size="22" fill="#e7eaef" font-weight="600" >Explicit capabilities</text>
+<rect x="1181.25" y="916" width="364.75" height="92" rx="8" fill="#1c1f22" stroke="#343a42" />
+<text x="1199.25" y="946" font-size="13" fill="#7f8997" font-weight="500" >RELEASE STATUS</text>
+<text x="1199.25" y="981" font-size="22" fill="#e7eaef" font-weight="600" >Not qualified</text>
+</g></svg>

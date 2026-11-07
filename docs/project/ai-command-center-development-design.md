@@ -5,6 +5,8 @@
 - Source baseline: `origin/main` at `fd28eb89866ac513912ed109716e7120cf60f18c` (v0.22.3)
 - Architecture rationale: [AI command center ADR](../adr/ai-command-center.md)
 - Product requirements and quantitative gates: [Requirements proposal](ai-command-center-requirements.md)
+- Proposed staffing, dates and gate ownership: [Implementation schedule](ai-command-center-schedule.md)
+- Latest presentation feedback: [V3 desktop toolbar](ai-command-center-visual-review.md#v3-desktop-toolbar-and-settings) removes the global left sidebar; Overview, History and Settings become top icons. Workspace entry tabs and the two undecided lower overview regions remain. Host/quota boundaries are unchanged.
 - Delivery scope: documentation and local Git submission only; no code, migration, listener, deployment or default change
 
 ## Contents

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc"><title id="title">FOCUSED WORKSPACE</title><desc id="desc">Enter from a tab. Return to the overview without stopping background work.. Proposed design, sample data, not implemented or benchmarked.</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f8997"/></marker></defs><g font-family="Segoe UI, Arial, sans-serif">
+<rect x="0" y="0" width="1600" height="1100" rx="0" fill="#141618" stroke="none" />
+<rect x="42" y="30" width="8" height="8" rx="2" fill="#9bb7e2" stroke="none" />
+<rect x="54" y="30" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="42" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="54" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<text x="77" y="48" font-size="14" fill="#acb5c1" font-weight="600" letter-spacing="1.4">PI-DESKTOP  /  COMMAND CENTER</text>
+<text x="1558" y="48" font-size="14" fill="#7f8997" font-weight="500" text-anchor="end">03 / 10</text>
+<text x="42" y="101" font-size="32" fill="#e7eaef" font-weight="600" >Workspace A · V2  /  FOCUSED WORKSPACE</text>
+<text x="43" y="133" font-size="17" fill="#acb5c1" font-weight="400" >Enter from a tab. Return to the overview without stopping background work.</text>
+<line x1="42" y1="156" x2="1558" y2="156" stroke="#343a42" stroke-width="1.5" />
+<line x1="42" y1="1034" x2="1558" y2="1034" stroke="#343a42" stroke-width="1.5" />
+<text x="42" y="1067" font-size="13" fill="#7f8997" font-weight="500" letter-spacing="1.1">DESIGN CONCEPT  ·  SAMPLE DATA  ·  NOT IMPLEMENTED</text>
+<text x="1558" y="1067" font-size="13" fill="#7f8997" font-weight="400" text-anchor="end">Review v2  /  2026-11-08</text>
+<rect x="42" y="184" width="1516" height="760" rx="12" fill="#1c1f22" stroke="#343a42" />
+<text x="64" y="214" font-size="17" fill="#e7eaef" font-weight="600" >PI-Desktop</text>
+<text x="255" y="214" font-size="16" fill="#acb5c1" font-weight="400" >Workspace A / Payments</text>
+<line x1="42" y1="233" x2="1558" y2="233" stroke="#343a42" stroke-width="1.5" />
+<line x1="202" y1="233" x2="202" y2="910" stroke="#343a42" stroke-width="1.5" />
+<line x1="42" y1="910" x2="1558" y2="910" stroke="#343a42" stroke-width="1.5" />
+<line x1="1470" y1="210" x2="1484" y2="210" stroke="#7f8997" stroke-width="1.5" />
+<rect x="1501" y="202" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<text x="1532" y="215" font-size="20" fill="#7f8997" font-weight="400" >×</text>
+<rect x="55" y="254" width="134" height="38" rx="7" fill="#1c1f22" stroke="none" />
+<text x="69" y="279" font-size="16" fill="#acb5c1" font-weight="500" >Overview</text>
+<rect x="55" y="303" width="134" height="38" rx="7" fill="#1c1f22" stroke="none" />
+<text x="69" y="328" font-size="16" fill="#acb5c1" font-weight="500" >History</text>
+<rect x="55" y="848" width="134" height="40" rx="7" fill="#23272c" stroke="#343a42" />
+<text x="68" y="874" font-size="18" fill="#acb5c1" font-weight="400" >⚙</text>
+<text x="96" y="874" font-size="16" fill="#e7eaef" font-weight="500" >Settings</text>
+<circle cx="62" cy="928" r="3" fill="#a7c0ad"/>
+<text x="74" y="933" font-size="12" fill="#acb5c1" font-weight="400" >Local Host</text>
+<text x="1538" y="933" font-size="12" fill="#7f8997" font-weight="400" text-anchor="end">Sample data / review only</text>
+<rect x="220" y="258" width="176" height="36" rx="6" fill="#23272c" stroke="#343a42" />
+<text x="308" y="282" font-size="14" fill="#e7eaef" font-weight="500" text-anchor="middle">← Back to overview</text>
+<rect x="412" y="262" width="124" height="28" rx="14" fill="#342d24" stroke="none" />
+<text x="424" y="281" font-size="13" fill="#d8b582" font-weight="500" >3 need input</text>
+<rect x="916" y="258" width="201.33333333333334" height="38" rx="7" fill="#263344" stroke="#627c9d" />
+<text x="930" y="283" font-size="16" fill="#9bb7e2" font-weight="600" >A / Payments</text>
+<rect x="1127.3333333333333" y="258" width="201.33333333333334" height="38" rx="7" fill="#1c1f22" stroke="#343a42" />
+<text x="1141.3333333333333" y="283" font-size="16" fill="#e7eaef" font-weight="600" >B / Auth</text>
+<rect x="1338.6666666666667" y="258" width="201.33333333333334" height="38" rx="7" fill="#1c1f22" stroke="#343a42" />
+<text x="1352.6666666666667" y="283" font-size="16" fill="#e7eaef" font-weight="600" >C / Research</text>
+<rect x="220" y="319" width="270" height="544" rx="10" fill="#23272c" stroke="#343a42" />
+<text x="240" y="353" font-size="24" fill="#e7eaef" font-weight="600" >Payments</text>
+<text x="240" y="383" font-size="15" fill="#acb5c1" font-weight="400" >8 / 12 live agents</text>
+<line x1="220" y1="405" x2="490" y2="405" stroke="#343a42" stroke-width="1.5" />
+<rect x="232" y="423" width="246" height="66" rx="7" fill="#263344" stroke="#4e6380" />
+<text x="246" y="450" font-size="17" fill="#e7eaef" font-weight="600" >Payment refactor</text>
+<text x="246" y="473" font-size="13" fill="#9bb7e2" font-weight="400" >Main session / selected</text>
+<text x="246" y="530" font-size="16" fill="#e7eaef" font-weight="500" >API compatibility</text>
+<text x="246" y="554" font-size="13" fill="#acb5c1" font-weight="400" >Child / running</text>
+<text x="246" y="604" font-size="16" fill="#e7eaef" font-weight="500" >Validation</text>
+<text x="246" y="628" font-size="13" fill="#d8b582" font-weight="400" >Child / needs input</text>
+<text x="240" y="824" font-size="13" fill="#acb5c1" font-weight="400" >Background execution continues</text>
+<rect x="506" y="319" width="1034" height="544" rx="9" fill="#23272c" stroke="#50657f" />
+<text x="530" y="353" font-size="22" fill="#e7eaef" font-weight="600" >Payment refactor / live conversation</text>
+<text x="1516" y="353" font-size="14" fill="#9bb7e2" font-weight="400" text-anchor="end">Load older messages</text>
+<line x1="506" y1="377" x2="1540" y2="377" stroke="#343a42" stroke-width="1.5" />
+<text x="530" y="413" font-size="12" fill="#7f8997" font-weight="600" >YOU</text>
+<text x="530" y="447" font-size="18" fill="#e7eaef" font-weight="400" >Keep the public payment API unchanged.</text>
+<text x="530" y="507" font-size="12" fill="#9bb7e2" font-weight="600" >PI</text>
+<text x="530" y="539" font-size="18" fill="#acb5c1" font-weight="400" >I am updating the adapter and checking its callers.</text>
+<rect x="530" y="606" width="986" height="70" rx="7" fill="#1c1f22" stroke="none" />
+<text x="548" y="634" font-size="12" fill="#7f8997" font-weight="600" >CURRENT ACTIVITY</text>
+<text x="548" y="660" font-size="15" fill="#acb5c1" font-weight="400" font-family="Consolas, monospace">Read  src/payments/adapter.ts</text>
+<rect x="530" y="712" width="986" height="117" rx="9" fill="#1c1f22" stroke="#343a42" />
+<text x="548" y="745" font-size="18" fill="#7f8997" font-weight="400" >Add guidance to Payments…</text>
+<rect x="548" y="779" width="260" height="28" rx="14" fill="#263344" stroke="none" />
+<text x="560" y="798" font-size="13" fill="#9bb7e2" font-weight="500" >Target: Payment refactor</text>
+<rect x="1387" y="777" width="110" height="36" rx="6" fill="#263344" stroke="#4b6484" />
+<text x="1442" y="801" font-size="14" fill="#9bb7e2" font-weight="500" text-anchor="middle">Send</text>
+<text x="45" y="987" font-size="18" fill="#acb5c1" font-weight="400" >Navigation prototype / switching a workspace does not start a new Agent.</text>
+</g></svg>

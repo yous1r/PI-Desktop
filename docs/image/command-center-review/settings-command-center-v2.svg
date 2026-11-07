@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc"><title id="title">SETTINGS &amp; COMMAND CENTER</title><desc id="desc">A visible settings entry, existing categories, and proposed command-center controls.. Proposed design, sample data, not implemented or benchmarked.</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f8997"/></marker></defs><g font-family="Segoe UI, Arial, sans-serif">
+<rect x="0" y="0" width="1600" height="1100" rx="0" fill="#141618" stroke="none" />
+<rect x="42" y="30" width="8" height="8" rx="2" fill="#9bb7e2" stroke="none" />
+<rect x="54" y="30" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="42" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="54" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<text x="77" y="48" font-size="14" fill="#acb5c1" font-weight="600" letter-spacing="1.4">PI-DESKTOP  /  COMMAND CENTER</text>
+<text x="1558" y="48" font-size="14" fill="#7f8997" font-weight="500" text-anchor="end">04 / 10</text>
+<text x="42" y="101" font-size="32" fill="#e7eaef" font-weight="600" >Settings · V2  /  SETTINGS &amp; COMMAND CENTER</text>
+<text x="43" y="133" font-size="17" fill="#acb5c1" font-weight="400" >A visible settings entry, existing categories, and proposed command-center controls.</text>
+<line x1="42" y1="156" x2="1558" y2="156" stroke="#343a42" stroke-width="1.5" />
+<line x1="42" y1="1034" x2="1558" y2="1034" stroke="#343a42" stroke-width="1.5" />
+<text x="42" y="1067" font-size="13" fill="#7f8997" font-weight="500" letter-spacing="1.1">DESIGN CONCEPT  ·  SAMPLE DATA  ·  NOT IMPLEMENTED</text>
+<text x="1558" y="1067" font-size="13" fill="#7f8997" font-weight="400" text-anchor="end">Review v2  /  2026-11-08</text>
+<rect x="42" y="184" width="1516" height="760" rx="12" fill="#1c1f22" stroke="#343a42" />
+<text x="64" y="214" font-size="17" fill="#e7eaef" font-weight="600" >PI-Desktop</text>
+<text x="255" y="214" font-size="16" fill="#acb5c1" font-weight="400" >Settings</text>
+<line x1="42" y1="233" x2="1558" y2="233" stroke="#343a42" stroke-width="1.5" />
+<line x1="202" y1="233" x2="202" y2="910" stroke="#343a42" stroke-width="1.5" />
+<line x1="42" y1="910" x2="1558" y2="910" stroke="#343a42" stroke-width="1.5" />
+<line x1="1470" y1="210" x2="1484" y2="210" stroke="#7f8997" stroke-width="1.5" />
+<rect x="1501" y="202" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<text x="1532" y="215" font-size="20" fill="#7f8997" font-weight="400" >×</text>
+<rect x="55" y="254" width="134" height="38" rx="7" fill="#1c1f22" stroke="none" />
+<text x="69" y="279" font-size="16" fill="#acb5c1" font-weight="500" >Overview</text>
+<rect x="55" y="303" width="134" height="38" rx="7" fill="#1c1f22" stroke="none" />
+<text x="69" y="328" font-size="16" fill="#acb5c1" font-weight="500" >History</text>
+<rect x="55" y="848" width="134" height="40" rx="7" fill="#263344" stroke="#343a42" />
+<text x="68" y="874" font-size="18" fill="#9bb7e2" font-weight="400" >⚙</text>
+<text x="96" y="874" font-size="16" fill="#9bb7e2" font-weight="500" >Settings</text>
+<circle cx="62" cy="928" r="3" fill="#a7c0ad"/>
+<text x="74" y="933" font-size="12" fill="#acb5c1" font-weight="400" >Local Host</text>
+<text x="1538" y="933" font-size="12" fill="#7f8997" font-weight="400" text-anchor="end">Sample data / review only</text>
+<rect x="220" y="258" width="176" height="36" rx="6" fill="#23272c" stroke="#343a42" />
+<text x="308" y="282" font-size="14" fill="#e7eaef" font-weight="500" text-anchor="middle">← Back to overview</text>
+<text x="419" y="282" font-size="22" fill="#e7eaef" font-weight="600" >Settings</text>
+<rect x="1337" y="262" width="203" height="28" rx="14" fill="#263344" stroke="none" />
+<text x="1349" y="281" font-size="13" fill="#9bb7e2" font-weight="500" >Proposed controls</text>
+<rect x="220" y="319" width="220" height="544" rx="10" fill="#23272c" stroke="#343a42" />
+<text x="244" y="357" font-size="15" fill="#acb5c1" font-weight="400" >General</text>
+<text x="244" y="396" font-size="15" fill="#acb5c1" font-weight="400" >AI</text>
+<text x="244" y="435" font-size="15" fill="#acb5c1" font-weight="400" >Shortcuts</text>
+<text x="244" y="474" font-size="15" fill="#acb5c1" font-weight="400" >Instructions</text>
+<text x="244" y="513" font-size="15" fill="#acb5c1" font-weight="400" >Models</text>
+<text x="244" y="552" font-size="15" fill="#acb5c1" font-weight="400" >Skills</text>
+<text x="244" y="591" font-size="15" fill="#acb5c1" font-weight="400" >MCP</text>
+<text x="244" y="630" font-size="15" fill="#acb5c1" font-weight="400" >Subagents</text>
+<text x="244" y="669" font-size="15" fill="#acb5c1" font-weight="400" >Projects</text>
+<rect x="230" y="685" width="200" height="33" rx="6" fill="#263344" stroke="none" />
+<text x="244" y="708" font-size="15" fill="#9bb7e2" font-weight="600" >Command center</text>
+<text x="244" y="747" font-size="15" fill="#acb5c1" font-weight="400" >Cloud sync</text>
+<text x="244" y="786" font-size="15" fill="#acb5c1" font-weight="400" >Remote Hosts</text>
+<text x="244" y="825" font-size="15" fill="#acb5c1" font-weight="400" >Info</text>
+<rect x="460" y="319" width="532" height="260" rx="10" fill="#23272c" stroke="#343a42" />
+<text x="480" y="353" font-size="21" fill="#e7eaef" font-weight="600" >Appearance &amp; navigation</text>
+<line x1="460" y1="373" x2="992" y2="373" stroke="#343a42" stroke-width="1.5" />
+<text x="480" y="406" font-size="15" fill="#acb5c1" font-weight="400" >Theme</text>
+<text x="972" y="406" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">Dark</text>
+<line x1="480" y1="422" x2="972" y2="422" stroke="#343a42" stroke-width="1.5" />
+<text x="480" y="449" font-size="15" fill="#acb5c1" font-weight="400" >Language</text>
+<text x="972" y="449" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">System</text>
+<line x1="480" y1="465" x2="972" y2="465" stroke="#343a42" stroke-width="1.5" />
+<text x="480" y="492" font-size="15" fill="#acb5c1" font-weight="400" >Workspace entry</text>
+<text x="972" y="492" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">Top-right tabs</text>
+<text x="480" y="541" font-size="13" fill="#7f8997" font-weight="400" >General and Shortcuts remain available.</text>
+<rect x="1008" y="319" width="532" height="260" rx="10" fill="#23272c" stroke="#343a42" />
+<text x="1028" y="353" font-size="21" fill="#e7eaef" font-weight="600" >Remote desktop</text>
+<line x1="1008" y1="373" x2="1540" y2="373" stroke="#343a42" stroke-width="1.5" />
+<text x="1028" y="406" font-size="15" fill="#acb5c1" font-weight="400" >Rendering profile</text>
+<text x="1520" y="406" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">Software</text>
+<line x1="1028" y1="422" x2="1520" y2="422" stroke="#343a42" stroke-width="1.5" />
+<text x="1028" y="449" font-size="15" fill="#acb5c1" font-weight="400" >Decorative motion</text>
+<text x="1520" y="449" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">Reduced</text>
+<line x1="1028" y1="465" x2="1520" y2="465" stroke="#343a42" stroke-width="1.5" />
+<text x="1028" y="492" font-size="15" fill="#acb5c1" font-weight="400" >Changes apply</text>
+<text x="1520" y="492" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">After restart</text>
+<text x="1028" y="541" font-size="13" fill="#7f8997" font-weight="400" >Profile shown for review; no running setting changed.</text>
+<rect x="460" y="597" width="532" height="260" rx="10" fill="#23272c" stroke="#343a42" />
+<text x="480" y="631" font-size="21" fill="#e7eaef" font-weight="600" >Resource limits</text>
+<line x1="460" y1="651" x2="992" y2="651" stroke="#343a42" stroke-width="1.5" />
+<text x="480" y="684" font-size="15" fill="#acb5c1" font-weight="400" >Agents per workspace</text>
+<text x="972" y="684" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">12 maximum</text>
+<line x1="480" y1="700" x2="972" y2="700" stroke="#343a42" stroke-width="1.5" />
+<text x="480" y="727" font-size="15" fill="#acb5c1" font-weight="400" >Agents per Host</text>
+<text x="972" y="727" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">36 maximum</text>
+<line x1="480" y1="743" x2="972" y2="743" stroke="#343a42" stroke-width="1.5" />
+<text x="480" y="770" font-size="15" fill="#acb5c1" font-weight="400" >Owned-process budget</text>
+<text x="972" y="770" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">4 GB target</text>
+<text x="480" y="819" font-size="13" fill="#7f8997" font-weight="400" >Capacity target only. Qualification is still pending.</text>
+<rect x="1008" y="597" width="532" height="260" rx="10" fill="#23272c" stroke="#343a42" />
+<text x="1028" y="631" font-size="21" fill="#e7eaef" font-weight="600" >Host, devices &amp; applications</text>
+<line x1="1008" y1="651" x2="1540" y2="651" stroke="#343a42" stroke-width="1.5" />
+<text x="1028" y="684" font-size="15" fill="#acb5c1" font-weight="400" >Execution Host</text>
+<text x="1520" y="684" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">Local Host</text>
+<line x1="1028" y1="700" x2="1520" y2="700" stroke="#343a42" stroke-width="1.5" />
+<text x="1028" y="727" font-size="15" fill="#acb5c1" font-weight="400" >Paired devices</text>
+<text x="1520" y="727" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">Manage devices →</text>
+<line x1="1028" y1="743" x2="1520" y2="743" stroke="#343a42" stroke-width="1.5" />
+<text x="1028" y="770" font-size="15" fill="#acb5c1" font-weight="400" >Native programs</text>
+<text x="1520" y="770" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">Association settings →</text>
+<text x="1028" y="819" font-size="13" fill="#7f8997" font-weight="400" >Proposed entries; ordinary settings categories stay</text>
+<text x="1028" y="840" font-size="13" fill="#7f8997" font-weight="400" >intact.</text>
+<text x="45" y="987" font-size="18" fill="#acb5c1" font-weight="400" >Settings overview concept / navigation works; configuration controls are not connected.</text>
+</g></svg>

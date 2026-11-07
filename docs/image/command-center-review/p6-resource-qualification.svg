@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc"><title id="title">RESOURCE &amp; RELEASE REVIEW</title><desc id="desc">Qualification targets are visible. Measurements are not invented.. Proposed design, sample data, not implemented or benchmarked.</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f8997"/></marker></defs><g font-family="Segoe UI, Arial, sans-serif">
+<rect x="0" y="0" width="1600" height="1100" rx="0" fill="#141618" stroke="none" />
+<rect x="42" y="30" width="8" height="8" rx="2" fill="#9bb7e2" stroke="none" />
+<rect x="54" y="30" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="42" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="54" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<text x="77" y="48" font-size="14" fill="#acb5c1" font-weight="600" letter-spacing="1.4">PI-DESKTOP  /  COMMAND CENTER</text>
+<text x="1558" y="48" font-size="14" fill="#7f8997" font-weight="500" text-anchor="end">07 / 09</text>
+<text x="42" y="101" font-size="32" fill="#e7eaef" font-weight="600" >P6  /  RESOURCE &amp; RELEASE REVIEW</text>
+<text x="43" y="133" font-size="17" fill="#acb5c1" font-weight="400" >Qualification targets are visible. Measurements are not invented.</text>
+<line x1="42" y1="156" x2="1558" y2="156" stroke="#343a42" stroke-width="1.5" />
+<line x1="42" y1="1034" x2="1558" y2="1034" stroke="#343a42" stroke-width="1.5" />
+<text x="42" y="1067" font-size="13" fill="#7f8997" font-weight="500" letter-spacing="1.1">DESIGN CONCEPT  ·  SAMPLE DATA  ·  NOT IMPLEMENTED</text>
+<text x="1558" y="1067" font-size="13" fill="#7f8997" font-weight="400" text-anchor="end">Review v1  /  2026-11-08</text>
+<rect x="42" y="191" width="716" height="384" rx="10" fill="#1c1f22" stroke="#343a42" />
+<text x="67" y="231" font-size="24" fill="#e7eaef" font-weight="600" >Owned-process memory budget</text>
+<rect x="67" y="251" width="211" height="28" rx="14" fill="#263344" stroke="none" />
+<text x="79" y="270" font-size="13" fill="#9bb7e2" font-weight="500" >PLANNING ALLOCATION</text>
+<text x="728" y="232" font-size="23" fill="#e7eaef" font-weight="600" text-anchor="end">4,000 MB</text>
+<rect x="67" y="306" width="66.60000000000001" height="43" rx="0" fill="#687d9a" stroke="none" />
+<rect x="133.60000000000002" y="306" width="83.25" height="43" rx="0" fill="#8193aa" stroke="none" />
+<rect x="216.85000000000002" y="306" width="299.7" height="43" rx="0" fill="#a4b7d0" stroke="none" />
+<rect x="516.55" y="306" width="66.60000000000001" height="43" rx="0" fill="#718e81" stroke="none" />
+<rect x="583.15" y="306" width="33.300000000000004" height="43" rx="0" fill="#b0a58b" stroke="none" />
+<rect x="616.4499999999999" y="306" width="116.55" height="43" rx="0" fill="#5b626c" stroke="none" />
+<circle cx="72" cy="380" r="5" fill="#687d9a"/>
+<text x="87" y="386" font-size="15" fill="#acb5c1" font-weight="400" >Core + coordination</text>
+<text x="373" y="386" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">400 MB</text>
+<circle cx="410" cy="380" r="5" fill="#8193aa"/>
+<text x="425" y="386" font-size="15" fill="#acb5c1" font-weight="400" >Renderer + attached views</text>
+<text x="711" y="386" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">500 MB</text>
+<circle cx="72" cy="434" r="5" fill="#a4b7d0"/>
+<text x="87" y="440" font-size="15" fill="#acb5c1" font-weight="400" >Agent contexts</text>
+<text x="373" y="440" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">1800 MB</text>
+<circle cx="410" cy="434" r="5" fill="#718e81"/>
+<text x="425" y="440" font-size="15" fill="#acb5c1" font-weight="400" >Plugins + pages</text>
+<text x="711" y="440" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">400 MB</text>
+<circle cx="72" cy="488" r="5" fill="#b0a58b"/>
+<text x="87" y="494" font-size="15" fill="#acb5c1" font-weight="400" >Helpers</text>
+<text x="373" y="494" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">200 MB</text>
+<circle cx="410" cy="488" r="5" fill="#5b626c"/>
+<text x="425" y="494" font-size="15" fill="#acb5c1" font-weight="400" >Peak headroom</text>
+<text x="711" y="494" font-size="15" fill="#e7eaef" font-weight="500" text-anchor="end">700 MB</text>
+<rect x="784" y="191" width="774" height="384" rx="10" fill="#1c1f22" stroke="#343a42" />
+<text x="808" y="231" font-size="24" fill="#e7eaef" font-weight="600" >Maximum-concurrency fixture</text>
+<rect x="808" y="251" width="248" height="28" rx="14" fill="#342d24" stroke="none" />
+<text x="820" y="270" font-size="13" fill="#d8b582" font-weight="500" >TARGET — NOT A LIVE RUN</text>
+<text x="808" y="344" font-size="17" fill="#e7eaef" font-weight="600" >Workspace A</text>
+<rect x="963" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="977" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">1</text>
+<rect x="1002" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1016" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">2</text>
+<rect x="1041" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1055" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">3</text>
+<rect x="1080" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1094" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">4</text>
+<rect x="1119" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1133" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">5</text>
+<rect x="1158" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1172" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">6</text>
+<rect x="1197" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1211" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">7</text>
+<rect x="1236" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1250" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">8</text>
+<rect x="1275" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1289" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">9</text>
+<rect x="1314" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1328" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">10</text>
+<rect x="1353" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1367" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">11</text>
+<rect x="1392" y="322" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1406" y="341" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">12</text>
+<text x="1519" y="344" font-size="17" fill="#e7eaef" font-weight="600" text-anchor="end">12</text>
+<text x="808" y="409" font-size="17" fill="#e7eaef" font-weight="600" >Workspace B</text>
+<rect x="963" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="977" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">1</text>
+<rect x="1002" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1016" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">2</text>
+<rect x="1041" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1055" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">3</text>
+<rect x="1080" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1094" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">4</text>
+<rect x="1119" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1133" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">5</text>
+<rect x="1158" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1172" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">6</text>
+<rect x="1197" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1211" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">7</text>
+<rect x="1236" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1250" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">8</text>
+<rect x="1275" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1289" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">9</text>
+<rect x="1314" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1328" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">10</text>
+<rect x="1353" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1367" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">11</text>
+<rect x="1392" y="387" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1406" y="406" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">12</text>
+<text x="1519" y="409" font-size="17" fill="#e7eaef" font-weight="600" text-anchor="end">12</text>
+<text x="808" y="474" font-size="17" fill="#e7eaef" font-weight="600" >Workspace C</text>
+<rect x="963" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="977" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">1</text>
+<rect x="1002" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1016" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">2</text>
+<rect x="1041" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1055" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">3</text>
+<rect x="1080" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1094" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">4</text>
+<rect x="1119" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1133" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">5</text>
+<rect x="1158" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1172" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">6</text>
+<rect x="1197" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1211" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">7</text>
+<rect x="1236" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1250" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">8</text>
+<rect x="1275" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1289" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">9</text>
+<rect x="1314" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1328" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">10</text>
+<rect x="1353" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1367" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">11</text>
+<rect x="1392" y="452" width="28" height="28" rx="5" fill="#23272c" stroke="#56677e" />
+<text x="1406" y="471" font-size="11" fill="#9bb7e2" font-weight="500" text-anchor="middle">12</text>
+<text x="1519" y="474" font-size="17" fill="#e7eaef" font-weight="600" text-anchor="end">12</text>
+<text x="808" y="548" font-size="16" fill="#acb5c1" font-weight="400" >36 live agents / main + children + Workers</text>
+<rect x="42" y="598" width="1516" height="330" rx="10" fill="#1c1f22" stroke="#343a42" />
+<text x="66" y="638" font-size="24" fill="#e7eaef" font-weight="600" >Release gates</text>
+<text x="1529" y="638" font-size="15" fill="#d8b582" font-weight="600" text-anchor="end">ALL RESULTS: NOT RUN</text>
+<text x="66" y="688" font-size="17" fill="#e7eaef" font-weight="500" >Memory</text>
+<text x="440" y="688" font-size="16" fill="#acb5c1" font-weight="400" >Owned processes ≤ 4 GB</text>
+<rect x="1371" y="667" width="148" height="28" rx="14" fill="#23272c" stroke="none" />
+<text x="1383" y="686" font-size="13" fill="#acb5c1" font-weight="500" >NOT RUN</text>
+<line x1="66" y1="703" x2="1530" y2="703" stroke="#343a42" stroke-width="1.5" />
+<text x="66" y="731" font-size="17" fill="#e7eaef" font-weight="500" >Foreground input</text>
+<text x="440" y="731" font-size="16" fill="#acb5c1" font-weight="400" >P95 ≤ 100 ms under load</text>
+<rect x="1371" y="710" width="148" height="28" rx="14" fill="#23272c" stroke="none" />
+<text x="1383" y="729" font-size="13" fill="#acb5c1" font-weight="500" >NOT RUN</text>
+<line x1="66" y1="746" x2="1530" y2="746" stroke="#343a42" stroke-width="1.5" />
+<text x="66" y="774" font-size="17" fill="#e7eaef" font-weight="500" >Lifecycle soak</text>
+<text x="440" y="774" font-size="16" fill="#acb5c1" font-weight="400" >2 hours / 100 attach cycles</text>
+<rect x="1371" y="753" width="148" height="28" rx="14" fill="#23272c" stroke="none" />
+<text x="1383" y="772" font-size="13" fill="#acb5c1" font-weight="500" >NOT RUN</text>
+<line x1="66" y1="789" x2="1530" y2="789" stroke="#343a42" stroke-width="1.5" />
+<text x="66" y="817" font-size="17" fill="#e7eaef" font-weight="500" >Windows / RDP</text>
+<text x="440" y="817" font-size="16" fill="#acb5c1" font-weight="400" >Software rendering / DPI / IME</text>
+<rect x="1371" y="796" width="148" height="28" rx="14" fill="#23272c" stroke="none" />
+<text x="1383" y="815" font-size="13" fill="#acb5c1" font-weight="500" >NOT RUN</text>
+<line x1="66" y1="832" x2="1530" y2="832" stroke="#343a42" stroke-width="1.5" />
+<text x="66" y="860" font-size="17" fill="#e7eaef" font-weight="500" >Cross-client control</text>
+<text x="440" y="860" font-size="16" fill="#acb5c1" font-weight="400" >No wrong target / no replay</text>
+<rect x="1371" y="839" width="148" height="28" rx="14" fill="#23272c" stroke="none" />
+<text x="1383" y="858" font-size="13" fill="#acb5c1" font-weight="500" >NOT RUN</text>
+<text x="45" y="980" font-size="18" fill="#acb5c1" font-weight="400" >Review the budget and evidence contract. Green pass indicators are intentionally absent.</text>
+</g></svg>

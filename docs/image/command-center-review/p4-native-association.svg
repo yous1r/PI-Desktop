@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc"><title id="title">ASSOCIATE NATIVE PROGRAMS</title><desc id="desc">The program keeps its own window. The workspace keeps the task relationship.. Proposed design, sample data, not implemented or benchmarked.</desc><defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#7f8997"/></marker></defs><g font-family="Segoe UI, Arial, sans-serif">
+<rect x="0" y="0" width="1600" height="1100" rx="0" fill="#141618" stroke="none" />
+<rect x="42" y="30" width="8" height="8" rx="2" fill="#9bb7e2" stroke="none" />
+<rect x="54" y="30" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="42" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<rect x="54" y="42" width="8" height="8" rx="2" fill="#7f8997" stroke="none" />
+<text x="77" y="48" font-size="14" fill="#acb5c1" font-weight="600" letter-spacing="1.4">PI-DESKTOP  /  COMMAND CENTER</text>
+<text x="1558" y="48" font-size="14" fill="#7f8997" font-weight="500" text-anchor="end">05 / 09</text>
+<text x="42" y="101" font-size="32" fill="#e7eaef" font-weight="600" >P4  /  ASSOCIATE NATIVE PROGRAMS</text>
+<text x="43" y="133" font-size="17" fill="#acb5c1" font-weight="400" >The program keeps its own window. The workspace keeps the task relationship.</text>
+<line x1="42" y1="156" x2="1558" y2="156" stroke="#343a42" stroke-width="1.5" />
+<line x1="42" y1="1034" x2="1558" y2="1034" stroke="#343a42" stroke-width="1.5" />
+<text x="42" y="1067" font-size="13" fill="#7f8997" font-weight="500" letter-spacing="1.1">DESIGN CONCEPT  ·  SAMPLE DATA  ·  NOT IMPLEMENTED</text>
+<text x="1558" y="1067" font-size="13" fill="#7f8997" font-weight="400" text-anchor="end">Review v1  /  2026-11-08</text>
+<rect x="42" y="202" width="928" height="600" rx="12" fill="#1c1f22" stroke="#343a42" />
+<line x1="42" y1="249" x2="970" y2="249" stroke="#343a42" stroke-width="1.5" />
+<text x="62" y="231" font-size="15" fill="#e7eaef" font-weight="600" >PI-Desktop</text>
+<line x1="883" y1="225" x2="895" y2="225" stroke="#7f8997" stroke-width="1.5" />
+<rect x="915" y="218" width="14" height="14" rx="2" fill="none" stroke="#7f8997" />
+<line x1="918" y1="221" x2="926" y2="221" stroke="#acb5c1" stroke-width="1.5" />
+<text x="945" y="231" font-size="20" fill="#7f8997" font-weight="400" >×</text>
+<text x="232" y="231" font-size="14" fill="#acb5c1" font-weight="400" >Workspace C / Applications</text>
+<line x1="106" y1="249" x2="106" y2="770" stroke="#343a42" stroke-width="1.5" />
+<rect x="55" y="268" width="38" height="35" rx="7" fill="#263344" stroke="none" />
+<text x="74" y="291" font-size="12" fill="#9bb7e2" font-weight="500" text-anchor="middle">OV</text>
+<rect x="55" y="324" width="38" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="74" y="347" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">WS</text>
+<rect x="55" y="380" width="38" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="74" y="403" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">HX</text>
+<rect x="55" y="436" width="38" height="35" rx="7" fill="#1c1f22" stroke="none" />
+<text x="74" y="459" font-size="12" fill="#7f8997" font-weight="500" text-anchor="middle">ST</text>
+<line x1="42" y1="770" x2="970" y2="770" stroke="#343a42" stroke-width="1.5" />
+<circle cx="62" cy="787" r="3" fill="#a7c0ad"/>
+<text x="74" y="792" font-size="12" fill="#acb5c1" font-weight="400" >Local Host</text>
+<text x="952" y="792" font-size="12" fill="#7f8997" font-weight="400" text-anchor="end">Sample workspace data</text>
+<text x="120" y="286" font-size="21" fill="#e7eaef" font-weight="600" >Workspace C / Research</text>
+<rect x="525" y="264" width="133" height="28" rx="14" fill="#23272c" stroke="none" />
+<text x="537" y="283" font-size="13" fill="#acb5c1" font-weight="500" >6 / 12 agents</text>
+<text x="120" y="328" font-size="16" fill="#acb5c1" font-weight="400" >Associated applications</text>
+<rect x="120" y="355" width="836" height="81" rx="10" fill="#23272c" stroke="#343a42" />
+<rect x="136" y="373" width="40" height="42" rx="7" fill="#1c1f22" stroke="none" />
+<text x="156" y="401" font-size="13" fill="#9bb7e2" font-weight="600" text-anchor="middle">ED</text>
+<text x="192" y="384" font-size="18" fill="#e7eaef" font-weight="600" >Code editor</text>
+<text x="192" y="410" font-size="13" fill="#acb5c1" font-weight="400" >Linked / separate window</text>
+<rect x="814" y="378" width="123" height="36" rx="6" fill="#263344" stroke="#4b6484" />
+<text x="875.5" y="402" font-size="14" fill="#9bb7e2" font-weight="500" text-anchor="middle">Open editor</text>
+<rect x="120" y="451" width="836" height="81" rx="10" fill="#23272c" stroke="#343a42" />
+<rect x="136" y="469" width="40" height="42" rx="7" fill="#1c1f22" stroke="none" />
+<text x="156" y="497" font-size="13" fill="#9bb7e2" font-weight="600" text-anchor="middle">XL</text>
+<text x="192" y="480" font-size="18" fill="#e7eaef" font-weight="600" >Spreadsheet</text>
+<text x="192" y="506" font-size="13" fill="#acb5c1" font-weight="400" >Linked / separate window</text>
+<rect x="814" y="474" width="123" height="36" rx="6" fill="#23272c" stroke="#343a42" />
+<text x="875.5" y="498" font-size="14" fill="#e7eaef" font-weight="500" text-anchor="middle">Activate</text>
+<rect x="120" y="547" width="836" height="81" rx="10" fill="#23272c" stroke="#343a42" />
+<rect x="136" y="565" width="40" height="42" rx="7" fill="#1c1f22" stroke="none" />
+<text x="156" y="593" font-size="13" fill="#9bb7e2" font-weight="600" text-anchor="middle">SH</text>
+<text x="192" y="576" font-size="18" fill="#e7eaef" font-weight="600" >System terminal</text>
+<text x="192" y="602" font-size="13" fill="#acb5c1" font-weight="400" >Linked / separate window</text>
+<rect x="814" y="570" width="123" height="36" rx="6" fill="#23272c" stroke="#343a42" />
+<text x="875.5" y="594" font-size="14" fill="#e7eaef" font-weight="500" text-anchor="middle">Activate</text>
+<text x="120" y="670" font-size="14" fill="#acb5c1" font-weight="400" >Detach removes the link. It does not close the program.</text>
+<rect x="120" y="694" width="180" height="36" rx="6" fill="#23272c" stroke="#343a42" />
+<text x="210" y="718" font-size="14" fill="#e7eaef" font-weight="500" text-anchor="middle">Associate application</text>
+<rect x="1060" y="202" width="498" height="492" rx="10" fill="#1f2328" stroke="#343a42" />
+<text x="1081" y="233" font-size="16" fill="#e7eaef" font-weight="600" >Code editor  /  external application</text>
+<line x1="1060" y1="251" x2="1558" y2="251" stroke="#343a42" stroke-width="1.5" />
+<text x="1080" y="281" font-size="13" fill="#7f8997" font-weight="400" >project / payments / adapter.ts</text>
+<text x="1081" y="328" font-size="13" fill="#7f8997" font-weight="400" font-family="Consolas, monospace">01</text>
+<text x="1115" y="328" font-size="13" fill="#9bb7e2" font-weight="400" font-family="Consolas, monospace">export async function settle(input) {</text>
+<text x="1081" y="360" font-size="13" fill="#7f8997" font-weight="400" font-family="Consolas, monospace">02</text>
+<text x="1115" y="360" font-size="13" fill="#acb5c1" font-weight="400" font-family="Consolas, monospace">  const result = await adapter.run(input);</text>
+<text x="1081" y="392" font-size="13" fill="#7f8997" font-weight="400" font-family="Consolas, monospace">03</text>
+<text x="1115" y="392" font-size="13" fill="#acb5c1" font-weight="400" font-family="Consolas, monospace"></text>
+<text x="1081" y="424" font-size="13" fill="#7f8997" font-weight="400" font-family="Consolas, monospace">04</text>
+<text x="1115" y="424" font-size="13" fill="#acb5c1" font-weight="400" font-family="Consolas, monospace">  return {</text>
+<text x="1081" y="456" font-size="13" fill="#7f8997" font-weight="400" font-family="Consolas, monospace">05</text>
+<text x="1115" y="456" font-size="13" fill="#acb5c1" font-weight="400" font-family="Consolas, monospace">    status: result.status,</text>
+<text x="1081" y="488" font-size="13" fill="#7f8997" font-weight="400" font-family="Consolas, monospace">06</text>
+<text x="1115" y="488" font-size="13" fill="#acb5c1" font-weight="400" font-family="Consolas, monospace">    reference: result.reference,</text>
+<text x="1081" y="520" font-size="13" fill="#7f8997" font-weight="400" font-family="Consolas, monospace">07</text>
+<text x="1115" y="520" font-size="13" fill="#acb5c1" font-weight="400" font-family="Consolas, monospace">  };</text>
+<text x="1081" y="552" font-size="13" fill="#7f8997" font-weight="400" font-family="Consolas, monospace">08</text>
+<text x="1115" y="552" font-size="13" fill="#acb5c1" font-weight="400" font-family="Consolas, monospace">}</text>
+<rect x="1080" y="636" width="202" height="28" rx="14" fill="#263344" stroke="none" />
+<text x="1092" y="655" font-size="13" fill="#9bb7e2" font-weight="500" >Separate OS window</text>
+<line x1="973" y1="421" x2="1054" y2="421" stroke="#9bb7e2" stroke-width="1.5" stroke-dasharray="5 5" marker-end="url(#arrow)"/>
+<text x="1015" y="402" font-size="12" fill="#9bb7e2" font-weight="500" text-anchor="middle">link</text>
+<rect x="1060" y="718" width="498" height="221" rx="10" fill="#1c1f22" stroke="#343a42" />
+<text x="1084" y="753" font-size="20" fill="#e7eaef" font-weight="600" >Compatibility contract</text>
+<text x="1084" y="790" font-size="17" fill="#acb5c1" font-weight="400" >Association is the default. Embedding is an</text>
+<text x="1084" y="817" font-size="17" fill="#acb5c1" font-weight="400" >optional, app-specific adapter.</text>
+<text x="1084" y="875" font-size="14" fill="#7f8997" font-weight="400" >External application memory is listed separately.</text>
+<text x="1084" y="904" font-size="14" fill="#7f8997" font-weight="400" >No screenshot mirroring required.</text>
+<rect x="42" y="846" width="456.5" height="92" rx="8" fill="#1c1f22" stroke="#343a42" />
+<text x="60" y="876" font-size="13" fill="#7f8997" font-weight="500" >IDENTITY</text>
+<text x="60" y="911" font-size="22" fill="#e7eaef" font-weight="600" >Validate program + window</text>
+<rect x="513.5" y="846" width="456.5" height="92" rx="8" fill="#1c1f22" stroke="#343a42" />
+<text x="531.5" y="876" font-size="13" fill="#7f8997" font-weight="500" >FOCUS</text>
+<text x="531.5" y="911" font-size="22" fill="#e7eaef" font-weight="600" >Respect OS refusal</text>
+<text x="45" y="990" font-size="17" fill="#acb5c1" font-weight="400" >Example applications only. The required app/version list is still to be nominated.</text>
+</g></svg>
