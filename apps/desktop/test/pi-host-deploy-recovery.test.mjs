@@ -123,6 +123,33 @@ test("previous version evidence must be present, unambiguous and upgradeable", (
   assert.equal(code(() => admitVersionEvidence({ candidateVersion: "0.22.1", readyVersion: "not-a-version" })), "HOST_RECOVERY_REQUIRED");
 });
 
+test("explicit SSH enrollment can recover an offline identity without a readiness log", () => {
+  const input = {
+    identityText: identity, credentialsText: credentials([OWNER]), requireOwnerDevice: false,
+    allowNewEnrollment: true, candidateVersion: "0.22.2", packageVersion: "0.21.0",
+  };
+  assert.deepEqual(admitOfflineHost(input), {
+    hostId: HOST_ID, deviceId: null, version: "0.21.0", sources: ["package"],
+  });
+  for (const identityText of [undefined, "null", "{}", "broken", '{"hostId":" "}']) {
+    assert.equal(code(() => admitOfflineHost({ ...input, identityText })), "HOST_RECOVERY_REQUIRED");
+  }
+  for (const expectedHostId of ["", "host_other", null]) {
+    assert.equal(code(() => admitOfflineHost({ ...input, expectedHostId })), "HOST_AUTH_FAILED");
+  }
+  for (const credentialsText of [undefined, null, "null", "broken", "{}", '{"devices":{}}']) {
+    assert.equal(code(() => admitOfflineHost({ ...input, credentialsText })), "HOST_RECOVERY_REQUIRED");
+  }
+  assert.equal(code(() => admitOfflineHost({ ...input, allowNewEnrollment: false })), "HOST_AUTH_FAILED");
+  assert.equal(code(() => admitOfflineHost({ ...input, requireOwnerDevice: true })), "HOST_AUTH_FAILED");
+  assert.equal(code(() => admitOfflineHost({ ...input, expectedDeviceTokenHash: TOKEN_HASH })), "HOST_AUTH_FAILED");
+  assert.equal(code(() => admitOfflineHost({ ...input, expectedHostId: HOST_ID,
+    expectedDeviceTokenHash: TOKEN_HASH, credentialsText: credentials([{ ...OWNER, revokedAt: "revoked" }]),
+  })), "HOST_AUTH_FAILED");
+  assert.equal(code(() => admitOfflineHost({ ...input, packageVersion: "0.23.0" })), "HOST_VERSION_MISMATCH");
+  assert.equal(code(() => admitOfflineHost({ ...input, readyVersion: "0.22.0" })), "HOST_RECOVERY_REQUIRED");
+});
+
 test("offline admission requires identity, owner device and version evidence", () => {
   const admitted = admitOfflineHost({
     identityText: identity,

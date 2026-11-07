@@ -49,8 +49,14 @@ project. A failed mutation is never replayed, nor routed to local execution.
 
 Preserve the Host ID, enrolled device token, SSH credentials and data directory.
 Authenticate an existing running Host before upgrade and verify it again over
-RACP before completing preparation. New pairing is restricted to initial
-enrollment. Direct-URL hosts and unusable SSH credentials are not taken over.
+RACP before completing preparation. New pairing is restricted to an explicit
+SSH enrollment action, including adding a previously used Host again after its
+Desktop record was removed. For an intact installation whose process has exited,
+the durable identity and verified package version can replace missing readiness
+evidence. This preserves existing devices/data and never grants saved-device
+preparation a credential bypass. Conflicting evidence and damaged installs still
+fail closed; candidate readiness must match the admitted Host ID. Direct-URL
+hosts and unusable SSH credentials are not taken over.
 Newer remote releases, stable-to-prerelease changes, different prerelease tracks
 and ambiguous version ordering are not automatically replaced. An older
 prerelease may advance to a newer stable Desktop release, including

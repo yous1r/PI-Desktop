@@ -204,6 +204,14 @@ pairing only binds a desktop device to the Host it started.
   return to RACP identity/capability authentication before deleting its journal.
 - Revoking the device token on the Host, or removing the Host from the
   desktop, ends the pairing; a new pairing needs a new SSH bootstrap.
+- Explicit SSH re-enrollment of an intact, stopped installation MAY discover
+  its identity from the durable identity file when no saved Desktop record or
+  readiness log is available. This uses the existing SSH shell-access trust
+  boundary, never a RACP request. It MUST preserve the identity, existing device
+  records and data, validate version evidence and reject unidentified processes.
+  Existing-device preparation MUST NOT opt into this path or bypass its saved
+  owner credential. A changed startup identity MUST retain recovery state;
+  missing/damaged installs and conflicting evidence remain refused.
 - Provider configuration is copied only after explicit selection and consent,
   over SSH stdin as Host-local configuration; it never crosses RACP.
 

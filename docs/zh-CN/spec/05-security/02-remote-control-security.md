@@ -55,13 +55,14 @@ SSH 登录已证明对该机器的 shell 访问，配对只是把一个桌面设
 Host。配对 token 由 Host 启动时生成，单次使用，在引导窗口内过期，只经 SSH 通道
 传递，绝不写入可读文件或 URL；桌面在转发的 loopback 端口上用它一次性换取设备
 token 并存入安全存储，Host 把该设备记为 `owner`。Host 只绑定 loopback，只接受
-loopback 对端出示的设备 token；非 loopback 绑定要求 TLS 与同样的设备 token。引导脚本经 SSH 上传后，从 GitHub
-Releases 下载与桌面同版本、对应远端平台的 `pi-host` 包，校验随发布公布的 SHA-256 后
-安装到用户主目录；桌面自身从不上传可执行字节。首版无法引导没有 GitHub 出网能力的
-机器。
-在 Host 上撤销设备 token 或在桌面移除该 Host 即结束配对，重新配对需要重新
-经 SSH 引导。远端 Host 的 provider 配置由引导步骤经 SSH 通道写入为 Host 本地
-配置，绝不经过 RACP。
+loopback 对端出示的设备 token；非 loopback 绑定要求 TLS 与同样的设备 token。
+桌面通过全局代理下载同版本 Host 包并校验 SHA-256，经 SSH 上传后远端再次校验；
+远端不下载发布包。已有设备升级保留原身份、凭据和数据，禁止自动重新配对。
+在 Host 上撤销设备 token 或在桌面移除该 Host 即结束配对，重新配对需要主动
+经 SSH 引导。若用户重新添加已停止且安装完整的 Host，允许从持久身份文件恢复
+缺失的就绪身份，保留原设备和数据；已有设备升级仍必须证明原 owner 凭据。
+身份缺失、证据冲突、安装损坏、未知进程和降级均拒绝；启动身份改变时保留恢复状态。
+远端 Host 的 provider 配置仅在用户明确选择后经 SSH 写入，绝不经过 RACP。
 
 | Operation | Viewer | Controller | Approver | Owner |
 |---|---:|---:|---:|---:|

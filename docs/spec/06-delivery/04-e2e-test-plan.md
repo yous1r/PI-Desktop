@@ -15856,6 +15856,29 @@ browser milestones are scheduled.
   run; local fixture success is not evidence that the real SSH gate passed.
 
 
+#### E2E-REMOTE-HOST-offline-reenrollment
+
+- **Preconditions**: Isolated HOME/data directory and verified old/new Linux
+  bundles. The old Host has exited after a database-schema incompatibility;
+  its readiness log contains only failure output. Preserve its durable identity,
+  owner devices, projects and sessions. Desktop has no saved record for it.
+- **Steps**: Use Add SSH Host with the new Desktop. Verify upload, staging,
+  identity discovery, activation, startup, pairing, authenticated workspace
+  browsing and deployment completion. Retry with missing/malformed identity,
+  conflicting readiness, a newer old release, damaged installation, an
+  unidentified live PID and a revoked saved-device credential. Inject a changed
+  identity into candidate readiness.
+- **Expected**: New enrollment preserves the existing Host ID and all prior
+  devices/data; success requires real RACP authentication and capabilities.
+  Admission failures retain `current`; changed startup identity retains recovery
+  state without rolling back binaries against possibly updated data. A saved
+  device upgrade never discovers a replacement identity or issues fresh pairing.
+- **Automation**: `pi-host-deploy-recovery.test.mjs` and
+  `pi-host-offline-enrollment.test.mjs` cover admission and the generated
+  Desktop bootstrap with isolated process fixtures. Real-bundle SSH acceptance
+  uses a temporary HOME, synthetic data and loopback ports. The operator verifies
+  the existing fnOS environment only after installing the corrected Desktop.
+
 #### E2E-REMOTE-HOST-ssh-password-authentication
 
 - **Preconditions**: Settings → Remote Hosts is available with its Experimental

@@ -140,11 +140,9 @@ export function admitVersionEvidence({ candidateVersion, packageVersion, readyVe
 }
 
 /**
- * Admission for a Host whose installed bundle is missing or damaged.
- *
- * There is no live process to ask, so identity, owner credential and the
- * previous release are all taken from durable host state. Any missing piece
- * fails closed: a repair must never mint a new Host or re-pair silently.
+ * Offline repair keeps the saved identity and owner credential mandatory.
+ * Only explicit SSH enrollment of an intact, stopped installation may use its
+ * durable identity when no Desktop record or successful readiness log remains.
  */
 export function admitOfflineHost({
   identityText,
@@ -152,16 +150,24 @@ export function admitOfflineHost({
   expectedHostId,
   expectedDeviceTokenHash,
   requireOwnerDevice = true,
+  allowNewEnrollment = false,
   candidateVersion,
   packageVersion,
   readyVersion,
   expectedCurrentVersion,
 }) {
-  if (typeof expectedHostId !== "string" || !expectedHostId.trim()) fail("HOST_AUTH_FAILED");
   let identity;
   try { identity = JSON.parse(identityText); } catch { fail("HOST_RECOVERY_REQUIRED"); }
-  if (!identity || typeof identity.hostId !== "string" || !identity.hostId) fail("HOST_RECOVERY_REQUIRED");
-  if (identity.hostId !== expectedHostId) fail("HOST_AUTH_FAILED");
+  if (!identity || typeof identity.hostId !== "string" || !identity.hostId.trim()) fail("HOST_RECOVERY_REQUIRED");
+  const discoverIdentity = expectedHostId === undefined && allowNewEnrollment === true &&
+    requireOwnerDevice === false && expectedDeviceTokenHash === undefined;
+  if (!discoverIdentity && (typeof expectedHostId !== "string" || !expectedHostId.trim())) fail("HOST_AUTH_FAILED");
+  if (!discoverIdentity && identity.hostId !== expectedHostId) fail("HOST_AUTH_FAILED");
+  if (discoverIdentity) {
+    let credentials;
+    try { credentials = JSON.parse(credentialsText); } catch { fail("HOST_RECOVERY_REQUIRED"); }
+    if (!credentials || !Array.isArray(credentials.devices) || !Array.isArray(credentials.pairings)) fail("HOST_RECOVERY_REQUIRED");
+  }
   let deviceId = null;
   if (requireOwnerDevice || typeof expectedDeviceTokenHash === "string") {
     deviceId = findOwnerDevice(credentialsText, expectedDeviceTokenHash).deviceId;
