@@ -71,6 +71,7 @@ ADR 记录那些不应被静默改变的架构选择。中文入口与英文索�
 
 | 编号 | 标题 | 状态 |
 |---|---|---|
+| ai-command-center | [资源受限的 AI 指挥中心：独立执行与多端控制](/adr/ai-command-center) | 提议中；容量与平台能力待验证 |
 | subagent-model-opt-in | [区分子代理模型自动调度许可与定义固定模型](/adr/subagent-model-opt-in) | 已接受待实现 |
 | 0001 | [Electron 桌面壳](/adr/0001-use-electron) | 已接受 |
 | 0002 | [使用 pi Agent Harness 作为内核](/adr/0002-use-pi-agent-harness) | 已接受 |
