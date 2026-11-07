@@ -302,3 +302,27 @@ test("cache retention stays bounded and keeps the just-acquired archive", async 
     assert.deepEqual(await readFile(latest), Buffer.from("release-9"));
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
+
+test("republished Host runtime refreshes legacy cache once then reuses verified bytes", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "pi-host-cache-generation-"));
+  try {
+    const first = await acquireCache(directory); await first.release();
+    const { manifest } = piHostCachePaths(directory, cacheUrl, cacheArtifact);
+    const metadata = JSON.parse(await readFile(manifest, "utf8"));
+    await writeFile(manifest, JSON.stringify({ ...metadata, schemaVersion: 1 }));
+    const replacement = Buffer.from("static-musl-host-compatible-pty");
+    const replacementDigest = createHash("sha256").update(replacement).digest("hex");
+    let checksumFetches = 0, artifactFetches = 0;
+    const input = {
+      fetchChecksum: async () => { checksumFetches++; return `${replacementDigest}  ${cacheArtifact}\n`; },
+      fetchArtifact: async () => { artifactFetches++; return new Response(replacement); },
+    };
+    const refreshed = await acquireCache(directory, input);
+    try { assert.deepEqual(await readFile(refreshed.path), replacement); }
+    finally { await refreshed.release(); }
+    const reused = await acquireCache(directory, input);
+    try { assert.deepEqual(await readFile(reused.path), replacement); }
+    finally { await reused.release(); }
+    assert.deepEqual([checksumFetches, artifactFetches], [1, 1]);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});

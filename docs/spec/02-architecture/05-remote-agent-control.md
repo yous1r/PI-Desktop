@@ -199,6 +199,9 @@ Verified archives persist in Desktop's private `cache/pi-host`, independently of
 Host records. Exact release/platform hits are rehashed and uploaded without
 checksum/archive requests. Cache misses use the applied global proxy. Atomic
 publication excludes partial downloads; bounds are eight releases and 1 GiB.
+Cache schema 2 retires archives cached before the corrected 0.22.2 publication.
+The first preparation refreshes those entries through the same proxy and checksum
+checks; subsequent verified hits remain offline and reusable.
 
 One preparation job serves independent caller IDs per Host. Progress is exposed
 as `RemoteHostSummary.preparation` through the existing host-list refresh event.
