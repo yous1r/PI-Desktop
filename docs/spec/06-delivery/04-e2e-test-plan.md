@@ -19395,6 +19395,22 @@ substitute for native Linux packaging or SSH acceptance.
 - **Status:** Automated component/user-path coverage; installed app and real
   SSH process acceptance are not implied.
 
+### E2E-TERMINAL-remote-runtime-baseline
+
+- **Preconditions:** Linux x64/arm64 release candidates, static musl host-core,
+  bundled Node, and a `node-pty` addon built in native manylinux_2_28.
+- **Steps:** Run `check-linux-pi-host-runtime.mjs` on the complete bundle. Reject
+  a PTY importing `GLIBC_2.32`/`GLIBC_2.34` even if it loads on the build runner.
+  On a glibc 2.28 target, authenticate through SSH/RACP, list shells, create a
+  terminal, send `pwd` and a fixed output marker, resize, replay and close.
+- **Expected:** Static host-core remains enforced; Node and PTY use at most
+  glibc 2.28 / GLIBCXX 3.4.25 / CXXABI 1.3.11. Every published bundle offers
+  working terminal input/output; host version and folder browsing alone are
+  insufficient acceptance. Existing identity, credentials and data survive
+  the upgrade, and no target system-library upgrade is required.
+- **Automation:** `pi-host-runtime-abi.test.mjs`, `pi-host-pty-build.test.mjs`,
+  native CI `remote-pty-compat`, and the release bundle runtime gate.
+
 ### E2E-TERMINAL-workspace-target-paths
 
 - **Entry:** `node --test apps/desktop/test/workspace-terminal-user-path.e2e.mjs`

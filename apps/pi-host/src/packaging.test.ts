@@ -27,7 +27,7 @@ function fixture() {
   const out = join(root, "release");
   const pty = join(app, "node_modules/node-pty");
   cpSync(scripts, join(app, "scripts"), { recursive: true });
-  write(join(app, "package.json"), JSON.stringify({ version: "0.0.0-test", type: "module" }));
+  write(join(app, "package.json"), JSON.stringify({ version: "0.0.0-test", type: "module", optionalDependencies: { "node-pty": "1.1.0" } }));
   write(join(app, "src/cli.ts"), 'console.log("fixture CLI");\n');
   write(join(root, "packages/host-runtime/plugin-host-process.mjs"), 'export const runner = true;\n');
   write(join(root, "target/release/pi-desktop-host-core"), "fixture host-core\n");
@@ -110,6 +110,28 @@ describe("pi-host packaging", () => {
     expect(result.status, result.stderr).toBe(0);
     expect(existsSync(join(f.out, "node_modules/node-pty/build/Release/pty.node"))).toBe(true);
     expect(existsSync(join(f.out, "node_modules/node-pty/build/Release/spawn-helper"))).toBe(false);
+  });
+
+  it("uses an explicitly prepared PTY package without changing installed dependencies", () => {
+    const f = fixture();
+    const prepared = join(f.root, "prepared-pty");
+    cpSync(f.pty, prepared, { recursive: true });
+    write(join(prepared, "build/Release/pty.node"), "compatible baseline addon");
+    write(join(f.pty, "build/Release/pty.node"), "host ABI addon");
+    const result = node(f.root, [join(f.app, "scripts/bundle.mjs"), "--pty", prepared, "--out", f.out]);
+    expect(result.status, result.stderr).toBe(0);
+    expect(readFileSync(join(f.out, "node_modules/node-pty/build/Release/pty.node"), "utf8")).toBe("compatible baseline addon");
+    expect(readFileSync(join(f.pty, "build/Release/pty.node"), "utf8")).toBe("host ABI addon");
+  });
+
+  it.each(["missing", "wrong-version"])("rejects a %s prepared PTY before replacing output", (kind) => {
+    const f = fixture();
+    write(join(f.out, "keep"), "old output");
+    const prepared = join(f.root, "prepared-pty");
+    if (kind === "wrong-version") write(join(prepared, "package.json"), JSON.stringify({ name: "node-pty", version: "0.0.0" }));
+    const result = node(f.root, [join(f.app, "scripts/bundle.mjs"), "--pty", prepared, "--out", f.out]);
+    expect(result.status).not.toBe(0);
+    expect(readFileSync(join(f.out, "keep"), "utf8")).toBe("old output");
   });
 
   it.skipIf(process.platform !== "darwin").each([`prebuilds/darwin-${process.arch}`, "build/Release", "build/Debug"])("makes the Darwin spawn-helper executable in %s without changing the source", (nativeDir) => {

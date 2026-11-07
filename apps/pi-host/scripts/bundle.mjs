@@ -3,11 +3,10 @@
  * Assemble the self-contained `pi-host` bundle for one native POSIX target.
  * The release contains its own Node runtime, verified installer, and the
  * transaction worker used for detached Linux upgrades.
- *
- * Usage: node scripts/bundle.mjs [--node <path>] [--host-core <path>] [--platform linux|darwin] [--arch x64|arm64] [--out <dir>]
+ * Usage: node scripts/bundle.mjs [--node <path>] [--pty <package-dir>] [--host-core <path>] [--platform linux|darwin] [--arch x64|arm64] [--out <dir>]
  */
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync, chmodSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync, chmodSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
@@ -50,6 +49,22 @@ for (const [label, path] of [["host-core binary", hostCore], ["sidecar bundle", 
   }
 }
 
+let ptyPackageDir;
+if (args.pty !== undefined) {
+  if (typeof args.pty !== "string") throw new Error("--pty requires a prepared node-pty package directory");
+  ptyPackageDir = resolve(args.pty);
+  const manifest = join(ptyPackageDir, "package.json");
+  if (!existsSync(manifest)) throw new Error("Prepared node-pty package is missing");
+  const prepared = JSON.parse(readFileSync(manifest, "utf8"));
+  const expectedVersion = require(join(app, "package.json")).optionalDependencies?.["node-pty"];
+  if (prepared.name !== "node-pty" || !expectedVersion || prepared.version !== expectedVersion) {
+    throw new Error("Prepared node-pty package does not match the pinned runtime dependency");
+  }
+} else {
+  try { ptyPackageDir = dirname(require.resolve("node-pty/package.json")); }
+  catch (error) { if (error.code !== "MODULE_NOT_FOUND") throw error; }
+}
+
 rmSync(out, { recursive: true, force: true });
 mkdirSync(join(out, "bin"), { recursive: true });
 await copyAgentRuntimeBundle(runtimeBundle, join(out, "agent-runtime"));
@@ -73,12 +88,6 @@ execFileSync(
 cpSync(join(root, "packages/host-runtime/plugin-host-process.mjs"), join(out, "plugin-host-process.mjs"));
 cpSync(hostCore, join(out, `bin/pi-desktop-host-core${exe}`));
 chmodSync(join(out, `bin/pi-desktop-host-core${exe}`), 0o755);
-let ptyPackageDir;
-try {
-  ptyPackageDir = dirname(require.resolve("node-pty/package.json"));
-} catch (error) {
-  if (error.code !== "MODULE_NOT_FOUND") throw error;
-}
 if (ptyPackageDir) {
   const bundledPty = join(out, "node_modules/node-pty");
   cpSync(ptyPackageDir, bundledPty, { recursive: true, dereference: true });

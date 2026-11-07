@@ -3,10 +3,10 @@
  * Fail a Linux host-core binary that is not statically linked.
  *
  * The `pi-host` bundle a desktop installs over SSH ships this build, so the
- * remote machine needs no glibc for host-core at all: the bundled Node runtime
- * is the only part that still carries Node's own requirement (ADR 0338). A
- * dynamic binary here silently reintroduces `GLIBC_2.xx not found` on an older
- * distribution, and the user only sees it as `host-exited` after a full
+ * remote machine needs no glibc for host-core at all. Bundled Node and PTY
+ * requirements are checked separately by check-linux-pi-host-runtime.mjs
+ * against the glibc 2.28 baseline (ADR 0338). A dynamic host-core reintroduces
+ * `GLIBC_2.xx not found` on an older distribution, reported as `host-exited` after
  * install and pairing attempt.
  *
  * Usage:

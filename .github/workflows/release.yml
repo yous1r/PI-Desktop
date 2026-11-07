@@ -582,8 +582,43 @@ jobs:
       - name: Verify the bundled host-core is static
         run: node scripts/check-linux-host-static.mjs target/musl-host-core/pi-desktop-host-core
 
+      - name: Build the glibc 2.28 node-pty addon
+        # The bundle ships a terminal, and the workspace's own node-pty build
+        # carries the runner's glibc (2.32/2.34 on Ubuntu 22.04/24.04). A remote
+        # host on an older distribution only fails at dlopen time, so compile
+        # the addon on the manylinux_2_28 baseline instead. The script downloads
+        # the headers for the exact Node version this bundle copies, verifies
+        # them against nodejs.org SHASUMS256, and compiles inside a
+        # `--network none` container from the pristine node-pty source.
+        run: |
+          set -euo pipefail
+          out="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/pi-host-pty-${{ matrix.arch }}"
+          node apps/pi-host/scripts/build-compatible-pty.mjs --arch ${{ matrix.arch }} --out "$out"
+          printf 'PI_HOST_PTY_DIR=%s\n' "$out" >> "$GITHUB_ENV"
+
       - name: Assemble pi-host bundle
-        run: node apps/pi-host/scripts/bundle.mjs --platform linux --arch ${{ matrix.arch }} --host-core target/musl-host-core/pi-desktop-host-core
+        # `--pty` replaces the workspace's host-built node-pty with the isolated
+        # tree from the baseline build, so no host-ABI addon can be bundled.
+        run: node apps/pi-host/scripts/bundle.mjs --platform linux --arch ${{ matrix.arch }} --host-core target/musl-host-core/pi-desktop-host-core --pty "$PI_HOST_PTY_DIR"
+
+      - name: Verify the bundled pi-host runtime
+        # Terminals are optional at runtime, so a wrong architecture or a raised
+        # glibc floor reaches the user as "terminals are disabled" long after
+        # the install reported success. Verify the shipped Node and every native
+        # object before the archive exists, and prove the bundle carries the
+        # addon this lane compiled rather than the runner's.
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./apps/pi-host/package.json').version")"
+          bundle="apps/pi-host/dist-bundle/pi-host-${version}-linux-${{ matrix.arch }}"
+          node scripts/check-linux-pi-host-runtime.mjs "$bundle"
+          bundled="$(sha256sum "$bundle/node_modules/node-pty/build/Release/pty.node" | cut -d' ' -f1)"
+          built="$(sha256sum "$PI_HOST_PTY_DIR/build/Release/pty.node" | cut -d' ' -f1)"
+          if [[ "$bundled" != "$built" ]]; then
+            echo "::error::the bundle does not ship the node-pty addon built on the glibc 2.28 baseline"
+            exit 1
+          fi
+          echo "bundled node-pty addon sha256 $bundled"
 
       - name: Archive bundle with checksum
         run: |
