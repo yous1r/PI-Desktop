@@ -12,14 +12,15 @@ const MAX_CACHE_RELEASES = 8;
 const MAX_CACHE_BYTES = 1024 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 16 * 1024;
 const MAX_RELEASE_VERSION_LENGTH = 128;
-const CACHE_SCHEMA_VERSION = 1;
+// Invalidate pre-republish archives whose PTY exceeded the glibc 2.28 baseline.
+const CACHE_SCHEMA_VERSION = 2;
 const VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const cacheTails = new Map<string, Promise<void>>();
 
 type ReleaseIdentity = { url: string; artifactName: string; key: string };
 type CacheManifest = {
-  schemaVersion: 1;
+  schemaVersion: typeof CACHE_SCHEMA_VERSION;
   url: string;
   artifactName: string;
   sha256: string;
