@@ -13,6 +13,8 @@
 			"apps/desktop/electron/main/runtime/session-launch.ts",
 			"apps/desktop/electron/main/ipc/workspace-ipc.ts",
 			"packages/shared/src/types/**/*.ts",
+			"packages/shared/src/owner-control*.ts",
+			"scripts/e2e-owner-local-control.mjs",
 			"packages/host-runtime/src/{host-process,host-write-admission,turn-persistence,turn-events,runtime-service}.ts",
 			"packages/host-runtime/src/{host-write-admission,turn-persistence,turn-events,runtime-service}.test.ts",
 			"packages/host-runtime/src/host-data-directory*.ts",

@@ -19788,3 +19788,24 @@ session data is used.
 - **Coverage:** Rust RPC tests additionally cover approved writes, local session
   persistence and remote workspace containment. Real SSH qualification remains
   separate from this controller-side path/permission correction.
+
+### E2E-HOST-local-owner-discovery
+
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-owner-local-control.mjs`
+  with `PI_SCRATCH_DIR` set and the candidate shared package built.
+- **Steps:** Query an absent profile, start a real Host with `--owner-control`,
+  discover it through `--owner-status`, repeat with its epoch and a stale epoch,
+  and query through a junction. Connect a same-user Node client, stop/restart the
+  Host, and substitute a Node pipe server after the owner exits.
+- **Expected:** No profile creation on query, aliases share identity, stale epoch
+  refuses, other executable clients receive no metadata, and the query refuses
+  a counterfeit server before transmitting a request. Normal/crash exit releases
+  the pipe and all fixture processes close. Default launches remain unexposed.
+- **Lower-level evidence:** Real Windows pipe tests cover 100 sequential queries,
+  duplicate listeners, bad/oversized/truncated frames, idle timeout, restart and
+  a restricted Windows token denied by the actual DACL. Rust and TypeScript use
+  the same golden wire fixtures. No separate OS user or remote machine is used.
+- **Boundary:** Discovery only. No transfer mutation, journal, service install,
+  user profile migration, paid provider, UI or native execution fence is claimed.
+- **Specs:** [Process model](../03-runtime/07-process-model.md),
+  [owner discovery ADR](../../adr/windows-owner-discovery.md).

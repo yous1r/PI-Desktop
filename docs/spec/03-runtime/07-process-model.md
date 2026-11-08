@@ -191,6 +191,15 @@ renderer-facing status):
   Old binaries that ignore the lock must be stopped first; this does not implement
   orphan-sidecar fencing or automatic service handoff. See the
   [ownership ADR](../../adr/host-data-directory-ownership.md).
+- Windows Rust Host can explicitly enable a local owner-discovery pipe with
+  `--owner-control`. `--owner-status [expected-owner-epoch]` queries the configured
+  data directory without creating it or opening AppState. The native channel is
+  current-user-only, rejects remote clients and requires the same canonical Host
+  executable on both ends. Directory volume/file identity makes aliases share
+  one discovery name. Unknown operations/fields, oversized frames and stale
+  epochs fail closed. Version 1 advertises only `status`; process discovery does
+  not prove native execution fencing or transfer readiness. See the
+  [local discovery ADR](../../adr/windows-owner-discovery.md).
 - Child exit rejects all in-flight RPCs for that child immediately (no 130s timeout wait).
 - Every RPC carries a finite transport deadline. Bash and desktop-dispatched
   (`plugin_*` / `mcp_*`) tools add the waits host-core can spend before it

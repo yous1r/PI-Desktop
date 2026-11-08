@@ -1,0 +1,5 @@
+{
+  "request": {"version":1,"requestId":"00000000-0000-4000-8000-000000000001","operation":"status","expectedOwnerEpoch":null},
+  "response": {"version":1,"requestId":"00000000-0000-4000-8000-000000000001","status":{"ownerEpoch":"00000000-0000-4000-8000-000000000002","profileId":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef","processId":123,"processCreatedAt":"134000000000000001","operations":["status"]}},
+  "failure": {"version":1,"requestId":"00000000-0000-4000-8000-000000000001","error":"STALE_OWNER"}
+}

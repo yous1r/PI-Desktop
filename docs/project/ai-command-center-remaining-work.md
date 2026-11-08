@@ -48,7 +48,7 @@ qualification remain separate open product milestones.
 | Priority | Step | Implementation status | Required acceptance before completion |
 |---|---|---|---|
 | 1 | S03a: Rust data-directory ownership | Implemented candidate in this slice | Same-directory and alias contenders fail before recovery; independent directories run; normal/crash exit releases ownership; relocation refuses live destination before mutation; existing history remains readable |
-| 2 | S03b: Exclusive execution handoff | Protocol draft complete; implementation pending | Existing admission gate blocks new work; busy handoff rejects; old sidecar proven stopped/fenced; one successor; crash at every phase leaves recoverable journal; no turn/tool replay |
+| 2 | S03b: Exclusive execution handoff | Windows owner-discovery and explicit exit confirmation implemented; fencing/journal/transfer pending | Existing admission gate blocks new work; busy handoff rejects; old sidecar proven stopped/fenced; one successor; crash at every phase leaves recoverable journal; no turn/tool replay |
 | 3 | S02/S04: Finalize versioned metadata contract | Retention decided; schemas/implementation pending | Stable task vs concrete execution identity; strict request schema; desired/effective goal CAS; durable no-auto-delete receipts; golden producer/consumer fixtures |
 | 4 | S04: Rust repositories and migrations | Pending | Workspaces/membership/reservations/goals/receipts preserve existing data; transactional 12/36 checks; unique release; migration/restart/partial-commit tests; no second transcript store |
 | 5 | S05: Portable authorized control interfaces | Pending | Negotiated operations only; authenticated principal/role; idempotency and lost-reply reconciliation; unsupported capabilities explicit; old clients remain compatible |
@@ -336,3 +336,42 @@ Continue with S03b local transport and native execution fencing. Exact target
 hardware/OS access and the native/mobile fixture matrix are still needed for
 their dependent acceptance; they are not silently replaced by this machine's
 unit/process results. No live provider, user profile or `verify:ui:*` was used.
+
+## S03b-1 local discovery implementation
+
+The opt-in Windows owner-discovery channel is implemented as separate protocol,
+native identity and pipe-lifecycle modules. It supports only `status`, validates
+both process peers, derives its address from SID plus directory volume/file ID,
+and claims the pipe after the data-directory lock but before AppState/recovery.
+Queries never create or migrate profiles. See the
+[discovery ADR](../adr/windows-owner-discovery.md).
+
+Eight Rust protocol/native tests pass, including 100 sequential real-pipe
+queries, restricted-token ACL denial, malformed/oversized/truncated frames,
+stale epochs, competing listeners, timeout and restart. The shared package's
+source-only suite passes 680 tests in 54 files; an earlier default invocation
+selected both source and generated dist tests and is not double-counted.
+Shared build, scoped lint and strict Rust Clippy pass.
+
+Candidate binary validation encountered `LNK1318` followed by an explicit
+disk-full error on D:. Only the identified failed task incremental cache is
+removed; the retry reuses dependencies, disables this build's incremental
+output and directs PDB data to session scratch with a larger page size. No
+user data or another task's cache is deleted. Real CLI/ownership acceptance
+is recorded once the rebuilt binary passes; it remains pending until then.
+Native execution fencing, durable transfer and later milestones remain open.
+
+The recovered Host build succeeds with the documented PDB override. The real
+owner-discovery CLI passes eight checks, including both counterfeit-peer
+directions, default-off behavior, junction aliases, stale epoch and pipe-name
+collision before database mutation. Fourteen owned test processes close.
+Final candidate binary SHA-256:
+`e26511096476e2374d938188f8527ebee0bc5b2cc55269e59fbbc681024086d9`.
+The data-directory ownership compatibility regression is checked separately.
+No full Rust rerun is claimed for this slice; the new native/contract tests,
+strict all-target Clippy, shared source suite and real process paths are the
+targeted gates. Current-user discovery does not close S03b execution handoff.
+The existing real-process data-directory-owner compatibility suite also passes
+all seven checks with confirmed cleanup on this candidate. S03b-1 discovery
+is ready for the next dependent implementation slice; exact committed-candidate
+evidence is retained separately.

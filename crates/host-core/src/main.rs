@@ -13,6 +13,7 @@ mod mode_runs;
 mod network_policy;
 mod network_proxy;
 mod notifications;
+mod owner_control;
 mod permissions;
 mod personal_todos;
 mod plans;
@@ -62,6 +63,7 @@ fn main() -> anyhow::Result<()> {
 async fn run(
     data_owner: &mut Option<data_directory_owner::DataDirectoryOwner>,
 ) -> anyhow::Result<()> {
+    owner_control::validate_cli()?;
     if data_relocation::run_cli()? {
         return Ok(());
     }
@@ -90,6 +92,9 @@ async fn run(
                 .unwrap_or_else(|| std::path::PathBuf::from("."))
                 .join(".pi-desktop")
         });
+    if owner_control::query_cli(&data_dir).await? {
+        return Ok(());
+    }
 
     std::fs::create_dir_all(&data_dir)?;
     // Hold through shutdown: a losing startup must not migrate or recover a
@@ -97,6 +102,7 @@ async fn run(
     *data_owner = Some(data_directory_owner::DataDirectoryOwner::acquire(
         &data_dir,
     )?);
+    let owner_control = owner_control::Control::start(&data_dir)?;
     std::fs::create_dir_all(data_dir.join("logs"))?;
     std::fs::create_dir_all(data_dir.join("plugins/installed"))?;
     std::fs::create_dir_all(data_dir.join("plugins/data"))?;
@@ -128,5 +134,5 @@ async fn run(
         state.clone(),
         session_worktrees::git::GitRunner::default(),
     ));
-    rpc::serve(state).await
+    owner_control.serve(rpc::serve(state)).await
 }

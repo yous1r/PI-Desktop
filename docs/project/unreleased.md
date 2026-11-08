@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Add opt-in Windows Host owner discovery with `--owner-control` and
+  `--owner-status`. Queries authenticate both local peers and report a live
+  owner without starting a second Host. Default launches remain unchanged;
+  execution transfer is not yet available.
 - Add OpenAI Fast mode (#1657). Allow it per model in Settings → Models for a
   ChatGPT subscription or an OpenAI Responses connection, then type `/fast` to
   turn it on for the current conversation. Requests ask for the priority
