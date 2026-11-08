@@ -245,6 +245,16 @@
   exercises missing-default recovery without showing native dialogs.
   `storage-maintenance.test.mjs` and Rust `data_relocation` tests cover rollback
   and path/filesystem boundaries.
+- **Project capability key regression:** Run
+  `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-relocation-capability-keys.mjs`
+  with `PI_SCRATCH_DIR` set. The real offline CLI rewrites a copied synthetic
+  profile containing a disabled project capability. Its destination identity must
+  match the normalized lookup key; the old identity disappears and global,
+  external-project and source settings stay unchanged. Repeating relocation
+  preserves bytes. A canonical destination-key collision fails without rewriting
+  the capability file. Record candidate/base revisions and binary/script hashes.
+  This exercises the CLI/storage boundary; it does not certify the Settings UI
+  or multi-file rollback after an unrelated later failure.
 
 
 ### E2E-LEGACY-DICTATION-idle-model-release

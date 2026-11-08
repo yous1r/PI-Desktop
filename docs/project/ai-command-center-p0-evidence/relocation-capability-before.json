@@ -1,0 +1,10 @@
+{
+  "status": "FAIL",
+  "candidate": "2d7a8534ee71c0d5b87361f04ca71ece0c20a0d1",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": true,
+  "binarySha256": "b892cb1e584a8cea0a5189bc622ad9a9173b1bc5ed17fda0bcaf771880769203",
+  "scriptSha256": "1d35dea0bf969e39c903c352bb293269d8e5ae433407dad8c0f8bf5d4e11b509",
+  "checks": [],
+  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n+ actual - expected\n\n+ undefined\n- false\n\n    at file:///D:/Packages/PI-Desktop/worktrees/windows-relocation-capability-keys/scripts/e2e-relocation-capability-keys.mjs:40:10"
+}

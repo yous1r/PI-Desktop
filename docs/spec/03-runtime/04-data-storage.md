@@ -150,6 +150,12 @@ Relocated project database paths and project-memory/instruction keys retain the
 repository's normalized project-path spelling. In particular, Windows migration
 must not turn slash-normalized lookup keys into mixed-separator keys that make
 existing project memory appear empty after reopening the Host.
+Project capability override identities also retain that normalized spelling:
+the serialized JSON key must match `CapabilityState` lookup after relocation.
+A disabled project capability stays disabled at the destination. Global and
+external-project identities remain unchanged. Two identities resolving to the
+same destination key fail before rewriting that capability-state file; retrying
+an already relocated file does not change it.
 
 Only after validation/relocation succeeds is the flushed bootstrap pointer
 atomically replaced. Errors keep the old profile active and visible in settings;

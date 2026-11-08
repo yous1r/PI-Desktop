@@ -105,3 +105,28 @@ baseline compatibility failures relevant to safe ownership handoff, then the
 idle-only transfer journal/sidecar fencing and recovery flow. Receipt retention
 and real native/mobile workload inputs remain required before their dependent
 steps are accepted.
+
+## Windows relocation prerequisite
+
+The three previously failing relocation tests now pass in the focused group
+(9/9), together with 20/20 capability-state tests. Native Windows path output
+must be normalized before serializing a project capability identity; otherwise
+the destination lookup loses a disabled override and misses key collisions.
+The legacy-schema test now compares database paths using the existing canonical
+database spelling rather than native separators. No schema or casing rule changes.
+
+The old ownership-candidate binary fails the real offline CLI regression at the
+destination disabled-key assertion; retain the
+[failing report](ai-command-center-p0-evidence/relocation-capability-before.json).
+The rebuilt candidate passes all four CLI checks: canonical project identity,
+global/external/source preservation, repeated-run byte idempotence, and collision
+refusal without capability-file rewrite. Exact committed-candidate evidence is
+recorded after commit. Formatting, capability/relocation tests, Host build,
+Clippy, script lint and documentation checks pass; Clippy retains four existing
+warnings. No UI, real profile or provider is used.
+
+This resolves the three selected relocation failures, not the remaining 17
+baseline failures or the full-suite integration gate. The next applicable
+prerequisite is Windows background-process termination, before full S03b handoff.
+The earlier full Rust result remains historical; it has not been rerun or
+retroactively changed.

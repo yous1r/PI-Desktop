@@ -249,7 +249,10 @@ fn rewrite_capability_state(path: &Path, roots: &Roots) -> Result<()> {
                 .as_deref()
                 .and_then(|path| roots.remap(path))
             {
-                identity.project_path = Some(project);
+                // CapabilityState looks up the serialized key byte-for-byte;
+                // remapping a Windows Path produces backslashes, not its stored spelling.
+                identity.project_path =
+                    Some(crate::agent_capabilities::normalize_project_path(&project));
                 changed = true;
                 serde_json::to_string(&identity)?
             } else {
