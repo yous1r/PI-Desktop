@@ -448,6 +448,7 @@ export function createSidecarRuntime({
   // short-lived `ModelAuth`. The refresh token never crosses this boundary.
   const ownerBridge = createPluginExtensionOwnerBridge({
     launches: s.extensionOwnerLaunches, getHost: () => runtimeState.host,
+    isAdmissionClosed: () => runtimeState.handoffAdmission.isClosed(),
     plugins, pluginActiveInProject,
   });
   s.setExtensionOwnerLifecycle(ownerBridge);

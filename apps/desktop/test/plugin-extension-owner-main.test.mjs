@@ -54,7 +54,7 @@ async function fixture(t, dispatch, mode = "agent") {
   const sidecar = new AgentSidecar(() => {}, { command: process.execPath, args: ["-e", childSource] });
   const records = new Map([["session", { id: "session", mode, projectPath: "/project", parentSessionId: "host-parent" }]]);
   const listeners = new Set(); const calls = []; let available = true; let hostGate;
-  const host = { call: async (method, params) => {
+  const host = { generation: "host-generation", isAvailable: () => true, call: async (method, params) => {
     if (hostGate) { hostGate.entered?.resolve(); await hostGate.promise; }
     if (method === "worktree.location") return { path: records.get(params.sessionId)?.worktree?.path };
     assert.equal(method, "session.get"); return { session: structuredClone(records.get(params.id) ?? null) };
@@ -68,6 +68,7 @@ async function fixture(t, dispatch, mode = "agent") {
     },
   };
   const bridge = createPluginExtensionOwnerBridge({ launches: sidecar.extensionOwnerLaunches, getHost: () => host, plugins,
+    isAdmissionClosed: () => false,
     pluginActiveInProject: (_plugin, project) => project === "/project" || project === "remote:ssh/project" });
   sidecar.setExtensionOwnerLifecycle(bridge);
   sidecar.setTrustedExtensionBridge({ ...bridge, publishCommands() {}, publishDiagnostics() {}, requestUi: async () => ({}),

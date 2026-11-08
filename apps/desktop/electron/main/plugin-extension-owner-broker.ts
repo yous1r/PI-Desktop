@@ -1,3 +1,4 @@
+import { ExternalResourceActivity } from "./external-resource-activity";
 import {
   clonePluginExtensionData, PLUGIN_EXTENSION_OWNER_TIMEOUT_MS, PLUGIN_EXTENSION_SHUTDOWN_TIMEOUT_MS,
   type PluginExtensionCallContext, type PluginExtensionOperation,
@@ -9,6 +10,9 @@ export type ExtensionOwnerSession = Omit<PluginExtensionCallContext, "runtimeId"
   extensions: Array<{ id: string; ownerPluginId: string; operations: PluginExtensionOperation[] }>;
 };
 export type ExtensionOwnerBrokerDeps = {
+  isAdmissionClosed(): boolean;
+  /** The bridge's original Host and generation must still own this connection. */
+  assertOwner(session?: ExtensionOwnerSession): void;
   /** Must return only sessions launched through this sidecar/host, from authoritative records. */
   resolveSession(sessionId: string, retiring?: ExtensionOwnerSession): Promise<ExtensionOwnerSession | undefined>;
   /** Consume the host's launch binding. Reject a generation not permitted by that launch. */
@@ -19,7 +23,8 @@ export type ExtensionOwnerBrokerDeps = {
 };
 type Generation = { runtimeId: string; session: ExtensionOwnerSession; reason?: PluginExtensionRetirementReason;
   retirementTimer?: ReturnType<typeof setTimeout>; terminalCalls: Set<string> };
-type Pending = { sessionId: string; extensionId: string; runtimeId: string; pluginId?: string; controller: AbortController };
+type Pending = { sessionId: string; extensionId: string; runtimeId: string; pluginId?: string; controller: AbortController;
+  operations: number; finished: boolean };
 const abortError = () => new DOMException("Owner invocation retired", "AbortError");
 function text(value: unknown, label: string, max = 256): string {
   if (typeof value !== "string" || !value.length || value.length > max || /[\x00-\x1f]/.test(value)) {
@@ -53,9 +58,19 @@ export class PluginExtensionOwnerBroker {
   private closed = false;
   private pluginRevision = 0;
   private readonly deps: ExtensionOwnerBrokerDeps;
-  constructor(deps: ExtensionOwnerBrokerDeps) { this.deps = deps; }
-  async registerRuntime(raw: Record<string, unknown>): Promise<{ ok: true }> {
+  private readonly activity: ExternalResourceActivity;
+  constructor(deps: ExtensionOwnerBrokerDeps) { this.deps = deps; this.activity = new ExternalResourceActivity(deps.isAdmissionClosed); }
+  getHandoffActivity() { return { operations: this.activity.snapshot().operations, runtimes: this.generations.size }; }
+  private assertAvailable(retiring = false): void {
     if (this.closed) throw abortError();
+    this.deps.assertOwner();
+    if (!retiring) this.activity.assertOpen();
+  }
+  registerRuntime(raw: Record<string, unknown>): Promise<{ ok: true }> {
+    return this.activity.track(() => this.registerCurrentRuntime(raw));
+  }
+  private async registerCurrentRuntime(raw: Record<string, unknown>): Promise<{ ok: true }> {
+    this.assertAvailable();
     const sessionId = text(raw.sessionId, "session ID");
     const runtimeId = text(raw.runtimeId, "runtime ID");
     const marker = {};
@@ -63,6 +78,8 @@ export class PluginExtensionOwnerBroker {
     this.registrations.set(sessionId, marker);
     try {
       const session = await this.deps.resolveSession(sessionId);
+      this.assertAvailable();
+      if (this.registrations.get(sessionId) !== marker || this.pluginRevision !== pluginRevision) throw abortError();
       if (!session || session.sessionId !== sessionId) throw new Error("Owner session is not authorized");
       if (!Array.isArray(raw.extensionIds) || raw.extensionIds.length > 256 ||
           raw.extensionIds.some((id) => typeof id !== "string") ||
@@ -78,6 +95,7 @@ export class PluginExtensionOwnerBroker {
       const registration: PluginExtensionRuntimeRegistration = { sessionId, runtimeId, mode: session.mode,
         projectPath: session.projectPath, workspaceRoot: session.workspaceRoot, remoteWorkspace: session.remoteWorkspace, extensionIds };
       if (!await this.deps.acceptRuntime(registration, session)) throw new Error("Runtime generation is not authorized by the host launch");
+      this.assertAvailable();
       if (this.closed || this.registrations.get(sessionId) !== marker || this.pluginRevision !== pluginRevision) throw abortError();
       const previous = this.generations.get(sessionId);
       if (previous?.runtimeId === runtimeId) {
@@ -92,7 +110,10 @@ export class PluginExtensionOwnerBroker {
     }
   }
 
-  async callOwner(raw: Record<string, unknown>): Promise<unknown> {
+  callOwner(raw: Record<string, unknown>): Promise<unknown> {
+    return this.activity.track(() => this.callCurrentOwner(raw));
+  }
+  private async callCurrentOwner(raw: Record<string, unknown>): Promise<unknown> {
     if (this.closed) throw abortError();
     const requestId = text(raw.requestId, "request ID");
     const sessionId = text(raw.sessionId, "session ID");
@@ -105,13 +126,14 @@ export class PluginExtensionOwnerBroker {
     const payload = clonePluginExtensionData(raw.payload);
     const generation = this.generations.get(sessionId);
     if (!generation || generation.runtimeId !== runtimeId) throw new Error("Stale or unknown owner runtime");
+    this.assertAvailable(Boolean(generation.reason) && operation === "retire");
     const controller = new AbortController();
-    const pending: Pending = { sessionId, extensionId, runtimeId, controller };
+    const pending: Pending = { sessionId, extensionId, runtimeId, controller, operations: 0, finished: false };
     this.pending.set(requestId, pending);
     const timer = setTimeout(() => controller.abort(new DOMException("Owner call timed out", "TimeoutError")), PLUGIN_EXTENSION_OWNER_TIMEOUT_MS);
     const { signal } = controller;
     try {
-      const session = await wait(this.deps.resolveSession(sessionId, generation.reason ? generation.session : undefined), signal);
+      const session = await this.waitOriginal(requestId, pending, () => this.deps.resolveSession(sessionId, generation.reason ? generation.session : undefined));
       signal.throwIfAborted();
       const grant = this.validateCall(session, generation, extensionId, operation, turnId);
       if (generation.reason) {
@@ -130,22 +152,38 @@ export class PluginExtensionOwnerBroker {
         ...(session!.parentSessionId ? { parentSessionId: session!.parentSessionId } : {}),
         ...(generation.reason ? { retirementReason: generation.reason } : {}), signal,
       };
-      const result = await wait(this.deps.dispatch(grant.ownerPluginId, operation, payload, context), signal);
+      const result = await this.waitOriginal(requestId, pending, () => this.deps.dispatch(grant.ownerPluginId, operation, payload, context));
       signal.throwIfAborted();
+      this.assertAvailable(Boolean(generation.reason) && operation === "retire");
       // Recheck grants, turn and scope after asynchronous plugin work; never publish a stale result.
-      const current = await wait(this.deps.resolveSession(sessionId, generation.reason ? generation.session : undefined), signal);
+      const current = await this.waitOriginal(requestId, pending, () => this.deps.resolveSession(sessionId, generation.reason ? generation.session : undefined));
       const currentGrant = this.validateCall(current, generation, extensionId, operation, turnId);
       if (currentGrant.ownerPluginId !== grant.ownerPluginId) throw abortError();
       return clonePluginExtensionData(result);
     } finally {
       clearTimeout(timer);
-      this.pending.delete(requestId);
+      pending.finished = true;
+      this.releasePending(requestId, pending);
       controller.abort(abortError());
     }
   }
 
+  private releasePending(requestId: string, pending: Pending): void {
+    if (pending.finished && pending.operations === 0 && this.pending.get(requestId) === pending) this.pending.delete(requestId);
+  }
+  private waitOriginal<T>(requestId: string, pending: Pending, operation: () => Promise<T>): Promise<T> {
+    pending.controller.signal.throwIfAborted();
+    return wait(this.activity.track(async () => {
+      pending.operations++;
+      try { return await operation(); }
+      finally { pending.operations--; this.releasePending(requestId, pending); }
+    }), pending.controller.signal);
+  }
+
   private validateCall(session: ExtensionOwnerSession | undefined, generation: Generation,
     extensionId: string, operation: string, turnId: string | undefined) {
+    this.assertAvailable(Boolean(generation.reason) && operation === "retire");
+    this.deps.assertOwner(session);
     if (!session || this.generations.get(session.sessionId) !== generation || !sameScope(session, generation.session) ||
         session.turnId !== turnId || (generation.reason && generation.session.turnId !== turnId)) {
       throw new Error("Owner session, turn or generation is stale");
@@ -178,7 +216,7 @@ export class PluginExtensionOwnerBroker {
   }
 
   retireRuntime(raw: Record<string, unknown>): { ok: true } {
-    if (this.closed) throw abortError();
+    this.assertAvailable(true);
     const sessionId = text(raw.sessionId, "session ID");
     const runtimeId = text(raw.runtimeId, "runtime ID");
     const reason = retirementReason(raw.reason);

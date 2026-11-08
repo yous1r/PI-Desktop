@@ -1307,3 +1307,62 @@ The archive preserves raw logs as exact JSON strings with byte hashes and the
 native bundle-input manifest. Focused inputs are not a complete dependency
 manifest. This surface/shortcut slice is accepted within its stated scope;
 remaining external owners and complete H1 composition continue.
+
+## H1 extension-owner activity checkpoint
+
+The plugin extension-owner broker now requires shared admission and original
+Host authority. Its bridge captures the Host object and startup generation at
+creation, checks availability and exact launch identity across awaits and caller
+continuations, and refuses registration before consuming a stale launch binding.
+Ordinary calls stop before lookup when admission is closed. Registration, original
+scope queries, plugin dispatch and result validation remain counted after caller
+cancellation, timeout or broker disposal. The original request ID and one of the
+existing 256 request slots remain reserved until that work settles.
+
+The Desktop sidecar aggregates current and retiring owner bridges, accepted RPCs
+and cleanup calls. Empty completed retired records can be compacted; pending or
+unknown activity remains visible. Original session disposal cannot close a newer
+lifecycle or launch, and a stale idle-retirement query cannot send disposal or a
+replacement prompt. Failed session/shutdown cleanup keeps saturated refusal
+evidence after late replies and ordinary root exit.
+
+The existing authorized retirement path remains single-use, bounded to two
+seconds and subject to live mode, grants, frozen turn identity and cancellation.
+The plugin process receives only the existing wire contract. A host-only marker
+on the original call permits its active descendants through temporary admission
+closure while preserving exact parent/installation checks and permanent shutdown.
+Ordinary calls receive no bypass. No public SDK, Rust schema, persistence,
+permissions or V3 interface contract changes.
+
+Twenty-six new deterministic regression/boundary cases and six real plugin-process
+paths pass, including two new closed-admission retirement paths. The initial 21
+cases produced 16 behavioral failures and five missing-statistics baselines.
+The real retirement path additionally reproduced `HOST_BUSY` in the plugin send
+layer. A later boundary check exposed an ordinary retiring call performing a Host
+lookup before rejection; its admission guard now runs before that lookup.
+Three old broker assertions reused a cancelled, still-owned request ID; they now
+use a fresh request ID to verify stale generation rejection without bypassing the
+new original-work reservation.
+
+The existing actual runtime path loads a trusted extension, recalls into a local
+HTTP model fixture, advances its turn and retires with the frozen identity. Main
+sidecar routing, Plan/Goal writes, grants, last-turn retirement, two-second expiry,
+session deletion, plugin unload, file audits and descendant cancellation remain
+covered. The related run passes 123 unique tests across eleven files; the final
+affected five-file selection passes all 68. Full Desktop source types, Biome 309
+files, architecture, agent policy, whitespace and 631 documentation-page checks
+pass. All runs so far are pre-commit checks; clean-candidate acceptance follows.
+
+Process fixtures use original child handles and isolated state, and the plugin
+child environment is sanitized. Six new sidecar process fixtures confirm their
+original roots exiting; six plugin process cases confirm child closure and empty
+stderr. Retained uncertainty remains positive where cleanup or native-family
+qualification is unknown. These observations are not complete descendant-family
+certificates and do not enable an ownership transfer endpoint.
+
+Next: finish other trusted-extension resource owners, user-MCP raw transport and
+OAuth, speech/voice and remote Host ownership. Then compose all nineteen families,
+bounded original-Rust journal status and the fenced Desktop/coordinator factory.
+H2-H5 and the rest of the approved dependency plan remain in progress. No live
+Desktop/profile/provider, microphone, real SSH, paid API, dependency installation,
+hardware qualification or remote delivery was used for this slice.

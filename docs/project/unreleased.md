@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Keep plugin extension-owner work bound to its original Host generation and
+  launch. Cancelled lookups and callbacks remain counted; replaced bridges and
+  late session cleanup cannot hide work or clear newer ownership. Shared handoff
+  admission blocks ordinary entry while preserving the existing authorized
+  retirement window and descendant cancellation. Full transfer remains pending.
 - Bind plugin panels, embedded views and global shortcuts to shared handoff
   admission and their original installation/registration. Late opens and old
   callbacks cannot use a replacement; timed-out page loads, bridge work and

@@ -69,6 +69,7 @@ async function fixture(t, { mode = "agent", remote = false, dispatch } = {}) {
   const sessions = new Map([[session.sessionId, session]]);
   const calls = [];
   const broker = new PluginExtensionOwnerBroker({
+    isAdmissionClosed: () => false, assertOwner() {},
     resolveSession: async (id) => sessions.has(id) ? structuredClone(sessions.get(id)) : undefined,
     acceptRuntime: async () => true,
     dispatch: async (plugin, operation, payload, context) => {

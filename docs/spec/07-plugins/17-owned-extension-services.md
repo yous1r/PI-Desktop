@@ -49,6 +49,39 @@ For extensions declaring owner capability, `agent_end` notification handlers hav
 
 The retiring generation freezes its last admitted turn identity. A replacement launch cannot relabel that final event. During the two-second retirement window each extension may invoke its declared `retire` operation once; other owner operations and repeated terminal calls are rejected. The live Host mode and current plugin grant still apply, including Agent-to-Plan transitions. Unknown Host modes fail closed; legacy `chat` is read-only Plan. An unloaded plugin invalidates old generations; a later idle launch retires the stale runtime before rebuilding it. Active turns are not interrupted merely to reload an extension.
 
+## Idle handoff and original owner activity
+
+The Main owner bridge requires the application's shared admission gate and binds
+one original Host object and startup generation. Registration and ordinary calls
+fail before Host lookup while admission is closed. Host availability, launch
+identity and admission are checked after awaits, before consuming a launch, before
+the next RPC or plugin dispatch, and before publishing results. A replacement
+Host cannot inherit an existing bridge, including between idle requests.
+
+`PluginExtensionOwnerBroker.getHandoffActivity()` reports original `operations`
+and authorized `runtimes`. Registration work and the original session lookup,
+plugin dispatch and result-validation promises remain counted after cancellation,
+timeout, generation removal or broker disposal. A cancelled request keeps its ID
+and its place in the existing 256-call bound until its original work settles.
+These counts describe activity, not execution capacity or native containment.
+
+The existing two-second, single-use declared `retire` operation remains available
+through closed admission only for the broker's retiring generation. Current
+grants, Plan/Goal restrictions, frozen turn identity and cancellation still apply.
+Main records this authorization on the original plugin-process call, outside the
+wire payload. Descendant SDK calls require that exact active parent and plugin
+installation; ordinary calls and expired descendants gain no admission bypass.
+Permanent plugin-runtime shutdown remains sealed.
+
+`AgentSidecar.getExtensionOwnerActivity()` includes original sidecar calls and
+current or retiring bridge activity. Replacing or disposing a bridge cannot hide
+unfinished work. Completed empty retired records can be compacted; missing or
+invalid reporting refuses handoff. Late session disposal closes only its captured
+lifecycle and launch, and a stale retirement query cannot dispose a replacement.
+Unconfirmed session/shutdown cleanup retains bounded refusal evidence even after
+a late reply or original-child exit. The complete Desktop inventory, other
+trusted-extension resources and native-family qualification remain separate work.
+
 ## Managed connection API
 
 `net.connection` grants access to connections configured in the native plugin settings sheet. The user reviews endpoint, plaintext HTTP consent, optional private CA and exact relative route/method pairs there. Native IPC list/save/delete channels are excluded from desktop-control and plugin panel operations. The SDK exposes no save operation or secret getter.

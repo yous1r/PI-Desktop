@@ -1715,7 +1715,7 @@ export class PluginRuntime {
     const loaded = this.loaded.get(pluginId);
     if (!loaded?.child) throw apiError("NOT_FOUND", "Owner plugin is not loaded");
     return dispatchPluginExtension(loaded, this.toolInvocations,
-      (message, timeout, signal) => this.sendToChild(loaded, message, timeout, signal),
+      (message, timeout, signal) => this.sendToChild(loaded, message, timeout, signal, operation === "retire" && Boolean(context.retirementReason)),
       operation, payload, context);
   }
 
@@ -2189,8 +2189,8 @@ export class PluginRuntime {
       schedules: [...this.restarts.values()].filter(record => record.timer || record.healthy).length };
   }
 
-  private assertPluginCurrent(loaded: LoadedPlugin): void {
-    this.lifecycle.assertAdmission();
+  private assertPluginCurrent(loaded: LoadedPlugin, retiring = false): void {
+    this.lifecycle.assertAdmission(retiring);
     const installation = loaded.installation ?? loaded;
     if (loaded.disposing || installation.disposing || this.loaded.get(loaded.manifest.id) !== installation) {
       throw apiError("PLUGIN_UNLOADED", "Plugin host process is no longer active");
@@ -2842,23 +2842,24 @@ export class PluginRuntime {
     message: Record<string, unknown>,
     timeoutMs: number,
     signal?: AbortSignal,
+    retirement = false,
   ): Promise<unknown> {
-    return this.lifecycle.track(() => this.sendToCurrentChild(loaded, message, timeoutMs, signal));
+    return this.lifecycle.track(() => this.sendToCurrentChild(loaded, message, timeoutMs, signal, retirement));
   }
 
-  private async sendToCurrentChild(loaded: LoadedPlugin, message: Record<string, unknown>, timeoutMs: number, signal?: AbortSignal): Promise<unknown> {
+  private async sendToCurrentChild(loaded: LoadedPlugin, message: Record<string, unknown>, timeoutMs: number, signal?: AbortSignal, retirement = false): Promise<unknown> {
     const teardown = message.t === "call" && (message.method === "lifecycle.unload" || message.method === "service.stop");
-    if (!teardown) this.assertPluginAccess(loaded);
+    if (retirement) this.assertPluginCurrent(loaded, true); else if (!teardown) this.assertPluginAccess(loaded);
     if (!loaded.workspaceContext && loaded.manifest.execution?.main === "workspace" && this.services.resolveWorkspaceExecution && message.t === "call" && message.method !== "lifecycle.unload") {
       const payload = message.payload as {sessionId?:string} | undefined;
-      return this.workspaceTarget(loaded,{sessionId:payload?.sessionId}).then(target=>this.sendToChild(target,message,timeoutMs,signal));
+      return this.workspaceTarget(loaded,{sessionId:payload?.sessionId}).then(target=>this.sendToChild(target,message,timeoutMs,signal,retirement));
     }
     if (loaded.workspaceContext && message.t === "call" && message.method !== "lifecycle.unload" && message.method !== "service.stop") {
       await this.validateWorkspaceInstance(loaded);
       if (loaded.disposing) throw apiError("PLUGIN_GONE", "Workspace plugin process is no longer active");
     }
-    if (!teardown) this.assertPluginAccess(loaded);
-    return sendPluginProcessCall(loaded, message, timeoutMs, signal, this.surfaceInvocation.getStore(), () => this.lifecycle.nativeAttempt());
+    if (retirement) this.assertPluginCurrent(loaded, true); else if (!teardown) this.assertPluginAccess(loaded);
+    return sendPluginProcessCall(loaded, message, timeoutMs, signal, this.surfaceInvocation.getStore(), () => this.lifecycle.nativeAttempt(), retirement);
   }
 
   private handleChildMessage(loaded: LoadedPlugin, message: any): void {
@@ -2895,7 +2896,7 @@ export class PluginRuntime {
           }
           parent?.signal.throwIfAborted();
           this.toolInvocations.current(loaded.installation ?? loaded);
-          if (!parent?.teardown) this.assertPluginCurrent(loaded);
+          if (!parent?.teardown) this.assertPluginCurrent(loaded, parent?.retirement);
         };
         assertCurrent();
         return this.callbackAccess.run({ loaded, assertCurrent }, async () => {

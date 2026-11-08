@@ -11,6 +11,7 @@ function fixture(t, overrides = {}) {
     extensions: [{ id: "e1", ownerPluginId: "demo.owner", operations }] };
   const calls = [];
   const broker = new PluginExtensionOwnerBroker({
+    isAdmissionClosed: () => false, assertOwner() {},
     resolveSession: async (id) => id === session.sessionId ? structuredClone(session) : undefined,
     acceptRuntime: async () => true,
     dispatch: async (...args) => { calls.push(args); return { found: true }; }, ...overrides,
@@ -81,7 +82,7 @@ for (const action of ["replace", "unload", "close"]) test(`${action} invalidates
   if (action === "unload") f.broker.cancelPlugin("demo.owner");
   if (action === "close") f.broker.closeSession("s1");
   await pending; assert.equal(signal.aborted, true); result.resolve("late");
-  await assert.rejects(f.broker.callOwner(f.request), /Stale/);
+  await assert.rejects(f.broker.callOwner({ ...f.request, requestId: "stale-probe" }), /Stale/);
 });
 
 test("grant, mode and turn changes during dispatch cannot publish stale results", async (t) => {

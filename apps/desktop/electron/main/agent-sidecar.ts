@@ -17,6 +17,12 @@ export type {
   VendorAuthResolver,
 } from "@pi-desktop/host-runtime";
 
+type ExtensionOwnerLifecycle = {
+  closeSession(sessionId: string): void;
+  dispose(): void;
+  getHandoffActivity(): { operations: number; runtimes: number };
+};
+
 function resolveSidecarEntry(): string {
   const candidates = [
     join(process.resourcesPath || "", "agent-runtime/sidecar.js"),
@@ -60,14 +66,34 @@ function fallbackStderrLogger(text: string): void {
  */
 export class AgentSidecar extends RuntimeAgentSidecar {
   readonly extensionOwnerLaunches = new PluginExtensionLaunchBindings();
-  private ownerLifecycle?: { closeSession(sessionId: string): void; dispose(): void };
+  private ownerLifecycle?: ExtensionOwnerLifecycle;
+  private readonly ownerLifecycles = new Set<ExtensionOwnerLifecycle>();
+  private ownerOperations = 0;
+  private ownerUncertainty = 0;
   private ownerDisposed = false;
   private readonly ownerRetirements = new Map<string, Promise<void>>();
 
-  setExtensionOwnerLifecycle(lifecycle: { closeSession(sessionId: string): void; dispose(): void }): void {
-    if (this.ownerDisposed) { lifecycle.dispose(); return; }
+  setExtensionOwnerLifecycle(lifecycle: ExtensionOwnerLifecycle): void {
+    if (this.ownerLifecycle === lifecycle) return;
+    this.ownerLifecycles.add(lifecycle);
+    if (this.ownerDisposed) { lifecycle.dispose(); this.getExtensionOwnerActivity(); return; }
     this.ownerLifecycle?.dispose();
     this.ownerLifecycle = lifecycle;
+    this.getExtensionOwnerActivity();
+  }
+
+  getExtensionOwnerActivity() {
+    let operations = this.ownerOperations, runtimes = 0, uncontainedResources = this.ownerUncertainty;
+    for (const owner of this.ownerLifecycles) {
+      const activity = owner.getHandoffActivity?.();
+      if (!activity || ![activity.operations, activity.runtimes].every(value => Number.isSafeInteger(value) && value >= 0)) {
+        uncontainedResources = Math.min(Number.MAX_SAFE_INTEGER, uncontainedResources + 1);
+        continue;
+      }
+      operations += activity.operations; runtimes += activity.runtimes;
+      if (owner !== this.ownerLifecycle && activity.operations === 0 && activity.runtimes === 0) this.ownerLifecycles.delete(owner);
+    }
+    return { operations, runtimes, uncontainedResources };
   }
 
   private disposeExtensionOwner(): void {
@@ -76,45 +102,60 @@ export class AgentSidecar extends RuntimeAgentSidecar {
     this.ownerLifecycle = undefined;
     lifecycle?.dispose();
     this.extensionOwnerLaunches.clear();
+    this.getExtensionOwnerActivity();
   }
 
   private retireInvalidatedOwner(sessionId: string): Promise<void> {
     const existing = this.ownerRetirements.get(sessionId);
     if (existing) return existing;
+    const lifecycle = this.ownerLifecycle, sameLaunch = this.extensionOwnerLaunches.captureCurrent(sessionId);
     const retiring = (async () => {
       const result = await super.call<{ status?: { isRunning?: boolean } }>("agent.getStatus", { sessionId });
+      if (this.ownerDisposed || this.ownerLifecycle !== lifecycle || !sameLaunch()) throw new Error("Extension owner changed during retirement");
       if (result.status?.isRunning !== false) throw new Error("Cannot reload an active extension runtime");
       await this.call("agent.disposeSession", { sessionId, reason: "reconfigure" }, 3_000);
     })();
     this.ownerRetirements.set(sessionId, retiring);
-    void retiring.finally(() => this.ownerRetirements.delete(sessionId)).catch(() => undefined);
+    void retiring.finally(() => { if (this.ownerRetirements.get(sessionId) === retiring) this.ownerRetirements.delete(sessionId); }).catch(() => undefined);
     return retiring;
   }
 
   override async call<T = unknown>(method: string, params: unknown = {}, timeoutOverrideMs?: number): Promise<T> {
+    this.ownerOperations++;
+    try { return await this.callWithExtensionOwner<T>(method, params, timeoutOverrideMs); }
+    finally { this.ownerOperations--; }
+  }
+  private async callWithExtensionOwner<T>(method: string, params: unknown, timeoutOverrideMs?: number): Promise<T> {
     if (this.ownerDisposed) throw new Error("agent sidecar is unavailable");
+    const lifecycle = this.ownerLifecycle;
     if (params && typeof params === "object" && "sessionId" in params && typeof params.sessionId === "string" &&
         this.extensionOwnerLaunches.needsRetirement(params.sessionId)) {
       if (method === "extensions.command.run") throw new Error("Extension runtime changed; start a new turn to reload it");
       if (["agent.prompt", "agent.executeApprovedPlan", "agent.compact"].includes(method)) {
         await this.retireInvalidatedOwner(params.sessionId);
-        if (this.ownerDisposed) throw new Error("agent sidecar is unavailable");
+        if (this.ownerDisposed || this.ownerLifecycle !== lifecycle) throw new Error("agent sidecar is unavailable");
       }
     }
     this.extensionOwnerLaunches.observe(method, params);
+    const sessionId = params && typeof params === "object" && "sessionId" in params ? String(params.sessionId) : undefined;
+    const sameLaunch = sessionId === undefined ? undefined : this.extensionOwnerLaunches.captureCurrent(sessionId);
     try {
       return await super.call<T>(method, params, timeoutOverrideMs);
+    } catch (error) {
+      if (method === "agent.disposeSession" || method === "agent.shutdown") this.ownerUncertainty = Math.min(Number.MAX_SAFE_INTEGER, this.ownerUncertainty + 1);
+      throw error;
     } finally {
-      if (method === "agent.disposeSession" && params && typeof params === "object" && "sessionId" in params) {
-        this.ownerLifecycle?.closeSession(String(params.sessionId));
-        this.extensionOwnerLaunches.close(String(params.sessionId));
+      if (method === "agent.disposeSession" && sessionId !== undefined && this.ownerLifecycle === lifecycle && sameLaunch?.()) {
+        lifecycle?.closeSession(sessionId);
+        this.extensionOwnerLaunches.close(sessionId);
       }
     }
   }
 
   override async dispose(): Promise<void> {
-    this.disposeExtensionOwner();
-    await super.dispose();
+    this.ownerOperations++;
+    try { this.disposeExtensionOwner(); await super.dispose(); }
+    finally { this.ownerOperations--; }
   }
   constructor(onStderr?: StderrHandler, launch?: ConstructorParameters<typeof RuntimeAgentSidecar>[0]["launch"]) {
     super({

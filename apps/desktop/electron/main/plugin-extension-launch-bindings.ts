@@ -55,6 +55,13 @@ export class PluginExtensionLaunchBindings {
     const binding = this.launches.get(sessionId);
     return binding ? structuredClone(binding) : undefined;
   }
+  /** An old completion must not retire a later launch or registered generation. */
+  captureCurrent(sessionId: string): () => boolean {
+    const launch = this.launches.get(sessionId), generation = this.generations.get(sessionId);
+    const invalidated = this.invalidated.has(sessionId);
+    return () => this.launches.get(sessionId) === launch && this.generations.get(sessionId) === generation &&
+      this.invalidated.has(sessionId) === invalidated;
+  }
   accept(registration: PluginExtensionRuntimeRegistration): boolean {
     const binding = this.launches.get(registration.sessionId);
     if (!binding || binding.mode !== registration.mode || binding.projectPath !== (registration.projectPath ?? null) ||

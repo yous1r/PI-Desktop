@@ -2,6 +2,7 @@ import type { LoadedPlugin, PluginPanelBridgeContext } from "./plugin-runtime";
 
 export type PendingPluginCall = {
   teardown: boolean;
+  retirement: boolean;
   signal: AbortSignal;
   owner?: PluginPanelBridgeContext;
   resolve(value: unknown): void;
@@ -19,6 +20,7 @@ export async function sendPluginProcessCall(
   signal: AbortSignal | undefined,
   owner: PluginPanelBridgeContext | undefined,
   uncertain: () => void,
+  retirement = false,
 ): Promise<unknown> {
   const child = loaded.child;
   if (!child) throw callError("NOT_FOUND", `plugin host process gone: ${loaded.manifest.id}`);
@@ -50,6 +52,7 @@ export async function sendPluginProcessCall(
     }, timeoutMs);
     loaded.pending.set(id, {
       teardown: message.t === "call" && (message.method === "lifecycle.unload" || message.method === "service.stop"),
+      retirement,
       signal: controller.signal, owner,
       resolve: value => { if (settled) return; cleanup(); resolve(value); },
       reject: (error, answered = false) => { if (settled) return; if (!answered) uncertain(); cleanup(); controller.abort(error); reject(error); },

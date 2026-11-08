@@ -20200,3 +20200,34 @@ session data is used.
   real OS key injection. No real microphone, live provider or user Desktop/profile
   is used. Page destruction and process exit do not qualify native-family closure,
   the complete nineteen-family Desktop inventory or H1-H5 transfer.
+
+### E2E-HANDOFF-extension-owner-activity
+
+- **Goal:** retain original extension-owner work across cancellation, Host/bridge
+  replacement, session cleanup and closed admission.
+- **Entries:** `apps/desktop/test/handoff-extension-owner.test.mjs` and
+  `plugin-extension-owner-{broker,main,flow,process}.test.mjs`, with current-source
+  loaders and provisioned dependencies. Process fixtures use isolated temporary
+  state; the plugin-process path sanitizes its environment and observes each
+  original child closing with bounded waits.
+- **Faults:** cancel lookup, plugin dispatch or result validation; replace a Host
+  or change its generation while resolving a worktree; close admission or unload
+  during registration; replace a launch in the caller continuation gap; reuse a
+  cancelled request ID or exhaust all 256 original slots; replace a bridge during
+  idle-runtime retirement or session disposal; time out cleanup before a late
+  reply; omit or corrupt a configured lifecycle's activity report.
+- **Expected:** no new ordinary lookup/dispatch after closure, no adoption of a
+  newer Host or launch, no late cleanup of a replacement, and no false zero after
+  cancellation or map removal. Original work remains until settlement; uncertain
+  cleanup and unknown activity keep handoff unavailable.
+- **User path:** real runtime extension startup recalls into a local fixture's
+  model context, uses a later turn and retires under the original identity. A real
+  plugin child receives one authorized retirement through closed admission and
+  returns its descendant SDK reply. In a second path, cancel that retirement,
+  unload the plugin, retain its original host callback until release and reject
+  subsequent mutation. Preserve grants, Plan/Goal restrictions, turn identity,
+  single-use retirement, two-second window and descendant expiry.
+- **Limits:** original child/root exit is observed, not a native-family closure
+  certificate. No live provider, user Desktop/profile, microphone, stored remote
+  Host or paid service is used. Other trusted-extension resources, the complete
+  nineteen-family inventory and H1-H5 transfer remain separate acceptance work.

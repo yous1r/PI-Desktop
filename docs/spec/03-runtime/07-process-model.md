@@ -677,6 +677,16 @@ shortcut removal and plugin child exit retain unqualified native evidence.
 Other external owners and qualified native-family closure must still join before
 connecting a complete inventory to the coordinator.
 
+The plugin extension-owner bridge binds its original Host and startup generation
+and uses the same admission source. Original registration, scope lookup, plugin
+dispatch and result validation remain visible after caller cancellation or bridge
+replacement. The Desktop sidecar retains retired bridge activity and original
+cleanup calls; late disposal cannot clear a new launch. Unconfirmed cleanup keeps
+refusal evidence after late replies or root exit. Only the existing bounded,
+single-use authorized retirement path can run through closed admission, with
+current grants, mode restrictions and descendant cancellation preserved. See the
+[owner activity contract](../07-plugins/17-owned-extension-services.md#idle-handoff-and-original-owner-activity).
+
 This composition does not enable a transfer request. Complete owner inventory,
 bounded source journal transport, native/coordinator integration and target
 readiness remain separate H1-H5 acceptance work.

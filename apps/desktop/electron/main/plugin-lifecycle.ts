@@ -16,9 +16,9 @@ export class PluginLifecycle {
 
   constructor(isAdmissionClosed: () => boolean) { this.isAdmissionClosed = isAdmissionClosed; }
 
-  assertAdmission(): void {
+  assertAdmission(retiring = false): void {
     if (this.sealed) throw pluginLifecycleError("PLUGIN_UNLOADED", "Plugin runtime is shutting down");
-    if (this.isAdmissionClosed()) throw pluginLifecycleError("HOST_BUSY", "Host admission is closed");
+    if (!retiring && this.isAdmissionClosed()) throw pluginLifecycleError("HOST_BUSY", "Host admission is closed");
   }
 
   isClosed(): boolean { return this.sealed || this.isAdmissionClosed(); }
