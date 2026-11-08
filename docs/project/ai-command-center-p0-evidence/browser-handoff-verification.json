@@ -54,13 +54,17 @@
     },
     {
       "name": "browser-handoff-process.log",
-      "bytes": 622,
-      "sha256": "b988b989029a4fdb036cf86035b4cb77b05b77a8474fc0a1b686dc68e67714c9"
+      "bytes": 621,
+      "sha256": "df286008afe95807b0cf9d45432979079e51a338262a9dc66e1285969a553477",
+      "originalBytes": 622,
+      "originalSha256": "b988b989029a4fdb036cf86035b4cb77b05b77a8474fc0a1b686dc68e67714c9",
+      "normalization": "CRLF to LF, matching Git text storage"
     },
     {
       "name": "browser-handoff-regressions.log",
       "bytes": 11430,
       "sha256": "80063add151dbe7e352908e9383a0588ef9e726e533b91ecf1f1fa78cff338ff"
     }
-  ]
+  ],
+  "originalNativeProcessLog": "\r\nBROWSER_HANDOFF {\"status\":\"PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES\",\"passed\":[\"closed empty admission prevents native creation and cancellation restores normal entry\",\"real visible Chromium capture and background session input retain their original page\",\"in-flight native evaluation blocks handoff until its original completion\",\"retired pages close their handles, retain refusal evidence, and cannot reopen after permanent disposal\"],\"activity\":{\"operations\":0,\"uncontainedResources\":7,\"pages\":0},\"originalWebContentsDestroyed\":2,\"allFixtureWindowsClosed\":true,\"qualifiedNativeFamilyClosure\":false,\"electron\":\"43.6.0\"}\n"
 }

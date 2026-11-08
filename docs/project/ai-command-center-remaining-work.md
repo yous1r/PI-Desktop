@@ -997,9 +997,11 @@ The [candidate report](ai-command-center-p0-evidence/browser-handoff-after.json)
 [regressions](ai-command-center-p0-evidence/browser-handoff-regressions.log),
 [failure baselines](ai-command-center-p0-evidence/browser-handoff-before.json)
 and [verification scope](ai-command-center-p0-evidence/browser-handoff-verification.json)
-retain the evidence. Candidate report/log/manifest and test log are byte-identical
-copies; failure logs are preserved as exact JSON strings. Final lint covered 270
-files after including the native harness. No Rust rerun, live-profile operation,
+retain the evidence. Candidate report/manifest and test log are byte-identical
+copies. The native log follows Git's CRLF-to-LF normalization (622 to 621 bytes);
+the verification JSON preserves its exact original text and both hashes. Failure
+logs are also preserved as exact JSON strings. Final lint covered 270 files
+after including the native harness. No Rust rerun, live-profile operation,
 full Desktop transfer or hardware qualification is claimed.
 
 Browser admission/activity is accepted within this scope. Remaining H1 work
