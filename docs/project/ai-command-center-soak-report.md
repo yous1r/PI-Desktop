@@ -261,3 +261,54 @@ during the run. Memory over the hard limit fails the run and triggers owned-tree
 cleanup; it is not a kernel-enforced process cap. The final round is not truncated
 at exactly 3600 seconds. `.ndjson.txt` retained files are the same raw NDJSON bytes
 with a documentation-download-friendly extension.
+
+## Sampling-tail follow-up validation
+
+Candidate `caef22be1c15a3b63d67405f798c7d4be92fb762` incorporates base
+`fd28eb89866ac513912ed109716e7120cf60f18c`. Its collector waits for a sample
+whose collection start (`timestampMs - collectionMs`) follows receipt of the
+worker outcome, after transcript verification and RuntimeService disposal.
+The processes remain alive until the sampling barrier completes.
+
+Four added report regressions failed before the correction. All 24 harness/
+curve tests and targeted Biome checks passed afterward, including collection
+skew and missing/reversed-boundary cases. The 625-page documentation check passed.
+
+A real Host/sidecar candidate regression used 36 sessions, 1 MiB UTF-8, 20 chunks
+at 100-ms intervals, a requested 25-second loop and 250-ms sampling. It completed
+the last round rather than truncating at the requested duration:
+
+| Check | Observed result |
+|---|---:|
+| Actual elapsed | 40,980.702 ms |
+| Completed rounds / verified turns | 3 / 108 |
+| Sampled peak Private Bytes | 1,048,600,576 B |
+| Samples within all stream intervals / last stream only | 25 / 8 |
+| Samples within the entire workload | 163 |
+| Unsampled verification tail | 0 ms |
+| Final sample collection start after outcome receipt | 8.734 ms |
+| Maximum sample gap | 277 ms |
+| Cleanup confirmed | Yes |
+| Final-round reopen verification | 36/36 |
+| Source/dependency hashes matched | 3,560 |
+
+Input-manifest digest:
+`4e3861fbd281b278a96bd59c1775b8d03517734badab4a38030c281741be01e1`.
+Raw run directory: `command-center-p0-36-KZk6uD` under the task's scratch root.
+This short regression proves the corrected collection/verification ordering and
+multi-round accounting, not a new one-hour capacity result. The 250-ms cadence
+target was still missed; startup before ready, teardown, and peaks between samples
+remain outside the claim. Production runtime code was unchanged, so full Desktop
+build, Rust unit tests and another one-hour soak were not repeated for this harness
+correction. The original one-hour evidence above remains unchanged.
+
+Reproduce with the same compatible dependencies and Host binary as the main run:
+
+```sh
+node scripts/e2e-command-center-baseline.mjs \
+  --host-bin /path/to/pi-desktop-host-core.exe --scratch-dir /path/to/scratch \
+  --sessions 36 --context-bytes 1048576 --context-kind utf8 \
+  --ticks 20 --interval-ms 100 --duration-seconds 25 \
+  --budget-bytes 6000000000 --target-bytes 4000000000 --sample-ms 250
+node scripts/e2e-command-center-reopen.mjs /path/to/completed-run
+```
