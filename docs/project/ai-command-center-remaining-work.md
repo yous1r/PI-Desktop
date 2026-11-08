@@ -375,3 +375,13 @@ The existing real-process data-directory-owner compatibility suite also passes
 all seven checks with confirmed cleanup on this candidate. S03b-1 discovery
 is ready for the next dependent implementation slice; exact committed-candidate
 evidence is retained separately.
+
+Committed discovery candidate: `954fbb01c` on base
+`fd28eb89866ac513912ed109716e7120cf60f18c`. The
+[clean CLI report](ai-command-center-p0-evidence/owner-control-after.json)
+passes all eight checks with `dirty:false` and all 14 fixture processes closed.
+The [ownership compatibility report](ai-command-center-p0-evidence/owner-control-ownership-compat.json)
+retains its seven-check pass from the same executable, before commit.
+S03b-1 discovery acceptance is complete on this Windows host. Proceed to the
+native execution fence/startup barrier; cross-platform and complete-transfer
+acceptance remain explicitly separate.

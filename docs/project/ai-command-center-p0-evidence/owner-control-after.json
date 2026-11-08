@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "candidate": "954fbb01cc8719928e703f0df1078aa5d1423fbe",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "binarySha256": "e26511096476e2374d938188f8527ebee0bc5b2cc55269e59fbbc681024086d9",
+  "scriptSha256": "d9f4330cbc28b54ad1b35c1e66028bae4b81442990ca93a904b8207fc00c8558",
+  "checks": [
+    "query does not create an absent profile or start an owner",
+    "same executable discovers live owner and rejects stale owner epoch",
+    "directory junction resolves to the same native profile identity",
+    "same-user Node client cannot use the Host-only control channel",
+    "default Host launch does not enable the control pipe",
+    "graceful/crash close releases pipe; restart issues a fresh owner epoch",
+    "client rejects a same-user counterfeit server before sending the request",
+    "pipe-name collision refuses before database mutation"
+  ],
+  "cleanupConfirmed": true,
+  "processCount": 14
+}
