@@ -2,6 +2,7 @@ export * from "./host-process.js";
 export * from "./workspace-terminal-service.js";
 export * from "./terminal-shell-registry.js";
 export * from "./agent-sidecar.js";
+export * from "./sidecar-handoff-client.js";
 export * from "./runtime-supervisor.js";
 export * from "./host-ports.js";
 export * from "./launch-resolver.js";

@@ -1,3 +1,4 @@
+import type { RuntimeHandoffActivity } from "@pi-desktop/shared";
 import {
   MAX_MUTATION_RECOVERY_FAILURES, BASH_PATCH_FAILURE_KEY,
   RECOVERABLE_MUTATION_ERROR_CODES, mutationFailureKey, isPatchCommand,
@@ -9619,6 +9620,20 @@ Do not invent objections or turn speculative risks into blockers. Stop when the 
       planningState: this.planningState,
       ...(this.pendingPlanId ? { pendingPlanId: this.pendingPlanId } : {}),
       ...(this.agentActivity ? { activity: this.agentActivity } : {}),
+    };
+  }
+
+  /** Read owners directly; cancellation alone never proves a delegate ended. */
+  getHandoffActivity(): RuntimeHandoffActivity {
+    return {
+      turns: Number(this.getStatus().isRunning),
+      children: this.runningDelegations().length,
+      tools: this.activeToolCalls.size + this.delegateToolCalls.size + this.activeToolAborts.size,
+      inputs: this.pendingAskTools.size + Number(this.pendingPlanId !== undefined),
+      settlements: this.activeTurnSettlements.size + Number(this.trustedExtensionLoad !== undefined),
+      // Extensions can retain background effects beyond turn/dispose completion.
+      // Their retirement protocol has not yet qualified idle ownership transfer.
+      unqualifiedResources: this.trustedExtensionSpecs.length,
     };
   }
 

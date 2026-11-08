@@ -19895,3 +19895,33 @@ session data is used.
   not prove complete Desktop resource inventory, durable source prepare/cancel,
   successor readiness, client attachment or minimum-hardware acceptance.
 - **Spec:** [Process model](../03-runtime/07-process-model.md#handoff-admission-prerequisites).
+
+### E2E-HOST-sidecar-handoff-quiescence
+
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-sidecar-handoff.mjs`
+  with `PI_SCRATCH_DIR` on Windows. Use the provisioned Node/esbuild/Pi environment;
+  `PI_COMMAND_CENTER_DEPENDENCIES` optionally selects an existing compatible tree.
+- **Steps:** Bundle current production sidecar and coordinator sources. Launch a
+  real Host plus contained sidecar in a temporary profile. Acquire a strict hold,
+  query by identity, reject ordinary RPC families and malformed requests, and
+  cancel explicitly. Pause the real history-restore reverse call before runtime
+  registration; transfer must refuse. Start a real runtime against a controlled
+  local HTTP stream; transfer must remain busy until runtime cleanup ends. Seal,
+  refuse cancel/new prompt, shut down and confirm original process/native Job
+  closure. Restart a sidecar, initialize its native-session service, and confirm
+  conservative refusal of unqualified native ownership transfer.
+- **Expected:** One local provider request; no execution during held/sealed
+  admission; all counters are zero before successful hold/seal; original child
+  exits and native containment closes. The report names source/base, dirty state,
+  binary/bundle/input hashes and confirmed cleanup.
+- **Lower-level coverage:** Child execution that ignores Stop remains busy after
+  parent cancellation; pending input/plan/tool/settlement and extension resources
+  are reported; unconfirmed retired/replaced resources cannot disappear. Reverse
+  Host timeout remains an unconfirmed blocker. Identity-only status reconciles
+  lost acquire replies, exact hold identity protects cancel/seal, malformed
+  producer/consumer messages refuse, and no transmitted operation auto-replays.
+- **Boundary:** The provider is a deterministic local fixture. This qualifies
+  sidecar quiescence and native teardown, not complete Desktop resources,
+  durable source prepare/cancel, successor readiness, remote/mobile behavior or
+  minimum-hardware capacity.
+- **Spec:** [Private sidecar protocol](../03-runtime/06-host-rpc-protocol.md#private-sidecar-quiescence-protocol).

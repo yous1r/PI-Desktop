@@ -1624,3 +1624,52 @@ the same transaction as retirement and the idempotency receipt. Exact duplicate
 request fingerprints return the stored result; altered payloads conflict.
 Receipt replay never grants execution. This mode has no `prepare`, `ready`,
 tool/model, arbitrary PID/path or ordinary RPC operation.
+
+## Private sidecar quiescence protocol
+
+The Node sidecar advertises `sidecar.health.capabilities.idleHandoff: 1` for its
+process-local `sidecar.handoff` operation over existing private NDJSON stdio.
+This is not Host RPC, RACP, an ownership claim or a durable receipt. Coordinators
+must separately hold their admission gate and verify qualified native containment.
+
+Every request supplies `version: 1`, canonical non-nil UUID `transferId` and
+`sourceEpoch`, and integer `revision` in 1..9,007,199,254,740,991. The revision
+binds this quiescence exchange and does not advance the Rust journal. Strict
+schemas reject unknown fields. Operations:
+
+- `acquire`: synchronously close ordinary RPC and reverse Host admission, inspect
+  runtime owners, and return a new `holdId` only when all counts are zero.
+- `status`: read the same identity, optionally naming `holdId`. Identity-only
+  status reconciles a lost acquisition response without creating a hold.
+- `cancel`: require the exact `holdId`; reopen only a held, unsealed operation.
+  The coordinator calls this only after durable source cancellation is confirmed.
+- `seal`: require the exact `holdId` and zero activity; permanently forbid local
+  cancellation before resource teardown/native fencing.
+
+Responses echo the identity and `holdId`, a `state` of `held`, `sealed` or
+`cancelled`, and explicit nonnegative safe-integer counts: `requests`,
+`executions`, `turns`, `children`, `tools`, `inputs`, `settlements`,
+`nativeSessions`, `unqualifiedResources`. `inputs` includes pending plan
+decisions; `settlements` includes reverse Host requests. Native-service presence
+is a conservative blocker, not an exact count of imported sessions. Loaded
+trusted extensions and unconfirmed retirement/replacement are unqualified.
+
+Pending ordinary requests count before asynchronous runtime construction.
+Acknowledged prompts/approved plans remain counted until their execution promise
+settles. Children still count after parent Stop. Reverse Host timeouts permanently
+retain an unconfirmed marker for that sidecar lifetime: local timeout cannot
+prove a parent-side effect stopped. No new reverse call is sent while held.
+
+While held, only `sidecar.health` and `sidecar.handoff` are available. A sealed
+hold additionally permits `agent.shutdown`; its response is not native closure
+proof. Shutdown closes further admission even if cleanup fails. An exact active
+acquire/seal can return current state. The last cancelled result is a bounded
+process-local reconciliation cache; stale IDs cannot release a later hold and
+no receipt survives process exit here. Rust remains the durable journal owner.
+
+Errors retain stable `HANDOFF_INVALID_REQUEST`, `HANDOFF_INVALID_RESPONSE`
+(consumer validation), `HANDOFF_BUSY`, `HANDOFF_STALE` or `HANDOFF_UNAVAILABLE`.
+The production consumer binds one original transport, validates all response
+fields and operation state, uses a five-second call deadline and never retries a
+transmitted request automatically. Full source transfer and readiness remain
+separate application integration prerequisites.

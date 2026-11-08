@@ -1,3 +1,4 @@
+export * from "./sidecar-handoff.js";
 export * from "./execution-fence.js";
 export * from "./owner-control.js";
 export * from "./plugin-extension-owner.js";

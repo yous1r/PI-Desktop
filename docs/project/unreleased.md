@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Add private sidecar quiescence for ownership handoff, with strict identity,
+  initialization/background execution counts, lost-response reconciliation and
+  irreversible local sealing. Unconfirmed reverse Host calls and unqualified
+  resources refuse transfer. Full application handoff remains under development.
 - Keep ownership-handoff admission closed until explicit source cancellation;
   once native fencing begins, the local hold cannot reopen. Ordinary maintenance
   keeps its existing lease. Plan dispatch now counts session-lock waits and

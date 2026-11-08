@@ -1,3 +1,5 @@
+import { SidecarHandoff } from "./sidecar-handoff.js";
+import { SidecarHandoffInventory } from "./sidecar-handoff-inventory.js";
 import { RuntimeShutdown } from "./extensions/runtime-shutdown.js";
 import { parseMcpServerIds, parseMcpToolNames } from "./mcp-tool-selection.js";
 /**
@@ -73,8 +75,15 @@ function nativeProjectPaths(params: { projectPaths?: unknown } | undefined): str
 }
 
 const runtimes: RuntimeMap = new Map();
-const hostProxy = new ParentHostProxy();
+const hostProxy: ParentHostProxy = new ParentHostProxy(() => handoff.blocksHostCalls());
 const shutdown = new RuntimeShutdown();
+const handoffInventory = new SidecarHandoffInventory(() => runtimes.values(), () => nativePiServiceFactory !== undefined);
+const handoff: SidecarHandoff = new SidecarHandoff(() => {
+  const activity = handoffInventory.inspect();
+  const reverse = hostProxy.handoffActivity();
+  return { ...activity, settlements: activity.settlements + reverse.requests,
+    unqualifiedResources: activity.unqualifiedResources + reverse.unconfirmed };
+});
 function testRuntimeIdentity(sessionId: string) {
   if (process.env.PI_DESKTOP_PLAN_UI_PROBE !== "1") {
     throw Object.assign(new Error("test runtime identity RPC is unavailable"), {
@@ -264,6 +273,8 @@ async function runtimeFor(
     : undefined;
   if (existing && !reusable) {
     await existing.dispose("reconfigure");
+    handoffInventory.retired(existing);
+    if (runtimes.has(sessionId) && runtimes.get(sessionId) !== existing) handoffInventory.lostOwner();
     runtimes.delete(sessionId);
   }
   if (reusable) {
@@ -352,6 +363,7 @@ async function runtimeFor(
     onEvent: (envelope: AgentEventEnvelope) => notify("agent.event", envelope),
     onDiagnostic: (diagnostic) => notify("agent.diagnostic", diagnostic),
   });
+  if (runtimes.has(sessionId)) handoffInventory.lostOwner();
   runtimes.set(sessionId, runtime);
   // Load failures are diagnostics, never a failed prompt (spec 16 §4.4).
   await runtime.loadTrustedExtensions().catch(() => undefined);
@@ -422,7 +434,7 @@ async function handle(method: string, params: any): Promise<unknown> {
       return { ok: true, mode: "host-proxy" };
     }
     case "sidecar.health":
-      return { ok: true, runtimes: runtimes.size, capabilities: { extensionOwner: 1, normalShutdown: 1 } };
+      return { ok: true, runtimes: runtimes.size, capabilities: { extensionOwner: 1, normalShutdown: 1, idleHandoff: 1 } };
     case "native.session.list": {
       const service = await getNativePiService();
       return { sessions: await service.list({ projectPaths: nativeProjectPaths(params) }) };
@@ -502,7 +514,7 @@ async function handle(method: string, params: any): Promise<unknown> {
         ...(params.sessionMessage ? { sessionMessage: params.sessionMessage as SessionMessageOrigin } : {}),
         ...(modeTurn ? { modeTurn } : {}),
       };
-      void runtime.prompt(prompt, userMessageId, turnId).catch((err) => {
+      void handoff.track(() => runtime.prompt(prompt, userMessageId, turnId)).catch((err) => {
         // Rejected-prompt path (pre-flight/transport failures). Streamed
         // provider errors surface via stopReason "error" and are classified
         // and emitted by the runtime itself.
@@ -549,7 +561,7 @@ async function handle(method: string, params: any): Promise<unknown> {
         modeDefinition: undefined,
         turnId,
       });
-      void runtime.executeApprovedPlan(execution, turnId).catch((err) => {
+      void handoff.track(() => runtime.executeApprovedPlan(execution, turnId)).catch((err) => {
         notify("agent.event", {
           sessionId,
           turnId,
@@ -658,11 +670,14 @@ async function handle(method: string, params: any): Promise<unknown> {
       const runtime = runtimes.get(sessionId);
       if (runtime) {
         await runtime.dispose(params.reason === "session-close" || params.reason === "app-quit" ? params.reason : "reconfigure");
+        handoffInventory.retired(runtime);
+        if (runtimes.has(sessionId) && runtimes.get(sessionId) !== runtime) handoffInventory.lostOwner();
         runtimes.delete(sessionId);
       }
       return { ok: true };
     }
     case "agent.shutdown":
+      handoff.dispose();
       return shutdown.shutdown(runtimes, () => nativePiServiceFactory?.().disposeAll());
     default:
       throw Object.assign(new Error(`method not found: ${method}`), {
@@ -687,7 +702,9 @@ readNdjsonLines(process.stdin, async (line) => {
 
   if (!msg.method || msg.id === undefined) return;
   try {
-    const result = await handle(msg.method, msg.params ?? {});
+    const result = msg.method === "sidecar.handoff"
+      ? handoff.control(msg.params)
+      : await handoff.run(msg.method, () => handle(msg.method, msg.params ?? {}));
     respond(msg.id, result);
   } catch (err: any) {
     // Restore validation can fail before a runtime/stream exists. Preserve its

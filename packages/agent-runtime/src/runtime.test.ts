@@ -9546,6 +9546,7 @@ describe("DesktopAgentRuntime subagents", () => {
       expect((runtime as any).delegations.get(delegationId).status).toBe(
         "running",
       );
+      expect(runtime.getHandoffActivity().children).toBe(1);
     } finally {
       vi.useRealTimers();
       subagentRuns.ignoreAbort = false;
@@ -12433,6 +12434,7 @@ describe("DesktopAgentRuntime delegation wait settlement safety", () => {
 
       await runtime.abort();
       await resume;
+      expect(runtime.getHandoffActivity().children).toBe(1);
     } finally {
       subagentRuns.ignoreAbort = false;
       subagentRuns.deferred = false;
@@ -13434,5 +13436,13 @@ describe("parallel policy tool provenance", () => {
       expect(host.call.mock.calls.some(([method]) =>
         ["project.instructions.resolve", "tools.prepareFileCall"].includes(method))).toBe(false);
     } finally { internal.extensionRunner = undefined; await runtime.dispose(); }
+  });
+});
+
+describe("runtime handoff activity", () => {
+  it("reports an unused runtime without creating execution or loading native services", async () => {
+    const runtime = createRuntime();
+    expect(runtime.getHandoffActivity()).toEqual({ turns: 0, children: 0, tools: 0, inputs: 0, settlements: 0, unqualifiedResources: 0 });
+    await runtime.dispose();
   });
 });

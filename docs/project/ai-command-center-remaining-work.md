@@ -3,6 +3,7 @@
 - Basis: [schedule](ai-command-center-schedule.md), [requirements](ai-command-center-requirements.md), [control contracts](ai-command-center-control-contracts.md).
 - Status: Incremental execution; no milestone is closed by planning documents alone.
 - Current branch starts from the committed runtime/soak/sampling corrections.
+- Execution map: [value/risk priorities, parallel dependencies, delivery gates and acceptance](ai-command-center-parallel-work.md).
 
 ## Current correctness status
 
@@ -558,3 +559,34 @@ Rust inputs match the accepted P0-3 binary
 The [initial synchronization failure](ai-command-center-p0-evidence/idle-admission-before.json)
 is retained unchanged. Report and manifest copies were verified byte-for-byte.
 This closes only the admission foundation; full P0-4 acceptance remains open.
+
+## S03b-4 sidecar quiescence candidate
+
+The real Node sidecar now provides strict private `sidecar.handoff`
+acquire/status/cancel/seal. Requests bind a transfer, source epoch and revision;
+the returned hold identity prevents stale cancellation from reopening another
+hold. Ordinary RPC and reverse Host calls close synchronously. Initialization
+requests and acknowledged background executions stay counted through their real
+completion. Runtime counts include children despite parent cancellation, tools,
+pending input/plan decisions and settlement. Native initialization, trusted
+extensions and unconfirmed retirement/replacement conservatively refuse transfer.
+Reverse-RPC timeout keeps a lifetime unconfirmed marker rather than treating
+local promise rejection as closure proof. The coordinator consumer validates
+identity, all counters and operation state, and reconciles by status without
+automatically replaying a lost request.
+
+The runtime/sidecar/proxy/event-coalescing set passes 399 tests;
+consumer/fence/exit compatibility passes 23; shared sidecar/discovery contracts
+pass 4. Source typecheck and configured 205-file lint pass.
+Real contained production sidecar acceptance passes 5 checks on the dirty
+candidate, with one deterministic local provider request and confirmed cleanup.
+The initial process run failed before scenarios because the test bundle banner
+collided with an esbuild helper; its report records confirmed cleanup. A subsequent
+helper edit failed at syntax parsing before processes started. The corrected
+helper and harness pass syntax checks. Clean committed-candidate evidence is
+still required before closing this prerequisite.
+
+Remaining P0-4 work is unchanged: complete coordinator/Host resource admission,
+durable source orchestration, successor readiness and client epoch/snapshot
+reattachment. No full application transfer or platform/capacity acceptance is
+claimed by this sidecar slice.

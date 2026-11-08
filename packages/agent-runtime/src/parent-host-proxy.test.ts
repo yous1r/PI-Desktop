@@ -14,6 +14,39 @@ describe("ParentHostProxy RPC deadlines", () => {
     vi.restoreAllMocks();
   });
 
+  it("reports in-flight calls and preserves unconfirmed timeout after its local promise rejects", async () => {
+    vi.useFakeTimers();
+    const stdout = stubStdout();
+    const proxy = new ParentHostProxy();
+    try {
+      const pending = proxy.call("settings.get", {}, 25);
+      const request = JSON.parse(String(stdout.mock.calls.at(-1)?.[0]));
+      const rejected = expect(pending).rejects.toThrow("parent host proxy timeout");
+      expect(proxy.handoffActivity()).toEqual({ requests: 1, unconfirmed: 0 });
+      await vi.advanceTimersByTimeAsync(25);
+      await rejected;
+      expect(proxy.handoffActivity()).toEqual({ requests: 0, unconfirmed: 1 });
+      proxy.handleParentMessage({ id: request.id, result: {} });
+      expect(proxy.handoffActivity().unconfirmed).toBe(1);
+    } finally { await proxy.dispose(); stdout.mockRestore(); }
+  });
+
+  it("refuses new reverse requests while held, but still consumes an outstanding response", async () => {
+    const stdout = stubStdout();
+    let held = false;
+    const proxy = new ParentHostProxy(() => held);
+    try {
+      const pending = proxy.call("settings.get");
+      const request = JSON.parse(String(stdout.mock.calls.at(-1)?.[0]));
+      held = true;
+      await expect(proxy.call("tools.execute", { toolName: "Write" })).rejects.toMatchObject({ errorCode: "HANDOFF_BUSY" });
+      proxy.handleParentMessage({ id: request.id, result: { ok: true } });
+      await expect(pending).resolves.toEqual({ ok: true });
+      expect(proxy.handoffActivity()).toEqual({ requests: 0, unconfirmed: 0 });
+      expect(stdout.mock.calls.map(call => JSON.parse(String(call[0])).params.method)).toEqual(["settings.get"]);
+    } finally { await proxy.dispose(); stdout.mockRestore(); }
+  });
+
   it("exposes the stable error code received from the host", async () => {
     const stdout = stubStdout();
     const proxy = new ParentHostProxy();

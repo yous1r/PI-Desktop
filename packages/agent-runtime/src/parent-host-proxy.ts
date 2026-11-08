@@ -19,8 +19,9 @@ export class ParentHostProxy {
   private notificationHandlers = new Set<(method: string, params: unknown) => void>();
   private closeHandlers = new Set<ParentHostCloseHandler>();
   private closed = false;
+  private unconfirmedTimeout = false;
 
-  constructor() {
+  constructor(private readonly admissionClosed: () => boolean = () => false) {
     process.stdin.on("end", this.handleParentClose);
     process.stdin.on("close", this.handleParentClose);
     process.stdin.on("error", this.handleParentClose);
@@ -90,12 +91,18 @@ export class ParentHostProxy {
     return () => this.closeHandlers.delete(handler);
   }
 
+  /** A transport timeout is not proof that the parent finished its side effect. */
+  handoffActivity(): { requests: number; unconfirmed: number } {
+    return { requests: this.pending.size, unconfirmed: Number(this.closed || this.unconfirmedTimeout) };
+  }
+
   async call<T = unknown>(
     method: string,
     params: unknown = {},
     timeoutOverrideMs?: number,
   ): Promise<T> {
     if (this.closed) throw new Error("parent host process is unavailable");
+    if (this.admissionClosed()) throw Object.assign(new Error("HANDOFF_BUSY"), { errorCode: "HANDOFF_BUSY" });
     const id = randomUUID();
     const deadlineMs = timeoutOverrideMs ?? rpcTimeoutMs(method, params);
     const payload =
@@ -110,6 +117,7 @@ export class ParentHostProxy {
         ? undefined
         : setTimeout(() => {
             if (this.pending.has(id)) {
+              this.unconfirmedTimeout = true;
               this.pending.delete(id);
               reject(new Error(`parent host proxy timeout: ${method}`));
             }
