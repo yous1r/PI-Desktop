@@ -1048,3 +1048,37 @@ limitation; their assertions pass without changing the dependency or policy.
 Next: finish plugin callback, MCP, workspace and retired-owner accounting, then
 voice/remote owners, nineteen-family aggregation and native/coordinator/source
 transport integration. H1 and the overall command-center plan remain open.
+
+Fixed lifecycle candidate `bb782f73a1fa87054a46a45049b2eb89d5b63f09`, based
+on `fd28eb89866ac513912ed109716e7120cf60f18c`, passed all eighteen lifecycle
+regressions and both real-process paths on Windows/Node 24.12.0. Before/after
+worktree state was clean and fourteen focused source hashes were unchanged;
+this is not a full bundled-input or dependency manifest. All three original
+children exited. Final lifecycle activity had zero operations/plugins/timers
+and retained unqualified native-attempt counts of two and one. Status remains
+`PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+
+The compatibility runs cover 297 unique passing assertions and two skipped
+actual-Git-plugin cases requiring `PI_GIT_PLUGIN_PATH`. Counts are not summed
+across overlapping reruns: final group A passed 121, group B passed 175 with two
+skips, and the final focused 42-case run adds one synchronous-shutdown case and
+rechecks the other affected cases. The clean 18-case candidate run overlaps
+that coverage. The native two-path fixture is reported separately. Final
+checks passed full Desktop source types, Biome 274 files, architecture,
+agent-policy, 631 documentation pages, diff whitespace and current-main ancestry.
+The plugin runtime shrank from 7038 to 6967 lines; new loading/lifecycle modules
+are 96 and 85 lines respectively.
+
+The [candidate report](ai-command-center-p0-evidence/plugin-lifecycle-after.json)
+and [verification, baselines and raw logs](ai-command-center-p0-evidence/plugin-lifecycle-verification.json)
+preserve exact output and scope. The candidate report SHA-256 is
+`9150ce0da1308bd27adfbdd1e6f84c0bbd535903613274f393b2e11c45ac0bb3`;
+the verification archive SHA-256 is
+`e04bc373b9b659b1243e1d0ddc6f824ad6e7067fe01a2c69510b6dce1c997cf8`.
+Raw logs are exact JSON strings, so Git text normalization cannot change their
+embedded newline provenance. No Rust/full-repository rerun, utility-process
+closure qualification, live-profile operation or full transfer is claimed.
+
+Plugin lifecycle admission is accepted within this scope. Plugin callback,
+MCP/workspace and retired-owner aggregation remains the next H1 implementation
+slice; the broader command-center plan continues.

@@ -1,0 +1,128 @@
+{
+  "candidate": "bb782f73a1fa87054a46a45049b2eb89d5b63f09",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "branch": "feat/owner-idle-handoff",
+  "dirty": false,
+  "startedAt": "2026-11-08T18:27:59.456Z",
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "nodeExecutableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "scope": "Plugin lifecycle admission and original-child process observation; not complete plugin inventory, Electron utility-process or native-family qualification",
+  "focusedSourceInputs": [
+    {
+      "path": "apps/desktop/electron/main/plugin-runtime.ts",
+      "sha256": "d5c482dae6683e1d18b2b320d8bcb133af9d9737da520d31784bb59b2b8d68d8"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-loading.ts",
+      "sha256": "e0df958fed9d19314e973cd0e65c232d4a40e5377b496c989379e1163ab44be2"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-lifecycle.ts",
+      "sha256": "9bdf3767ef6c55322012711dfb41eca174b6ec4b1b07e38a7bd7efc841c5066a"
+    },
+    {
+      "path": "apps/desktop/electron/main/services/plugin-services.ts",
+      "sha256": "968a94fb7443306d7fd96cfeed2c5e28efeea4903ae0e0295fc1e9ff1bcbaeab"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-host-process.mjs",
+      "sha256": "edd06b421839c11949ba8e3e9a4bffc2f3b9933dad42ac5dc58c24ec6ffdcaef"
+    },
+    {
+      "path": "packages/host-runtime/plugin-host-process.mjs",
+      "sha256": "8fc1850455053712e248d91734bf4d4b4c5c665a1ad2093094b2cdc69cb16ac7"
+    },
+    {
+      "path": "apps/desktop/electron/main/runtime/handoff-admission.ts",
+      "sha256": "80178a354f57b3bb610cf4c4fe78616148a12668ca530acd3b4d972befbada91"
+    },
+    {
+      "path": "packages/agent-host/src/maintenance-admission.ts",
+      "sha256": "0d457688a02b3239852debc5fb2c04381e73588ae53598af6f35082ae2d7fd35"
+    },
+    {
+      "path": "apps/desktop/test/handoff-plugin-lifecycle.test.mjs",
+      "sha256": "428f6d9de3ab2d891391f90772fbf4aea41ec3de18613761aa5a445601500940"
+    },
+    {
+      "path": "apps/desktop/test/plugin-lifecycle-user-path.e2e.mjs",
+      "sha256": "4cc5299b13249ef6129a0bfc6cdc27a52d8b9318e64ec28e5f68f458505554b3"
+    },
+    {
+      "path": "apps/desktop/test/helpers/current-source-import-hooks.mjs",
+      "sha256": "d504d0271768c4dbb3c09507f2569f2b2f4539559b5f455245e244d1637bfe92"
+    },
+    {
+      "path": "apps/desktop/test/helpers/current-source-vite.mjs",
+      "sha256": "eb9852373c758bfc3c381c79fb6c83fa9ac7e1c86f95014d8540d186d315c235"
+    },
+    {
+      "path": "apps/desktop/test/helpers/owner-runtime-import-hooks.mjs",
+      "sha256": "2e96147278b1dd13baec3c4149e505f22eb9cc97706f959c567218a94c225ff4"
+    },
+    {
+      "path": "apps/desktop/test/helpers/ts-import-hooks.mjs",
+      "sha256": "3d331b92a60dc7cee10fdf1e1d13b56463643b7d1a858e4cbc1d9010c665d907"
+    }
+  ],
+  "inputCoverage": "Focused source hashes, not a complete dependency or bundled-input manifest",
+  "checks": [
+    {
+      "name": "deterministic lifecycle regressions",
+      "args": [
+        "--test",
+        "--test-concurrency=1",
+        "--test-timeout=20000",
+        "test/handoff-plugin-lifecycle.test.mjs"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "stdout": "✔ closed admission rejects plugin load before spawning (4.1358ms)\n✔ shutdown seals pending process startup and cleans only its late child (5.2326ms)\n✔ unload invalidates a startup that has not returned a process yet (2.5199ms)\n✔ a superseded spawn cannot replace or unload a newer loaded plugin (4.867ms)\n✔ admission closing during process creation prevents initialization (2.0487ms)\n✔ a late service start cannot publish running or start its sibling after unload (3.0067ms)\n✔ pending startup remains counted after shutdown until its original promise settles (2.1468ms)\n✔ a later load waits for the original pre-load cleanup (9.1377ms)\n✔ concurrent unloads join one original hook and preserve late-load isolation (4.4097ms)\n✔ unload prevents a pending crash restart from creating another process (6.7663ms)\n✔ shutdown prevents a pending crash restart from creating another process (2.6531ms)\n✔ gate prevents a pending crash restart from creating another process (2.4393ms)\n✔ ordinary unload allows a later explicit load but shutdown remains sealed (2.4249ms)\n✔ a failed native process attempt retains refusal evidence without a loaded entry (2.0404ms)\n✔ shutdown budget does not erase an original unload still awaiting panel cleanup (2.5109ms)\n✔ closed admission still reports a crash but schedules no replacement (1.8399ms)\n✔ a superseded crash restart cannot overwrite the replacement service state (3.5241ms)\n✔ shutdown marks loaded children before any asynchronous cleanup callback (1.9547ms)\nℹ tests 18\nℹ suites 0\nℹ pass 18\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 3087.169\n",
+      "stderr": ""
+    },
+    {
+      "name": "isolated real plugin processes",
+      "args": [
+        "--test",
+        "--test-concurrency=1",
+        "--test-timeout=20000",
+        "test/plugin-lifecycle-user-path.e2e.mjs"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "stdout": "✔ a real plugin service keeps handoff refused through unload, reload and shutdown (99.4258ms)\nℹ {\"originalProcesses\":2,\"originalExitsObserved\":true,\"qualifiedNativeFamilyClosure\":false,\"activity\":{\"operations\":0,\"uncontainedResources\":2,\"plugins\":0,\"schedules\":0}}\n✔ shutdown retains and closes an original real child returned after the budget owner retired (6.7562ms)\nℹ {\"originalProcesses\":1,\"originalExitsObserved\":true,\"qualifiedNativeFamilyClosure\":false,\"activity\":{\"operations\":0,\"uncontainedResources\":1,\"plugins\":0,\"schedules\":0}}\nℹ tests 2\nℹ suites 0\nℹ pass 2\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 3224.0994\n",
+      "stderr": ""
+    }
+  ],
+  "nativeDiagnostics": [
+    {
+      "originalProcesses": 2,
+      "originalExitsObserved": true,
+      "qualifiedNativeFamilyClosure": false,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 2,
+        "plugins": 0,
+        "schedules": 0
+      }
+    },
+    {
+      "originalProcesses": 1,
+      "originalExitsObserved": true,
+      "qualifiedNativeFamilyClosure": false,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 1,
+        "plugins": 0,
+        "schedules": 0
+      }
+    }
+  ],
+  "sourceInputsUnchanged": true,
+  "endedDirty": false,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "endedAt": "2026-11-08T18:28:05.984Z"
+}
