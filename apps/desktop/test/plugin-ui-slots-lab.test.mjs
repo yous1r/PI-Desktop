@@ -52,6 +52,7 @@ function forkPluginProcess({ entry }) {
 /** The lab loaded in a real runtime, with the grants its manifest asks for. */
 async function labRuntime(t) {
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     getWorkspacePath: () => null,

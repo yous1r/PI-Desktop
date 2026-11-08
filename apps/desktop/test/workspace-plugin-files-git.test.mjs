@@ -26,6 +26,7 @@ async function fixture(placement){
  const remote=new RemoteWorkspacePlugins({client:()=>client,authorize:async()=>{}});
  const resources=new WorkspaceResources({chooseCopy:async()=>join(root,'download.txt'),openCopy:async path=>{opened=path;},openBrowser:async(url,sessionId)=>{browser={url,sessionId};},reveal:async(path,sessionId)=>{revealed={path,sessionId};}});
  const runtime=new PluginRuntime({hostEntry:runner,getWorkspacePath:()=>b,spawnWorkspaceProcess:remote.spawn.bind(remote),isWorkspaceExecutionAvailable:remote.available.bind(remote),
+    isAdmissionClosed: () => false,
   resolveWorkspaceExecution:async(input={})=>{const context=contexts[input.sessionId??input.context?.workspaceId??'b'];if(state!=='connected')throw Object.assign(Error('offline'),{code:'HOST_UNAVAILABLE'});if(input.context && input.context!==context)throw Object.assign(Error('changed'),{code:'WORKSPACE_CHANGED'});return context;},
   spawnProcess:({entry,cwd})=>{const child=fork(entry,[],{cwd,execArgv:[],stdio:['ignore','ignore','ignore','ipc']});return {postMessage:message=>{if(child.connected)child.send(message);},onMessage:fn=>child.on('message',fn),onExit:fn=>child.on('exit',code=>fn(code??0)),kill:()=>child.kill()};},showToast:()=>{},
   openWorkspaceResource:input=>resources.open(input),closeWorkspaceResources:id=>resources.closeOwner(id),disposeWorkspaceResources:()=>resources.dispose()});
@@ -111,6 +112,7 @@ for(const mode of ['legacy-host','denied'])test(`File Manager falls back to scop
  const client={state:()=>'connected',generation:()=>1,handleServerRequest:()=>()=>{},subscribeState:()=>()=>{},request:async()=>{if(mode==='legacy-host')throw Object.assign(Error('old'),{code:'CAPABILITY_UNAVAILABLE'});return{ok:true};}};
  const remote=new RemoteWorkspacePlugins({client:()=>client,isAuthorized:async()=>false,authorize:async()=>{prompts++;throw Object.assign(Error('denied'),{code:'PERMISSION_DENIED'});}});
  const runtime=new PluginRuntime({hostEntry:runner,getWorkspacePath:()=>workspacePath,resolveWorkspaceExecution:async()=>context,spawnWorkspaceProcess:remote.spawn.bind(remote),isWorkspaceExecutionAvailable:remote.available.bind(remote),forgetWorkspacePluginDecisions:id=>remote.forget(id),
+    isAdmissionClosed: () => false,
   spawnProcess:({entry,cwd})=>{const child=fork(entry,[],{cwd,execArgv:[],stdio:['ignore','ignore','ignore','ipc']});return {postMessage:message=>{if(child.connected)child.send(message);},onMessage:fn=>child.on('message',fn),onExit:fn=>child.on('exit',code=>fn(code??0)),kill:()=>child.kill()};},
   getWorkspaceInfo:()=>({path:workspacePath,name:'remote',projectId:'p',roots:[{path:workspacePath,name:'remote',primary:true}],remote:{hostKey:'host',path:remoteRoot,readOnly:true}}),
   readRemoteWorkspaceFiles:async request=>{assert.equal(request.workspacePath,workspacePath);const {createWorkspacePluginFiles}=await import('../../pi-host/src/plugin-workspace-files.ts');return createWorkspacePluginFiles({browseRoot:root,protectedPaths:[data]}).read({path:remoteRoot,operation:request.operation,ref:request.ref,scope:request.scope});},showToast:()=>{}});

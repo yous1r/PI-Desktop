@@ -143,6 +143,7 @@ test("an unchanged snapshot is announced once", () => {
 test("plugin session follow reads the snapshot and refuses a stale reveal", async (t) => {
   const revealed = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     getActiveSession: () => ({
@@ -203,6 +204,7 @@ test("plugin session follow reads the snapshot and refuses a stale reveal", asyn
 test("revealing a work-panel view requires the view permission", async (t) => {
   const revealed = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     getActiveSession: () => ({ sessionId: "s1", projectPath: null, activeTurn: null }),
@@ -239,6 +241,7 @@ test("revealing a work-panel view requires the view permission", async (t) => {
 
 test("a docked view reads the same snapshot through the panel bridge", async (t) => {
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     getActiveSession: () => ({ sessionId: "s7", projectPath: "/work/pi", activeTurn: null }),
@@ -261,6 +264,7 @@ test("a docked view reads the same snapshot through the panel bridge", async (t)
 test("a project-scoped plugin cannot follow or reveal outside its project", async (t) => {
   const revealed = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     getActiveSession: () => ({ sessionId: "s9", projectPath: "/work/other", activeTurn: null }),
@@ -337,6 +341,7 @@ test("broadcastEvent's filter keeps an out-of-scope plugin from receiving the se
   };
   let currentId = "demo.in-scope";
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: spawnWithSpy,
     isPluginActiveInProject: (pluginId) => pluginId === "demo.in-scope",

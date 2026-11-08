@@ -26,6 +26,7 @@ async function harness(t, { permissions = ["fs.read"], scope = ["docs/**"], read
   const requests = []; const audits = [];
   let workspace = REMOTE;
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: fileURLToPath(new URL("../electron/main/plugin-host-process.mjs", import.meta.url)),
     spawnProcess({ entry }) {
       const child = fork(entry, [], { stdio: ["ignore", "pipe", "pipe", "ipc"] });

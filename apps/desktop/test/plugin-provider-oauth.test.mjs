@@ -28,6 +28,7 @@ function forkPluginProcess({ entry }) {
 
 function createRuntime(t, services = {}) {
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     ...services,

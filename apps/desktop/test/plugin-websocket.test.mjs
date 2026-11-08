@@ -450,6 +450,7 @@ function createSocketStub() {
 function createRuntime(t, { pluginSockets } = {}) {
   const audits = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     audit: (entry) => audits.push(entry),

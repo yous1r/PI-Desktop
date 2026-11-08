@@ -58,6 +58,7 @@ function createRuntime(t) {
   const audits = [];
   const changes = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     audit: (entry) => audits.push(entry),
@@ -288,6 +289,7 @@ test("quitting stops plugin hosts as a shutdown, not as a crash", async () => {
   });
   const crashes = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     onPluginCrash: (info) => crashes.push(info),
@@ -318,6 +320,7 @@ test("quitting is not held open by a plugin that will not unload", async () => {
   });
   const crashes = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     onPluginCrash: (info) => crashes.push(info),
@@ -432,6 +435,7 @@ test("Windows hard-fault exit codes stay unsigned across crash surfaces", async 
   const audits = [];
   const crashes = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: () => {
       child = fakePluginProcess();

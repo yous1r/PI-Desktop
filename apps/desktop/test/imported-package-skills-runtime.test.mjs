@@ -64,6 +64,7 @@ function createHarness(t, { skillsOnly = false, packageType } = {}) {
 
   const audits = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry,
     spawnProcess: ({ entry }) => {
       // Execute only the repository's real plugin host and the importer's

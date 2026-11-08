@@ -38,6 +38,7 @@ function writePlugin(id, permissions, main) {
 
 function createRuntime(t, calls, extraServices = {}) {
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     desktopControl: {

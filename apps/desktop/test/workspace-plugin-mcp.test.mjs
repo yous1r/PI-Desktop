@@ -87,6 +87,7 @@ for (const placement of ["local", "remote"]) for (const companion of [false,true
  const remote=new RemoteWorkspacePlugins({client:()=>client,authorize:async()=>{nativeApprovals++;}});
  const audits=[];
  const runtime=new PluginRuntime({audit:entry=>audits.push(entry),hostEntry:runner,getWorkspacePath:()=>contexts[selected].roots[0].path,spawnWorkspaceProcess:remote.spawn.bind(remote),
+    isAdmissionClosed: () => false,
   resolveWorkspaceExecution:async(input={})=>{
    const ctx=contexts[input.sessionId??input.context?.workspaceId??selected];
    if(input.context && input.context!==ctx)throw Object.assign(Error('changed'),{code:'WORKSPACE_CHANGED'});

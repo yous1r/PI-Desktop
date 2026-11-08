@@ -17,6 +17,7 @@ for (const granted of [["agent.prompt.inject"], []]) {
     const dir = await mkdtemp(join(process.env.PI_SCRATCH_DIR || tmpdir(), "pi-permission-query-"));
     const exits = [];
     const runtime = new PluginRuntime({
+      isAdmissionClosed: () => false,
       hostEntry,
       spawnProcess: ({ entry }) => {
         const child = fork(entry, [], { stdio: ["ignore", "pipe", "pipe", "ipc"] });

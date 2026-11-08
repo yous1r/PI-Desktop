@@ -50,6 +50,7 @@ function makeRuntime(t, services = {}) {
   const audits = [];
   const toasts = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     getLocale: () => "zh-CN",

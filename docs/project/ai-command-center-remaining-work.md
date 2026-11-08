@@ -1009,3 +1009,42 @@ continues with plugin, voice and remote owners, mandatory nineteen-family
 composition, bounded Rust status transport and native/coordinator integration.
 The background-capture defect and native-family closure limits remain explicit
 qualification work.
+
+### H1 plugin lifecycle checkpoint
+
+`PluginLifecycle` and `loadPluginFromPath` extract original-load ownership from
+the plugin runtime. The application passes its required shared admission callback;
+standalone test embeddings declare their admission explicitly. Load identities
+are invalidated by unload, replacement and permanent shutdown. Late native
+handles are cleaned before initialization, and old cleanup cannot delete newer
+registrations. Service startup rechecks ownership between stages; restart records
+are instance-bound so a superseded failure cannot overwrite new service state.
+
+Concurrent cleanup, including the pre-load panel cleanup, joins its original
+promise. Shutdown seals admission and marks children synchronously; expiry of
+the existing three-second caller budget does not erase unfinished work. The
+lifecycle inventory retains original operations, loaded entries, timers and
+saturating unqualified process-attempt evidence. This is an intermediate plugin
+inventory, not the complete nineteen-family adapter or native closure proof.
+
+Validation includes eighteen deterministic lifecycle cases and an isolated
+two-path real Node plugin runner fixture. The native paths exercise empty hold
+and cancellation, service start, command invocation, unload/reload, permanent
+shutdown and late process return; all three original child exits were observed
+in preflight. Native-family closure remains unqualified. Existing permissions,
+tool invocation, extension owner, workspace, UI-slot and service tests cover the
+preserved user paths. Full Desktop source types, lint, architecture and policy
+checks pass. The final candidate and exact totals are recorded after commit.
+
+Verification-environment repairs are limited to explicit test admission, current
+i18n/live-voice source aliases, one Windows file-URL registration and a
+platform-specific existing filesystem refusal assertion. Committed `61873c591`
+reproduced the same `INVALID_ARGUMENT` versus `NOT_FOUND` difference. Using the
+task's canonical temporary path avoids unrelated `ADMINI~1` versus
+`Administrator` comparisons. Four ConPTY `AttachConsole failed` diagnostics in
+workspace compatibility tests preserve the previously recorded native cleanup
+limitation; their assertions pass without changing the dependency or policy.
+
+Next: finish plugin callback, MCP, workspace and retired-owner accounting, then
+voice/remote owners, nineteen-family aggregation and native/coordinator/source
+transport integration. H1 and the overall command-center plan remain open.

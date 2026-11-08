@@ -96,6 +96,7 @@ async function fixture(t, onInvoke) {
   const reveals = [];
   const browserCalls = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry,
     spawnProcess({ entry }) {
       const child = fork(entry, [], { stdio: ["ignore", "pipe", "pipe", "ipc"] });

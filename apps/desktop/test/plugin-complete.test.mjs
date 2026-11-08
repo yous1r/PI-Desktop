@@ -169,6 +169,7 @@ test("pluginCompleteContext serializes session context and appends the default t
 test("session context and complete stay bound to an in-flight tool call", async (t) => {
   const completes = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     listModels: async () => [
@@ -252,6 +253,7 @@ test("session context and complete stay bound to an in-flight tool call", async 
 test("agent.complete is rate-limited per plugin", async (t) => {
   let calls = 0;
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     complete: async (input) => {
@@ -296,6 +298,7 @@ test("agent.complete is rate-limited per plugin", async (t) => {
 
 test("agent.complete keeps the classified provider code for the plugin", async (t) => {
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     complete: async () => {

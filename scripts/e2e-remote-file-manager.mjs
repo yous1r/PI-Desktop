@@ -88,6 +88,7 @@ try {
     return result;
   } };
   runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: join(root, "apps/desktop/electron/main/plugin-host-process.mjs"),
     spawnProcess({ entry }) {
       const child = fork(entry, [], { stdio: ["ignore", "pipe", "pipe", "ipc"] });

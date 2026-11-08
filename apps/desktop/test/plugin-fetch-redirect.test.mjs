@@ -22,6 +22,7 @@ async function fixture(t, services = {}, permissions = ["net.fetch"], main = "mo
   writeFileSync(join(dir, "main.js"), main);
   const audits = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry, audit: (entry) => audits.push(entry), ...services,
     spawnProcess: ({ entry }) => {
       const child = fork(entry, [], { stdio: ["ignore", "pipe", "pipe", "ipc"] });

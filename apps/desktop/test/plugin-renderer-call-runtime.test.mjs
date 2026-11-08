@@ -76,6 +76,7 @@ function writePlugin(t, { id, main = RENDERER_CALL_MAIN }) {
 
 function runtimeFor(t) {
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     getWorkspacePath: () => null,

@@ -145,6 +145,36 @@ The sequence is bounded — `onUnload` gets 1.5s per plugin and teardown 3s in
 total, after which the children are killed outright. A plugin's cleanup must
 never be the reason the app appears to hang on quit.
 
+### Idle-handoff lifecycle admission
+
+The Desktop plugin runtime requires the application's shared admission callback.
+Loading and development-watch registration refuse closed admission. A load owns
+one request identity through prior-instance cleanup, settings migration, native
+process creation, initialization, contribution registration and service startup.
+Unload, replacement or permanent shutdown invalidates that identity. A process
+returned after retirement is stopped through its original handle before init;
+it cannot replace or unload a newer instance. Default utility-process creation
+rechecks after importing Electron and before forking.
+
+Concurrent unloads join the same original cleanup, including pre-load panel
+cleanup. Service-start replies recheck the original instance before publishing
+state or starting another service. Crash supervision captures its restart record;
+manual loading/unloading resets the old record, and late failure cannot overwrite
+the replacement's state. Closing admission prevents new restart processes while
+preserving crash reporting. The existing backoff and hook budgets are unchanged.
+
+Shutdown seals new loads and marks loaded children synchronously, then performs
+bounded cleanup. A caller's three-second shutdown budget does not erase original
+cleanup promises still running. `getHandoffActivity()` currently exposes the
+lifecycle subset: unfinished operations, loaded installations/workspace entries,
+supervision timers and a saturating count of unqualified process attempts.
+Ordinary exit, kill, timeout, unload and map clearing do not clear that evidence.
+These counts are neither execution capacity nor native-family closure proof.
+
+Complete plugin callback/MCP/workspace inventory and qualified native containment
+must still join the Desktop coordinator. This lifecycle work alone does not enable
+ownership transfer or change the Plugin SDK permission/serialization contracts.
+
 ## 4. Enable / disable semantics
 
 ### enable

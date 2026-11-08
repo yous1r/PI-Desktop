@@ -1,3 +1,5 @@
+import { PluginLifecycle } from "./plugin-lifecycle";
+import { loadPluginFromPath } from "./plugin-loading";
 import { createRequire } from "node:module";
 import { connectionTransport, type ConnectionTransport } from "./plugin-connection-transport";
 import type { OwnerFileReader } from "./plugin-owner-files";
@@ -146,12 +148,7 @@ import {
   type PluginShortcutEntry,
   type PluginShortcutRegistry,
 } from "./plugin-shortcut-registry";
-import { repairImportedExtensionWrapper } from "./imported-plugin-wrapper";
-import {
-  migrateLegacyPromptEnhancementSettings,
-  PROMPT_ENHANCEMENT_PLUGIN_ID,
-  type LegacyPromptEnhancementSettings,
-} from "./plugin-prompt-enhancement-migration";
+import type { LegacyPromptEnhancementSettings } from "./plugin-prompt-enhancement-migration";
 import type {
   ComposerSuggestionOffer,
   ComposerSuggestionOutcome,
@@ -305,6 +302,8 @@ export type PluginProcessSpawner = (options: {
   entry: string;
   pluginPath: string;
   cwd?: string;
+  /** Rechecked by asynchronous native spawners before creating the process. */
+  assertCurrent?: () => void;
 }) => PluginProcessHandle | Promise<PluginProcessHandle>;
 
 /** One file access the plugin asked for and the manifest does not cover. */
@@ -339,6 +338,7 @@ export type PluginDesktopConsentRequest = {
 };
 
 export type PluginHostServices = {
+  isAdmissionClosed: () => boolean;
   /** Main-only encrypted storage. No secret getter is exposed on PluginHostApi. */
   connectionSecrets?: ConnectionSecretStore;
   connectionTransport?: ConnectionTransport;
@@ -872,7 +872,7 @@ type PendingCall = {
   timer: ReturnType<typeof setTimeout>;
 };
 
-type LoadedPlugin = {
+export type LoadedPlugin = {
   manifest: PluginManifest;
   runtimeId: string;
   workspaceContext?: WorkspaceExecutionContext;
@@ -1412,8 +1412,9 @@ function resolveWindowCornerRadius(value: unknown): number | undefined {
 }
 
 /** Default spawner: an Electron utilityProcess per plugin. */
-const spawnUtilityProcess: PluginProcessSpawner = async ({ pluginId, entry, cwd }) => {
+const spawnUtilityProcess: PluginProcessSpawner = async ({ pluginId, entry, cwd, assertCurrent }) => {
   const { utilityProcess } = await import("electron");
+  assertCurrent?.();
   const child = utilityProcess.fork(entry, [], {
     serviceName: `pi-plugin-${pluginId.replace(/[^a-zA-Z0-9._-]/g, "_")}`,
     stdio: "pipe",
@@ -1485,6 +1486,8 @@ function parseSpeechAdapterReply(value: unknown): {
 }
 
 export class PluginRuntime {
+  private readonly lifecycle: PluginLifecycle;
+  private disposal?: Promise<void>;
   private commands = new Map<string, RegisteredCommand>();
   private tools = new Map<string, RegisteredPluginTool>();
   private speechAdapters = new Map<string, {
@@ -1523,8 +1526,6 @@ export class PluginRuntime {
   /** Cached write ledgers, keyed by plugin id. */
   private writeLedgers = new Map<string, Record<string, number>>();
   private nextBusSubscription = 1;
-  /** Plugins being reloaded by the supervisor; their backoff must survive. */
-  private restarting = new Set<string>();
   private loaded = new Map<string, LoadedPlugin>();
   private readonly workspaceInstances = new WorkspacePluginInstances<LoadedPlugin>(
     (installation, context) => this.createWorkspaceInstance(installation, context),
@@ -1573,9 +1574,10 @@ export class PluginRuntime {
   private watcher: DevPluginWatcher;
 
   constructor(
-    services?: Partial<PluginHostServices>,
+    services: Partial<PluginHostServices> & Pick<PluginHostServices, "isAdmissionClosed">,
     watcherOptions?: Pick<DevPluginWatcherDeps, "watch" | "debounceMs" | "max">,
   ) {
+    this.lifecycle = new PluginLifecycle(services.isAdmissionClosed);
     this.services = {
       getWorkspacePath: () => null,
       showToast: (message, level) => {
@@ -2171,6 +2173,20 @@ export class PluginRuntime {
     return [...this.loaded.values()];
   }
 
+  /** Lifecycle subset; callback, MCP and workspace owners must join before coordinator wiring. */
+  getHandoffActivity() {
+    return { ...this.lifecycle.snapshot(), plugins: this.loaded.size + this.workspaceInstances.values().length,
+      schedules: [...this.restarts.values()].filter(record => record.timer || record.healthy).length };
+  }
+
+  private assertPluginCurrent(loaded: LoadedPlugin): void {
+    this.lifecycle.assertAdmission();
+    const installation = loaded.installation ?? loaded;
+    if (loaded.disposing || installation.disposing || this.loaded.get(loaded.manifest.id) !== installation) {
+      throw apiError("PLUGIN_UNLOADED", "Plugin host process is no longer active");
+    }
+  }
+
   drainToasts(): string[] {
     const t = this.toasts.map((x) => x.message);
     this.toasts = [];
@@ -2214,158 +2230,41 @@ export class PluginRuntime {
     grantedPermissions?: string[],
     options: { development?: boolean } = {},
   ): Promise<PluginManifest> {
-    const manifestPath = join(pluginPath, "manifest.json");
-    if (!existsSync(manifestPath)) {
-      throw new Error("PLUGIN_INVALID: manifest.json missing");
-    }
-    // Generated no-op `main.js` wrappers fail under package `"type":"module"`.
-    repairImportedExtensionWrapper(pluginPath);
-    const raw = JSON.parse(readFileSync(manifestPath, "utf8"));
-    const validated = validateManifest(raw);
-    if (!validated.ok || !validated.manifest) {
-      throw new Error(`PLUGIN_INVALID: ${validated.error}`);
-    }
-    const manifest = validated.manifest;
-    await this.unload(manifest.id);
+    return this.loadPlugin(pluginPath, grantedPermissions, options);
+  }
 
-    const mainPath = resolveInsidePlugin(pluginPath, manifest.main);
-    if (!mainPath) {
-      throw new Error("PLUGIN_INVALID: main entry must stay inside the plugin directory");
-    }
-    if (!existsSync(mainPath)) {
-      throw new Error("PLUGIN_LOAD_FAILED: main entry missing");
-    }
-
-    // Legacy `fs.*.workspace` names resolve to the scoped form, so an install
-    // recorded before scopes existed keeps working -- with the reduced reach
-    // `resolveFsAccess` assigns it, not the whole workspace it used to get.
-    const access = resolveFsAccess(manifest);
-    const declared = new Set(access.permissions);
-    // A grant list is the user's answer and it is final: re-adding everything
-    // the manifest declares would quietly undo `plugins.revokePermissions` on
-    // the next load. Only a load with no recorded answer falls back to the
-    // declaration.
-    const granted =
-      grantedPermissions === undefined
-        ? declared
-        : new Set(
-            resolveFsAccess({ permissions: grantedPermissions }).permissions.filter(
-              (perm) => declared.has(perm),
-            ),
-          );
-
-    if (
-      manifest.id === PROMPT_ENHANCEMENT_PLUGIN_ID &&
-      granted.has("composer.transform") &&
-      (manifest.contributes?.composerTransforms?.length ?? 0) > 0 &&
-      this.services.getLegacyPromptEnhancementSettings
-    ) {
-      try {
-        const legacy = await this.services.getLegacyPromptEnhancementSettings();
-        const migration = migrateLegacyPromptEnhancementSettings(
-          this.pluginDataDir(manifest.id),
-          legacy,
-        );
-        if (migration.migrated.length > 0) {
-          this.services.audit?.({
-            pluginId: manifest.id,
-            api: "plugin.settings.migrate",
-            ok: true,
-            keys: migration.migrated,
-            ts: Date.now(),
-          });
-        }
-      } catch (error) {
-        this.services.audit?.({
-          pluginId: manifest.id,
-          api: "plugin.settings.migrate",
-          ok: false,
-          errorCode: (error as PluginApiError)?.code ?? "MIGRATION_FAILED",
-          ts: Date.now(),
+  private async loadPlugin(pluginPath: string, grantedPermissions?: string[],
+    options: { development?: boolean } = {}, restart?: RestartRecord): Promise<PluginManifest> {
+    return loadPluginFromPath({ lifecycle: this.lifecycle, services: this.services, loaded: this.loaded,
+      spawn: this.services.spawnProcess ?? spawnUtilityProcess,
+      entry: this.services.hostEntry ?? join(getModuleDirectory(import.meta.url), "plugin-host-process.js"),
+      development: (pluginId) => options.development ?? this.devPlugins.has(pluginId),
+      resolveInside: resolveInsidePlugin, dataPath: id => this.pluginDataDir(id),
+      unload: (id, expected) => this.unloadCurrent(id, expected, restart),
+      initialize: async (loaded, assertCurrent) => {
+        const { child, manifest } = loaded;
+        child?.onMessage(message => this.handleChildMessage(loaded, message));
+        child?.onExit(code => this.handleChildExit(loaded, code));
+        child?.onLog?.((level, message) => {
+          if (message) this.services.audit?.({ pluginId: manifest.id, api: "plugin.stdio", level, message, ts: Date.now() });
         });
-      }
-    }
-
-    const entry =
-      this.services.hostEntry ??
-      join(getModuleDirectory(import.meta.url), "plugin-host-process.js");
-    const spawn = this.services.spawnProcess ?? spawnUtilityProcess;
-    const workspaceOnly = manifest.execution?.main === "workspace" && Boolean(this.services.resolveWorkspaceExecution);
-    const child = workspaceOnly ? undefined : await spawn({ pluginId: manifest.id, entry, pluginPath });
-
-    const loaded: LoadedPlugin = {
-      manifest,
-      runtimeId: randomUUID(),
-      path: pluginPath,
-      development: options.development ?? this.devPlugins.has(manifest.id),
-      permissions: granted,
-      fsPolicy: access.policy,
-      legacyFs: access.legacy,
-      deletes: [],
-      dropGrants: new Map(),
-      child,
-      pending: new Map(),
-      nextCallId: 1,
-      disposing: false,
-    };
-    this.loaded.set(manifest.id, loaded);
-
-    child?.onMessage((message) => this.handleChildMessage(loaded, message));
-    child?.onExit((code) => this.handleChildExit(loaded, code));
-    child?.onLog?.((level, message) => {
-      if (!message) return;
-      this.services.audit?.({
-        pluginId: manifest.id,
-        api: "plugin.stdio",
-        level,
-        message,
-        ts: Date.now(),
-      });
-    });
-
-    try {
-      if (child) await this.sendToChild(
-        loaded,
-        {
-          t: "init",
-          pluginId: manifest.id,
-          pluginPath,
-          main: manifest.main,
-          manifest,
-        },
-        PLUGIN_LOAD_TIMEOUT_MS,
-      );
-    } catch (error) {
-      await this.unload(manifest.id);
-      this.services.audit?.({
-        pluginId: manifest.id,
-        api: "plugin.load.error",
-        ok: false,
-        errorCode: (error as PluginApiError).code ?? "PLUGIN_LOAD_FAILED",
-        ts: Date.now(),
-      });
-      throw error;
-    }
-
-    if (workspaceOnly) {
-      for (const command of manifest.contributes?.commands ?? []) await this.dispatchHostCall(loaded, "commands.register", [command]);
-    }
-    this.registerSkills(loaded);
-    this.registerAgentExtensions(loaded);
-    this.registerThemes(loaded);
-    await this.registerMcpServers(loaded);
-    if (child) await this.startServices(loaded);
-    // After the child's `onLoad`, so the plugin's commands already exist: a
-    // declared shortcut whose command was never registered is reported and
-    // skipped rather than held against a command that cannot run.
-    this.registerDeclaredShortcuts(loaded);
-    this.services.audit?.({
-      pluginId: manifest.id,
-      api: "plugin.load.success",
-      ok: true,
-      ts: Date.now(),
-    });
-    return manifest;
+        if (child) await this.sendToChild(loaded, { t: "init", pluginId: manifest.id, pluginPath,
+          main: manifest.main, manifest }, PLUGIN_LOAD_TIMEOUT_MS);
+        assertCurrent();
+        if (!child) for (const command of manifest.contributes?.commands ?? []) {
+          await this.dispatchHostCall(loaded, "commands.register", [command]);
+          assertCurrent();
+        }
+        this.registerSkills(loaded);
+        this.registerAgentExtensions(loaded);
+        this.registerThemes(loaded);
+        await this.registerMcpServers(loaded);
+        assertCurrent();
+        if (child) await this.startServices(loaded);
+        assertCurrent();
+        this.registerDeclaredShortcuts(loaded);
+      },
+    }, pluginPath, grantedPermissions);
   }
 
   /** Abort this session's invocations without affecting sibling sessions. */
@@ -2376,17 +2275,26 @@ export class PluginRuntime {
 
   /** Deregister contributions, run `onUnload` in the child, then stop it. */
   async unload(pluginId: string): Promise<void> {
-    const loaded = this.loaded.get(pluginId);
-    if (loaded) {
-      loaded.disposing = true;
-      this.invalidateExtensionOwner(pluginId);
-      this.connections.releasePlugin(pluginId);
-      await this.workspaceInstances.disposeOwner(loaded);
-      this.toolInvocations.cancelOwner(loaded, "Plugin unloaded");
-      // An explicit stop ends supervision; a supervisor-driven reload keeps it.
-      if (!this.restarting.has(pluginId)) this.cancelRestarts(pluginId);
-      await this.stopServices(loaded);
-    }
+    this.lifecycle.retire(pluginId);
+    this.cancelRestarts(pluginId);
+    return this.unloadCurrent(pluginId);
+  }
+
+  private async unloadCurrent(pluginId: string, expected?: LoadedPlugin, restart?: RestartRecord): Promise<void> {
+    if (!expected && (!restart || this.restarts.get(pluginId) !== restart)) this.cancelRestarts(pluginId);
+    const loaded = expected ?? this.loaded.get(pluginId);
+    if (loaded) loaded.disposing = true;
+    return this.lifecycle.unload(pluginId, () => loaded
+      ? this.lifecycle.cleanup(loaded, () => this.unloadOriginal(loaded)) : this.finishUnload(pluginId));
+  }
+
+  private async unloadOriginal(loaded: LoadedPlugin): Promise<void> {
+    const pluginId = loaded.manifest.id;
+    this.invalidateExtensionOwner(pluginId);
+    this.connections.releasePlugin(pluginId);
+    await this.workspaceInstances.disposeOwner(loaded);
+    this.toolInvocations.cancelOwner(loaded, "Plugin unloaded");
+    await this.stopServices(loaded);
     if (loaded?.child) {
       loaded.disposing = true;
       try {
@@ -2405,8 +2313,14 @@ export class PluginRuntime {
         // Already gone.
       }
     }
+    if (this.loaded.get(pluginId) !== loaded) return;
+    await this.finishUnload(pluginId);
+    if (this.loaded.get(pluginId) === loaded) this.loaded.delete(pluginId);
+    this.services.audit?.({ pluginId, api: "plugin.unload", ok: true, ts: Date.now() });
+  }
+
+  private async finishUnload(pluginId: string): Promise<void> {
     this.clearContributions(pluginId);
-    this.loaded.delete(pluginId);
     // A reload unloads before it loads; its watch has to outlive that, and so
     // does the permission ceiling it reloads against.
     if (!this.reloading.has(pluginId)) {
@@ -2416,9 +2330,6 @@ export class PluginRuntime {
     await this.services.closePanel(pluginId);
     this.services.forgetWorkspacePluginDecisions?.(pluginId);
     this.services.onPluginUnload?.(pluginId);
-    if (loaded) {
-      this.services.audit?.({ pluginId, api: "plugin.unload", ok: true, ts: Date.now() });
-    }
   }
 
   /**
@@ -2429,6 +2340,7 @@ export class PluginRuntime {
    * the folder, and no file edit may widen them.
    */
   watchDevPlugin(pluginId: string): void {
+    this.lifecycle.assertAdmission();
     const loaded = this.loaded.get(pluginId);
     if (!loaded) return;
     this.devPlugins.set(pluginId, {
@@ -2474,6 +2386,15 @@ export class PluginRuntime {
    * `onUnload` must never be the reason the app appears to hang on quit.
    */
   async disposeAll(): Promise<void> {
+    this.lifecycle.seal();
+    if (this.disposal) return this.disposal;
+    for (const loaded of this.loaded.values()) loaded.disposing = true;
+    this.disposal = this.lifecycle.track(() => Promise.resolve().then(() => this.disposeAllActive()));
+    return this.disposal;
+  }
+
+  private async disposeAllActive(): Promise<void> {
+    for (const pluginId of this.restarts.keys()) this.cancelRestarts(pluginId);
     this.mcpCalls.cancelAll();
     const loadedPlugins = [...this.loaded.values()];
     // Mark first, in one pass: a child that dies while a sibling is still
@@ -2486,10 +2407,11 @@ export class PluginRuntime {
       this.cancelRestarts(loaded.manifest.id);
     }
     this.disposeWatchers();
-    await Promise.race([
-      Promise.allSettled(loadedPlugins.map(async loaded => {await this.workspaceInstances.disposeOwner(loaded);await this.disposePlugin(loaded);})),
-      new Promise((resolve) => setTimeout(resolve, PLUGIN_DISPOSE_ALL_TIMEOUT_MS).unref?.()),
-    ]);
+    await this.lifecycle.waitWithin(
+      Promise.allSettled(loadedPlugins.map(loaded => this.lifecycle.cleanup(loaded, async () => {
+        await this.workspaceInstances.disposeOwner(loaded);
+        await this.disposePlugin(loaded);
+      }))), PLUGIN_DISPOSE_ALL_TIMEOUT_MS);
     // Whatever survived the budget is killed outright; the app is going away.
     for (const loaded of loadedPlugins) {
       try {
@@ -3650,6 +3572,7 @@ export class PluginRuntime {
     if (record.healthy) clearTimeout(record.healthy);
     record.healthy = undefined;
     this.markServices(loaded, "failed", record.attempts, `plugin host process exited (${childExitLabel(code)})`);
+    if (this.lifecycle.isClosed()) return;
 
     const restartable =
       loaded.permissions.has("background.service") &&
@@ -3683,18 +3606,20 @@ export class PluginRuntime {
       ts: Date.now(),
     });
     record.timer = setTimeout(() => {
+      if (this.restarts.get(pluginId) !== record) return;
       record.timer = undefined;
-      void this.restartAfterCrash(loaded, record.attempts);
+      void this.restartAfterCrash(loaded, record);
     }, delayMs);
   }
 
-  private async restartAfterCrash(loaded: LoadedPlugin, attempt: number): Promise<void> {
+  private async restartAfterCrash(loaded: LoadedPlugin, record: RestartRecord): Promise<void> {
     const pluginId = loaded.manifest.id;
+    const attempt = record.attempts;
+    if (this.lifecycle.isClosed() || this.restarts.get(pluginId) !== record) return;
     // The user may have re-enabled or removed the plugin while we waited.
     if (this.loaded.has(pluginId) || !existsSync(loaded.path)) return;
-    this.restarting.add(pluginId);
     try {
-      await this.loadFromPath(loaded.path, [...loaded.permissions]);
+      await this.loadPlugin(loaded.path, [...loaded.permissions], {}, record);
       this.services.audit?.({
         pluginId,
         api: "plugin.service.restart",
@@ -3703,7 +3628,9 @@ export class PluginRuntime {
         ts: Date.now(),
       });
     } catch (error) {
-      this.markServices(loaded, "failed", attempt, (error as Error).message);
+      if (!this.loaded.has(pluginId) && this.restarts.get(pluginId) === record && !this.lifecycle.isClosed()) {
+        this.markServices(loaded, "failed", attempt, (error as Error).message);
+      }
       this.services.audit?.({
         pluginId,
         api: "plugin.service.restart",
@@ -3713,8 +3640,6 @@ export class PluginRuntime {
         message: (error as Error).message,
         ts: Date.now(),
       });
-    } finally {
-      this.restarting.delete(pluginId);
     }
   }
 
@@ -4480,6 +4405,7 @@ export class PluginRuntime {
     }
     const restarts = this.restarts.get(pluginId)?.attempts ?? 0;
     for (const service of this.declaredServices(loaded)) {
+      this.assertPluginCurrent(loaded);
       const label = service.label || service.id;
       this.setServiceState(loaded, {
         pluginId,
@@ -4494,6 +4420,7 @@ export class PluginRuntime {
           { t: "call", method: "service.start", payload: { id: service.id } },
           SERVICE_START_TIMEOUT_MS,
         );
+        this.assertPluginCurrent(loaded);
         this.setServiceState(loaded, {
           pluginId,
           serviceId: service.id,
@@ -4509,6 +4436,7 @@ export class PluginRuntime {
           ts: Date.now(),
         });
       } catch (error) {
+        this.assertPluginCurrent(loaded);
         this.setServiceState(loaded, {
           pluginId,
           serviceId: service.id,
@@ -4528,6 +4456,7 @@ export class PluginRuntime {
         });
       }
     }
+    this.assertPluginCurrent(loaded);
     // Surviving the grace window means the backoff can start from zero again.
     if (restarts > 0) this.scheduleHealthyReset(pluginId);
   }

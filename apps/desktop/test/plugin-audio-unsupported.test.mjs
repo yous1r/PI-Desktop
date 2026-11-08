@@ -105,6 +105,7 @@ function writePlugin(t, { permissions = [] } = {}) {
 function createRuntime(t) {
   const audits = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     audit: (entry) => audits.push(entry),

@@ -52,6 +52,7 @@ async function runCommand(runtime, id) {
 test("plugin session API enforces own permissions and declared sources", async (t) => {
   const calls = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     session: {
@@ -112,6 +113,7 @@ test("plugin session API enforces own permissions and declared sources", async (
 
 test("plugin session payload validation rejects invalid roles before host dispatch", async (t) => {
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     session: {
@@ -159,6 +161,7 @@ test("plugin session payload validation rejects invalid roles before host dispat
 test("plugin can explicitly create a project id and import into it", async (t) => {
   const calls = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     project: {
@@ -214,6 +217,7 @@ test("plugin can explicitly create a project id and import into it", async (t) =
 test("project binding requires the project permission", async (t) => {
   const calls = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     project: {
@@ -267,6 +271,7 @@ test("project binding requires the project permission", async (t) => {
 test("plugin session read, update, and delete permissions are independent", async (t) => {
   const calls = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     session: {
@@ -315,6 +320,7 @@ test("plugin session read, update, and delete permissions are independent", asyn
 test("plugin auto-title APIs require the narrow permission and forward only bounded inputs", async (t) => {
   const calls = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     session: {
@@ -383,6 +389,7 @@ test("plugin auto-title APIs require the narrow permission and forward only boun
 test("plugin auto-title APIs are refused without session.autoTitle", async (t) => {
   const calls = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     session: {
@@ -430,6 +437,7 @@ test("plugin auto-title APIs are refused without session.autoTitle", async (t) =
 test("plugin usage listTurns requires usage.read and forwards the plugin id", async (t) => {
   const calls = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     usage: {
@@ -493,6 +501,7 @@ test("plugin usage listTurns requires usage.read and forwards the plugin id", as
 test("plugin usage listTurns is refused without the usage.read permission", async (t) => {
   const calls = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     usage: {

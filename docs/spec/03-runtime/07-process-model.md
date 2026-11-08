@@ -653,6 +653,15 @@ also recheck their owner before dispatch. The existing page partition, file/URL
 rules, background routing, presentation ownership and public CDP allowlist remain
 unchanged.
 
+Plugin loading and shutdown share the same admission source. Original load
+identities survive asynchronous spawn and initialization; unload/replacement
+invalidates them, and permanent shutdown seals entry synchronously. Concurrent
+cleanup joins its original promise, which remains counted after the caller's
+shutdown budget expires. Unqualified process-attempt evidence is retained after
+ordinary exit. The [plugin lifecycle contract](../07-plugins/05-plugin-lifecycle.md#idle-handoff-lifecycle-admission)
+defines this subset; callback, MCP and workspace-owner aggregation is still
+required before connecting a complete plugin inventory to the coordinator.
+
 This composition does not enable a transfer request. Complete owner inventory,
 bounded source journal transport, native/coordinator integration and target
 readiness remain separate H1-H5 acceptance work.

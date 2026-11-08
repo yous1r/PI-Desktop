@@ -44,6 +44,7 @@ async function fixture(t, onInvoke) {
   const calls = [], audits = [];
   const fileHost = { call: async () => ({ session: { projectPath: root } }) };
   const runtime = new PluginRuntime({ hostEntry,
+    isAdmissionClosed: () => false,
     audit: (entry) => audits.push(entry),
     readOwnerFile: createOwnerFileReader({ getHost: () => fileHost, getRemote: () => null, isPluginActive: () => true }),
     spawnProcess({ entry }) {

@@ -4,10 +4,11 @@ import { resolve } from "node:path";
  * An optional already-provisioned dependency root avoids installing a second
  * environment; normal CI uses the repository's installed dependency versions. */
 export function currentSourceAliases(root) {
-  const aliases = ["shared", "agent-host", "host-runtime", "agent-runtime", "plugin-sdk", "racp"].map(name => ({
+  const aliases = ["shared", "agent-host", "host-runtime", "agent-runtime", "plugin-sdk", "racp", "i18n"].map(name => ({
     find: new RegExp(`^@pi-desktop/${name}$`), replacement: resolve(root, `packages/${name}/src/index.ts`),
   }));
   aliases.push({ find: /^@pi-desktop\/host-runtime\/mcp\/(.*)$/, replacement: resolve(root, "packages/host-runtime/src/mcp/$1.ts") });
+  aliases.push({ find: /^@pi-desktop\/voice-runtime\/live$/, replacement: resolve(root, "packages/voice-runtime/src/live/index.ts") });
   const dependencies = process.env.PI_COMMAND_CENTER_DEPENDENCIES;
   if (dependencies) {
     const pi = resolve(dependencies, "node_modules/@earendil-works");

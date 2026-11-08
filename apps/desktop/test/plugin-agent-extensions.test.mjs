@@ -30,6 +30,7 @@ function createRuntime(t) {
   const audits = [];
   let changed = 0;
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     audit: (entry) => audits.push(entry),

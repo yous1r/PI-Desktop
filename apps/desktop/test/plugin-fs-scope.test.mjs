@@ -150,6 +150,7 @@ async function harness(
   const revealed = [];
   const answers = [...(consent ?? [])];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     getWorkspacePath: () => ws,
@@ -700,8 +701,8 @@ test("the project's other folders are not an escape hatch", async (t) => {
     runtime.invokePanelBridge("fs.folders.guards", "fs.openDefault", {
       path: join(stranger, "notes.txt"),
     }),
-    "NOT_FOUND",
-    /path not found/,
+    process.platform === "win32" ? "INVALID_ARGUMENT" : "NOT_FOUND",
+    process.platform === "win32" ? /path escapes the plugin's root/ : /path not found/,
   );
   assert.ok(
     audits.some((entry) => entry.api === "fs.read" && entry.ok === false),
@@ -963,6 +964,7 @@ test("a userSelected root is nothing until the user points at a directory", asyn
   const ws = makeWorkspace();
   const audits = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     getWorkspacePath: () => ws,

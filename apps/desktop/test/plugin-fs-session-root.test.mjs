@@ -104,6 +104,7 @@ const GRANTED = ["agent.tool.register", "fs.read", "fs.write"];
  */
 async function harness(t, { id, permissions = GRANTED, fs: fsPolicy = SCOPED, visible, sessions = {} }) {
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: hostProcessEntry,
     spawnProcess: forkPluginProcess,
     getWorkspacePath: () => visible,

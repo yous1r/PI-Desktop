@@ -20087,3 +20087,27 @@ session data is used.
   both committed and changed code in the Windows Electron 43.6.0 environment;
   preserve that failure separately. Native-family closure, full Desktop transfer
   and minimum-hardware browser qualification remain open.
+
+### E2E-HANDOFF-plugin-lifecycle
+
+- **Goal:** retain original plugin loading, supervision and cleanup ownership
+  across admission closure, replacement, unload and permanent shutdown.
+- **Automated paths:** `apps/desktop/test/handoff-plugin-lifecycle.test.mjs` and
+  `node --test apps/desktop/test/plugin-lifecycle-user-path.e2e.mjs` with the
+  provisioned current-source dependencies and an isolated scratch directory.
+- **Deterministic faults:** close/unload/shutdown while spawn or service start
+  awaits; supersede a load/restart; overlap pre-load cleanup and reload; expire
+  the shutdown budget while original cleanup remains pending; emit an exit in
+  the same event turn as shutdown. No arbitrary sleep establishes these races.
+- **Native path:** hold/cancel empty admission, load a real local plugin runner,
+  start its declared service, invoke a command, refuse handoff, unload and observe
+  the original child exit, retain refusal evidence, reload, then permanently seal.
+  A second path delays delivery of a real child handle until after shutdown and
+  verifies original-child cleanup without initializing the retired plugin.
+- **Expected:** no replacement borrowing or late state overwrite; pending work
+  remains counted until original settlement; initial grants, service restart
+  backoff and cleanup hook budgets are preserved.
+- **Limits:** Node child-process execution validates the lifecycle boundary, not
+  Electron utility-process or native-family closure qualification. No real
+  provider, live Desktop, external Host or user profile is involved. Complete
+  plugin callback/MCP/workspace ownership and full H1-H5 transfer remain open.

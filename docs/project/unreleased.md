@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Keep plugin loads and cleanup bound to their original lifecycle during idle
+  handoff. Late process creation cannot revive an unloaded plugin, concurrent
+  cleanup joins, and an old crash restart cannot replace newer service state.
+  Shutdown seals admission synchronously and retains unfinished cleanup activity.
+  Complete plugin inventory and native-family closure remain under development.
 - Bind browser operations to shared Desktop admission and their original page,
   Host generation and debugger connection. Timed-out or retired work stays
   counted until it settles; late screenshots cannot write new files after

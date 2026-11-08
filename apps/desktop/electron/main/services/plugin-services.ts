@@ -241,6 +241,7 @@ export function createPluginServices({
     onEvent: (pluginId, event) => plugins.deliverSocketEvent(pluginId, event),
   });
   const plugins: PluginRuntime = new PluginRuntime({
+    isAdmissionClosed: () => handoffAdmission.isClosed(),
     connectionTransport: managedConnectionTransport,
     readOwnerFile: createOwnerFileReader({ getHost, getRemote: getActiveRemoteHostsBoot,
       isPluginActive: pluginActiveInProject }),

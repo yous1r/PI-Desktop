@@ -50,6 +50,7 @@ test("Desktop broker runs a workspace plugin remotely, keeps callbacks gated, an
   }};
   const remote=new RemoteWorkspacePlugins({client:()=>client,authorize:async()=>{approvals++;},isAuthorized:async()=>authorized});
   const runtime=new PluginRuntime({hostEntry:fileURLToPath(new URL("../electron/main/plugin-host-process.mjs",import.meta.url)),getWorkspacePath:()=>`remote-project:${selected}`,
+    isAdmissionClosed: () => false,
     resolveWorkspaceExecution:async(input={})=>{
       const context=contexts[input.sessionId??input.context?.workspaceId??selected];
       if(input.context && context!==input.context)throw Object.assign(Error("rebound"),{code:"WORKSPACE_CHANGED"});

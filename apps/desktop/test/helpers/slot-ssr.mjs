@@ -5,6 +5,7 @@ import { I18nextProvider } from "react-i18next";
 import { catalogs } from "@pi-desktop/i18n";
 import { createServer } from "vite";
 import { fileURLToPath } from "node:url";
+import { currentSourceAliases } from "./current-source-vite.mjs";
 
 /**
  * Slot outlets rendered through Vite SSR with the production modules: the
@@ -21,6 +22,7 @@ export async function slotSsr(t, { translationOverrides = {}, plugins = [] } = {
     root: fileURLToPath(new URL("../..", import.meta.url)),
     configFile: false,
     plugins,
+    resolve: { alias: currentSourceAliases(fileURLToPath(new URL("../../../..", import.meta.url))) },
     logLevel: "silent",
     server: { middlewareMode: true, hmr: false, ws: false },
     esbuild: { jsx: "automatic" },

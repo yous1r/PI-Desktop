@@ -25,6 +25,7 @@ test("the actual bundled File Manager lists and reads remote files through the H
   const service = createWorkspacePluginFiles({ browseRoot: directory, protectedPaths: [data] });
   const requests = [];
   const runtime = new PluginRuntime({
+    isAdmissionClosed: () => false,
     hostEntry: fileURLToPath(new URL("../electron/main/plugin-host-process.mjs", import.meta.url)),
     spawnProcess({ entry }) {
       const child = fork(entry, [], { stdio: ["ignore", "pipe", "pipe", "ipc"] });

@@ -129,7 +129,7 @@ test("watchers are released on teardown and reloads reach the renderer", () => {
   // Quit tears the whole plugin subsystem down; watch disposal rides along
   // inside it rather than being called on its own.
   assert.match(shutdownSrc, /plugins\.disposeAll\(\)/);
-  const disposeAll = slice(runtimeSrc, "async disposeAll(", "\n  }");
+  const disposeAll = slice(runtimeSrc, "private async disposeAllActive(", "\n  }");
   assert.match(disposeAll, /this\.disposeWatchers\(\)/);
   const reported = pluginServicesSrc.slice(
     pluginServicesSrc.indexOf("onPluginReloaded:"),
