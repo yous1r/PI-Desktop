@@ -664,8 +664,12 @@ with admission; active teardown calls retain their original authorization.
 Unknown child completion and unqualified native/network attempts remain refusal
 evidence after ordinary exit, timeout or late reply. The
 [plugin lifecycle contract](../07-plugins/05-plugin-lifecycle.md#idle-handoff-lifecycle-admission)
-defines this accounting; external-resource ownership and qualified native-family
-closure must still join before connecting a complete inventory to the coordinator.
+defines this accounting. Plugin sockets and workspace resource/forward leases
+now join the runtime snapshot, including original HTTP reads and response/close
+work after owner retirement. Shared admission is mandatory at these resource
+boundaries, and missing configured resource statistics retain refusal evidence.
+Other external owners and qualified native-family closure must still join before
+connecting a complete inventory to the coordinator.
 
 This composition does not enable a transfer request. Complete owner inventory,
 bounded source journal transport, native/coordinator integration and target

@@ -417,6 +417,7 @@ export type PluginHostServices = {
   openWorkspacePort?: (input: WorkspacePortRequest) => Promise<{url:string}>;
   closeWorkspaceResources?: (ownerId: string) => void;
   disposeWorkspaceResources?: () => void;
+  workspaceResourceActivity?: () => { operations: number; resources: number; uncontainedResources: number };
   /** Reveal one already-authorized file in the OS file manager. */
   revealPath?: (fullPath: string) => Promise<void>;
   readClipboard: () => Promise<string>;
@@ -2163,11 +2164,14 @@ export class PluginRuntime {
     return [...this.loaded.values()];
   }
 
-  /** Includes original callbacks/MCP/workspace work; external resources still require owner closure proof. */
+  /** Original external operations and retained resources remain visible after registry removal. */
   getHandoffActivity() {
-    const lifecycle = this.lifecycle.snapshot(), connections = this.connections.getHandoffActivity();
-    return { operations: lifecycle.operations + connections.operations,
-      uncontainedResources: Math.min(Number.MAX_SAFE_INTEGER, lifecycle.uncontainedResources + connections.uncontainedResources),
+    const missing = { operations: 0, resources: 0, uncontainedResources: 1 };
+    const resources = [this.services.pluginSockets && (this.services.pluginSockets.getHandoffActivity?.() ?? missing),
+      this.services.workspaceResourceActivity?.() ?? ((this.services.openWorkspaceResource || this.services.openWorkspacePort) && missing)];
+    const activities = [this.lifecycle.snapshot(), this.connections.getHandoffActivity(), ...resources.filter(value => !!value)];
+    return { operations: activities.reduce((sum, item) => sum + item.operations, 0) + resources.reduce((sum, item) => sum + (item ? item.resources : 0), 0),
+      uncontainedResources: activities.reduce((sum, item) => Math.min(Number.MAX_SAFE_INTEGER, sum + item.uncontainedResources), 0),
       plugins: this.loaded.size + this.workspaceInstances.values().length,
       schedules: [...this.restarts.values()].filter(record => record.timer || record.healthy).length };
   }
@@ -2424,6 +2428,7 @@ export class PluginRuntime {
     this.loaded.clear();
     this.services.disposeWorkspaceProcesses?.();
     this.services.disposeWorkspaceResources?.();
+    this.services.pluginSockets?.dispose();
     this.serviceStates.clear();
   }
 
@@ -4623,7 +4628,7 @@ export class PluginRuntime {
    */
   deliverSocketEvent(pluginId: string, event: PluginSocketEvent): void {
     const loaded = this.loaded.get(pluginId);
-    if (!loaded?.child) return;
+    if (!loaded?.child || loaded.disposing || this.lifecycle.isClosed()) return;
     // Addressed to the owner only: frames are one plugin's data and must never
     // reach another plugin's process, which a fan-out would do.
     try {

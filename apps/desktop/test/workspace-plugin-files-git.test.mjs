@@ -24,12 +24,12 @@ async function fixture(placement){
  const service=new WorkspacePluginService({dataDir:join(root,'host'),runner});
  const client={state:()=>state,generation:()=>1,handleServerRequest:(name,handler)=>{handlers.set(name,handler);return()=>handlers.delete(name);},subscribeState:fn=>{listeners.add(fn);return()=>listeners.delete(fn);},request:async(method,input)=>{assert.equal(method,'workspace/plugin');assert.equal(state,'connected');return service.handle(input,owner,event=>handlers.get('workspace/pluginEvent')(event));}};
  const remote=new RemoteWorkspacePlugins({client:()=>client,authorize:async()=>{}});
- const resources=new WorkspaceResources({chooseCopy:async()=>join(root,'download.txt'),openCopy:async path=>{opened=path;},openBrowser:async(url,sessionId)=>{browser={url,sessionId};},reveal:async(path,sessionId)=>{revealed={path,sessionId};}});
+ const resources=new WorkspaceResources({isAdmissionClosed:()=>false,chooseCopy:async()=>join(root,'download.txt'),openCopy:async path=>{opened=path;},openBrowser:async(url,sessionId)=>{browser={url,sessionId};},reveal:async(path,sessionId)=>{revealed={path,sessionId};}});
  const runtime=new PluginRuntime({hostEntry:runner,getWorkspacePath:()=>b,spawnWorkspaceProcess:remote.spawn.bind(remote),isWorkspaceExecutionAvailable:remote.available.bind(remote),
     isAdmissionClosed: () => false,
   resolveWorkspaceExecution:async(input={})=>{const context=contexts[input.sessionId??input.context?.workspaceId??'b'];if(state!=='connected')throw Object.assign(Error('offline'),{code:'HOST_UNAVAILABLE'});if(input.context && input.context!==context)throw Object.assign(Error('changed'),{code:'WORKSPACE_CHANGED'});return context;},
   spawnProcess:({entry,cwd})=>{const child=fork(entry,[],{cwd,execArgv:[],stdio:['ignore','ignore','ignore','ipc']});return {postMessage:message=>{if(child.connected)child.send(message);},onMessage:fn=>child.on('message',fn),onExit:fn=>child.on('exit',code=>fn(code??0)),kill:()=>child.kill()};},showToast:()=>{},
-  openWorkspaceResource:input=>resources.open(input),closeWorkspaceResources:id=>resources.closeOwner(id),disposeWorkspaceResources:()=>resources.dispose()});
+  openWorkspaceResource:input=>resources.open(input),workspaceResourceActivity:()=>resources.getHandoffActivity(),closeWorkspaceResources:id=>resources.closeOwner(id),disposeWorkspaceResources:()=>resources.dispose()});
  return {root,a,b,data,runtime,contexts,get opened(){return opened;},get browser(){return browser;},get revealed(){return revealed;},
   invoke:(id,channel,payload={},ctx={sessionId:'a',context:contexts.a})=>runtime.invokePanelBridge(id,channel,payload,ctx),
   disconnect:()=>{state='disconnected';service.disconnect(owner.connectionId);for(const fn of listeners)fn(state);},

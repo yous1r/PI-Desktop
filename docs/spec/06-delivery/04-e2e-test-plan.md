@@ -20139,3 +20139,34 @@ session data is used.
 - **Limits:** Node child exit and successful UI assertions are not native-family
   closure proof. Existing ConPTY helper diagnostics remain recorded; no live
   provider, live profile, full transfer or minimum-hardware qualification is claimed.
+
+### E2E-HANDOFF-plugin-external-resources
+
+- **Goal:** preserve original plugin sockets and workspace preview/download work
+  across admission closure, owner retirement and asynchronous cleanup.
+- **Entries:** `apps/desktop/test/handoff-external-resources.test.mjs` and
+  `node --test apps/desktop/test/external-resources-user-path.e2e.mjs`, with
+  provisioned source dependencies and isolated temporary profiles.
+- **Faults:** close admission during handshake, workspace validation, download
+  selection, SSH environment preparation and a queued microtask; deliver an old
+  socket event after replacement; retire eight pending forwards; pause original
+  HTTP reads while destroying the response and owner; run a validation timer
+  while admission is temporarily closed.
+- **Expected:** no new creation/read/write/publication after closure, no event
+  delivery to a replacement installation, no premature release of the existing
+  forward limit, and original work counted until actual settlement. Cleanup joins
+  without delaying its initial close action. Temporary handoff admission does
+  not stop an already active forward. Missing resource statistics fail closed.
+- **Process path:** load a real isolated Node plugin, connect to a local WebSocket
+  echo server through its SDK, exchange an exact payload, refuse handoff, close
+  admission, unload through the original teardown hook and observe original child
+  and peer closure. Final operation/lease counts are zero while unqualified
+  resource evidence remains positive. No real provider, SSH host or live Desktop
+  profile is used.
+- **Compatibility:** real scoped-file HTTP previews/downloads, local/remote File
+  Manager subprocesses, socket permissions/bounds/events, SSH tunnel ownership
+  and prior plugin lifecycle/callback tests. Record platform-specific fixture
+  failures against committed code; a failed script launch is not SSH acceptance.
+- **Limits:** ordinary child/socket/server closure is not native-family proof.
+  Full external-owner aggregation, fenced Desktop composition and H1-H5 transfer
+  remain separate acceptance work.

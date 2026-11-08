@@ -205,6 +205,21 @@ Desktop grant cannot be reinterpreted as a remote absolute path.
   disconnect closes immediately and ownership is rechecked every five seconds.
   The API does not rewrite arbitrary HTML localhost URLs or start a web server.
 
+Desktop resource services also require shared handoff admission. Original owner
+checks run after asynchronous validation and synchronously before new I/O or
+publication. A late download choice cannot create a file or open an application;
+accepted file work is retained through cleanup. HTTP request processing remains
+counted through original remote reads and response finish/close, even after the
+request or owner is destroyed. Closing a preview invalidates its lease immediately
+and retains its original server-close operation. Retired pending forwards still
+consume the existing eight-lease limit, and repeated cleanup joins the same work.
+Port reservation and SSH spawn recheck the original client/generation and lease;
+an owner guard also runs after SSH environment preparation. Temporary handoff
+admission pauses periodic validation without stopping a valid active forward.
+Ordinary close, remote ACK and process exit do not qualify native-family closure;
+bounded resource-attempt evidence remains until a qualified ownership protocol
+can prove it. This does not enable complete Desktop ownership transfer.
+
 The bundled File Manager uses a Desktop main plus workspace companion. Native
 project operations preserve its containment, credential deny list, optimistic save
 conflicts, atomic write and audit behavior. Remote graphical editor launch is

@@ -167,7 +167,8 @@ Shutdown seals new loads and marks loaded children synchronously, then performs
 bounded cleanup. A caller's three-second shutdown budget does not erase original
 cleanup promises still running. `getHandoffActivity()` includes original lifecycle,
 panel/child callbacks, workspace resolution/creation, MCP transport operations,
-managed-connection storage/network work, loaded entries and supervision timers.
+managed-connection storage/network work, plugin sockets, workspace preview/download
+operations and retained resource leases, loaded entries and supervision timers.
 It also retains a saturating count of unqualified native/network attempts and
 child requests whose completion is unknown. Ordinary exit, kill, timeout,
 unload and map clearing do not clear that evidence. These counts are neither
@@ -194,7 +195,24 @@ behavior. Cancellation notifications remain available for cleanup. Managed
 connection configuration uses its captured lifecycle generation through queued
 storage operations; configuration cannot borrow a reloaded plugin's grant.
 
-External-resource owner aggregation and qualified native containment must still
+Plugin socket registries require the same admission source. Connect/send and
+handshake publication recheck admission; events require the original entry.
+Release settles a pending handshake and suppresses later events, so a replacement
+installation cannot receive the old socket's frames or close/error notifications.
+Close/release remain available for cleanup. Disposal seals creation. Native socket
+attempts retain bounded refusal evidence after ordinary close or factory failure.
+
+Workspace preview/download services independently gate entry and recheck the
+original owner before reads, writes, dialogs, browser publication and process
+creation. Their HTTP responses, pending reads and cleanup remain counted after
+caller cancellation or lease removal. Unfinished retired forwards retain the
+eight-lease limit; duplicate close joins the original cleanup and starts closing
+synchronously. Temporary admission closure pauses preview validation without
+terminating an already active forward. Cleanup failures are observable and do not
+clear unqualified-resource evidence. A configured resource service without an
+activity getter makes the runtime inventory refuse handoff.
+
+Remaining external-resource owners and qualified native containment must still
 join the Desktop coordinator. This work does not enable ownership transfer or
 change Plugin SDK permissions, message serialization or durable storage formats.
 

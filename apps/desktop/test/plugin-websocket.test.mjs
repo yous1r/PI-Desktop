@@ -89,6 +89,7 @@ test("connect resolves once the socket opens and reports it to the owner", async
   const transport = fakeTransport();
   const events = [];
   const registry = new PluginWebSocketRegistry({
+    isAdmissionClosed: () => false,
     createSocket: transport.factory,
     onEvent: (pluginId, event) => events.push({ pluginId, event }),
   });
@@ -107,7 +108,7 @@ test("connect resolves once the socket opens and reports it to the owner", async
 
 test("a non-websocket scheme is refused before the transport is used", async () => {
   const transport = fakeTransport();
-  const registry = new PluginWebSocketRegistry({ createSocket: transport.factory, onEvent: () => {} });
+  const registry = new PluginWebSocketRegistry({ isAdmissionClosed: () => false, createSocket: transport.factory, onEvent: () => {} });
 
   await assert.rejects(
     registry.connect({ pluginId: PLUGIN_ID, url: "https://voice.example.com/live" }),
@@ -122,7 +123,7 @@ test("a non-websocket scheme is refused before the transport is used", async () 
 
 test("a connection that closes before opening fails and keeps no slot", async () => {
   const transport = fakeTransport();
-  const registry = new PluginWebSocketRegistry({ createSocket: transport.factory, onEvent: () => {} });
+  const registry = new PluginWebSocketRegistry({ isAdmissionClosed: () => false, createSocket: transport.factory, onEvent: () => {} });
 
   const pending = registry.connect({ pluginId: PLUGIN_ID, url: "wss://voice.example.com/live" });
   transport.opened.at(-1).handlers.onClose({ code: 1006, reason: "refused", wasClean: false });
@@ -137,7 +138,7 @@ test("a connection that closes before opening fails and keeps no slot", async ()
 
 test("a socket budget is per plugin and refuses rather than evicting", async () => {
   const transport = fakeTransport();
-  const registry = new PluginWebSocketRegistry({ createSocket: transport.factory, onEvent: () => {} });
+  const registry = new PluginWebSocketRegistry({ isAdmissionClosed: () => false, createSocket: transport.factory, onEvent: () => {} });
 
   for (let index = 0; index < MAX_SOCKETS_PER_PLUGIN; index += 1) {
     const pending = registry.connect({ pluginId: PLUGIN_ID, url: "wss://voice.example.com/live" });
@@ -157,7 +158,7 @@ test("a socket budget is per plugin and refuses rather than evicting", async () 
 
 test("send is refused for an unknown socket and for another plugin's socket", async () => {
   const transport = fakeTransport();
-  const registry = new PluginWebSocketRegistry({ createSocket: transport.factory, onEvent: () => {} });
+  const registry = new PluginWebSocketRegistry({ isAdmissionClosed: () => false, createSocket: transport.factory, onEvent: () => {} });
 
   const pending = registry.connect({ pluginId: PLUGIN_ID, url: "wss://voice.example.com/live" });
   const { socketId } = await (async () => {
@@ -182,6 +183,7 @@ test("send is refused for an unknown socket and for another plugin's socket", as
 test("an oversized frame and a full send queue are refused, not buffered", async () => {
   const transport = fakeTransport();
   const registry = new PluginWebSocketRegistry({
+    isAdmissionClosed: () => false,
     createSocket: transport.factory,
     onEvent: () => {},
     maxBufferedBytes: 4,
@@ -209,6 +211,7 @@ test("an oversized inbound frame closes the connection and reports why", async (
   const transport = fakeTransport();
   const events = [];
   const registry = new PluginWebSocketRegistry({
+    isAdmissionClosed: () => false,
     createSocket: transport.factory,
     onEvent: (pluginId, event) => events.push(event),
   });
@@ -232,6 +235,7 @@ test("binary frames reach the owner unchanged", async () => {
   const transport = fakeTransport();
   const events = [];
   const registry = new PluginWebSocketRegistry({
+    isAdmissionClosed: () => false,
     createSocket: transport.factory,
     onEvent: (pluginId, event) => events.push({ pluginId, event }),
   });
@@ -254,6 +258,7 @@ test("a remote close reaches the owner and frees the slot", async () => {
   const transport = fakeTransport();
   const events = [];
   const registry = new PluginWebSocketRegistry({
+    isAdmissionClosed: () => false,
     createSocket: transport.factory,
     onEvent: (pluginId, event) => events.push({ pluginId, event }),
   });
@@ -272,7 +277,7 @@ test("a remote close reaches the owner and frees the slot", async () => {
 
 test("releasePlugin terminates every socket of that plugin only", async () => {
   const transport = fakeTransport();
-  const registry = new PluginWebSocketRegistry({ createSocket: transport.factory, onEvent: () => {} });
+  const registry = new PluginWebSocketRegistry({ isAdmissionClosed: () => false, createSocket: transport.factory, onEvent: () => {} });
 
   for (const pluginId of [PLUGIN_ID, OTHER_PLUGIN]) {
     const pending = registry.connect({ pluginId, url: `wss://voice.example.com/${pluginId}` });
@@ -296,6 +301,7 @@ test("releasePlugin terminates every socket of that plugin only", async () => {
 test("a timed-out connect refuses and leaves nothing behind", async () => {
   const transport = fakeTransport();
   const registry = new PluginWebSocketRegistry({
+    isAdmissionClosed: () => false,
     createSocket: transport.factory,
     onEvent: () => {},
     connectTimeoutMs: 20,
@@ -328,6 +334,7 @@ test("the real ws transport carries text and binary frames over loopback", async
 
   const events = [];
   const registry = new PluginWebSocketRegistry({
+    isAdmissionClosed: () => false,
     onEvent: (_pluginId, event) => events.push(event),
     connectTimeoutMs: 5_000,
   });

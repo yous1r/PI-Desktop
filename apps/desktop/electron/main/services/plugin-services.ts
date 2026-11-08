@@ -238,6 +238,8 @@ export function createPluginServices({
    * to the owning plugin's process only.
    */
   const pluginSockets = new PluginWebSocketRegistry({
+    isAdmissionClosed: () => handoffAdmission.isClosed(),
+    onCleanupError: () => logger.app("plugin", "warn", "Plugin socket cleanup failed; idle handoff remains unavailable"),
     onEvent: (pluginId, event) => plugins.deliverSocketEvent(pluginId, event),
   });
   const plugins: PluginRuntime = new PluginRuntime({
@@ -714,16 +716,22 @@ export function createPluginServices({
   });
   const workspaceConsent = createWorkspacePluginConsent({ getWindow: getMainWindow });
   const workspacePorts = new WorkspacePorts({
-    connect: (context,port) => {const boot=getActiveRemoteHostsBoot();if(!boot)throw new Error("Workspace Host is unavailable");return forwardWorkspacePort(boot,context,port);},
+    isAdmissionClosed: () => handoffAdmission.isClosed(),
+    onCleanupError: () => logger.app("plugin", "warn", "Workspace preview cleanup failed; idle handoff remains unavailable"),
+    connect: (context,port,owner) => {const boot=getActiveRemoteHostsBoot();if(!boot)throw new Error("Workspace Host is unavailable");return forwardWorkspacePort(boot,context,port,owner);},
     openBrowser: async (url,sessionId) => {await browserHost.openTab({url},sessionId);},
   });
   const workspaceResources = new WorkspaceResources({
-    chooseCopy: async ({name,pluginName,hostKey}) => {
+    isAdmissionClosed: () => handoffAdmission.isClosed(),
+    onCleanupError: () => logger.app("plugin", "warn", "Workspace resource cleanup failed; idle handoff remains unavailable"),
+    chooseCopy: async ({name,pluginName,hostKey},assertCurrent) => {
+      assertCurrent();
       const strings = catalogs[resolveLocale(getUpdaterLocale())].pluginWorkspaceResource;
       const window = getMainWindow();
       const prompt = {type:"question" as const,message:strings.message.replace("{name}",pluginName).replace("{host}",hostKey),
         detail:strings.detail,buttons:[strings.cancel,strings.download],defaultId:0,cancelId:0,noLink:true};
       const answer = window && !window.isDestroyed() ? await dialog.showMessageBox(window,prompt) : await dialog.showMessageBox(prompt);
+      assertCurrent();
       if (answer.response !== 1) return null;
       const options = {title:strings.download,defaultPath:name,buttonLabel:strings.download};
       const selected = window && !window.isDestroyed() ? await dialog.showSaveDialog(window,options) : await dialog.showSaveDialog(options);
@@ -747,6 +755,11 @@ export function createPluginServices({
     openWorkspacePort: input => workspacePorts.open(input),
     closeWorkspaceResources: ownerId => {workspaceResources.closeOwner(ownerId);workspacePorts.closeOwner(ownerId);},
     disposeWorkspaceResources: () => {workspaceConsent.dispose();workspaceResources.dispose();workspacePorts.dispose();},
+    workspaceResourceActivity: () => {
+      const resources = workspaceResources.getHandoffActivity(), ports = workspacePorts.getHandoffActivity();
+      return { operations: resources.operations + ports.operations, resources: resources.resources + ports.resources,
+        uncontainedResources: Math.min(Number.MAX_SAFE_INTEGER, resources.uncontainedResources + ports.uncontainedResources) };
+    },
     /**
      * The richer workspace payload, so `pi.workspace.get` and the
      * `workspace:changed` event both expose the open project's folder roots

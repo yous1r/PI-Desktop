@@ -17,6 +17,7 @@
  * transport and CI never needs a real server.
  */
 import { WebSocket } from "ws";
+import { ExternalResourceActivity } from "./external-resource-activity";
 
 /** Four sockets is already several more than a voice session needs. */
 export const MAX_SOCKETS_PER_PLUGIN = 4;
@@ -31,6 +32,8 @@ export type PluginSocketErrorCode =
   | "LIMIT_EXCEEDED"
   | "NOT_FOUND"
   | "CONNECT_FAILED"
+  | "HOST_BUSY"
+  | "PLUGIN_GONE"
   | "TIMEOUT";
 
 /** Thrown for every refusal; `code` is what the plugin sees as `error`. */
@@ -82,6 +85,8 @@ export type PluginSocketEntry = {
 };
 
 export type PluginWebSocketDependencies = {
+  isAdmissionClosed: () => boolean;
+  onCleanupError?: () => void;
   /** Injectable so tests never open a real connection. */
   createSocket?: PluginSocketFactory;
   /** One event per plugin; the runtime forwards it to that plugin's process. */
@@ -92,10 +97,12 @@ export type PluginWebSocketDependencies = {
   maxBufferedBytes?: number;
 };
 
-type Entry = { meta: PluginSocketEntry; socket: PluginSocket };
+type Entry = { meta: PluginSocketEntry; socket: PluginSocket | null; cancel(error: PluginSocketError): void };
+type ConnectRequest = { pluginId: string; url: string; headers?: Record<string, string>; protocols?: string[]; timeoutMs?: number };
 
 export class PluginWebSocketRegistry {
   private readonly sockets = new Map<string, Entry>();
+  private readonly activity: ExternalResourceActivity;
   private readonly deps: PluginWebSocketDependencies;
   private readonly maxPerPlugin: number;
   private readonly connectTimeoutMs: number;
@@ -105,6 +112,7 @@ export class PluginWebSocketRegistry {
 
   constructor(deps: PluginWebSocketDependencies) {
     this.deps = deps;
+    this.activity = new ExternalResourceActivity(deps.isAdmissionClosed);
     this.maxPerPlugin = deps.maxPerPlugin ?? MAX_SOCKETS_PER_PLUGIN;
     this.connectTimeoutMs = deps.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
     this.maxFrameBytes = deps.maxFrameBytes ?? MAX_FRAME_BYTES;
@@ -116,131 +124,93 @@ export class PluginWebSocketRegistry {
    * have passed the caller's egress check already; the shape and the bounds
    * here are this method's own.
    */
-  async connect(request: {
-    pluginId: string;
-    url: string;
-    headers?: Record<string, string>;
-    protocols?: string[];
-    timeoutMs?: number;
-  }): Promise<{ socketId: string }> {
+  async connect(request: ConnectRequest): Promise<{ socketId: string }> {
+    this.assertAdmission();
+    return this.activity.track(() => this.connectCurrent(request));
+  }
+
+  private async connectCurrent(request: ConnectRequest): Promise<{ socketId: string }> {
     const { pluginId, url } = request;
     let parsed: URL;
-    try {
-      parsed = new URL(url);
-    } catch {
-      throw new PluginSocketError("INVALID_ARGUMENT", `url is not absolute: ${url}`);
-    }
+    try { parsed = new URL(url); }
+    catch { throw new PluginSocketError("INVALID_ARGUMENT", `url is not absolute: ${url}`); }
     if (parsed.protocol !== "wss:" && parsed.protocol !== "ws:") {
-      throw new PluginSocketError(
-        "INVALID_ARGUMENT",
-        `websocket url must be ws:// or wss://: ${url}`,
-      );
+      throw new PluginSocketError("INVALID_ARGUMENT", `websocket url must be ws:// or wss://: ${url}`);
     }
     if (this.countFor(pluginId) >= this.maxPerPlugin) {
-      throw new PluginSocketError(
-        "LIMIT_EXCEEDED",
-        `a plugin may hold at most ${this.maxPerPlugin} sockets`,
-      );
+      throw new PluginSocketError("LIMIT_EXCEEDED", `a plugin may hold at most ${this.maxPerPlugin} sockets`);
     }
-    const protocols = request.protocols?.filter((value) => typeof value === "string");
-    if (protocols?.some((value) => !/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(value))) {
+    const protocols = request.protocols?.filter(value => typeof value === "string");
+    if (protocols?.some(value => !/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(value))) {
       throw new PluginSocketError("INVALID_ARGUMENT", "protocols must be token strings");
     }
-
     const socketId = `ws-${this.nextId++}`;
-    const meta: PluginSocketEntry = {
-      pluginId,
-      socketId,
-      url,
-      state: "connecting",
-      framesSent: 0,
-      framesReceived: 0,
-    };
+    const meta: PluginSocketEntry = { pluginId, socketId, url, state: "connecting", framesSent: 0, framesReceived: 0 };
     const key = entryKey(pluginId, socketId);
-
-    /** Resolves the pending `connect`; set once, then called at most once. */
     let settle: ((error: PluginSocketError | null) => void) | null = null;
-    const opened = new Promise<void>((resolve, reject) => {
-      settle = (error) => (error ? reject(error) : resolve());
-    });
-    const decide = (error: PluginSocketError | null) => {
-      const current = settle;
-      settle = null;
-      current?.(error);
-    };
-
-    const socket = (this.deps.createSocket ?? this.defaultFactory)(
-      { url, headers: request.headers, protocols },
-      {
+    const opened = new Promise<void>((resolve, reject) => { settle = error => error ? reject(error) : resolve(); });
+    // A synchronous factory failure may retire this entry before the await below.
+    void opened.catch(() => undefined);
+    const decide = (error: PluginSocketError | null) => { const current = settle; settle = null; current?.(error); };
+    const entry: Entry = { meta, socket: null, cancel: decide };
+    this.sockets.set(key, entry);
+    const isCurrent = () => this.sockets.get(key) === entry;
+    const timeoutMs = request.timeoutMs ?? this.connectTimeoutMs;
+    const timer = setTimeout(() => decide(new PluginSocketError("TIMEOUT", `connection timed out after ${timeoutMs}ms`)), timeoutMs);
+    timer.unref?.();
+    try {
+      this.activity.nativeAttempt();
+      entry.socket = (this.deps.createSocket ?? this.defaultFactory)({ url, headers: request.headers, protocols }, {
         onOpen: ({ protocol }) => {
-          if (meta.state !== "connecting") return;
-          meta.state = "open";
-          decide(null);
+          if (!isCurrent() || meta.state !== "connecting") return;
+          if (this.activity.isClosed()) { this.release(pluginId, socketId, new PluginSocketError("HOST_BUSY", "Host admission is closed")); return; }
+          meta.state = "open"; decide(null);
           this.deps.onEvent(pluginId, { type: "open", socketId, protocol });
         },
-        onMessage: (data) => {
-          if (meta.state === "closed") return;
+        onMessage: data => {
+          if (!isCurrent() || meta.state === "closed" || this.activity.isClosed()) return;
           const size = typeof data === "string" ? Buffer.byteLength(data) : data.byteLength;
-          if (size > this.maxFrameBytes) {
-            // A frame this large is a peer problem, not a slow consumer: the
-            // connection goes away instead of the host buffering it.
-            this.fail(pluginId, key, "OVERSIZED_FRAME", `frame of ${size} bytes`);
-            return;
-          }
-          meta.framesReceived += 1;
+          if (size > this.maxFrameBytes) { this.fail(pluginId, key, "OVERSIZED_FRAME", `frame of ${size} bytes`); return; }
+          meta.framesReceived++;
           this.deps.onEvent(pluginId, { type: "message", socketId, data });
         },
         onClose: ({ code, reason, wasClean }) => {
-          const wasConnecting = meta.state === "connecting";
-          meta.state = "closed";
-          this.sockets.delete(key);
-          if (wasConnecting) {
-            decide(
-              new PluginSocketError(
-                "CONNECT_FAILED",
-                `socket closed before it opened (${code}: ${reason})`,
-              ),
-            );
-          }
-          this.deps.onEvent(pluginId, { type: "close", socketId, code, reason, wasClean });
+          if (!isCurrent()) return;
+          meta.state = "closed"; this.sockets.delete(key);
+          decide(new PluginSocketError("CONNECT_FAILED", `socket closed before it opened (${code}: ${reason})`));
+          if (!this.activity.isClosed()) this.deps.onEvent(pluginId, { type: "close", socketId, code, reason, wasClean });
         },
         onError: ({ code, message }) => {
-          if (meta.state === "connecting") {
-            decide(new PluginSocketError("CONNECT_FAILED", message));
-          }
-          this.deps.onEvent(pluginId, { type: "error", socketId, code, message });
+          if (!isCurrent()) return;
+          if (meta.state === "connecting") decide(new PluginSocketError("CONNECT_FAILED", message));
+          if (!this.activity.isClosed()) this.deps.onEvent(pluginId, { type: "error", socketId, code, message });
         },
-      },
-    );
-    this.sockets.set(key, { meta, socket });
-
-    const timeoutMs = request.timeoutMs ?? this.connectTimeoutMs;
-    let timer: NodeJS.Timeout | undefined;
-    const expired = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => {
-        reject(new PluginSocketError("TIMEOUT", `connection timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-      // A pending connect must not keep the app alive or leave a live handle.
-      timer.unref?.();
-    });
-
-    try {
-      await Promise.race([opened, expired]);
+      });
+      if (!isCurrent()) this.terminate(entry.socket);
+      await opened;
+      this.assertAdmission();
+      if (!isCurrent()) throw new PluginSocketError("PLUGIN_GONE", "Socket owner was closed");
       return { socketId };
     } catch (error) {
-      // A failed connect must not consume the plugin's socket budget.
       this.release(pluginId, socketId);
-      throw error instanceof PluginSocketError
-        ? error
-        : new PluginSocketError("CONNECT_FAILED", String(error));
-    } finally {
-      clearTimeout(timer);
-      settle = null;
-    }
+      throw error instanceof PluginSocketError ? error : new PluginSocketError("CONNECT_FAILED", String(error));
+    } finally { clearTimeout(timer); settle = null; }
+  }
+
+  getHandoffActivity() { return this.activity.snapshot(this.sockets.size); }
+
+  dispose(): void {
+    this.activity.seal();
+    for (const entry of this.sockets.values()) this.release(entry.meta.pluginId, entry.meta.socketId);
+  }
+
+  private assertAdmission(): void {
+    if (this.activity.isClosed()) throw new PluginSocketError("HOST_BUSY", "Host admission is closed");
   }
 
   /** Queue one frame. Refuses rather than growing the queue without bound. */
   send(request: { pluginId: string; socketId: string; data: string | Uint8Array }): void {
+    this.assertAdmission();
     const entry = this.require(request.pluginId, request.socketId);
     const { data } = request;
     const size = typeof data === "string" ? Buffer.byteLength(data) : data.byteLength;
@@ -280,26 +250,24 @@ export class PluginWebSocketRegistry {
       .map((entry) => ({ ...entry.meta }));
   }
 
-  private require(pluginId: string, socketId: string): Entry {
+  private require(pluginId: string, socketId: string): Entry & { socket: PluginSocket } {
     const entry = this.sockets.get(entryKey(pluginId, socketId));
-    if (!entry) {
+    if (!entry?.socket) {
       throw new PluginSocketError("NOT_FOUND", `no open socket for this plugin: ${socketId}`);
     }
-    return entry;
+    return { ...entry, socket: entry.socket };
   }
 
-  private release(pluginId: string, socketId: string): void {
-    const key = entryKey(pluginId, socketId);
-    const entry = this.sockets.get(key);
+  private release(pluginId: string, socketId: string, error = new PluginSocketError("PLUGIN_GONE", "Socket owner was closed")): void {
+    const key = entryKey(pluginId, socketId), entry = this.sockets.get(key);
     if (!entry) return;
-    entry.meta.state = "closed";
-    this.sockets.delete(key);
-    try {
-      // Terminate, not close: unload and revocation are not a negotiation.
-      entry.socket.terminate();
-    } catch {
-      // Teardown is best effort; a wedged socket must not block unload.
-    }
+    entry.meta.state = "closed"; this.sockets.delete(key); entry.cancel(error);
+    if (entry.socket) this.terminate(entry.socket);
+  }
+
+  private terminate(socket: PluginSocket): void {
+    try { socket.terminate(); }
+    catch { (this.deps.onCleanupError ?? (() => console.warn("Plugin socket cleanup failed; idle handoff remains unavailable")))(); }
   }
 
   private fail(pluginId: string, key: string, code: string, detail: string): void {

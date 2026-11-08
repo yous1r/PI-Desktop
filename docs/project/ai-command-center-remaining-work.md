@@ -1155,3 +1155,57 @@ including twenty valid behavior failures, corrected source assertions, fixture
 errors and native cleanup limitations. The candidate input list is focused,
 not a complete dependency/bundle manifest. This callback/MCP/workspace slice is
 accepted within the stated scope; external owners and full H1 composition follow.
+
+### H1 plugin socket and workspace external-resource checkpoint
+
+Plugin WebSocket, workspace port and workspace resource services now require
+the shared Desktop admission source. Original entries/leases are rechecked at
+async boundaries and immediately before new I/O or publication. Released socket
+events cannot reach a replacement plugin; a released pending handshake settles
+without waiting for its deadline. Workspace downloads cannot continue from a
+late dialog into file creation or application launch after closure. HTTP preview
+delivery is extracted into `workspace-resource-server.ts`, preserving scoped
+paths, headers, CSP and limits while tracking original reads and response closure.
+
+Retired pending forwards retain the eight-lease budget. Close calls join their
+original work, initiate cleanup synchronously and remain counted through actual
+settlement. Temporary admission closure pauses periodic checks rather than
+stopping an active forward. Port reservation and SSH spawning retain the original
+connection generation and lease; optional transport guards recheck after SSH
+environment preparation. Remaining SSH transport behavior is unchanged.
+Plugin runtime activity includes these service snapshots and refuses a configured
+resource service without activity reporting. Ordinary close retains saturated
+unqualified-resource evidence; it does not certify native-family closure.
+
+The behavior-preserving HTTP extraction passed 22 compatibility cases. Twenty-two
+new regression/boundary cases cover admission, events, retirement, response
+ownership, microtask interleavings and timer behavior. Sixteen behavior failures
+were reproduced before correction; three initial failures were missing new
+interfaces. Two implementation regressions (deferred close initiation and an
+active forward closed by a temporary hold) were also caught and corrected.
+Final relevant runs contain 107 unique passing test names; overlapping reruns
+are not added again. Two actual-Git-plugin cases remain skipped without
+`PI_GIT_PLUGIN_PATH`. Three portable SSH transport cases pass; ten existing
+script-process cases fail with Windows `ENOENT`, identically reproduced against
+committed `7abcc95ad6b8342a519b0386263edaf445e90885`. They are not SSH acceptance.
+
+The new real-process path loads an isolated Node plugin, sends an exact payload
+through its SDK and a loopback WebSocket echo server, refuses handoff, closes
+admission, runs teardown and observes its original child and peer close. Final
+socket activity is zero operations/resources with one retained unqualified
+attempt; runtime activity is zero operations/plugins/schedules with two retained
+attempts. Existing File Manager and plugin lifecycle process paths also pass.
+The status remains `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+
+Full Desktop source types, Biome 289 files, architecture, agent-policy, current
+main ancestry and whitespace checks pass. The first resource test failed before
+assertions because it imported absent worktree `dist`; importing current source
+restored the existing three cases. No dependency installation, live SSH/provider,
+live Desktop/profile, Rust or hardware-qualification run was performed. Clean
+candidate and raw-log evidence follow the implementation commit.
+
+Next: remaining panel/view/shortcut, speech/voice, OAuth/user-MCP raw transport,
+extension-owner and remote Host owners; then mandatory nineteen-family inventory,
+bounded original-Rust status and fenced Desktop/coordinator composition. These
+are H1 prerequisites; H2-H5 and the rest of the approved command-center plan
+continue without enabling a partial transfer endpoint.

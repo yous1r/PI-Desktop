@@ -7,14 +7,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 register(new URL("./helpers/ts-import-hooks.mjs", import.meta.url));
 const { WorkspaceResources } = await import("../electron/main/remote/workspace-resources.ts");
-const { WorkspacePluginFiles } = await import("../../../packages/host-runtime/dist/workspace-plugin-files.js");
+const { WorkspacePluginFiles } = await import("../../../packages/host-runtime/src/workspace-plugin-files.ts");
 
 async function setup() {
  const root=await mkdtemp(join(tmpdir(),"workspace-resource-"));const workspace=join(root,"remote");await mkdir(workspace);
  const context={workspaceId:"a",projectId:"a",authority:{kind:"remote",hostKey:"host-a"},roots:[{path:workspace,primary:true,name:"a"}],platform:process.platform,generation:1,connectionState:"connected"};
  let connected=true;let url;let opened;let revealed;let picker;let transfer;
  const files=new WorkspacePluginFiles({root:workspace,protectedRoot:join(root,"host"),permissions:["fs.read"],manifest:{permissions:["fs.read"],fs:{read:{scope:["**"]}}},active:()=>connected});
- const resources=new WorkspaceResources({chooseCopy:async input=>{picker=input;return join(root,input.name);},openCopy:async path=>{opened=path;},openBrowser:async(value,session)=>{assert.equal(session,"session-a");url=value;},reveal:async(path,session)=>{revealed={path,session};}});
+ const resources=new WorkspaceResources({isAdmissionClosed:()=>false,chooseCopy:async input=>{picker=input;return join(root,input.name);},openCopy:async path=>{opened=path;},openBrowser:async(value,session)=>{assert.equal(session,"session-a");url=value;},reveal:async(path,session)=>{revealed={path,session};}});
  const input={ownerId:"plugin-a",pluginName:"Files",context,sessionId:"session-a",validate:async()=>{if(!connected)throw Error("disconnected");},read:async(api,args)=>{const value=await files.call(api,args);await transfer?.(api,args);return value;}};
  return {root,workspace,resources,input,get url(){return url;},get opened(){return opened;},get revealed(){return revealed;},get picker(){return picker;},disconnect:()=>{connected=false;},onRead:fn=>{transfer=fn;},dispose:async()=>{resources.dispose();await rm(root,{recursive:true,force:true});}};
 }

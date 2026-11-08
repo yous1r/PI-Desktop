@@ -1,5 +1,11 @@
 # Unreleased changes
 
+- Bind plugin sockets and workspace previews/downloads to shared handoff admission
+  and their original owners. Retired work, HTTP reads and asynchronous cleanup stay
+  counted; old socket events cannot reach a reloaded plugin. Late validation,
+  download choices and SSH environment setup cannot start new work after closure.
+  Active forwards survive temporary idle checks, and unqualified resource
+  evidence remains after ordinary close. Full ownership transfer remains pending.
 - Keep plugin callbacks, workspace startup/context lookup, MCP transport and
   managed-connection work owned after cancellation or unload. Closed admission
   refuses ordinary callbacks, tools, commands and broadcasts while preserving

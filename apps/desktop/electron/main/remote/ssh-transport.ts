@@ -76,6 +76,9 @@ export interface SshTransport {
     remoteHost: string;
     remotePort: number;
     timeoutMs?: number;
+    /** Optional caller ownership guards; ordinary transport callers retain their behavior. */
+    assertCurrent?: () => void;
+    beforeSpawn?: () => void;
   }): Promise<SshForward>;
   /** Kill anything still running. Safe to call twice. */
   dispose(): void;
@@ -443,7 +446,8 @@ export function createSystemSshTransport(
       execOnce(command, input, execOptions?.timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS, execOptions?.maxOutputBytes),
     execWithFile: (command, path, execOptions) =>
       execOnce(command, undefined, execOptions?.timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS, execOptions?.maxOutputBytes, path),
-    async forward({ localPort, remoteHost, remotePort, timeoutMs }) {
+    async forward({ localPort, remoteHost, remotePort, timeoutMs, assertCurrent, beforeSpawn }) {
+      assertCurrent?.();
       const env = await acquireEnv();
       const args = [
         ...base,
@@ -451,7 +455,9 @@ export function createSystemSshTransport(
         "-L",
         `127.0.0.1:${localPort}:${remoteHost}:${remotePort}`,
       ];
-      const child = spawnTracked(args, env);
+      let child: ChildProcessWithoutNullStreams;
+      try { assertCurrent?.(); beforeSpawn?.(); child = spawnTracked(args, env); }
+      catch (error) { await releaseEnv(); throw error; }
       let stderr = "";
       child.stderr.on("data", (chunk: Buffer) => {
         stderr += chunk.toString("utf8");
