@@ -20231,3 +20231,10 @@ session data is used.
   certificate. No live provider, user Desktop/profile, microphone, stored remote
   Host or paid service is used. Other trusted-extension resources, the complete
   nineteen-family inventory and H1-H5 transfer remain separate acceptance work.
+- **Host restart continuation:** use the real Desktop sidecar's `setHost()` with
+  a new Host or changed generation while dispatch/registration is pending.
+  Revoke the old authorization immediately, retain original work, refuse old
+  runtime IDs, retire the stale runtime before an idle new launch and admit the
+  new generation. A matching binding is a no-op; closed admission refuses a new
+  binding. Sessions without owner extensions keep their launch. The lifecycle
+  suite also verifies sidecar reuse, locale restoration and plan-drain order.

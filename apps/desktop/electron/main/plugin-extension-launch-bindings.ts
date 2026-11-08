@@ -87,12 +87,16 @@ export class PluginExtensionLaunchBindings {
   }
   /** Retired IDs stay rejected for this sidecar's lifetime, including after a session close. */
   invalidatePlugin(pluginId: string): string[] {
+    return this.invalidateWhere(launch => launch.extensions.some(item => item.ownerPluginId === pluginId));
+  }
+  invalidateHost(): void { this.invalidateWhere(launch => launch.extensions.length > 0); }
+  private invalidateWhere(matches: (launch: OwnerLaunchBinding) => boolean): string[] {
     const sessions = new Set<string>();
     for (const [sessionId, launch] of this.launches) {
-      if (launch.extensions.some((item) => item.ownerPluginId === pluginId)) sessions.add(sessionId);
+      if (matches(launch)) sessions.add(sessionId);
     }
     for (const [sessionId, generation] of this.generations) {
-      if (generation.launch.extensions.some((item) => item.ownerPluginId === pluginId)) sessions.add(sessionId);
+      if (matches(generation.launch)) sessions.add(sessionId);
     }
     for (const sessionId of sessions) {
       this.invalidated.add(sessionId);

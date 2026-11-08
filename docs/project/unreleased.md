@@ -1,5 +1,8 @@
 # Unreleased changes
 
+- Restore owner-extension calls after ordinary Host restart through explicit
+  sidecar rebinding. Old calls and runtime IDs are revoked while unfinished work
+  stays counted; the next idle launch rebuilds only affected owner extensions.
 - Keep plugin extension-owner work bound to its original Host generation and
   launch. Cancelled lookups and callbacks remain counted; replaced bridges and
   late session cleanup cannot hide work or clear newer ownership. Shared handoff

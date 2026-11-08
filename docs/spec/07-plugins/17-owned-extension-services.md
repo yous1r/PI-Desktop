@@ -56,7 +56,7 @@ one original Host object and startup generation. Registration and ordinary calls
 fail before Host lookup while admission is closed. Host availability, launch
 identity and admission are checked after awaits, before consuming a launch, before
 the next RPC or plugin dispatch, and before publishing results. A replacement
-Host cannot inherit an existing bridge, including between idle requests.
+Host cannot inherit old authorization, including between idle requests.
 
 `PluginExtensionOwnerBroker.getHandoffActivity()` reports original `operations`
 and authorized `runtimes`. Registration work and the original session lookup,
@@ -81,6 +81,15 @@ lifecycle and launch, and a stale retirement query cannot dispose a replacement.
 Unconfirmed session/shutdown cleanup retains bounded refusal evidence even after
 a late reply or original-child exit. The complete Desktop inventory, other
 trusted-extension resources and native-family qualification remain separate work.
+
+An ordinary Host restart keeps the existing sidecar transport. Its explicit
+`setHost()` rebind revokes old broker generations before changing authority,
+retains original pending work/request slots, and marks only sessions with owner
+extensions for retirement before their next idle launch. Old runtime IDs remain
+rejected; a new runtime registers against a fresh launch. Matching Host/generation
+bindings are a no-op, and closed admission refuses a new binding. In-flight
+queries retain their original Host identity across this rebind. Sessions without
+owner extensions, locale restoration and approved-plan drain order are preserved.
 
 ## Managed connection API
 

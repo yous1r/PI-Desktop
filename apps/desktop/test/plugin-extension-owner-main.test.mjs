@@ -54,11 +54,12 @@ async function fixture(t, dispatch, mode = "agent") {
   const sidecar = new AgentSidecar(() => {}, { command: process.execPath, args: ["-e", childSource] });
   const records = new Map([["session", { id: "session", mode, projectPath: "/project", parentSessionId: "host-parent" }]]);
   const listeners = new Set(); const calls = []; let available = true; let hostGate;
-  const host = { generation: "host-generation", isAvailable: () => true, call: async (method, params) => {
+  const host = { generation: "host-generation", isAvailable: () => true, onNotification: () => () => {}, onExit: () => () => {}, call: async (method, params) => {
     if (hostGate) { hostGate.entered?.resolve(); await hostGate.promise; }
     if (method === "worktree.location") return { path: records.get(params.sessionId)?.worktree?.path };
     assert.equal(method, "session.get"); return { session: structuredClone(records.get(params.id) ?? null) };
   } };
+  let currentHost = host, admissionClosed = false;
   const plugins = {
     getAgentExtensions: () => available ? [extension] : [],
     onExtensionOwnerUnavailable: (listener) => { listeners.add(listener); return () => listeners.delete(listener); },
@@ -67,12 +68,13 @@ async function fixture(t, dispatch, mode = "agent") {
       return dispatch ? dispatch(operation, payload, context) : { turnId: context.turnId, runtimeId: context.runtimeId };
     },
   };
-  const bridge = createPluginExtensionOwnerBridge({ launches: sidecar.extensionOwnerLaunches, getHost: () => host, plugins,
-    isAdmissionClosed: () => false,
+  const bridge = createPluginExtensionOwnerBridge({ launches: sidecar.extensionOwnerLaunches, getHost: () => currentHost, plugins,
+    isAdmissionClosed: () => admissionClosed,
     pluginActiveInProject: (_plugin, project) => project === "/project" || project === "remote:ssh/project" });
   sidecar.setExtensionOwnerLifecycle(bridge);
   sidecar.setTrustedExtensionBridge({ ...bridge, publishCommands() {}, publishDiagnostics() {}, requestUi: async () => ({}),
     configureModel: async () => ({}), queuePush: async () => ({}), queuePrioritize: async () => ({}) });
+  sidecar.setHost(currentHost);
   const launch = { sessionId: "session", turnId: "turn-1", mode, projectPath: "/project", workspaceRoot: "/project",
     trustedExtensions: [{ id: "extension", ownerPluginId: "demo.owner", ownerOperations: operations }] };
   const request = { sessionId: "session", runtimeId: "runtime-1", turnId: "turn-1", extensionId: "extension", operation: "recall" };
@@ -82,11 +84,15 @@ async function fixture(t, dispatch, mode = "agent") {
   const registerRuntime = (runtimeId = "runtime-1", currentLaunch = launch) => proxy("registerRuntime", {
     ...currentLaunch, runtimeId, extensionIds: ["extension"],
   });
-  t.after(() => sidecar.dispose());
+  t.after(async () => { await sidecar.dispose(); assert.equal(await sidecar.confirmExit(2_000), true); });
   await sidecar.call("agent.prompt", launch);
   await registerRuntime();
   await sidecar.call("fixture.runtime", request);
   return { sidecar, bridge, records, calls, launch, request, proxy, call, registerRuntime, listeners,
+    rebind: () => sidecar.setHost(currentHost),
+    replaceHost: () => { currentHost = { ...host, generation: "replacement-host" }; sidecar.setHost(currentHost); },
+    bumpHost: () => { currentHost.generation += "-next"; sidecar.setHost(currentHost); },
+    closeAdmission: () => { admissionClosed = true; }, openAdmission: () => { admissionClosed = false; },
     holdHost: (gate) => { hostGate = gate; },
     unload: () => { for (const listener of listeners) listener("demo.owner"); available = false; },
     reload: () => { available = true; } };
@@ -282,4 +288,56 @@ test("custom mode owner calls preserve Host identity and cannot gain Agent write
   await assert.rejects(f.call({ operation: "capture", mode: "agent" }), /Plan[/]Goal/);
   f.records.get("session").mode = "other-mode";
   await assert.rejects(f.call(), /authorized|stale/);
+});
+
+for (const change of ["replacement", "generation"]) test(`Host ${change} explicitly rebinds owner authorization before the next idle launch`, async t => {
+  const f = await fixture(t); await f.call();
+  if (change === "replacement") f.replaceHost(); else f.bumpHost();
+  assert.equal(f.sidecar.extensionOwnerLaunches.needsRetirement("session"), true);
+  await assert.rejects(f.call(), /Stale/);
+  const next = { ...f.launch, turnId: "turn-2" };
+  await f.sidecar.call("agent.prompt", next);
+  assert.deepEqual(await f.sidecar.call("fixture.disposals"), [{ sessionId: "session", reason: "reconfigure" }]);
+  await assert.rejects(f.registerRuntime("runtime-1", next), /not authorized/);
+  await f.registerRuntime("runtime-2", next); await f.call({ runtimeId: "runtime-2", turnId: "turn-2" });
+  assert.equal(f.calls.at(-1).context.runtimeId, "runtime-2"); assert.equal(f.listeners.size, 1);
+});
+
+test("explicit Host rebind cancels old dispatch while retaining its original work", async t => {
+  const entered = deferred(), release = deferred(); let first = true;
+  const f = await fixture(t, async () => { if (first) { first = false; entered.resolve(); return release.promise; } return {}; });
+  const result = assert.rejects(f.call(), /retired/); await entered.promise; f.replaceHost(); await result;
+  assert.ok(f.sidecar.getExtensionOwnerActivity().operations > 0);
+  release.resolve({}); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.sidecar.getExtensionOwnerActivity().operations, 0);
+  await f.sidecar.call("agent.prompt", f.launch); await f.registerRuntime("runtime-2"); await f.call({ runtimeId: "runtime-2" });
+});
+
+test("Host rebind preserves a matching owner and refuses new ownership under closed admission", async t => {
+  const f = await fixture(t); f.rebind(); await f.call();
+  assert.equal(f.sidecar.extensionOwnerLaunches.needsRetirement("session"), false);
+  f.closeAdmission(); assert.throws(() => f.replaceHost(), { code: "HOST_BUSY" });
+  await assert.rejects(f.call(), /unavailable/);
+  f.openAdmission(); f.rebind(); await f.sidecar.call("agent.prompt", f.launch);
+  await f.registerRuntime("runtime-2"); await f.call({ runtimeId: "runtime-2" });
+});
+
+test("Host rebind retains a pending registration but cannot accept its old query result", async t => {
+  const f = await fixture(t); f.bridge.closeSession("session"); await f.sidecar.call("agent.prompt", f.launch);
+  const entered = deferred(), release = deferred(); f.holdHost({ entered, promise: release.promise });
+  const pending = assert.rejects(f.registerRuntime("pending-runtime"), /changed|retired/); await entered.promise;
+  f.replaceHost(); assert.ok(f.sidecar.getExtensionOwnerActivity().operations > 0);
+  f.holdHost(undefined); release.resolve(); await pending;
+  assert.equal(f.sidecar.getExtensionOwnerActivity().operations, 0);
+  await f.sidecar.call("agent.prompt", f.launch); await f.registerRuntime("runtime-2"); await f.call({ runtimeId: "runtime-2" });
+});
+
+test("Host rebind leaves sessions without owner extensions on their existing launch", async t => {
+  const f = await fixture(t); const plain = { ...f.launch, sessionId: "plain-session", trustedExtensions: [] };
+  await f.sidecar.call("agent.prompt", plain); const before = f.sidecar.extensionOwnerLaunches.get("plain-session");
+  f.replaceHost();
+  assert.equal(f.sidecar.extensionOwnerLaunches.needsRetirement("plain-session"), false);
+  assert.deepEqual(f.sidecar.extensionOwnerLaunches.get("plain-session"), before);
+  await f.sidecar.call("agent.prompt", { ...plain, turnId: "plain-next" });
+  assert.deepEqual(await f.sidecar.call("fixture.disposals"), []);
 });

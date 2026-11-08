@@ -20,6 +20,7 @@ export type {
 type ExtensionOwnerLifecycle = {
   closeSession(sessionId: string): void;
   dispose(): void;
+  rebindHost(host: object): void;
   getHandoffActivity(): { operations: number; runtimes: number };
 };
 
@@ -80,6 +81,12 @@ export class AgentSidecar extends RuntimeAgentSidecar {
     this.ownerLifecycle?.dispose();
     this.ownerLifecycle = lifecycle;
     this.getExtensionOwnerActivity();
+  }
+
+  override setHost(host: Parameters<RuntimeAgentSidecar["setHost"]>[0]): void {
+    if (this.ownerDisposed) return;
+    this.ownerLifecycle?.rebindHost(host);
+    super.setHost(host);
   }
 
   getExtensionOwnerActivity() {

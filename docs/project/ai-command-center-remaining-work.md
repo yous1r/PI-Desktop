@@ -1386,3 +1386,31 @@ is 407249 bytes, SHA-256
 It retains twenty exact raw artifacts, their byte hashes, the source manifest and
 the 123 unique related passing test names. This owner-call slice is accepted;
 other trusted-extension/external owners and complete H1 composition continue.
+
+### Owner-extension Host restart continuation
+
+Integration follow-up found that ordinary Host restart reuses the existing
+sidecar. The fixed owner bridge correctly refused implicit replacement authority,
+but needed an explicit rebind to admit future owner-extension launches. Four
+new actual-sidecar regressions reproduced missing retirement, delayed cancellation
+and closed-gate rebinding. This is an integration defect in the preceding slice;
+its clean-candidate results remain valid for the tested scope, not restart parity.
+
+Desktop `AgentSidecar.setHost()` now invokes the existing bridge's explicit
+rebind before changing its proxy Host. Rebind validates the requested/current
+Host, generation, availability and shared admission, revokes old broker
+generations and launch authority, and preserves pending original work and request
+slots. Individual in-flight queries retain their captured Host/generation.
+The same Host/generation is a no-op. Existing retirement markers make the next
+idle launch dispose the old runtime; retained old IDs cannot re-register, and a
+fresh runtime can register against the new launch. The existing sidecar, locale
+restoration, supervisor and plan-drain order remain intact.
+
+Two more boundaries verify pending registration and sessions without owner
+extensions. The latter reproduced an overly broad invalidation and was corrected
+to select only owner-bearing launches/generations. Six new regression paths and
+the relevant six-file suite now pass: 80 tests, zero failures/cancellations/skips.
+Full Desktop source types, Biome 309 files, architecture, agent policy and
+whitespace checks pass. Clean-candidate validation follows the implementation
+commit. This continuation changes no wire protocol, Rust state, permissions or
+native-family qualification; complete H1 and remaining resource owners stay open.

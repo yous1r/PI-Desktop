@@ -241,12 +241,14 @@ export class PluginExtensionOwnerBroker {
     this.abortPending((item) => item.pluginId === pluginId);
   }
   closeSession(sessionId: string): void { this.registrations.delete(sessionId); this.removeGeneration(sessionId); }
-  dispose(): void {
-    this.closed = true;
+  /** Revoke old Host authority without losing original requests or activity. */
+  invalidateHost(): void {
+    this.pluginRevision++;
     this.registrations.clear();
     for (const sessionId of this.generations.keys()) this.removeGeneration(sessionId);
     this.abortPending(() => true);
   }
+  dispose(): void { this.closed = true; this.invalidateHost(); }
   private removeGeneration(sessionId: string): void {
     clearTimeout(this.generations.get(sessionId)?.retirementTimer);
     this.generations.delete(sessionId);

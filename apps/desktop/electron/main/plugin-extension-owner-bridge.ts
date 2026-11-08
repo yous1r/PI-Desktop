@@ -21,7 +21,7 @@ export function createPluginExtensionOwnerBridge(deps: {
   pluginActiveInProject: (pluginId: string, project: string | null) => boolean;
 }) {
   let closed = false;
-  const host = deps.getHost(), generation = host?.generation;
+  let host = deps.getHost(), generation = host?.generation;
   const resolutions = new WeakMap<ExtensionOwnerSession, () => boolean>();
   const assertOwner = (session?: ExtensionOwnerSession) => {
     if (closed || !host || deps.getHost() !== host || host.generation !== generation || !host.isAvailable()) {
@@ -35,15 +35,17 @@ export function createPluginExtensionOwnerBridge(deps: {
     const launch = retiring ?? currentLaunch;
     assertOwner();
     if (!currentLaunch || !launch || !host) return undefined;
+    const originalHost = host, originalGeneration = generation;
     const sameLaunch = deps.launches.captureCurrent(sessionId);
-    const isCurrent = () => !closed && Boolean(deps.launches.get(sessionId)) && (Boolean(retiring) || sameLaunch());
+    const isCurrent = () => !closed && host === originalHost && generation === originalGeneration &&
+      Boolean(deps.launches.get(sessionId)) && (Boolean(retiring) || sameLaunch());
     const assertCurrent = () => {
       assertOwner();
       if (!isCurrent()) throw new DOMException("Owner launch changed", "AbortError");
       if (!retiring && deps.isAdmissionClosed()) throw Object.assign(new Error("Host admission is closed"), { code: "HOST_BUSY" });
     };
     assertCurrent();
-    const result = await host.call<{ session: Session | null }>("session.get", { id: sessionId, messageLimit: 1, contentLimit: 1 });
+    const result = await originalHost.call<{ session: Session | null }>("session.get", { id: sessionId, messageLimit: 1, contentLimit: 1 });
     assertCurrent();
     const session = result.session;
     const mode = liveMode(session?.mode, launch.mode);
@@ -52,7 +54,7 @@ export function createPluginExtensionOwnerBridge(deps: {
         session.remoteWorkspace?.hostKey !== launch.remoteWorkspace?.hostKey ||
         session.remoteWorkspace?.path !== launch.remoteWorkspace?.path) return undefined;
     if (session.worktree) {
-      const location = await host.call<{ path?: string }>("worktree.location", { sessionId });
+      const location = await originalHost.call<{ path?: string }>("worktree.location", { sessionId });
       assertCurrent();
       if (location.path?.trim() !== launch.workspaceRoot) return undefined;
     } else if (session.remoteWorkspace) {
@@ -79,6 +81,16 @@ export function createPluginExtensionOwnerBridge(deps: {
     deps.launches.invalidatePlugin(pluginId);
   });
   return {
+    rebindHost: (expectedHost: object) => {
+      if (closed) throw new DOMException("Owner invocation retired", "AbortError");
+      const next = deps.getHost();
+      if (!next || next !== expectedHost || !next.isAvailable()) throw Object.assign(new Error("Extension owner Host is unavailable"), { code: "HOST_UNAVAILABLE" });
+      if (next === host && next.generation === generation) return;
+      if (deps.isAdmissionClosed()) throw Object.assign(new Error("Host admission is closed"), { code: "HOST_BUSY" });
+      broker.invalidateHost();
+      deps.launches.invalidateHost();
+      host = next; generation = next.generation;
+    },
     getHandoffActivity: () => broker.getHandoffActivity(),
     callOwner: (params: Record<string, unknown>) => broker.callOwner(params),
     cancelOwner: (params: Record<string, unknown>) => broker.cancelOwner(params),
