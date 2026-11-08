@@ -1,3 +1,4 @@
+import { confirmChildExit } from "./process-exit-confirmation.js";
 import { EXTENSION_OWNER_PROXY_METHODS, routeExtensionRequest, type TrustedExtensionSidecarBridge } from "./extension-owner-routing.js";
 export type { TrustedExtensionSidecarBridge } from "./extension-owner-routing.js";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
@@ -635,6 +636,11 @@ export class AgentSidecar {
     } finally {
       await this.dispose();
     }
+  }
+
+  /** Observe this child only; false keeps ownership transfer unconfirmed. */
+  confirmExit(timeoutMs = 2_000): Promise<boolean> {
+    return confirmChildExit(this.child, timeoutMs);
   }
 
   async dispose(): Promise<void> {

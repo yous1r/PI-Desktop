@@ -19743,3 +19743,20 @@ session data is used.
 - **Status:** Automated. The old binary accepted both same-directory handshakes;
   the protected Windows candidate passes the seven scenarios. Unix link/FIFO
   guards and other OS behavior require their platform runners.
+
+### E2E-HOST-explicit-exit-confirmation
+
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-process-exit-confirmation.mjs`,
+  with `PI_SCRATCH_DIR` set and the installed toolchain reused.
+- **Steps:** Use current production HostProcess and AgentSidecar wrappers. Start
+  a real Rust Host in a synthetic profile and a deterministic Node sidecar
+  fixture; complete their handshake/ping. Observe live-process confirmation
+  refusal, stop each through its public disposal/shutdown path, then confirm
+  exit and repeat the zero-budget check. Independently observe owned child close.
+- **Expected:** Both live processes return false; both exited processes return
+  true; cleanup is confirmed. No real Agent/provider/profile or UI is used.
+  Controlled-clock contract tests separately cover transport errors, failed
+  spawn, bounded-disposal timeout, late exit, concurrent waits and cleanup.
+- **Boundary:** Original child exit only, not descendant containment or completed
+  S03b transfer. Existing ordinary quit/dispose behavior remains compatible.
+- **Specs:** [Process model](../03-runtime/07-process-model.md#5-shutdown-order).

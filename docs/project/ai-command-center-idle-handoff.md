@@ -18,6 +18,12 @@
 | `apps/desktop/electron/main/bootstrap/shutdown.ts` | Bounded quit settlement; some failures are logged or collected with `allSettled` | Keep ordinary quit semantics; handoff uses a stricter, separately verified workflow |
 | Windows tool ownership | Job Objects plus a corrected snapshot fallback | Snapshot cleanup alone is not a durable execution-generation fence |
 
+Implemented prerequisite: both process wrappers now expose
+`confirmExit(timeoutMs)`. It observes their original child without signalling it
+and keeps timeout/transport failure distinct from exit. The old disposal behavior
+is unchanged. This supplies child-exit evidence only; native descendant fencing,
+durable owner records and the transfer protocol below remain unimplemented.
+
 The first transfer must refuse a pre-existing source that lacks the execution
 fence capability. Restarting an updated source while idle may be required before
 it becomes eligible. Do not attempt to adopt an arbitrary live process by PID.

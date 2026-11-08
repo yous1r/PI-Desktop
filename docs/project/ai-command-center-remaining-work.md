@@ -238,3 +238,31 @@ First-release control receipts and transfer journals are not automatically
 deleted. This supersedes earlier unresolved-retention notes in the historical
 progress sections above. Implementation can proceed without another retention
 decision; later explicit deletion remains a separate data-compatibility feature.
+
+## Explicit process-exit confirmation prerequisite
+
+HostProcess and AgentSidecar now expose `confirmExit(timeoutMs)` without changing
+ordinary disposal behavior. The helper observes the original child, removes its
+listeners on completion, refuses a live/failed-spawn/unconfirmed child, and does
+not signal a process or infer descendant cleanup. Fourteen public-interface
+tests fail before the addition and pass after it, including disposal timeout,
+transport errors, late exit, concurrent waits and invalid budgets.
+
+The real-process harness starts the production Rust Host and a deterministic
+sidecar fixture through the production wrappers, refuses live confirmation and
+confirms both exits after their public shutdown/disposal calls. Independent child
+close observations confirm cleanup. This is one S03b-2 prerequisite, not a
+completed transfer or minimum-hardware performance qualification.
+
+The first full Host-runtime test run had 203 pass, 1 fail and 3 platform skips:
+the production ParentHostProxy child could not resolve shared/dist in the linked
+worktree environment. Direct Node import reproduced `ERR_MODULE_NOT_FOUND`.
+The candidate shared package was built and the retry uses a scratch-only Node
+resolver pinned to that output. Preserve the first result; the corrected run
+is reported separately.
+
+The corrected full Host-runtime run passes **204 tests with 3 existing platform
+skips** (31 files). The shared build, affected-source TypeScript check, scoped
+lint and docs check pass. Rust code is unchanged in this slice, so the prior
+Rust integration limitations remain; no full Rust rerun or UI verification is
+claimed. The exact clean-commit process result is recorded after commit.

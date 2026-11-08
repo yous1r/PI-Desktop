@@ -1,4 +1,4 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import {
   ErrorCodes,
@@ -8,8 +8,9 @@ import {
   rpcTimeoutMs,
   stripProxyEnv,
 } from "@pi-desktop/shared";
-import { HostWriteAdmission, TRANSCRIPT_WRITE_METHODS } from "./host-write-admission.js";
 import { diagnoseHostDataDirectoryFailure } from "./host-data-directory.js";
+import { HostWriteAdmission, TRANSCRIPT_WRITE_METHODS } from "./host-write-admission.js";
+import { confirmChildExit } from "./process-exit-confirmation.js";
 
 const HOST_DISPOSE_GRACE_MS = 3_000;
 const HOST_FORCE_KILL_GRACE_MS = 1_000;
@@ -382,6 +383,11 @@ export class HostProcess {
   async handshake(): Promise<void> {
     await this.call("app.handshake", { protocolVersion: PROTOCOL_VERSION });
     this.handshaken = true;
+  }
+
+  /** Observe this child only; false keeps ownership transfer unconfirmed. */
+  confirmExit(timeoutMs = 2_000): Promise<boolean> {
+    return confirmChildExit(this.child, timeoutMs);
   }
 
   async dispose(): Promise<void> {

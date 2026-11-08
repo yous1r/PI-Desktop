@@ -284,6 +284,16 @@ retains the lifecycle boundary whenever the local log write succeeds.
 8. Dispose update polling
 9. Close windows / exit
 
+`HostProcess.confirmExit(timeoutMs)` and `AgentSidecar.confirmExit(timeoutMs)`
+provide an explicit, bounded observation of their original Node `ChildProcess`.
+They never signal a process. A live child, transport failure, failed spawn or
+unconfirmed timeout returns `false`; a known child with exit code/signal returns
+`true`. The default is 2,000 ms; zero checks current state, and invalid or
+out-of-range integer budgets reject. Confirmation listeners are removed on
+completion. Existing `dispose()` remains bounded and does not itself promise
+exit. This additional primitive proves neither descendant cleanup nor durable
+execution-owner fencing, and does not enable ownership handoff.
+
 A quit that runs out of its budget logs `quit before streaming replies settled`
 and proceeds; the next host boot promotes whatever checkpoint remains. An
 unexpected sidecar exit takes the same recovery path immediately: the last
