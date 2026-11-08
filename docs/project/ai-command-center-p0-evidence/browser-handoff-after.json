@@ -1,0 +1,34 @@
+{
+  "candidate": "63b1554bf70800a77f5e68f374ed66e5873998e1",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "originalProcessExitObserved": true,
+  "qualifiedNativeFamilyClosure": false,
+  "platform": "win32",
+  "node": "v24.12.0",
+  "inputs": 790,
+  "inputsSha256": "93781e6d65707e34fe36147ab9e7c08cbd2cc7bf1480e706124c8cf7d6d16853",
+  "bundleSha256": "530a3193bdf547331047825e68571bbc67ab0b76953cf880a2f48408dba9e83c",
+  "electronBinarySha256": "9e1b3c401c1a1988942d5684fede8040d089b0c496ab86b899415ba9bfa0e49c",
+  "exit": {
+    "code": 0,
+    "signal": null
+  },
+  "passed": [
+    "closed empty admission prevents native creation and cancellation restores normal entry",
+    "real visible Chromium capture and background session input retain their original page",
+    "in-flight native evaluation blocks handoff until its original completion",
+    "retired pages close their handles, retain refusal evidence, and cannot reopen after permanent disposal"
+  ],
+  "activity": {
+    "operations": 0,
+    "uncontainedResources": 7,
+    "pages": 0
+  },
+  "originalWebContentsDestroyed": 2,
+  "allFixtureWindowsClosed": true,
+  "electron": "43.6.0",
+  "endedDirty": false,
+  "sourceInputsUnchanged": true
+}

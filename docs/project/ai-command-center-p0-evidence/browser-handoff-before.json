@@ -1,0 +1,122 @@
+{
+  "behavioralFailures": {
+    "initial": "✖ closed admission refuses browser navigation before roots or native creation (4.1719ms)\n✖ closure during file-root lookup prevents a late native navigation (1.0228ms)\n✖ closing a page during a CDP setup cannot send later setup or evaluation commands (1.2868ms)\n✖ CDP timeout retains the original pending operation after page disposal (2.1843ms)\n✖ a committed navigation retains its unfinished native load after window removal (0.7495ms)\n✖ temporary guest disposal allows new pages; permanent disposal seals admission (0.5971ms)\nℹ tests 6\nℹ suites 0\nℹ pass 0\nℹ fail 6\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 185.0527\n\n✖ failing tests:\n\ntest at apps\\desktop\\test\\handoff-browser.test.mjs:51:1\n✖ closed admission refuses browser navigation before roots or native creation (4.1719ms)\n  AssertionError [ERR_ASSERTION]: Missing expected rejection.\n      at async TestContext.<anonymous> (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/test/handoff-browser.test.mjs:56:3)\n      at async Test.run (node:internal/test_runner/test:1113:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: { code: 'HOST_BUSY' },\n    operator: 'rejects',\n    diff: 'simple'\n  }\n\ntest at apps\\desktop\\test\\handoff-browser.test.mjs:61:1\n✖ closure during file-root lookup prevents a late native navigation (1.0228ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  2 !== 1\n  \n      at TestContext.<anonymous> (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/test/handoff-browser.test.mjs:69:10)\n      at async Test.run (node:internal/test_runner/test:1113:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: 2,\n    expected: 1,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n\ntest at apps\\desktop\\test\\handoff-browser.test.mjs:72:1\n✖ closing a page during a CDP setup cannot send later setup or evaluation commands (1.2868ms)\n  AssertionError [ERR_ASSERTION]: Missing expected rejection.\n      at async TestContext.<anonymous> (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/test/handoff-browser.test.mjs:81:3)\n      at async Test.run (node:internal/test_runner/test:1113:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: { code: 'UNAVAILABLE' },\n    operator: 'rejects',\n    diff: 'simple'\n  }\n\ntest at apps\\desktop\\test\\handoff-browser.test.mjs:85:1\n✖ CDP timeout retains the original pending operation after page disposal (2.1843ms)\n  TypeError: h.host.getHandoffActivity is not a function\n      at TestContext.<anonymous> (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/test/handoff-browser.test.mjs:96:17)\n      at async Test.run (node:internal/test_runner/test:1113:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7)\n\ntest at apps\\desktop\\test\\handoff-browser.test.mjs:104:1\n✖ a committed navigation retains its unfinished native load after window removal (0.7495ms)\n  TypeError: h.host.getHandoffActivity is not a function\n      at TestContext.<anonymous> (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/test/handoff-browser.test.mjs:109:17)\n      at async Test.run (node:internal/test_runner/test:1113:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7)\n\ntest at apps\\desktop\\test\\handoff-browser.test.mjs:115:1\n✖ temporary guest disposal allows new pages; permanent disposal seals admission (0.5971ms)\n  TypeError: h.host.getHandoffActivity is not a function\n      at TestContext.<anonymous> (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/test/handoff-browser.test.mjs:119:26)\n      at async Test.run (node:internal/test_runner/test:1113:7)\n      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7)\n",
+    "oldDeadline": "✖ an old deadline cannot detach a newer debugger binding on the same page (6.5944ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 167.9429\n\n✖ failing tests:\n\ntest at apps\\desktop\\test\\handoff-browser.test.mjs:126:1\n✖ an old deadline cannot detach a newer debugger binding on the same page (6.5944ms)\n  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n  \n  false !== true\n  \n      at TestContext.<anonymous> (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/test/handoff-browser.test.mjs:144:10)\n      at async Test.run (node:internal/test_runner/test:1113:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: false,\n    expected: true,\n    operator: 'strictEqual',\n    diff: 'simple'\n  }\n",
+    "staleUid": "✖ a replacement native guest cannot receive an element uid from the old debugger (6.7657ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 184.3121\n\n✖ failing tests:\n\ntest at apps\\desktop\\test\\handoff-browser.test.mjs:294:1\n✖ a replacement native guest cannot receive an element uid from the old debugger (6.7657ms)\n  AssertionError [ERR_ASSERTION]: Missing expected rejection.\n      at async TestContext.<anonymous> (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/test/handoff-browser.test.mjs:301:3)\n      at async Test.run (node:internal/test_runner/test:1113:7)\n      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3) {\n    generatedMessage: false,\n    code: 'ERR_ASSERTION',\n    actual: undefined,\n    expected: { code: 'INVALID_ARGUMENT' },\n    operator: 'rejects',\n    diff: 'simple'\n  }\n"
+  },
+  "nativePreflight": [
+    {
+      "directory": "browser-handoff-RxwLsY",
+      "report": {
+        "candidate": "2d489098fb9cf25ec5cf725e37cc968502be47df",
+        "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+        "dirty": true,
+        "status": "FAIL",
+        "originalProcessExitObserved": false,
+        "qualifiedNativeFamilyClosure": false,
+        "platform": "win32",
+        "node": "v24.12.0",
+        "error": "Electron binary missing: D:\\Packages\\PI-Desktop\\worktrees\\owner-local-control\\apps\\desktop\\node_modules\\electron\\dist\\electron.exe"
+      },
+      "process": ""
+    },
+    {
+      "directory": "browser-handoff-gGjDNw",
+      "report": {
+        "candidate": "2d489098fb9cf25ec5cf725e37cc968502be47df",
+        "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+        "dirty": true,
+        "status": "FAIL",
+        "originalProcessExitObserved": true,
+        "qualifiedNativeFamilyClosure": false,
+        "platform": "win32",
+        "node": "v24.12.0",
+        "inputs": 790,
+        "inputsSha256": "9e62f0d6d08a85a62275916f7be93f49f3ab37ecafec846a37ef083a98142f37",
+        "bundleSha256": "0f264a153498170d732ba55fa771e438a67fe007953ef421b7dc9b7bc9b76f90",
+        "electronBinarySha256": "9e1b3c401c1a1988942d5684fede8040d089b0c496ab86b899415ba9bfa0e49c",
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "error": "isolated Chromium handoff validation failed\n\n1 !== 0\n"
+      },
+      "process": "\r\nError: browser screenshot timed out after 30000ms\n    at Timeout.<anonymous> (C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\browser-handoff-gGjDNw\\main.cjs:433:28)\n    at listOnTimeout (node:internal/timers:685:17)\n    at process.processTimers (node:internal/timers:618:7) {\n  code: 'TIMEOUT'\n}\n"
+    },
+    {
+      "directory": "browser-handoff-R1opd9",
+      "report": {
+        "candidate": "2d489098fb9cf25ec5cf725e37cc968502be47df",
+        "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+        "dirty": true,
+        "status": "FAIL",
+        "originalProcessExitObserved": true,
+        "qualifiedNativeFamilyClosure": false,
+        "platform": "win32",
+        "node": "v24.12.0",
+        "inputs": 790,
+        "inputsSha256": "9e948e0da1f0185c0085f7b9c99af1cb6799655d5470954614ca813a5ed307be",
+        "bundleSha256": "b3371e23adc506e08a8d960134b7e5e7c678b8534ee934031a319e43f1ffc6bb",
+        "electronBinarySha256": "9e1b3c401c1a1988942d5684fede8040d089b0c496ab86b899415ba9bfa0e49c",
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "error": "isolated Chromium handoff validation failed\n\n1 !== 0\n"
+      },
+      "process": "\r\nError: browser screenshot timed out after 30000ms\n    at Timeout.<anonymous> (C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\browser-handoff-R1opd9\\main.cjs:433:28)\n    at listOnTimeout (node:internal/timers:685:17)\n    at process.processTimers (node:internal/timers:618:7) {\n  code: 'TIMEOUT'\n}\n"
+    },
+    {
+      "directory": "browser-handoff-UD4dxf",
+      "report": {
+        "candidate": "2d489098fb9cf25ec5cf725e37cc968502be47df",
+        "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+        "dirty": true,
+        "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+        "originalProcessExitObserved": true,
+        "qualifiedNativeFamilyClosure": false,
+        "platform": "win32",
+        "node": "v24.12.0",
+        "inputs": 790,
+        "inputsSha256": "59e140555fb08b553d2f84d386f59f7f41899bf0b941048339c1878eb4617b49",
+        "bundleSha256": "3c04f7aecb5c4414f907861cfcd3050bd4912a76920116f1e4b3a70618dafcc6",
+        "electronBinarySha256": "9e1b3c401c1a1988942d5684fede8040d089b0c496ab86b899415ba9bfa0e49c",
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "passed": [
+          "closed empty admission prevents native creation and cancellation restores normal entry",
+          "real visible Chromium capture and background session input retain their original page",
+          "in-flight native evaluation blocks handoff until its original completion",
+          "retired pages close their handles, retain refusal evidence, and cannot reopen after permanent disposal"
+        ],
+        "activity": {
+          "operations": 0,
+          "uncontainedResources": 7,
+          "pages": 0
+        },
+        "originalWebContentsDestroyed": 2,
+        "allFixtureWindowsClosed": true,
+        "electron": "43.6.0",
+        "endedDirty": true,
+        "sourceInputsUnchanged": true
+      },
+      "process": "\r\nBROWSER_HANDOFF {\"status\":\"PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES\",\"passed\":[\"closed empty admission prevents native creation and cancellation restores normal entry\",\"real visible Chromium capture and background session input retain their original page\",\"in-flight native evaluation blocks handoff until its original completion\",\"retired pages close their handles, retain refusal evidence, and cannot reopen after permanent disposal\"],\"activity\":{\"operations\":0,\"uncontainedResources\":7,\"pages\":0},\"originalWebContentsDestroyed\":2,\"allFixtureWindowsClosed\":true,\"qualifiedNativeFamilyClosure\":false,\"electron\":\"43.6.0\"}\n"
+    }
+  ],
+  "committedNativeBaseline": {
+    "source": "2d489098fb9cf25ec5cf725e37cc968502be47df",
+    "directory": "browser-capture-before-NTWppi",
+    "report": "{\n  \"directory\": \"C:\\\\Users\\\\Administrator\\\\.pi-desktop\\\\scratch\\\\233744ff-b9c5-46dd-9a91-5169100d5569\\\\browser-capture-before-NTWppi\",\n  \"source\": \"2d489098fb9cf25ec5cf725e37cc968502be47df\",\n  \"code\": 1,\n  \"originalProcessExitObserved\": true\n}\ncount=1\nsend Page.getLayoutMetrics\ndone Page.getLayoutMetrics\nsend Page.captureScreenshot\nError: browser screenshot timed out after 30000ms\n\n",
+    "result": {
+      "status": "FAIL",
+      "error": "Error: browser screenshot timed out after 30000ms"
+    },
+    "steps": "count=1\nsend Page.getLayoutMetrics\ndone Page.getLayoutMetrics\nsend Page.captureScreenshot\nError: browser screenshot timed out after 30000ms\n",
+    "process": "\r\n",
+    "probeSource": "const { app, BrowserWindow } = require('electron');\nconst { BrowserHost } = require('D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/electron/main/browser-host.ts');\nconst { BrowserPane } = require('D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/electron/main/browser-view.ts');\nconst { mkdirSync, writeFileSync, appendFileSync } = require('node:fs');\nconst { join } = require('node:path');\nconst directory=process.env.BROWSER_BASELINE_DIR;\napp.setPath('userData',join(directory,'profile'));\napp.on('window-all-closed',()=>{});\napp.whenReady().then(async()=>{\n  let window,host;\n  const log=value=>appendFileSync(join(directory,'steps.log'),value+'\\n');\n  try{\n    const workspace=join(directory,'workspace');mkdirSync(workspace,{recursive:true});\n    const path=join(workspace,'index.html');\n    writeFileSync(path,'<!doctype html><title>Fixture</title><body style=\"background:#2563eb;color:white\"><label for=\"note\">Note</label><input id=\"note\"><button onclick=\"window.count++\">Increment</button><script>window.count=0</script>');\n    window=new BrowserWindow({show:true,width:900,height:650,webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false}});\n    await window.loadURL('data:text/html,<h1>Isolated browser baseline</h1>');\n    const panes=[];\n    host=new BrowserHost({isAdmissionClosed:()=>false,createPane:(state,open,owner)=>{const pane=new BrowserPane(state,open,undefined,owner);panes.push(pane);return pane},isPluginLoaded:()=>true,getFileRoots:async()=>[workspace],onState(){},onRevealView(){}});\n    host.setWindow(window);\n    await host.navigate({path},'A');\n    const snapshot=await host.snapshot('A');\n    const input=snapshot.tree.match(/- (e\\d+) textbox \"Note\"/)?.[1],button=snapshot.tree.match(/- (e\\d+) button \"Increment\"/)?.[1];\n    await host.fill(input,'draft','A');host.setChromeSession('B','blank');await host.click(button,'A');\n    log('count='+await host.evaluate('window.count','A'));\n    const wc=panes[0].getWebContents(),send=wc.debugger.sendCommand.bind(wc.debugger);\n    wc.debugger.sendCommand=async(method,params)=>{log('send '+method);const value=await send(method,params);log('done '+method);return value};\n    const image=await host.screenshot({fullPage:true},'A');log('image bytes='+image.data.length);\n    writeFileSync(join(directory,'result.json'),JSON.stringify({status:'PASS'}));\n    return 0;\n  }catch(error){log(String(error));writeFileSync(join(directory,'result.json'),JSON.stringify({status:'FAIL',error:String(error)}));return 1}\n  finally{host?.dispose();if(window&&!window.isDestroyed())window.destroy()}\n}).then(code=>app.exit(code),error=>{console.error(error);app.exit(1)});\n",
+    "runnerSource": "import {createRequire} from 'node:module';\nimport {execFileSync,spawn} from 'node:child_process';\nimport {mkdtemp,mkdir,readFile,writeFile} from 'node:fs/promises';\nimport {join,relative} from 'node:path';\nconst root='D:/Packages/PI-Desktop/worktrees/owner-local-control',scratch=process.env.PI_SCRATCH_DIR;\nconst require=createRequire(root+'/packages/agent-runtime/package.json'),{build}=require('esbuild'),electron=require('electron');\nconst directory=await mkdtemp(join(scratch,'browser-capture-before-'));\nconst source=execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim();\nawait build({entryPoints:[join(scratch,'browser-capture-baseline.cjs')],outfile:join(directory,'main.cjs'),bundle:true,platform:'node',format:'cjs',external:['electron'],plugins:[{name:'committed-browser-baseline',setup(b){b.onLoad({filter:/browser-(host|view|cdp|backing-host)\\.ts$/},({path})=>({contents:execFileSync('git',['show',source+':'+relative(root,path).replaceAll('\\\\','/')],{cwd:root,encoding:'utf8'}),loader:'ts'}))}}]});\nconst env={};for(const key of ['PATH','Path','SystemRoot','WINDIR','ComSpec','PATHEXT'])if(process.env[key])env[key]=process.env[key];\nfor(const key of ['home','temp','appdata','profile'])await mkdir(join(directory,key),{recursive:true});\nObject.assign(env,{BROWSER_BASELINE_DIR:directory,HOME:join(directory,'home'),USERPROFILE:join(directory,'home'),TEMP:join(directory,'temp'),TMP:join(directory,'temp'),APPDATA:join(directory,'appdata'),LOCALAPPDATA:join(directory,'appdata')});\nconst child=spawn(electron,[join(directory,'main.cjs')],{cwd:directory,env,stdio:['ignore','pipe','pipe']});let output='';for(const s of[child.stdout,child.stderr])s.on('data',x=>output+=x);const timer=setTimeout(()=>child.kill(),45000);\nconst code=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('close',resolve)}).finally(()=>clearTimeout(timer));\nawait writeFile(join(directory,'process.log'),output);\nconsole.log(JSON.stringify({directory,source,code,originalProcessExitObserved:child.exitCode!==null||child.signalCode!==null},null,2));console.log(await readFile(join(directory,'steps.log'),'utf8'));\n"
+  },
+  "interpretation": "Three initial behavior assertions failed on old source; missing inventory methods are recorded separately. Old-deadline and stale-UID cases are valid behavior regressions. The missing Electron path is a fixture resolution error before spawn. Never-presented background screenshots time out on both committed and changed code; this existing defect is not accepted as fixed. Visible screenshots and background input are covered by the final native candidate. No native-family closure claim."
+}

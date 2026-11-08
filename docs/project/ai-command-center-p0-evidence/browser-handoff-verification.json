@@ -1,0 +1,66 @@
+{
+  "candidate": "63b1554bf70800a77f5e68f374ed66e5873998e1",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "acceptance": "Browser admission, original-operation ownership and retained refusal evidence only; H1 composition and full transfer remain open.",
+  "tests": {
+    "pass": 133,
+    "fail": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "files": 16,
+    "durationMs": 6597.6122,
+    "newBrowserOwnershipCases": 29,
+    "existingBrowserCases": 80,
+    "wiringPluginShutdownCases": 24
+  },
+  "native": {
+    "checks": 4,
+    "originalElectronExit": true,
+    "originalWebContentsDestroyed": 2,
+    "allFixtureWindowsClosed": true,
+    "qualifiedNativeFamilyClosure": false,
+    "neverPresentedBackgroundCaptureQualified": false
+  },
+  "checks": {
+    "desktopAndBrowserFixtureTypes": {
+      "exitCode": 0,
+      "log": ""
+    },
+    "lint": "Checked 270 files in 246ms. No fixes applied.\n",
+    "docsPages": 631,
+    "architecture": true,
+    "agentPolicy": true,
+    "latestMainAncestor": true,
+    "syntax": true,
+    "diffWhitespace": true
+  },
+  "exclusions": [
+    "No Rust change or new Rust/full-repository test run",
+    "No full Desktop ownership transfer",
+    "No paid or live provider",
+    "No user Desktop/profile or verify:ui command",
+    "No minimum-hardware or Chromium process-family qualification"
+  ],
+  "artifacts": [
+    {
+      "name": "browser-handoff-after.json",
+      "bytes": 1282,
+      "sha256": "7509f4e1b63b421c21d1d07b9d396ba0488b90af233eb652515e0e291e3dd31a"
+    },
+    {
+      "name": "browser-handoff-build-inputs.json",
+      "bytes": 151240,
+      "sha256": "859de58c1f67262cd5bb8520e939838b71a738846f157fb720f828b573ef6cb4"
+    },
+    {
+      "name": "browser-handoff-process.log",
+      "bytes": 622,
+      "sha256": "b988b989029a4fdb036cf86035b4cb77b05b77a8474fc0a1b686dc68e67714c9"
+    },
+    {
+      "name": "browser-handoff-regressions.log",
+      "bytes": 11430,
+      "sha256": "80063add151dbe7e352908e9383a0588ef9e726e533b91ecf1f1fa78cff338ff"
+    }
+  ]
+}

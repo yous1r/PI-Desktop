@@ -977,3 +977,33 @@ change native settings.
 
 Next: archive the fixed-candidate browser evidence, then continue plugin, voice
 and remote resource owners before complete H1 composition and H2-H5 transfer.
+
+Fixed browser candidate `63b1554bf70800a77f5e68f374ed66e5873998e1`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`, passed the four-step isolated
+Electron run `browser-handoff-sEFRUa` with `dirty:false`, `endedDirty:false`
+and unchanged inputs. The source manifest contains 790 inputs, normalized SHA-256
+`93781e6d65707e34fe36147ab9e7c08cbd2cc7bf1480e706124c8cf7d6d16853`;
+the bundle SHA-256 is
+`530a3193bdf547331047825e68571bbc67ab0b76953cf880a2f48408dba9e83c`.
+Provisioned Electron 43.6.0 executable SHA-256 is
+`9e1b3c401c1a1988942d5684fede8040d089b0c496ab86b899415ba9bfa0e49c`.
+Final activity was zero operations/pages with seven retained unqualified
+resource attempts. Both original WebContents, all fixture windows and the
+original Electron child closed; `qualifiedNativeFamilyClosure:false` remains.
+
+The [candidate report](ai-command-center-p0-evidence/browser-handoff-after.json),
+[source manifest](ai-command-center-p0-evidence/browser-handoff-build-inputs.json),
+[native output](ai-command-center-p0-evidence/browser-handoff-process.log),
+[regressions](ai-command-center-p0-evidence/browser-handoff-regressions.log),
+[failure baselines](ai-command-center-p0-evidence/browser-handoff-before.json)
+and [verification scope](ai-command-center-p0-evidence/browser-handoff-verification.json)
+retain the evidence. Candidate report/log/manifest and test log are byte-identical
+copies; failure logs are preserved as exact JSON strings. Final lint covered 270
+files after including the native harness. No Rust rerun, live-profile operation,
+full Desktop transfer or hardware qualification is claimed.
+
+Browser admission/activity is accepted within this scope. Remaining H1 work
+continues with plugin, voice and remote owners, mandatory nineteen-family
+composition, bounded Rust status transport and native/coordinator integration.
+The background-capture defect and native-family closure limits remain explicit
+qualification work.
