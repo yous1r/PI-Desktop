@@ -1414,3 +1414,21 @@ Full Desktop source types, Biome 309 files, architecture, agent policy and
 whitespace checks pass. Clean-candidate validation follows the implementation
 commit. This continuation changes no wire protocol, Rust state, permissions or
 native-family qualification; complete H1 and remaining resource owners stay open.
+
+Clean restart candidate `2810a403bbda5dbba31e80d4d9587003f892ee83` on
+base `fd28eb89866ac513912ed109716e7120cf60f18c` passed all 80 related
+tests with zero failures, cancellations or skips. Worktree status stayed clean
+and all 1617 tracked source hashes were unchanged (digest
+`8b789495e9ee0574a9a38879f710d2d5c6872cd68bc739b6955e5df318f9eab2`).
+The result remains `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`; the Host RPC edge is
+deterministic, and native-family/complete-transfer qualification is not claimed.
+
+The [restart candidate report](ai-command-center-p0-evidence/extension-owner-rebind-after.json)
+is 6226 bytes, SHA-256
+`98f6de7815091ef978ed6f6f43cc73e1ab496565ba91553b72a800cd088823df`.
+The [restart verification archive](ai-command-center-p0-evidence/extension-owner-rebind-verification.json)
+is 368096 bytes, SHA-256
+`34e670ed7d3fb79bc66d035e63c85ff3c23eccb858e253cec8d4339894231adf`.
+It preserves fifteen exact raw artifacts and the source manifest. Owner-call
+activity and ordinary Host restart continuation are now accepted together;
+remaining trusted-extension and external-resource integration continues.

@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "2810a403bbda5dbba31e80d4d9587003f892ee83",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-08T23:25:52.985Z",
+  "endedAt": "2026-11-08T23:26:05.990Z",
+  "command": [
+    "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+    "--import",
+    "file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-mcp-test-loader.mjs",
+    "--test",
+    "--test-reporter=tap",
+    "--test-concurrency=2",
+    "--test-timeout=25000",
+    "test/handoff-extension-owner.test.mjs",
+    "test/plugin-extension-owner-broker.test.mjs",
+    "test/plugin-extension-owner-main.test.mjs",
+    "test/plugin-extension-owner-flow.test.mjs",
+    "test/plugin-extension-owner-process.test.mjs",
+    "test/handoff-lifecycle.test.mjs"
+  ],
+  "tests": {
+    "files": 6,
+    "expected": 80,
+    "newRebindCases": 6
+  },
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "sourceInputs": {
+    "count": 1617,
+    "sha256": "8b789495e9ee0574a9a38879f710d2d5c6872cd68bc739b6955e5df318f9eab2",
+    "unchanged": true,
+    "manifest": "handoff-extension-rebind-candidate-inputs.json",
+    "scope": "Tracked Desktop/runtime/contract source inputs; not a complete third-party dependency graph."
+  },
+  "result": {
+    "exitCode": 0,
+    "signal": null
+  },
+  "log": {
+    "path": "handoff-extension-rebind-candidate.log",
+    "bytes": 21270,
+    "sha256": "cd497e307edba7ad6cf55b69d92dc4d65e42b1b25af4845442cd4784ae0fa502"
+  },
+  "observations": [
+    {
+      "kind": "extension-sidecar",
+      "test": "sidecar retains original bridge work through replacement and disposal",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "old disposeSession cannot clear a replacement lifecycle",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "old disposeSession cannot clear a replacement launch",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "retirement query from a replaced lifecycle cannot dispose or launch a session",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "timed-out original session cleanup retains uncertainty after a late reply and root exit",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "missing or invalid lifecycle activity remains a refusal after disposal",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 2
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "real plugin process inherits authoritative owner scope and rejects descendant SDK calls after completion",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 1,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "owner cancellation crosses the real plugin process and prevents follow-up host mutation",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 2,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "real PluginRuntime unload invalidates Main ownership and cancels the live subprocess invocation",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 2,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "owner previews through a real plugin process emit bounded success and failure audits",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 1,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "closed admission delivers one authorized retirement and descendant SDK reply through the real plugin process",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 1,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "cancelled retirement retains its real host callback after plugin unload until original work settles",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 2,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    }
+  ],
+  "limitations": [
+    "Original process exit is not native-family qualification.",
+    "Host restart uses actual Desktop sidecar and broker with deterministic Host RPC fixtures.",
+    "Full H1 resource inventory and H2-H5 transfer remain incomplete.",
+    "No live Desktop/profile/provider, microphone, real SSH, paid API or dependency installation."
+  ]
+}
