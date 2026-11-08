@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "candidate": "8fa4b7e217995838e53f51ea1ea7190fb697b7bf",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "platform": "win32",
+  "binarySha256": "f8b25e417a3f5253f9c5e15aea13a7c82c8ab14027ee4a8a1c967efcee53b887",
+  "hostTransportSha256": "647d298b2208f8eb5f0d4628b31a06986a438bd1e2b13202cb95ec067779fe06",
+  "sidecarTransportSha256": "f0e3f75e6eedf2e287e60ed708bcfe762c9d5eb9a6354982e02ae88ab60b93a8",
+  "scriptSha256": "eaf90f5e42d52fe64504f86ed0d3a607417ce35584eccb0f8ddf2ca4587eefa3",
+  "checks": [
+    "live Rust Host is unconfirmed; graceful EOF/dispose confirms its exit",
+    "live sidecar fixture is unconfirmed; shutdown/dispose confirms its exit"
+  ],
+  "cleanupConfirmed": true,
+  "pids": [
+    18852,
+    1420
+  ]
+}

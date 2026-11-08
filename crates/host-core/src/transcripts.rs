@@ -923,8 +923,7 @@ pub fn read_transcript_window_with_layout(
                 .compaction_offsets
                 .iter()
                 .copied()
-                .filter(|offset| *offset < window_start)
-                .next_back()
+                .rfind(|offset| *offset < window_start)
             {
                 picked.push(active);
             }

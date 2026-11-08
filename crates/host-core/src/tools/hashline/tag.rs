@@ -39,7 +39,7 @@ pub fn decode_bytes(bytes: &[u8]) -> (bool, String) {
     if bytes.starts_with(UTF16LE_BOM) || bytes.starts_with(UTF16BE_BOM) {
         let little_endian = bytes.starts_with(UTF16LE_BOM);
         let body = &bytes[2..];
-        let units = body.chunks_exact(2).map(|pair| {
+        let units = body.as_chunks::<2>().0.iter().map(|pair| {
             if little_endian {
                 u16::from_le_bytes([pair[0], pair[1]])
             } else {
@@ -181,7 +181,7 @@ pub fn looks_binary_bytes(bytes: &[u8]) -> bool {
         let little_endian = bytes.starts_with(UTF16LE_BOM);
         let body = &bytes[2..];
         return !body.len().is_multiple_of(2)
-            || std::char::decode_utf16(body.chunks_exact(2).map(|pair| {
+            || std::char::decode_utf16(body.as_chunks::<2>().0.iter().map(|pair| {
                 if little_endian {
                     u16::from_le_bytes([pair[0], pair[1]])
                 } else {

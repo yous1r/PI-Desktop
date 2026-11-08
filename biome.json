@@ -21,6 +21,7 @@
 			"scripts/e2e-host-data-owner.mjs",
 			"scripts/e2e-relocation-capability-keys.mjs",
 			"scripts/e2e-background-task-stop.mjs",
+			"scripts/e2e-remote-path-permissions.mjs",
 			"packages/agent-host/src/{event-log,event-log.test,replay-byte-budget}.ts",
 			"packages/racp/src/racp.test.ts",
 			"scripts/check-architecture.mjs",

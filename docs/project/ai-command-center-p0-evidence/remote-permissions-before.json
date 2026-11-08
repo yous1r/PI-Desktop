@@ -1,0 +1,12 @@
+{
+  "status": "FAIL",
+  "candidate": "8fa4b7e217995838e53f51ea1ea7190fb697b7bf",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": true,
+  "platform": "win32",
+  "binarySha256": "f8b25e417a3f5253f9c5e15aea13a7c82c8ab14027ee4a8a1c967efcee53b887",
+  "scriptSha256": "cc165ed3f7d509d6c685d0bf77deb6197017f8ebf74d290c40410c6e43ef635e",
+  "checks": [],
+  "cleanupConfirmed": true,
+  "error": "AssertionError [ERR_ASSERTION]: {\"jsonrpc\":\"2.0\",\"method\":\"permissions.request\",\"params\":{\"argsPreview\":{\"path\":\"README.md\"},\"reason\":\"Accesses a path outside the session workspace\",\"requestId\":\"44a8d9bf-0ac9-4415-9eba-5d3b56e1d4e8\",\"risk\":\"low\",\"sessionId\":\"9c5f4608-7d32-4a57-9d4d-9de862735149\",\"toolCallId\":\"remote-fixture-0\",\"toolName\":\"Read\"}}\n+ actual - expected\n\n+ 'permissions.request'\n- 'tools.remoteExecute'\n\n    at file:///D:/Packages/PI-Desktop/worktrees/windows-validation-blockers/scripts/e2e-remote-path-permissions.mjs:59:12"
+}

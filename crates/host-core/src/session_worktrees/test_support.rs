@@ -27,6 +27,10 @@ pub fn init_repo(path: &Path) -> PathBuf {
     git_cmd(path, &["config", "user.name", "PI Test"]);
     git_cmd(path, &["config", "user.email", "pi-test@example.invalid"]);
     git_cmd(path, &["config", "commit.gpgsign", "false"]);
+    // Real checkouts must not inherit the developer's line-ending conversion.
+    // Production repositories keep their own configuration untouched.
+    git_cmd(path, &["config", "core.autocrlf", "false"]);
+    git_cmd(path, &["config", "core.eol", "lf"]);
     std::fs::write(path.join("README.md"), "init\n").unwrap();
     git_cmd(path, &["add", "README.md"]);
     git_cmd(path, &["commit", "-q", "-m", "init"]);

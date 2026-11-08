@@ -19760,3 +19760,31 @@ session data is used.
 - **Boundary:** Original child exit only, not descendant containment or completed
   S03b transfer. Existing ordinary quit/dispose behavior remains compatible.
 - **Specs:** [Process model](../03-runtime/07-process-model.md#5-shutdown-order).
+
+### E2E-WINDOWS-cmd-quoted-command
+
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-background-task-stop.mjs`
+  with `PI_SCRATCH_DIR` set. Use an isolated workspace containing spaces,
+  Unicode and an ampersand; no live Desktop or provider.
+- **Expected:** A quoted executable and script receive literal metacharacter
+  arguments, correct cwd and separate UTF-8 streams; native exit 7 remains
+  `TOOL_FAILED` with exit code 7. A quoted background command starts its child
+  through the real hidden runner and Stop terminates both while preserving an
+  unrelated fixture. Repeated Stop remains idempotent and cleanup is confirmed.
+- **Lower-level coverage:** `tools::shell_process::tests` checks quoted input/
+  output redirection, escaped operators and exit status; production and test
+  shell starts use the same command constructor. PowerShell/POSIX arguments
+  retain their existing construction.
+
+### E2E-REMOTE-posix-permission-boundary
+
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-remote-path-permissions.mjs`
+  with `PI_SCRATCH_DIR` set. Real Host RPC and a deterministic remote-result
+  boundary exercise local approval and relay; no remote machine or provider.
+- **Expected:** Relative/absolute in-project POSIX reads relay under Ask mode
+  without spurious external approval on Windows. Traversal, sibling-prefix and
+  case-different paths ask before relay. Denied writes never dispatch; cancelled
+  reads send remote abort and do not fall back to a local runner.
+- **Coverage:** Rust RPC tests additionally cover approved writes, local session
+  persistence and remote workspace containment. Real SSH qualification remains
+  separate from this controller-side path/permission correction.

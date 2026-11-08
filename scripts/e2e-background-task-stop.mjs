@@ -14,7 +14,7 @@ assert.equal(process.platform, 'win32', 'This regression exercises Windows proce
 assert.ok(process.env.PI_SCRATCH_DIR && process.env.PI_DESKTOP_HOST_BIN, 'Candidate binary and scratch directory required');
 const root = fileURLToPath(new URL('..', import.meta.url));
 const directory = await mkdtemp(join(process.env.PI_SCRATCH_DIR, 'background-stop-'));
-const workspace = join(directory, 'workspace');
+const workspace = join(directory, 'workspace space π & files');
 const binary = resolve(process.env.PI_DESKTOP_HOST_BIN);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
@@ -38,7 +38,8 @@ Object.assign(env, {
   APPDATA: join(directory, 'appdata'), LOCALAPPDATA: join(directory, 'appdata'),
   TEMP: join(directory, 'temp'), TMP: join(directory, 'temp'),
 });
-for (const name of ['home', 'appdata', 'temp', 'workspace']) await mkdir(join(directory, name));
+for (const name of ['home', 'appdata', 'temp']) await mkdir(join(directory, name));
+await mkdir(workspace);
 const fixture = join(workspace, 'tree.mjs');
 await writeFile(fixture, `import { spawn } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
@@ -87,9 +88,24 @@ try {
   const turnId = await beginTurn(host, session.id);
   const { effective: shell } = await host.call('commandShells.list');
   assert.equal(shell.dialect, 'cmd');
+  const probe = join(workspace, 'args probe.mjs');
+  await writeFile(probe, `console.log(JSON.stringify({ args: process.argv.slice(2), cwd: process.cwd() })); console.error('stderr π'); process.exit(7);`);
+  const foreground = await host.call('tools.execute', {
+    sessionId: session.id, turnId, toolCallId: 'quoted-foreground', toolName: 'Bash',
+    args: { command: `"${process.execPath}" "${probe}" "literal &|<>^ π" "space value"` },
+    mode: 'agent', expectedCommandShellId: shell.id, expectedCommandShellDialect: shell.dialect,
+  });
+  assert.equal(foreground.ok, false);
+  assert.equal(foreground.errorCode, 'TOOL_FAILED');
+  assert.equal(foreground.content.exitCode, 7, JSON.stringify(foreground));
+  const observed = JSON.parse(foreground.content.stdout.trim());
+  assert.deepEqual(observed.args, ['literal &|<>^ π', 'space value']);
+  assert.equal(resolve(observed.cwd), resolve(workspace));
+  assert.match(foreground.content.stderr, /stderr π/);
+  report.checks.push('quoted cmd executable and Unicode/metacharacter arguments preserve cwd, streams and exit code');
   const started = await host.call('tools.execute', {
     sessionId: session.id, turnId, toolCallId: 'owned-tree', toolName: 'Bash',
-    args: { command: 'node tree.mjs root', runInBackground: true },
+    args: { command: `"${process.execPath}" "${fixture}" root`, runInBackground: true },
     mode: 'agent', runInBackground: true,
     expectedCommandShellId: shell.id, expectedCommandShellDialect: shell.dialect,
   });

@@ -28,6 +28,7 @@ pub mod hashline;
 pub mod ignore_rules;
 mod image_dimensions;
 pub mod shell;
+mod shell_process;
 #[cfg(windows)]
 mod windows_process_tree;
 
@@ -472,9 +473,8 @@ pub async fn run_internal_tool_runner() -> Result<i32> {
         .await
         .map_err(|error| anyhow!(error))?;
 
-    let mut command = Command::new(&config.program);
+    let mut command = shell_process::command(&config.program, &config.args);
     command
-        .args(&config.args)
         .current_dir(&config.workspace)
         .stdin(Stdio::null())
         .stdout(Stdio::inherit())
@@ -2766,11 +2766,11 @@ pub(crate) async fn spawn_tool_runner(
     // direct resolved-shell child keeps those tests focused on ownership and
     // descendant cleanup while production always uses the hidden runner mode.
     #[cfg(test)]
-    let mut command = Command::new(&config.program);
+    let mut command = shell_process::command(&config.program, &config.args);
 
     #[cfg(test)]
     {
-        command.args(&config.args).current_dir(&config.workspace);
+        command.current_dir(&config.workspace);
         if let Some(scratch_dir) = config.scratch_dir.as_deref() {
             command.env("PI_SCRATCH_DIR", scratch_dir);
         }

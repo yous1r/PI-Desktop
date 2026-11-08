@@ -31,7 +31,7 @@ pub(super) fn validate_ca(pem: &str, transport: &str, url: Option<&str>) -> Resu
             .find("-----END CERTIFICATE-----")
             .context("MCP_INVALID: incomplete CA certificate")?
             + "-----END CERTIFICATE-----".len();
-        reqwest::Certificate::from_pem(rest[..end].as_bytes())
+        reqwest::Certificate::from_pem(&rest.as_bytes()[..end])
             .context("MCP_INVALID: invalid CA certificate")?;
         count += 1;
         if count > 16 {

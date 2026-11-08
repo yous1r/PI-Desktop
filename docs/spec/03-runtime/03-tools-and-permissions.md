@@ -320,6 +320,13 @@ as binary content.
   host workspace only during the compatibility window.
 - A session lookup/storage error fails the tool request; it must never be
   treated as a missing legacy session or redirected to the selected workspace.
+- Remote workspace bindings currently use absolute POSIX roots. Local permission
+  preflight compares their case-sensitive `/` components independently of the
+  controller OS: relative and absolute paths inside the remote root do not gain
+  a false external-access prompt on Windows. `..` escapes and neighboring roots
+  still require approval. Backslashes are literal POSIX filename characters.
+  This lexical preflight never probes the controller filesystem; the remote
+  runner retains canonical filesystem/symlink containment and cancellation.
 
 ## 4b.1 Session visualization directory (D671)
 
@@ -625,6 +632,11 @@ or executable path hash is accepted as shell identity.
 - No bash bundled in the installer: Git for Windows is the Windows prerequisite (the app requires git anyway)
 - Resolution failure returns stable `SHELL_NOT_FOUND` with install guidance
 - Windows PowerShell and cmd use their native non-interactive invocation.
+- cmd receives the final `/C` command body without C-runtime argument escaping;
+  `/S` removes the surrounding transport quotes while preserving the user's
+  inner quotes, redirections and operators. Foreground and background execution
+  share this construction. Quoted executable/file paths with spaces, Unicode
+  and shell metacharacters retain their intended cmd semantics.
 - PowerShell output passes through PowerShell's own formatter, so objects
   (tables, lists, hashtables, `Measure-Object` results) reach the agent as a
   console shows them, not as type names. Stderr lines from native commands are

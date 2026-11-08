@@ -1,5 +1,50 @@
 use super::*;
 
+#[test]
+fn remote_permission_paths_use_posix_rules_on_every_controller() {
+    for path in [
+        "README.md",
+        ".",
+        "dir/../file",
+        "/srv/work/file",
+        "/srv/work//file",
+        "a\\b",
+        "..\\outside",
+    ] {
+        assert!(
+            !requires_external_permission(Some("/srv/work"), "Read", &json!({"path":path})),
+            "inside: {path}"
+        );
+    }
+    for path in [
+        "../outside",
+        "dir/../../outside",
+        "/srv/work-neighbor/file",
+        "/srv/WORK/file",
+        "/etc/passwd",
+    ] {
+        assert!(
+            requires_external_permission(Some("/srv/work"), "Read", &json!({"path":path})),
+            "outside: {path}"
+        );
+    }
+    assert!(requires_external_permission(
+        Some("relative-root"),
+        "Read",
+        &json!({"path":"file"})
+    ));
+    assert!(requires_external_permission(
+        Some("/srv/work"),
+        "Read",
+        &json!({"path":"bad\0path"})
+    ));
+    assert!(!requires_external_permission(
+        Some("/"),
+        "Read",
+        &json!({"path":"etc/passwd"})
+    ));
+}
+
 fn fixture() -> (
     tempfile::TempDir,
     Arc<Mutex<AppState>>,

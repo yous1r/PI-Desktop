@@ -75,14 +75,36 @@ pub(super) fn requires_external_permission(
             .and_then(Value::as_str)
             .is_some_and(|path| {
                 root.is_some_and(|root| {
-                    let candidate = if Path::new(path).is_absolute() {
-                        PathBuf::from(path)
-                    } else {
-                        Path::new(root).join(path)
-                    };
-                    !workspace::lexically_inside(Path::new(root), &candidate.to_string_lossy())
+                    // RemoteWorkspace currently accepts POSIX absolute roots.
+                    // Never interpret them using the controller's Windows paths.
+                    !remote_path_is_inside(root, path)
                 })
             })
+}
+
+fn remote_path_is_inside(root: &str, input: &str) -> bool {
+    if !root.starts_with('/') || root.contains('\0') || input.contains('\0') {
+        return false;
+    }
+    fn normalize(path: &str) -> Vec<&str> {
+        let mut parts = Vec::new();
+        for part in path.split('/') {
+            match part {
+                "" | "." => {}
+                ".." => {
+                    parts.pop();
+                }
+                _ => parts.push(part),
+            }
+        }
+        parts
+    }
+    let candidate = if input.starts_with('/') {
+        input.to_string()
+    } else {
+        format!("{root}/{input}")
+    };
+    normalize(&candidate).starts_with(&normalize(root))
 }
 
 fn failure(

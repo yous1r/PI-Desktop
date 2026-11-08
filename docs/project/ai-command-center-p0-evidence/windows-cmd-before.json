@@ -1,0 +1,15 @@
+{
+  "status": "FAIL",
+  "startedAt": "2026-11-08T03:40:14.978Z",
+  "platform": "win32",
+  "candidate": "8fa4b7e217995838e53f51ea1ea7190fb697b7bf",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": true,
+  "binarySha256": "f8b25e417a3f5253f9c5e15aea13a7c82c8ab14027ee4a8a1c967efcee53b887",
+  "scriptSha256": "de04a253aa9844464fe8f67f2630aebb9e8de65bc70829154d29254c38defb22",
+  "checks": [],
+  "cleanupConfirmed": true,
+  "error": "AssertionError [ERR_ASSERTION]: {\"commandShellId\":\"cmd\",\"content\":{\"commandShellId\":\"cmd\",\"exitCode\":1,\"stderr\":\"'\\\\\\\"D:\\\\mise_data\\\\installs\\\\node\\\\24.12.0\\\\node.exe\\\\\\\"' is not recognized as an internal or external command,\\r\\noperable program or batch file.\\r\\n\",\"stdout\":\"\",\"truncated\":false},\"durationMs\":64,\"errorCode\":\"TOOL_FAILED\",\"isError\":true,\"ok\":false,\"toolCallId\":\"quoted-foreground\"}\n\n1 !== 7\n\n    at file:///D:/Packages/PI-Desktop/worktrees/windows-validation-blockers/scripts/e2e-background-task-stop.mjs:100:10\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)",
+  "hostStderr": "\u001b[2m2026-11-08T03:40:46.496991Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mpi_desktop_host_core\u001b[0m\u001b[2m:\u001b[0m host-core starting \u001b[3mpath\u001b[0m\u001b[2m=\u001b[0mC:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\background-stop-91r3Tv\\data\n",
+  "finishedAt": "2026-11-08T03:40:46.598Z"
+}

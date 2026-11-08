@@ -266,3 +266,34 @@ skips** (31 files). The shared build, affected-source TypeScript check, scoped
 lint and docs check pass. Rust code is unchanged in this slice, so the prior
 Rust integration limitations remain; no full Rust rerun or UI verification is
 claimed. The exact clean-commit process result is recorded after commit.
+
+The exact exit-confirmation candidate
+`8fa4b7e217995838e53f51ea1ea7190fb697b7bf` passes the real-process check from
+a clean worktree, with both owned processes closed; retain the
+[candidate report](ai-command-center-p0-evidence/exit-confirmation-after.json).
+The previously pending VitePress build completed successfully in 54.82 seconds.
+
+## Prioritized Windows defect closure
+
+The follow-up fixes the remaining 15 named Rust baseline failures at their
+causes: remote POSIX paths were interpreted using the controller OS (two
+permission/relay failures), and temporary Git repositories inherited global
+`core.autocrlf=true` (13 byte-content assertions after checkout/merge). Remote
+lexical authorization now uses POSIX components; remote canonical/symlink checks
+remain authoritative. Tests set LF policy only in their own repositories.
+
+The separately observed cmd quoting defect is fixed through one shared shell
+command constructor: only cmd's final command body uses native command-line
+quoting, with ordinary argument handling retained for other shells. The real
+Stop harness now uses quoted executable/script paths and a workspace with spaces,
+Unicode and ampersands; it also checks foreground arguments, streams and exit 7.
+Both new lower-level regressions and both real Host harnesses first failed on
+the old implementation. Keep the old
+[cmd failure](ai-command-center-p0-evidence/windows-cmd-before.json) and
+[remote authorization failure](ai-command-center-p0-evidence/remote-permissions-before.json).
+
+Focused checks pass: remote tools 10/10, cmd 1/1, worktree core 67/67 and
+worktree RPC 6/6. Four existing Clippy warnings were removed with equivalent
+byte/iterator expressions; `cargo clippy --all-targets --locked -- -D warnings`
+passes. Complete Rust-suite and clean-candidate process evidence are recorded
+after they finish; focused results alone do not close the integration gate.
