@@ -7,6 +7,7 @@ mod config_sync;
 mod data_directory_owner;
 mod data_relocation;
 mod db;
+mod execution_fence;
 mod keyboard;
 mod mcp_servers;
 mod mode_runs;
@@ -63,6 +64,9 @@ fn main() -> anyhow::Result<()> {
 async fn run(
     data_owner: &mut Option<data_directory_owner::DataDirectoryOwner>,
 ) -> anyhow::Result<()> {
+    if let Some(code) = execution_fence::run_cli().await? {
+        std::process::exit(code);
+    }
     owner_control::validate_cli()?;
     if data_relocation::run_cli()? {
         return Ok(());
@@ -103,6 +107,7 @@ async fn run(
         &data_dir,
     )?);
     let owner_control = owner_control::Control::start(&data_dir)?;
+    let execution_fence = execution_fence::start()?;
     std::fs::create_dir_all(data_dir.join("logs"))?;
     std::fs::create_dir_all(data_dir.join("plugins/installed"))?;
     std::fs::create_dir_all(data_dir.join("plugins/data"))?;
@@ -111,7 +116,9 @@ async fn run(
     std::fs::create_dir_all(data_dir.join("cache"))?;
     std::fs::create_dir_all(data_dir.join("scratch"))?;
 
-    let state = Arc::new(Mutex::new(AppState::open(&data_dir)?));
+    let mut app_state = AppState::open(&data_dir)?;
+    app_state.execution_fence = execution_fence;
+    let state = Arc::new(Mutex::new(app_state));
     tracing::info!(path = %data_dir.display(), "host-core starting");
     {
         // Sweep orphaned/stale session scratch dirs left behind by crashes or

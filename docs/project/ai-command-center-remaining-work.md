@@ -48,7 +48,7 @@ qualification remain separate open product milestones.
 | Priority | Step | Implementation status | Required acceptance before completion |
 |---|---|---|---|
 | 1 | S03a: Rust data-directory ownership | Implemented candidate in this slice | Same-directory and alias contenders fail before recovery; independent directories run; normal/crash exit releases ownership; relocation refuses live destination before mutation; existing history remains readable |
-| 2 | S03b: Exclusive execution handoff | Windows owner-discovery and explicit exit confirmation implemented; fencing/journal/transfer pending | Existing admission gate blocks new work; busy handoff rejects; old sidecar proven stopped/fenced; one successor; crash at every phase leaves recoverable journal; no turn/tool replay |
+| 2 | S03b: Exclusive execution handoff | Windows discovery, explicit exit confirmation and native sidecar fencing implemented; durable journal/transfer pending | Existing admission gate blocks new work; busy handoff rejects; old sidecar proven stopped/fenced; one successor; crash at every phase leaves recoverable journal; no turn/tool replay |
 | 3 | S02/S04: Finalize versioned metadata contract | Retention decided; schemas/implementation pending | Stable task vs concrete execution identity; strict request schema; desired/effective goal CAS; durable no-auto-delete receipts; golden producer/consumer fixtures |
 | 4 | S04: Rust repositories and migrations | Pending | Workspaces/membership/reservations/goals/receipts preserve existing data; transactional 12/36 checks; unique release; migration/restart/partial-commit tests; no second transcript store |
 | 5 | S05: Portable authorized control interfaces | Pending | Negotiated operations only; authenticated principal/role; idempotency and lost-reply reconciliation; unsupported capabilities explicit; old clients remain compatible |
@@ -385,3 +385,38 @@ retains its seven-check pass from the same executable, before commit.
 S03b-1 discovery acceptance is complete on this Windows host. Proceed to the
 native execution fence/startup barrier; cross-platform and complete-transfer
 acceptance remain explicitly separate.
+
+## S03b-2 native execution fence candidate
+
+Windows opt-in `--execution-fence` now holds a sidecar generation in a Rust-owned
+kill-on-close Job. A same-image stateless launcher authenticates and enters the
+Job before starting Node, so preloads and detached descendants cannot run before
+containment. Private one-use registration checks the exact Host identity, newly
+created child and original live coordinator. Strict status/Stop operations retain
+native exit and Job-emptiness proof; timeouts never become success. Production
+HostProcess/AgentSidecar expose this additive path without changing default app
+launch. See [the ADR](../adr/windows-execution-fence.md).
+
+Current local evidence: 3 new native tests plus all 8 discovery/security tests
+pass; host-runtime passes 209 tests with 3 pre-existing skips; shared build,
+affected TypeScript checks, strict all-target Clippy, formatting and lint pass.
+The final precommit process run passes 11 checks, including production stdio
+startup/RPC/Stop and original-handle confirmation after launcher, Host and
+coordinator crashes. All 19 direct fixture processes close. Shared contract tests
+pass 4/4; documentation checks cover 630 pages. Clean candidate evidence follows.
+
+The first new harness run timed out before handshake and could not confirm
+cleanup within its short budget; a subsequent process inspection found no
+remaining fixture. After aligning the startup budget with existing Host tests,
+the old binary correctly fails with missing `executionFence.prepare`, and cleanup
+passes. An expanded invocation was interrupted by the outer tool's 60-second
+limit, with no completed report; the independent background run is used instead.
+The Windows link initially failed with `LNK1180` on the nearly full D: volume.
+Builds reuse installed dependencies but now emit executable and PDB on C:. Only
+17 verified objects from this failed link (258,862,739 bytes) were hash-checked,
+copied to session scratch and removed from D:; other caches remain untouched.
+
+P0-3 must add durable owner/containment records and restricted startup/recovery;
+P0-4 must integrate idle admission, resource inventory and successor attachment.
+No full Rust suite, minimum-hardware result, other-platform support, complete
+handoff or automatic app opt-in is implied by this slice.

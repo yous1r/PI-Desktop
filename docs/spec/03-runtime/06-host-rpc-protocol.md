@@ -1556,3 +1556,31 @@ uses the `pi-desktop/modes/*` IPC channels and never writes SQLite directly.
 pending Bash gate command. The Host records the exit code; a model-supplied
 verdict cannot pass a command gate. Stage completion may write only declared
 artifacts within the workspace. Staged runs reject remote workspaces.
+
+## Opt-in execution-fence operations (Windows)
+
+These private stdio operations require the normal handshake and a Host launched
+with `--execution-fence`. They are not sidecar proxy or RACP methods. Protocol
+version remains 11; older/default Hosts refuse rather than falling back.
+
+| Method | Strict parameters | Result |
+|---|---|---|
+| `executionFence.prepare` | `{}` | Version-1 one-use ticket: `generation`, `address`, `capability`, `ownerPid`, `ownerCreatedAt` |
+| `executionFence.status` | `{generation}` | Native status below |
+| `executionFence.stop` | `{generation, timeoutMs}`; integer 0..2000 | Native status after bounded termination observation |
+
+Tickets are private capabilities: do not log, persist, publish or retry them.
+`ownerCreatedAt` is an exact decimal FILETIME string. The generation and capability
+are UUIDs; address must match the local pipe derived from that generation. Strict
+shared schemas validate responses. Rust authenticates both pipe peers, verifies
+the live coordinator and new child creation identity, assigns native containment,
+and uses bounded frames before opening the startup barrier. Registration expires
+after five seconds and accepts one connection only.
+
+Status contains `generation`, `state` (`pending`, `running`, `stopping`, `failed`,
+`closed`), `activeProcesses`, `rootExited` and `confirmed`. Empty pending state is
+unconfirmed. Confirmation requires the registration task to end and native Job
+emptiness plus original root exit if assigned. No native query/termination error
+is converted to success. Repeating Stop for the same generation is supported;
+superseded generations refuse. Calls are not automatically replayed on transport
+loss. This is process-local containment, not a durable transfer receipt.

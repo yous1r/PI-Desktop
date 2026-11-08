@@ -459,3 +459,26 @@ messages and saves while Host is alive, before disposing any application resourc
 A failed save keeps the app alive for Retry or Cancel. The window, timers and
 screen listeners are disposed on application quit. Stacking uses native pin state,
 not focus/raise polling. See [ADR](../../adr/global-floating-personal-todos.md).
+
+## Opt-in Windows sidecar execution containment
+
+`HostProcess({ executionFence: true })` starts Rust with `--execution-fence`.
+The embedding coordinator calls `AgentSidecar.createFenced` to prepare a private
+one-use registration, then starts the same Rust executable as a stateless
+launcher. Rust authenticates its original process identity and captured parent,
+assigns it to a non-inheritable kill-on-close Job with no breakaway, and only then
+admits Node startup. Preloads, initialization and detached descendants inherit
+containment. The capability is not forwarded to Node.
+
+Host death, coordinator death and launcher exit terminate the owned family.
+`fenceExecution(0..2000)` explicitly requests termination and confirms only after
+registration has ended, the original launcher has exited when assigned, and the
+Job has zero active processes. A timeout is unconfirmed; ordinary `dispose()` and
+single-child `confirmExit()` are not equivalent proofs. Unknown identities and
+failed registration never fall back to an ordinary sidecar launch.
+
+This additive path is available to coordinators; default Desktop/headless launch
+is unchanged. It does not adopt unrelated applications or other process families.
+Durable owner registration, successor startup/recovery and all-resource idle
+handoff remain separate prerequisites. Other platforms refuse this mode. See
+[the execution-fence ADR](../../adr/windows-execution-fence.md).

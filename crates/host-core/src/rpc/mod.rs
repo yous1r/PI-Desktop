@@ -1945,6 +1945,11 @@ async fn handle_request(
     }
 
     match method {
+        method if method.starts_with("executionFence.") => {
+            crate::execution_fence::handle(state, method, params)
+                .await
+                .map_err(|error| rpc_err(1000, error.to_string(), "EXECUTION_FENCE_REFUSED"))
+        }
         "visualizations.readFragment" => gen_ui::read_fragment(state, params).await,
         "tools.remoteComplete" | "tools.workspaceExecute" | "tools.workspaceAbort" => {
             remote_tools::handle(state, method, params, tx).await

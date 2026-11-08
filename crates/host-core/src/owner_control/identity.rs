@@ -28,7 +28,7 @@ pub struct Peer {
     pub pid: u32,
     pub identity: Identity,
     // Keep the original process handle through the exchange; never reopen its PID.
-    _handle: OwnedHandle,
+    pub(crate) handle: OwnedHandle,
 }
 
 impl Identity {
@@ -36,7 +36,7 @@ impl Identity {
         // Pseudo handle is borrowed, never closed.
         Self::from_process(unsafe { GetCurrentProcess() })
     }
-    fn from_process(process: HANDLE) -> Result<Self> {
+    pub(crate) fn from_process(process: HANDLE) -> Result<Self> {
         let mut token = std::ptr::null_mut();
         if unsafe { OpenProcessToken(process, TOKEN_QUERY, &mut token) } == 0 {
             bail!("OWNER_CONTROL_AUTH_FAILED: token unavailable");
@@ -125,6 +125,15 @@ impl Identity {
 }
 
 pub fn authenticate(pipe: HANDLE, server_side: bool, owner: &Identity) -> Result<Peer> {
+    authenticate_with_access(pipe, server_side, owner, 0)
+}
+
+pub(crate) fn authenticate_with_access(
+    pipe: HANDLE,
+    server_side: bool,
+    owner: &Identity,
+    access: u32,
+) -> Result<Peer> {
     let mut pid = 0;
     let ok = unsafe {
         if server_side {
@@ -136,7 +145,7 @@ pub fn authenticate(pipe: HANDLE, server_side: bool, owner: &Identity) -> Result
     if ok == 0 || pid == 0 {
         bail!("OWNER_CONTROL_AUTH_FAILED: peer unavailable");
     }
-    let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
+    let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | access, 0, pid) };
     if process.is_null() {
         bail!("OWNER_CONTROL_AUTH_FAILED: peer process unavailable");
     }
@@ -148,7 +157,7 @@ pub fn authenticate(pipe: HANDLE, server_side: bool, owner: &Identity) -> Result
     Ok(Peer {
         pid,
         identity,
-        _handle: handle,
+        handle,
     })
 }
 

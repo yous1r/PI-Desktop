@@ -1,8 +1,8 @@
 //! Opt-in owner discovery. This is not an execution-transfer or arbitrary RPC channel.
 #[cfg(windows)]
-mod identity;
+pub(crate) mod identity;
 #[cfg(any(windows, test))]
-mod protocol;
+pub(crate) mod protocol;
 #[cfg(windows)]
 mod windows;
 
@@ -18,8 +18,17 @@ pub fn validate_cli() -> Result<()> {
         {
             bail!("usage: --owner-status [expected-owner-epoch]");
         }
-    } else if args.iter().any(|arg| arg == "--owner-control") && args != ["--owner-control"] {
-        bail!("--owner-control cannot be combined with other modes");
+    } else if args
+        .iter()
+        .any(|arg| matches!(arg.as_str(), "--owner-control" | "--execution-fence"))
+    {
+        let valid = args
+            .iter()
+            .all(|arg| matches!(arg.as_str(), "--owner-control" | "--execution-fence"));
+        let unique = args.iter().collect::<std::collections::HashSet<_>>().len() == args.len();
+        if !valid || !unique {
+            bail!("owner modes cannot be combined with other modes");
+        }
     }
     Ok(())
 }

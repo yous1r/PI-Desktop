@@ -28,6 +28,7 @@ const PLUGIN_DELETE_RATE_LIMIT: usize = 20;
 
 pub struct AppState {
     pub data_dir: std::path::PathBuf,
+    pub execution_fence: Option<crate::execution_fence::Registry>,
     pub db: Database,
     pub secrets: SecretStore,
     pub workspace: WorkspaceState,
@@ -151,6 +152,7 @@ impl AppState {
         let user_subagents = UserSubagentRegistry::new(data_dir);
         Ok(Self {
             data_dir: data_dir.to_path_buf(),
+            execution_fence: None,
             db,
             secrets,
             workspace: WorkspaceState::default(),
@@ -409,6 +411,7 @@ impl AppState {
 
     pub fn shutdown(&mut self) {
         self.shutting_down = true;
+        self.execution_fence = None;
         for sender in self.active_bash_cancellations.values() {
             let _ = sender.send(true);
         }

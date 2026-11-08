@@ -34,6 +34,8 @@ export type HostProcessOptions = {
   binaryPath: string;
   /** Data directory handed to host-core as `PI_DESKTOP_DATA_DIR`. */
   dataDir: string;
+  /** Opt-in Windows containment for sidecars created through AgentSidecar.createFenced. */
+  executionFence?: boolean;
   /**
    * Extra environment for the child. The inherited environment is copied with
    * proxy variables stripped first, so host-core never sees proxy credentials
@@ -103,7 +105,7 @@ export class HostProcess {
     this.binaryPath = options.binaryPath;
     this.diagnoseFailure = options.diagnoseFailure;
     const onStderr = options.onStderr;
-    this.child = spawn(this.binaryPath, [], {
+    this.child = spawn(this.binaryPath, options.executionFence ? ["--execution-fence"] : [], {
       stdio: ["pipe", "pipe", "pipe"],
       env: {
         ...stripProxyEnv(process.env),

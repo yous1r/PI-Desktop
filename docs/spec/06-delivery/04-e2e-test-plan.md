@@ -19809,3 +19809,26 @@ session data is used.
   user profile migration, paid provider, UI or native execution fence is claimed.
 - **Specs:** [Process model](../03-runtime/07-process-model.md),
   [owner discovery ADR](../../adr/windows-owner-discovery.md).
+
+### E2E-HOST-native-execution-fence
+
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-execution-fence.mjs`
+  with `PI_SCRATCH_DIR` set on Windows. Reuses installed esbuild and Node.
+- **Steps:** Opt in a temporary Host; prepare one generation; launch a runtime
+  fixture through the Rust barrier and create a detached child. Stop twice,
+  replace the generation, and attempt replay, altered/expired/cancelled tickets,
+  unexpected parents and a same-user Node pipe client. Crash the Host and the
+  coordinator independently. Exercise the production HostProcess/AgentSidecar
+  factory, fixture RPC and explicit closure. Retain an unrelated process.
+- **Expected:** No rejected registration creates the runtime marker; tickets
+  never reach Node's environment. Job status covers launcher, runtime and child.
+  Stop confirms original root exit and an empty Job. Native observers capture
+  process handles before faults and confirm all owned descendants exit. The
+  unrelated process remains live; ordinary launches refuse the opt-in operation.
+- **Lower-level evidence:** Native pending-empty/zero-budget closure tests;
+  strict request/response shapes; lost replies never replay; launch arguments,
+  environment and cwd remain intact; existing owner-control security regressions.
+- **Boundary:** No user profile, live provider, UI attachment, service install,
+  durable successor recovery, other native process family or non-Windows claim.
+- **Specs:** [Process model](../03-runtime/07-process-model.md),
+  [execution-fence ADR](../../adr/windows-execution-fence.md).

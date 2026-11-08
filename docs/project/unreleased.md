@@ -1,5 +1,8 @@
 # Unreleased changes
 
+- Add opt-in Windows native sidecar containment. The Rust Host admits the
+  runtime before Node starts and can confirm closure of its owned process
+  family. Default app startup is unchanged; durable handoff remains pending.
 - Add opt-in Windows Host owner discovery with `--owner-control` and
   `--owner-status`. Queries authenticate both local peers and report a live
   owner without starting a second Host. Default launches remain unchanged;

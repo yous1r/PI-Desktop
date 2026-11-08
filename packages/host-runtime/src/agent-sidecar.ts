@@ -1,3 +1,4 @@
+import { ExecutionFence } from "./execution-fence.js";
 import { confirmChildExit } from "./process-exit-confirmation.js";
 import { EXTENSION_OWNER_PROXY_METHODS, routeExtensionRequest, type TrustedExtensionSidecarBridge } from "./extension-owner-routing.js";
 export type { TrustedExtensionSidecarBridge } from "./extension-owner-routing.js";
@@ -117,6 +118,34 @@ export type AgentSidecarOptions = {
  * extensions).
  */
 export class AgentSidecar {
+  /** Start behind Rust's native barrier; never fall back to an unfenced launch. */
+  static async createFenced(options: AgentSidecarOptions & { host: SidecarHostLink; binaryPath: string }): Promise<AgentSidecar> {
+    const prepared = await ExecutionFence.prepare(options.host, options.binaryPath, options.launch);
+    try {
+      const sidecar = new AgentSidecar({ ...options, launch: prepared.launch });
+      sidecar.executionFence = prepared.fence;
+      sidecar.setHost(options.host);
+      return sidecar;
+    } catch (error) {
+      const stopped = await prepared.fence.stop();
+      if (!stopped.confirmed) throw new AggregateError([error], "EXECUTION_FENCE_CLEANUP_UNCONFIRMED");
+      throw error;
+    }
+  }
+
+  private executionFence: ExecutionFence | null = null;
+
+  /** Explicitly terminate the owned execution generation and prove native closure. */
+  async fenceExecution(timeoutMs = 2000): Promise<boolean> {
+    if (!this.executionFence) throw new Error("EXECUTION_FENCE_UNAVAILABLE");
+    return (await this.executionFence.stop(timeoutMs)).confirmed;
+  }
+
+  async executionStatus() {
+    if (!this.executionFence) throw new Error("EXECUTION_FENCE_UNAVAILABLE");
+    return this.executionFence.status();
+  }
+
   private child: ChildProcessWithoutNullStreams;
   private pending = new Map<
     string,

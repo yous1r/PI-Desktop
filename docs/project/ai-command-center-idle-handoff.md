@@ -254,3 +254,18 @@ Full M0 still needs the frozen reference workload/hardware and platform inputs
 listed in the [remaining-work register](ai-command-center-remaining-work.md).
 No service rollout or change to existing session ownership is authorized by a
 passing document/link check.
+
+## Native execution-fence implementation checkpoint
+
+S03b-2 now has an opt-in Rust-owned Windows Job and a stateless Rust launcher.
+The coordinator prepares a one-use ticket, starts that launcher, and Node begins
+only after authenticated native assignment. This closes the preload window that
+a JavaScript-only barrier would leave open. The captured coordinator and runner
+handles anchor creation identity; the current Host lifetime scopes the ticket.
+`AgentSidecar.createFenced` and explicit `fenceExecution` expose this primitive.
+Default app launch remains unchanged until durable startup and the complete idle
+inventory are integrated. See [the execution-fence decision](../adr/windows-execution-fence.md).
+
+This process-local generation does not yet implement the persisted owner epoch,
+containment recovery identity or pre-AppState startup guard specified above.
+Those remain mandatory in S03b-3 before enabling any transfer operation.
