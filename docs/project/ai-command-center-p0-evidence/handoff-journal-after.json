@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "candidate": "7a03eda09a5521fe2822c0b7a8269fcde6275899",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "binarySha256": "99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b",
+  "scriptSha256": "3e5ab59d552db7f2c680e6944068caa0b698367e8dde5441a3cf98c45143f91c",
+  "helperSha256": "d7cb8d60ba8daeba16e7490714b8fdf09df69159124e3680650a4e917f4e6383",
+  "checks": [
+    "restricted mode refuses missing profiles without creating a database",
+    "crash before transfer prepare still proves retained native owner/containment before ordinary restart",
+    "prepared: durable registration before Node effects; source crash closure; ordinary startup blocked; one native target; target crash rotates recovery without replay",
+    "source_fencing: durable registration before Node effects; source crash closure; ordinary startup blocked; one native target; target crash rotates recovery without replay",
+    "source_fenced: durable registration before Node effects; source crash closure; ordinary startup blocked; one native target; target crash rotates recovery without replay",
+    "release_pending: durable registration before Node effects; source crash closure; ordinary startup blocked; one native target; target crash rotates recovery without replay",
+    "unsupported versions, stale revisions and unknown fields refuse without journal/turn mutation",
+    "live original process and mismatched creation identity fail closed without retirement",
+    "zero/oversized/truncated frames refuse; blocked read cancels and releases directory lock",
+    "unresponsive response reader cancels blocked output and releases ownership without journal writes",
+    "coordinator crash closes restricted original Host and permits a new restricted owner"
+  ],
+  "cleanupConfirmed": true,
+  "fixtureMode": "durable fault injection; production restricted bootstrap",
+  "childCount": 58,
+  "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\owner-handoff-lQ8qfQ\\report.json"
+}

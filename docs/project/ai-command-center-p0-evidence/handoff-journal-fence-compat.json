@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "candidate": "7a03eda09a5521fe2822c0b7a8269fcde6275899",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "binarySha256": "99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b",
+  "scriptSha256": "8ba8d46622fc163eb5cc72f8f6ff466004b480ec20ee2dc24a75f1a10d4e8a85",
+  "checks": [
+    "one pending execution generation; empty pending job is not closure proof",
+    "startup barrier admits one authenticated runtime; descendants contained; ticket not inherited or replayed",
+    "stop proves original root exit and empty job, repeats safely, preserves unrelated process",
+    "stale generation and cancelled startup ticket refuse before runtime effects",
+    "altered capability, wrong owner creation identity and unexpected parent refuse before Node starts",
+    "same-user Node client refused before greeting; expired startup remains closed",
+    "launcher crash terminates runtime and detached descendant while the owning Host remains available",
+    "abrupt Host death closes native job and original launcher/runtime/detached descendant handles",
+    "production HostProcess/AgentSidecar RPC path: coordinator stop confirms entire owned process family exits",
+    "production HostProcess/AgentSidecar RPC path: coordinator crash confirms entire owned process family exits",
+    "ordinary Host compatibility; execution fencing requires explicit launch mode"
+  ],
+  "cleanupConfirmed": true,
+  "childCount": 19
+}

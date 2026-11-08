@@ -1,0 +1,24 @@
+{
+  "status": "FAIL",
+  "candidate": "ff9e0341a43d2331ebf31daa58680561c334fccc",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": true,
+  "binarySha256": "eaa7f385c1c7c29eb49f213f51a501db833ed51c9bd385419b99abde79dcf0e1",
+  "scriptSha256": "86c4b3037b1e3ec4c5d479c492486fe1921b12a8046fb931b4167d12df7057bc",
+  "helperSha256": "d7cb8d60ba8daeba16e7490714b8fdf09df69159124e3680650a4e917f4e6383",
+  "checks": [
+    "restricted mode refuses missing profiles without creating a database",
+    "prepared: durable registration before Node effects; source crash closure; ordinary startup blocked; one native target; target crash rotates recovery without replay",
+    "source_fencing: durable registration before Node effects; source crash closure; ordinary startup blocked; one native target; target crash rotates recovery without replay",
+    "source_fenced: durable registration before Node effects; source crash closure; ordinary startup blocked; one native target; target crash rotates recovery without replay",
+    "release_pending: durable registration before Node effects; source crash closure; ordinary startup blocked; one native target; target crash rotates recovery without replay",
+    "unsupported versions, stale revisions and unknown fields refuse without journal/turn mutation",
+    "live original process and mismatched creation identity fail closed without retirement",
+    "zero/oversized/truncated frames refuse; blocked read cancels and releases directory lock"
+  ],
+  "cleanupConfirmed": true,
+  "fixtureMode": "durable fault injection; production restricted bootstrap",
+  "error": "Error: timeout: blocked output cancellation\n    at until (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/scripts/e2e/owner-handoff-fixture.mjs:22:9)\n    at async file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/scripts/e2e-owner-handoff.mjs:192:3",
+  "childCount": 51,
+  "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\owner-handoff-4Op3x2\\report.json"
+}

@@ -266,9 +266,12 @@ handles anchor creation identity; the current Host lifetime scopes the ticket.
 Default app launch remains unchanged until durable startup and the complete idle
 inventory are integrated. See [the execution-fence decision](../adr/windows-execution-fence.md).
 
-S03b-3 now has candidate durable owner/containment registration, a pre-AppState
-ordinary-startup guard and explicit restricted claim/recover. Named Jobs retain
-the native recovery identity. Source prepare/phase orchestration remains test-only
-until S03b-4 supplies complete idle inventory; restricted recovery never declares
-readiness or admits execution. Current validation and remaining gates are tracked
-in the [remaining-work register](ai-command-center-remaining-work.md).
+S03b-3 durable owner/containment registration, the pre-AppState ordinary-startup
+guard and explicit restricted claim/recover are accepted on this Windows
+development host at clean candidate `7a03eda09`. Named Jobs retain the native
+recovery identity. Source prepare/phase orchestration remains test-only until
+S03b-4 supplies complete idle inventory; restricted recovery never declares
+readiness or admits execution. The 11-check recovery suite uses injected durable
+phases and production restricted bootstrap, so it does not qualify complete
+Desktop handoff. Reports and remaining gates are tracked in the
+[remaining-work register](ai-command-center-remaining-work.md).

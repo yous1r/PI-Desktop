@@ -1,0 +1,17 @@
+{
+  "status": "FAIL",
+  "candidate": "ff9e0341a43d2331ebf31daa58680561c334fccc",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": true,
+  "binarySha256": "7b204b404f9014f891b1d0126d8f448c7c404b0d8d5b917e02edd163cd54240f",
+  "scriptSha256": "3f5fb1296a3f71d51120a639bf7d5d03bf7df4cb8270d80e1452f7669414678f",
+  "helperSha256": "d7cb8d60ba8daeba16e7490714b8fdf09df69159124e3680650a4e917f4e6383",
+  "checks": [
+    "restricted mode refuses missing profiles without creating a database"
+  ],
+  "cleanupConfirmed": true,
+  "fixtureMode": "durable fault injection; production restricted bootstrap",
+  "error": "AssertionError [ERR_ASSERTION]: {\"error\":{\"code\":\"HANDOFF_REFUSED\"},\"version\":1}\n    at file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/scripts/e2e-owner-handoff.mjs:106:59\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)",
+  "childCount": 7,
+  "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\owner-handoff-kOcKyq\\report.json"
+}

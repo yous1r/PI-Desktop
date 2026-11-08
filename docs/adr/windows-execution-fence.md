@@ -1,6 +1,6 @@
 # ADR: Rust-owned Windows sidecar execution fence
 
-- Status: S03b-2 accepted on Windows; S03b-3 durable recovery candidate under validation
+- Status: S03b-2 and S03b-3 accepted on this Windows development host
 - Scope: Native execution containment and durable owner recovery prerequisites
 - Context: [Idle handoff](../project/ai-command-center-idle-handoff.md)
 
@@ -104,3 +104,17 @@ unexpected parents, counterfeit Node clients, Host/coordinator crashes and
 unrelated-process survival. Crash observers retain original Windows handles
 before the fault and wait for their signalled exit, rather than relying on PID
 absence. All fixtures use temporary profiles and no paid providers.
+
+S03b-3 acceptance uses clean candidate
+`7a03eda09a5521fe2822c0b7a8269fcde6275899`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`. The restricted recovery suite passes
+11 checks (58 direct fixtures cleaned), discovery compatibility passes 8
+(14 cleaned), and execution-fence compatibility passes 11 (19 cleaned).
+All use binary SHA-256
+`99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b`.
+The [acceptance register](../project/ai-command-center-remaining-work.md)
+links the byte-identical reports and retained failure evidence. Targeted Rust
+tests pass 72/72; strict Clippy and formatting pass. Injected durable phase
+fixtures exercise production restricted recovery, not full source handoff.
+Complete idle inventory, source orchestration, readiness and client reattachment
+remain S03b-4 work; minimum-hardware and non-Windows acceptance remain open.

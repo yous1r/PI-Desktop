@@ -7,7 +7,7 @@
 ## Current correctness status
 
 All 20 originally reported Rust baseline failures are addressed across the
-committed fixes. The current Windows full suite passes **1,103 tests, zero
+committed fixes. The historical Windows full suite passed **1,103 tests, zero
 failures, one existing live-marketplace ignore, zero filtered tests**. The cmd
 quoted-path defect and four Clippy warnings are also closed. See the
 [full validation record](ai-command-center-p0-evidence/windows-validation.json).
@@ -39,8 +39,9 @@ qualification remain separate open product milestones.
    deletion in the first release. Implement bounded caches and paginated durable
    reads; a future explicit purge/deletion contract is separate.
 5. Full Host handoff now has a [concrete protocol design](ai-command-center-idle-handoff.md)
-   for local identity, durable phases and old-sidecar fencing. Its native binding,
-   journal, startup guard and fault cases still require implementation/qualification.
+   for local identity, durable phases and old-sidecar fencing. Native fencing,
+   journal migration and restricted recovery are accepted on this Windows host;
+   complete idle inventory, source orchestration and client attachment remain.
    Current-user background execution and idle-only transfer remain the first slice.
 
 ## Ordered work and acceptance
@@ -48,7 +49,7 @@ qualification remain separate open product milestones.
 | Priority | Step | Implementation status | Required acceptance before completion |
 |---|---|---|---|
 | 1 | S03a: Rust data-directory ownership | Implemented candidate in this slice | Same-directory and alias contenders fail before recovery; independent directories run; normal/crash exit releases ownership; relocation refuses live destination before mutation; existing history remains readable |
-| 2 | S03b: Exclusive execution handoff | Windows discovery, explicit exit confirmation and native sidecar fencing implemented; durable journal/transfer pending | Existing admission gate blocks new work; busy handoff rejects; old sidecar proven stopped/fenced; one successor; crash at every phase leaves recoverable journal; no turn/tool replay |
+| 2 | S03b: Exclusive execution handoff | Windows discovery, native fencing and durable restricted recovery accepted; full idle transfer pending | Existing admission gate blocks new work; busy handoff rejects; old sidecar proven stopped/fenced; one successor; crash at every phase leaves recoverable journal; no turn/tool replay |
 | 3 | S02/S04: Finalize versioned metadata contract | Retention decided; schemas/implementation pending | Stable task vs concrete execution identity; strict request schema; desired/effective goal CAS; durable no-auto-delete receipts; golden producer/consumer fixtures |
 | 4 | S04: Rust repositories and migrations | Pending | Workspaces/membership/reservations/goals/receipts preserve existing data; transactional 12/36 checks; unique release; migration/restart/partial-commit tests; no second transcript store |
 | 5 | S05: Portable authorized control interfaces | Pending | Negotiated operations only; authenticated principal/role; idempotency and lost-reply reconciliation; unsupported capabilities explicit; old clients remain compatible |
@@ -434,7 +435,7 @@ retains the missing-method baseline and confirmed cleanup. No source changed
 during either committed-candidate run. Proceed to S03b-3 durable owner/journal
 migration, CAS and guarded bootstrap; the broader product gates remain open.
 
-## S03b-3 durable journal and restricted recovery candidate
+## S03b-3 durable journal and restricted recovery acceptance
 
 Schema v28 now adds retained owner/generation/transfer/receipt tables with a v27
 backup and transactional migration. Named current-user Jobs and native owner/root
@@ -463,8 +464,8 @@ The first restricted process run failed conservatively and cleaned all 7 direct
 fixtures. The next dirty candidate passes 8 checks with all 50 direct fixtures
 closed, original-handle observations, each source phase and target-claimed crash,
 no early turn recovery, capability rotation and truncated-input cancellation.
-Expanded output-backpressure/coordinator cleanup and clean committed-candidate
-acceptance are still pending; P0-3 is not yet accepted.
+Output-backpressure/coordinator cleanup and clean committed-candidate acceptance
+subsequently passed, as recorded below.
 
 The broader Biome `check` invocation also applies import organization and reports
 95 errors; the configured `biome lint` gate passes without edits to unrelated
@@ -482,4 +483,27 @@ global stdout flush on process exit. Independent owned pipe handles remove that
 flush; the same probe exits in 8.652 seconds and confirms cleanup. The final
 targeted Rust run remains 72/72 after this correction. Precommit binary SHA-256:
 `7e3362d0fee8049659521a01ae3441b12ebc89c2ae27512b9ba654b6e5a45ef8`.
-Clean committed-candidate acceptance is the remaining P0-3 gate.
+
+Clean candidate `7a03eda09a5521fe2822c0b7a8269fcde6275899`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`, passes all three sequential suites:
+
+- [Restricted recovery](ai-command-center-p0-evidence/handoff-journal-after.json):
+  11 checks, 58 direct fixture processes closed.
+- [Discovery compatibility](ai-command-center-p0-evidence/handoff-journal-discovery-compat.json):
+  8 checks, 14 direct fixture processes closed.
+- [Execution-fence compatibility](ai-command-center-p0-evidence/handoff-journal-fence-compat.json):
+  11 checks, 19 direct fixture processes closed.
+
+All reports record `dirty: false`, confirmed cleanup and binary SHA-256
+`99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b`.
+The reports were copied byte-for-byte and hash-checked. The earlier
+[native identity failure](ai-command-center-p0-evidence/handoff-journal-native-before.json)
+and [output-backpressure failure](ai-command-center-p0-evidence/handoff-journal-backpressure-before.json)
+are retained unchanged with confirmed fixture cleanup. The clean suite exited 0;
+no source or binary changed during those runs.
+
+P0-3 is accepted for this Windows development host. These injected durable phases
+qualify the production restricted bootstrap, not complete idle Desktop handoff.
+P0-4 now owns complete admission/resource inventory, production source transitions,
+successor readiness and epoch-aware snapshot reattachment. The two locale baseline
+mismatches, minimum-hardware qualification and P1-P4 remain open.
