@@ -19500,3 +19500,13 @@ against real fixture files with a controlled child-process boundary. Advance
 the Git deadline while the child never closes: entries and preview complete
 without Git metadata. Existing Electron directory-location and mutation
 journeys cover successful reads, saves and directory browsing.
+
+### E2E-COMPOSER-screenshot-without-directory-scan
+
+Paste a native folder, then a synthetic screenshot through real Composer,
+preload IPC and the bounded scratch writer in `e2e-composer-paste.mjs`.
+Run with `--screenshot-only` to verify the folder and screenshot route while
+excluding unrelated MP4 preview. Screenshot metadata never enters native
+directory discovery; scratch bytes are verified exactly in Main.
+`composer-directory-paste.test.mjs` verifies byte preservation and existing
+folder/mixed-selection behavior. No system clipboard contents are changed.

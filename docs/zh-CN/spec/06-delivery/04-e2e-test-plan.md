@@ -10150,3 +10150,11 @@ PluginPack 产物的解包目录，仅用于开发验证。验收 #1711 前需�
 `fm.read`，仅控制子进程边界。子进程从不关闭时推进 Git 截止时间，目录及
 预览仍完成，Git 元数据不可用。原有 Electron 目录定位和文件修改旅程验证
 正常读取、保存和目录浏览。
+
+### E2E-COMPOSER-screenshot-without-directory-scan
+
+`e2e-composer-paste.mjs` 使用真实 Composer、preload IPC 和有界 scratch 写入，
+先粘贴原生目录，再粘贴合成截图。使用 `--screenshot-only` 验证这条路径，
+跳过无关的 MP4 预览；截图不进入原生目录探测，Main 精确校验 scratch 字节。
+`composer-directory-paste.test.mjs` 验证字节不变及原有目录/混合选择流程。
+不修改系统剪贴板内容。
