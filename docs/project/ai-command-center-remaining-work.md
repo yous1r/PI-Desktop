@@ -1288,3 +1288,22 @@ Next: speech/voice, OAuth/user-MCP raw transport, extension-owner and remote Hos
 ownership; then complete the nineteen-family inventory, bounded original-Rust
 status and fenced Desktop/coordinator composition. H2-H5 and the remaining approved
 command-center dependency plan continue after their prerequisites.
+
+Fixed candidate `3a65c0b957e38dad06ade7dae78f79d958fb659f`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`, passed all 23 new regressions and
+four isolated Electron process checks with a clean worktree before and after.
+All 33 focused changed/direct inputs and 3065 native-build input hashes remained
+unchanged. Final relevant logs contain 211 unique passing test names, excluding
+overlapping reruns. The original Electron process and Node plugin child exited;
+both pages were destroyed and resource uncertainty remained positive.
+
+The [candidate report](ai-command-center-p0-evidence/plugin-surfaces-after.json)
+is 9085 bytes, SHA-256
+`b4c3c7f0545edbad6b11b2df5a0092c948165e812aa74f7fed37c3d133836da6`.
+The [verification archive](ai-command-center-p0-evidence/plugin-surfaces-verification.json)
+is 940887 bytes, SHA-256
+`8e46961d962d5b0c9bf728d4eecb1a57fafd9c17aa45d72d84c82169e9034c6a`.
+The archive preserves raw logs as exact JSON strings with byte hashes and the
+native bundle-input manifest. Focused inputs are not a complete dependency
+manifest. This surface/shortcut slice is accepted within its stated scope;
+remaining external owners and complete H1 composition continue.

@@ -1,0 +1,241 @@
+{
+  "candidate": "3a65c0b957e38dad06ade7dae78f79d958fb659f",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "focusedInputsUnchanged": true,
+  "focusedInputs": [
+    {
+      "path": "apps/desktop/electron/main/external-resource-activity.ts",
+      "bytes": 1249,
+      "sha256": "2875f0d89c75a31e8d10c790cbb10751f6dfb6fd8ef09698522fff9c0899338f"
+    },
+    {
+      "path": "apps/desktop/electron/main/ipc/plugin-ui-ipc.ts",
+      "bytes": 17265,
+      "sha256": "d10e0d213f619a45f578701173d9d2ba475212c97e39266144d8ecd9a330c532"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-lifecycle.ts",
+      "bytes": 3324,
+      "sha256": "9bdf3767ef6c55322012711dfb41eca174b6ec4b1b07e38a7bd7efc841c5066a"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-panel-host.ts",
+      "bytes": 28489,
+      "sha256": "0de1a2159a95f8805827d2cfe718fb78c4195df2b040ed7ef5ac00b899c869cc"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-panel-senders.ts",
+      "bytes": 6092,
+      "sha256": "d5e8a76bc2d604c00469e718ab9b2fe3f542b8e7199f56b2df2618eeae7cdf4b"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-runtime.ts",
+      "bytes": 281284,
+      "sha256": "772296712232708a292702d5216ba301d70405b372bdc6a7f16a94d554913fc0"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-shortcut-registry.ts",
+      "bytes": 11274,
+      "sha256": "ea88ef387427fa6bffa2f71f4547d102fc9729e2501025646089ef253ed12424"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-surface-activity.ts",
+      "bytes": 3187,
+      "sha256": "affc20a92ce80bfc4bead2d9668eae80063bfbe0d0dfa3503b944041a110354e"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-view-host.ts",
+      "bytes": 23646,
+      "sha256": "342f7b8c0144d941f0d4ed5fa038341b07c3710ebc010ece1020d73ff87f32dc"
+    },
+    {
+      "path": "apps/desktop/electron/main/runtime/handoff-admission.ts",
+      "bytes": 1262,
+      "sha256": "80178a354f57b3bb610cf4c4fe78616148a12668ca530acd3b4d972befbada91"
+    },
+    {
+      "path": "apps/desktop/electron/main/services/plugin-services.ts",
+      "bytes": 40535,
+      "sha256": "10efc481d85f525ac178acd28f3e96c0a26a2ace8066e6fe67362d3b41bd86a4"
+    },
+    {
+      "path": "apps/desktop/test/handoff-plugin-surfaces.test.mjs",
+      "bytes": 13848,
+      "sha256": "7182d279091e034fb699bfa4d349392e80c18864269ceb14aea6a6d7e619ba57"
+    },
+    {
+      "path": "apps/desktop/test/helpers/current-source-import-hooks.mjs",
+      "bytes": 727,
+      "sha256": "d504d0271768c4dbb3c09507f2569f2b2f4539559b5f455245e244d1637bfe92"
+    },
+    {
+      "path": "apps/desktop/test/helpers/current-source-vite.mjs",
+      "bytes": 1422,
+      "sha256": "eb9852373c758bfc3c381c79fb6c83fa9ac7e1c86f95014d8540d186d315c235"
+    },
+    {
+      "path": "apps/desktop/test/helpers/owner-runtime-import-hooks.mjs",
+      "bytes": 564,
+      "sha256": "2e96147278b1dd13baec3c4149e505f22eb9cc97706f959c567218a94c225ff4"
+    },
+    {
+      "path": "apps/desktop/test/helpers/plugin-surface-electron-hook.mjs",
+      "bytes": 310,
+      "sha256": "6be5f0344649923d122dbadd006831ea184a520a507f7e83c08966548f0f8941"
+    },
+    {
+      "path": "apps/desktop/test/helpers/plugin-surface-electron.mjs",
+      "bytes": 2258,
+      "sha256": "586a52da4714e63d0c7ba7991c9c989bfd14b9624f2f35d0cf76c178c5307ce5"
+    },
+    {
+      "path": "apps/desktop/test/helpers/ts-import-hooks.mjs",
+      "bytes": 1387,
+      "sha256": "3d331b92a60dc7cee10fdf1e1d13b56463643b7d1a858e4cbc1d9010c665d907"
+    },
+    {
+      "path": "apps/desktop/test/plugin-panel-invoker.test.mjs",
+      "bytes": 13194,
+      "sha256": "80dbe801bf78b77ea633efabefd6eb975a5feaa6b9bcbddcac5c70653c46aca1"
+    },
+    {
+      "path": "apps/desktop/test/plugin-panel-window.test.mjs",
+      "bytes": 12257,
+      "sha256": "acff23a61d7e542594d4e3e34b21b88dd1ebdc5104ed226775b4e09a9f8c6af0"
+    },
+    {
+      "path": "apps/desktop/test/plugin-shortcuts.test.mjs",
+      "bytes": 28881,
+      "sha256": "72b37b46432a37c16ba22fab4f6f61c813b784db12e167a7efad29943438d16c"
+    },
+    {
+      "path": "apps/desktop/test/plugin-surface-context.test.mjs",
+      "bytes": 3183,
+      "sha256": "e801675c8353f28c8fd3689686ed399212085264029e93b71b7d4a1700988b73"
+    },
+    {
+      "path": "apps/desktop/test/plugin-view-bounds-sync.test.mjs",
+      "bytes": 7747,
+      "sha256": "a26115ea618b4c712cfb8452090b8f45b81f2f877f8abe7c32d55b80b74febcd"
+    },
+    {
+      "path": "apps/desktop/test/plugin-work-panel-views.test.mjs",
+      "bytes": 15622,
+      "sha256": "38ed5ce9f747fd2be12ba961f1b8a1306844a7e0980eeca99116c0f9c802c978"
+    },
+    {
+      "path": "biome.json",
+      "bytes": 4385,
+      "sha256": "5c736b0ee03be618205501bb8d2d8e52a93336c25df6115d80950591d144b8d5"
+    },
+    {
+      "path": "docs/project/ai-command-center-remaining-work.md",
+      "bytes": 84862,
+      "sha256": "a83d082bca9404773b2ebb35ccb81c4774c06e0536c7d3aafda1a742058ea20f"
+    },
+    {
+      "path": "docs/project/unreleased.md",
+      "bytes": 6732,
+      "sha256": "d41d2cb9d647f11d4e60a2b5d586c64c56c282ecf78c083276279685e01abf7b"
+    },
+    {
+      "path": "docs/spec/03-runtime/07-process-model.md",
+      "bytes": 42966,
+      "sha256": "0e41096b735b2874d2bcfaebf12ca5adaacc457f9212ef89400b7a9849d7d109"
+    },
+    {
+      "path": "docs/spec/06-delivery/04-e2e-test-plan.md",
+      "bytes": 1339524,
+      "sha256": "caf2eb5dfb68f9ca68a82d1b2c963c1e9c114a2f6830230fdab7f29358216da9"
+    },
+    {
+      "path": "docs/spec/07-plugins/05-plugin-lifecycle.md",
+      "bytes": 16497,
+      "sha256": "8db9a0b31597d8fd4931ca6d17f1540afa1fbae790ccc219ff9de27b318bc2ce"
+    },
+    {
+      "path": "scripts/e2e-plugin-surfaces-handoff.mjs",
+      "bytes": 5828,
+      "sha256": "4ee1c37d218b09ad60e60dfa26ec83052366fadb6a31e42961ef8f638f2526a6"
+    },
+    {
+      "path": "scripts/e2e/plugin-surfaces-handoff.mjs",
+      "bytes": 10368,
+      "sha256": "b4eba4be1bd6b5363f4dc4e433f5d3da6081271e3741590742061e6d7a75a7d1"
+    },
+    {
+      "path": "scripts/e2e/sidecar-handoff-build.mjs",
+      "bytes": 3393,
+      "sha256": "fc792cc8764a03ae55607d8e2ae0eb3f6a3e344d5f76a10705de58f6e87c203e"
+    }
+  ],
+  "focusedInputsSha256": "664a31ac4cc3b13fe9d6571294b6d9aa91514fa7ec3038b4851fbdfe326caa4a",
+  "regression": {
+    "passed": 23,
+    "log": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\handoff-surfaces-candidate-regressions.log",
+    "bytes": 2090,
+    "sha256": "a50eea4e96b206e3f6ecb96a3b9afc25a41eaa9c041d336cb24b55d5320ddc97"
+  },
+  "native": {
+    "directory": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\plugin-surfaces-handoff-LTA0mr",
+    "candidate": "3a65c0b957e38dad06ade7dae78f79d958fb659f",
+    "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+    "dirty": false,
+    "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+    "originalProcessExitObserved": true,
+    "qualifiedNativeFamilyClosure": false,
+    "platform": "win32",
+    "node": "v24.12.0",
+    "inputs": 3065,
+    "inputsSha256": "10bb2e655b6589cc58be6d906714ed7148bf6f266aa0ab8471a257c52d21680f",
+    "bundleSha256": "dde3baf1209f3e963947d7c8bd5dfd677448449c3783cd6fe23dfe660653cc7d",
+    "preloadSha256": "bbd9fd47d9f392c9bb359175ae1f3bb40f6d90da7229915edff7c9a838885e2d",
+    "electronBinarySha256": "9e1b3c401c1a1988942d5684fede8040d089b0c496ab86b899415ba9bfa0e49c",
+    "exit": {
+      "code": 0,
+      "signal": null
+    },
+    "passed": [
+      "closed empty admission prevents native pages; cancellation restores entry",
+      "real panel and retained embedded view invoke their original plugin through the sandbox preload",
+      "busy inventory refuses handoff; closed admission suppresses page and shortcut entry",
+      "original pages and plugin child exit while unqualified native evidence remains"
+    ],
+    "activity": {
+      "operations": 0,
+      "uncontainedResources": 6,
+      "plugins": 0,
+      "schedules": 0
+    },
+    "panelActivity": {
+      "operations": 0,
+      "resources": 0,
+      "uncontainedResources": 2
+    },
+    "viewActivity": {
+      "operations": 0,
+      "resources": 0,
+      "uncontainedResources": 2
+    },
+    "shortcutActivity": {
+      "operations": 0,
+      "resources": 0,
+      "uncontainedResources": 1
+    },
+    "originalPluginProcesses": 1,
+    "originalPluginExitsObserved": true,
+    "originalWebContentsDestroyed": 2,
+    "shortcutPlatform": "deterministic registration edge; no real OS key injection",
+    "sourceInputsUnchanged": true,
+    "endedDirty": false
+  },
+  "limitations": [
+    "Focused changed/direct inputs are not a full dependency manifest. Native bundle inputs are separately retained.",
+    "Node plugin exit and Electron page/root exit are not complete native-family closure proof.",
+    "Shortcut registration edge is deterministic; no OS key injection.",
+    "Full H1 inventory, source status transport, fenced Desktop composition and H2-H5 remain unfinished."
+  ]
+}
