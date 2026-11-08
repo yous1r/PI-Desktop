@@ -736,6 +736,18 @@ history message; it also exposed the need for explicit Rust global capability
 directory isolation. Both are corrected in the fixture, and its failed report
 is retained. Clean committed-candidate evidence is recorded separately below.
 
+The first clean `b2902ac2962e` run failed in plan approval with `database is
+locked`; its submitted message exists, its proposal remains pending and its
+turn remains running. Cleanup was confirmed. The fixture prepared user work
+without confirming registration: `createFenced` returns the launcher, whereas
+Desktop waits for a configuration response. Registration could therefore
+overlap approval; the exact conflicting write is not yet established. The fixture
+now waits for its first response and verifies native `running` state before
+preparing a proposal, with no mutation retry. This qualifies the ready-owner
+path only. Concurrent registration/journal writes versus deferred plan-approval
+transactions remain an explicit H1 integration investigation before full
+handoff acceptance; changing the fixture is not a production SQLite fix.
+
 This completes the plan lifecycle implementation slice, not H1 acceptance.
 Next: inventory all actual resource families, compose the coordinator with
 bounded original-source journal operations, and validate the complete process

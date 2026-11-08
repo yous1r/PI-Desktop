@@ -52,6 +52,13 @@ try {
   report.isolatedExtensionRegistries = true;
   sidecar = await AgentSidecar.createFenced({ host, binaryPath: process.env.PI_DESKTOP_HOST_BIN,
     launch: { command: process.execPath, args: [fixturePath], cwd: workspace, env: {} }, onStderr: text => process.stderr.write(text) });
+  // createFenced returns a spawned launcher. Match Desktop's configure-response
+  // boundary before preparing user work; no sleep or mutation retry is used.
+  assert.deepEqual(await sidecar.call('fixture.stats'), { executions: [], ticketLeaked: false });
+  const ready = await sidecar.executionStatus();
+  assert.equal(ready.state, 'running');assert.ok(ready.activeProcesses >= 1);
+  assert.equal(ready.rootExited, false);assert.equal(ready.confirmed, false);
+  report.nativeRegistrationReady = true;
   runtimeState.sidecar = { call: (...args) => sidecar.call(...args), setVendorAuthBindings(_id, bindings) { assert.deepEqual(bindings, []); } };
   const { provider } = await host.call('providers.create', { name: 'Plan fixture', authKind: 'none',
     baseUrl: 'http://127.0.0.1:9/v1', apiStyle: 'chat_completions', defaultModelId: 'fixture',
