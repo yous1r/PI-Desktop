@@ -540,5 +540,21 @@ The production application is not yet handoff-capable. Remaining P0-4 work:
 wire the gate into all Desktop/headless execution owners; report complete live
 resource inventory and reject uncontained/unknown families; integrate durable
 source prepare/cancel/fencing and successor readiness; reattach clients using
-new owner epochs and authoritative snapshots. Clean-candidate admission evidence
-will be recorded separately. P1-P4 and external acceptance remain pending.
+new owner epochs and authoritative snapshots. P1-P4 and external acceptance
+remain pending.
+
+The admission foundation is accepted at clean candidate
+`4b2517e95346e512c3a895ce841a0086d49f377a`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`. The
+[process report](ai-command-center-p0-evidence/idle-admission-after.json) passes
+4 checks with `dirty: false` and confirmed cleanup. Its
+[1,161 build inputs](ai-command-center-p0-evidence/idle-admission-inputs.json)
+have canonical manifest SHA-256
+`99149455151f3191a6c0d76bfa98b0d03e5de12c04d3ad05d404c0c2acf7b4b7`;
+the bundled candidate SHA-256 is
+`7cff90ac1e0c59f8019cef965aef08a765fd25b494346f3d6efa517e3eba5926`.
+Rust inputs match the accepted P0-3 binary
+`99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b`.
+The [initial synchronization failure](ai-command-center-p0-evidence/idle-admission-before.json)
+is retained unchanged. Report and manifest copies were verified byte-for-byte.
+This closes only the admission foundation; full P0-4 acceptance remains open.

@@ -1,0 +1,40 @@
+{
+  "status": "PASS",
+  "candidate": "4b2517e95346e512c3a895ce841a0086d49f377a",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "binarySha256": "99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b",
+  "scriptSha256": "15b9cc88152cd0ad278ba6367ac4f3f29b9db5490aa054f1794611004bf66809",
+  "checks": [
+    "closed handoff admission outlives maintenance expiry; no prompt or transcript mutation",
+    "explicit cancellation permits one user turn; active work refuses idle handoff",
+    "settlement precedes fencing; sealed admission cannot reopen; native containment and original child exits confirmed",
+    "independent Host reopen preserves exact user/assistant history without launching a successor runtime"
+  ],
+  "cleanupConfirmed": true,
+  "scope": "Production admission/runtime/transports with a deterministic contained sidecar; not full application handoff",
+  "inputsSha256": "99149455151f3191a6c0d76bfa98b0d03e5de12c04d3ad05d404c0c2acf7b4b7",
+  "bundleSha256": "7cff90ac1e0c59f8019cef965aef08a765fd25b494346f3d6efa517e3eba5926",
+  "afterSettlement": {
+    "clients": 0,
+    "turns": 1,
+    "queuedTurns": 0,
+    "plans": 0,
+    "tools": 0,
+    "processes": 0,
+    "terminals": 0,
+    "plugins": 0,
+    "admissions": 1,
+    "finalizations": 0,
+    "writes": 0,
+    "children": 0,
+    "workers": 0,
+    "schedules": 0,
+    "approvals": 0,
+    "inputs": 0,
+    "nativeSessions": 0,
+    "mcp": 0,
+    "uncontainedResources": 0
+  },
+  "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\handoff-admission-iea8Tu\\report.json"
+}

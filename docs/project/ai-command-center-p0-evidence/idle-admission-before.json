@@ -1,0 +1,18 @@
+{
+  "status": "FAIL",
+  "candidate": "a921049476c584eaaec0aab14c36c6dda4b74b19",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": true,
+  "binarySha256": "99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b",
+  "scriptSha256": "26a54c5cd9bb093b6994b19c73e9bc96556d1dbd366b7e17be9ffa351c0de662",
+  "checks": [
+    "closed handoff admission outlives maintenance expiry; no prompt or transcript mutation",
+    "explicit cancellation permits one user turn; active work refuses idle handoff"
+  ],
+  "cleanupConfirmed": true,
+  "scope": "Production admission/runtime/transports with a deterministic contained sidecar; not full application handoff",
+  "inputsSha256": "99149455151f3191a6c0d76bfa98b0d03e5de12c04d3ad05d404c0c2acf7b4b7",
+  "bundleSha256": "7cff90ac1e0c59f8019cef965aef08a765fd25b494346f3d6efa517e3eba5926",
+  "error": "Error: HOST_BUSY\n    at MaintenanceAdmission.acquireHandoff (file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-admission-0UKh1w/candidate.mjs:7286:52)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/scripts/e2e-owner-idle-admission.mjs:138:16",
+  "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\handoff-admission-0UKh1w\\report.json"
+}
