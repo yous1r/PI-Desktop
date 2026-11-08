@@ -4,6 +4,17 @@
 - Status: Incremental execution; no milestone is closed by planning documents alone.
 - Current branch starts from the committed runtime/soak/sampling corrections.
 
+## Current correctness status
+
+All 20 originally reported Rust baseline failures are addressed across the
+committed fixes. The current Windows full suite passes **1,103 tests, zero
+failures, one existing live-marketplace ignore, zero filtered tests**. The cmd
+quoted-path defect and four Clippy warnings are also closed. See the
+[full validation record](ai-command-center-p0-evidence/windows-validation.json).
+Historical failure counts below remain unchanged evidence, not current blockers.
+Full S03b implementation, two-core / 8-GB performance, native/mobile and release
+qualification remain separate open product milestones.
+
 ## Completed baseline
 
 - Runtime persistence backpressure and durable terminal ordering, byte-bounded
@@ -295,5 +306,33 @@ the old implementation. Keep the old
 Focused checks pass: remote tools 10/10, cmd 1/1, worktree core 67/67 and
 worktree RPC 6/6. Four existing Clippy warnings were removed with equivalent
 byte/iterator expressions; `cargo clippy --all-targets --locked -- -D warnings`
-passes. Complete Rust-suite and clean-candidate process evidence are recorded
-after they finish; focused results alone do not close the integration gate.
+passes. The final full-suite and clean-candidate results below close the known
+Windows correctness blockers without claiming the dependent product milestones.
+
+Implementation commit: `b5c9ebbd52bde42c869ee217be335cc892a56552`.
+Candidate: `38c502af7ee67c13db929e9f998def706a0e2bb0`, including only a subsequent
+delivery-checklist correction; base `fd28eb89866ac513912ed109716e7120cf60f18c`.
+The checklist now follows request-worktree and PR integration-candidate policy,
+removing a contradictory reference to a local-main gate. No local-main merge,
+push, PR or deployment was performed.
+
+- Full Rust suite: 1,103 passed / 0 failed / 1 ignored in 827.22 seconds. The
+  ignored live plugin-marketplace test requires its own explicit authorization.
+  [Raw log](ai-command-center-p0-evidence/windows-validation-rust.txt) and
+  [194 Rust/build inputs](ai-command-center-p0-evidence/windows-validation-inputs.json)
+  are retained. The run began before commit; input hashes and committed-source
+  comparison prove it tested the same executable source.
+- `cargo fmt --check`, strict Clippy with `-D warnings`, Host build and Biome lint
+  (176 files) pass. New regressions' original failures remain in the
+  [before log](ai-command-center-p0-evidence/windows-validation-regressions-before.txt).
+- Clean-candidate [cmd and Stop E2E](ai-command-center-p0-evidence/windows-cmd-after.json):
+  five checks pass with confirmed cleanup.
+- Clean-candidate [remote permission E2E](ai-command-center-p0-evidence/remote-permissions-after.json):
+  four checks pass with confirmed cleanup. Both reports have `dirty:false` and
+  Host SHA-256 `d13925a6722ca96e08acfcd9f76782aeed609c388301b0fa0a0a4e6d823ef37f`.
+
+No further known failure remains in the executed Windows Rust/CLI checks.
+Continue with S03b local transport and native execution fencing. Exact target
+hardware/OS access and the native/mobile fixture matrix are still needed for
+their dependent acceptance; they are not silently replaced by this machine's
+unit/process results. No live provider, user profile or `verify:ui:*` was used.

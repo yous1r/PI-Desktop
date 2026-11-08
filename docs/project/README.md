@@ -8,6 +8,7 @@
 - AI command center P0 preparation: [Control contracts](ai-command-center-control-contracts.md) · [Host capability parity and handoff inventory](ai-command-center-host-parity.md).
 - AI command center long-run evidence: [One-hour soak and follow-up progress](ai-command-center-soak-report.md) (59 rounds, 2,124 verified turns; 1.331 GB sampled peak, explicit coverage limitations).
 - AI command center execution backlog: [Remaining steps and acceptance](ai-command-center-remaining-work.md) (S03 data-directory ownership foundation; full handoff and dependent features remain pending).
+- AI command center Windows defect closure: [Full Rust validation](ai-command-center-p0-evidence/windows-validation.json) (1,103 passed, zero failures, one live-marketplace ignore; cmd and remote-permission process checks recorded in the backlog).
 - AI command center S03b: [Idle handoff protocol design](ai-command-center-idle-handoff.md) (local identity, execution fencing, durable phases and fault acceptance; not implemented).
 
 - Historical project board (archived; last refreshed 2026-08-11 for the 0.5.x line): [`BOARD.md`](BOARD.md)

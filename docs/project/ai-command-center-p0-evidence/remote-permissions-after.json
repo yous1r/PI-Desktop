@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "candidate": "38c502af7ee67c13db929e9f998def706a0e2bb0",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "platform": "win32",
+  "binarySha256": "d13925a6722ca96e08acfcd9f76782aeed609c388301b0fa0a0a4e6d823ef37f",
+  "scriptSha256": "cc165ed3f7d509d6c685d0bf77deb6197017f8ebf74d290c40410c6e43ef635e",
+  "checks": [
+    "relative and absolute in-project POSIX reads relay without spurious external approval",
+    "traversal, sibling-prefix and case-different paths require approval before relay",
+    "denied write never reaches the remote execution boundary",
+    "cancelled remote read propagates abort and never falls back locally"
+  ],
+  "cleanupConfirmed": true
+}

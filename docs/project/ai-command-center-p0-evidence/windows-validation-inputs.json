@@ -1,0 +1,778 @@
+[
+  {
+    "path": "Cargo.lock",
+    "sha256": "777ca51958a07140f6a0624d17f64b2e13c0ac72d6be16f965671fd8b4333ee3"
+  },
+  {
+    "path": "Cargo.toml",
+    "sha256": "c114b9c273c4676b39f8c6620e34f48edfb36caf17d81ef752bc654f37453f87"
+  },
+  {
+    "path": "crates/host-core/Cargo.toml",
+    "sha256": "28c1fcf38329a30a52f3a48b7af5bcdc8bed14ed5051c0aa57d32253ef660ed6"
+  },
+  {
+    "path": "crates/host-core/src/activation.rs",
+    "sha256": "18ce9c25926e8d9fcd6da93ff018ada645163b5c121bb6970f45948a570e5e8e"
+  },
+  {
+    "path": "crates/host-core/src/agent_capabilities.rs",
+    "sha256": "d697a10044651bd8b0afb2ab047dfd0b3c50e60adfa4726d094265d1a1300621"
+  },
+  {
+    "path": "crates/host-core/src/agent_capabilities/tests.rs",
+    "sha256": "f0a1e01d7e45e3b8ee90acdfc2f36f48e490b585e644a3824f8ffee453693c40"
+  },
+  {
+    "path": "crates/host-core/src/artifacts.rs",
+    "sha256": "1fc4198b53755552d7893dd2533edc0b98d0d185d4712d2d436bfc1fe0f3f6b0"
+  },
+  {
+    "path": "crates/host-core/src/audit.rs",
+    "sha256": "6134ac4bf6cadb610398545947d8c29d4ec75135a7e631f8be4e1a0889e31dc2"
+  },
+  {
+    "path": "crates/host-core/src/background_tasks.rs",
+    "sha256": "c5c0a1142704b45c32e3ac2c79d9610d22438c9c74d2dedaf8d82f9234af6e1d"
+  },
+  {
+    "path": "crates/host-core/src/background_tasks/windows_tests.rs",
+    "sha256": "ab4e4d329e49b395473bcfc382ae17a5ffd307836d03845e4c94772fd84f60da"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/apply.rs",
+    "sha256": "4fca591eeb2c1380a0cab5f3997a615749158f8cf90bc71812bc161c424457a4"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/baseline.rs",
+    "sha256": "542084988f176b6f7ea61d87b1b4ec3af663b756a48b696493bdec9fe71d1e1d"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/conflicts.rs",
+    "sha256": "f5b129e87c1f9b748de3f4ce91463099deb5de00974357899d5cb23df5d296b6"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/connection.rs",
+    "sha256": "9b8293aafbb5ec9d42da5fd6abd5ebe74f3795272e85bfe70f576d2dd835ec65"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/coordinator.rs",
+    "sha256": "01d007d67f8c5455a69c965d261a7d7adef83306825230cf506e8215a5613676"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/crypto.rs",
+    "sha256": "115fd0b5894361509eafe7aa010cd1c6bff125944a944b7c65a1241bac394341"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/domains.rs",
+    "sha256": "255c2b12690df4674b9a786c47d39581ecbb40c012ee0a08d738fd54a7a871ae"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/domains_capture.rs",
+    "sha256": "6eac9fad0db8dff35473edd55de56e87ae50d10a95ffce6e0ee55136cfe56d30"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/engine.rs",
+    "sha256": "a97e7d9bf49a501f6f6117452bf4932a9dc614dd6c8c654dd31b316fde7864de"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/engine_history.rs",
+    "sha256": "550b8d46f94c1972c00a63fc015508e199c4d3bfd45f352ef1020cac5aee78c5"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/engine_remote.rs",
+    "sha256": "cbc74cce1f8d2896fb904c2fceae657b2e2103d7bb982ffc40fdc03569b2d589"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/engine_s3_tests.rs",
+    "sha256": "4f55c31c5fc013d57349a82eb35abb16bcf3dae7b3381814a3d0e56d7e5412aa"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/handlers.rs",
+    "sha256": "a5b18523d443c69f919d6abf84d304f17f27112959b970127a7772c67e18351a"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/merge.rs",
+    "sha256": "9a4083e8a463512ebbb185d4080b3950e700705b55317c29e43350d2e673ad89"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/mod.rs",
+    "sha256": "f95443357f27101facf6c2e54eefd7bc425c228477f0d73d1829c9d70d0fbcf7"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/progress.rs",
+    "sha256": "da98957e9abd6e9d660c8b35a6ca39a2aa7a7919f9d3c4d53b73f985445d3fc0"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/signing.rs",
+    "sha256": "2faaaad43fefa739c21b6bafd57f297f562a95a117c2c46b2a088d74e38abac0"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/transport.rs",
+    "sha256": "2a6b059ebe71cbb8cc1c7f1d2e9aad92971a1a8568814abf7811ac4782d7a940"
+  },
+  {
+    "path": "crates/host-core/src/config_sync/transport_tests.rs",
+    "sha256": "38872e75fc5c542b5df2eda9bbc1297bac2c0ce709444eba3033c23baebc829a"
+  },
+  {
+    "path": "crates/host-core/src/data_directory_owner.rs",
+    "sha256": "cf066e86f1a53fde65355058e47b351d2c580d6c211833c31ec3c9bdc20631e8"
+  },
+  {
+    "path": "crates/host-core/src/data_relocation.rs",
+    "sha256": "dacd4f30254252569151018a62627b843feead4038bbe4e45a38a4e9bd612c62"
+  },
+  {
+    "path": "crates/host-core/src/data_relocation/tests.rs",
+    "sha256": "7a1039ad1ecd3a742867f7049c12ac931bb634a06d4514a83cc5eba2575ba35d"
+  },
+  {
+    "path": "crates/host-core/src/db.rs",
+    "sha256": "afcd7d397cf21052e0e9f50987e77b346508df53a3017e10c4720cf1991b8878"
+  },
+  {
+    "path": "crates/host-core/src/db/migrations.rs",
+    "sha256": "47239ab48c50dce3b1de4cb79a0a0d83d88439da6922f2300ca9801daae60738"
+  },
+  {
+    "path": "crates/host-core/src/db/model.rs",
+    "sha256": "7162f17a88f46ad78e41572da570ad44c1d7d929c592986dc695afce6c6b7b40"
+  },
+  {
+    "path": "crates/host-core/src/db/model_discovery_migration.rs",
+    "sha256": "5647e4ae37e2049386a17c223f87b16d901bb4a49037e03bf76e5586cd5ad50b"
+  },
+  {
+    "path": "crates/host-core/src/db/plugin_providers_migration.rs",
+    "sha256": "6b90bcb7faa4cf753fbeb94f4fbdd037188c0e0e692493bc3906de7f0e414622"
+  },
+  {
+    "path": "crates/host-core/src/db/project_groups.rs",
+    "sha256": "52de1f868e5d655a62f813cc4ee0343672d87811956536144e1edad331fee5dc"
+  },
+  {
+    "path": "crates/host-core/src/db/repositories.rs",
+    "sha256": "75ca48da3cbe77fc587a9aac5d3c9f051057230eb40675ca0e1733bbbcd78666"
+  },
+  {
+    "path": "crates/host-core/src/db/schema.rs",
+    "sha256": "de3050b609e90054c9573b900cc9c4db5d85d5bcb400d4d9bbe97cf3332179c1"
+  },
+  {
+    "path": "crates/host-core/src/db/session_collaboration_migration.rs",
+    "sha256": "fa08080614ca0761993642c98f786c332bba675f7c9f88c01338113d1754119f"
+  },
+  {
+    "path": "crates/host-core/src/db/session_fast_mode_migration.rs",
+    "sha256": "2d756ad0ce2f0a301191cbcd3dcfd2b787c31ba46031dd89bb1a8fdf5be570af"
+  },
+  {
+    "path": "crates/host-core/src/db/session_title_source_migration.rs",
+    "sha256": "eea3ce68707abcd7c92c160cd49c066edbe63e2da326c3bcdae36b02f569e393"
+  },
+  {
+    "path": "crates/host-core/src/db/tests.rs",
+    "sha256": "a243418fa7fc8ddd813bdf9955e65554f7edd492bd434791086d1263175865c9"
+  },
+  {
+    "path": "crates/host-core/src/db/tool_image_storage_migration.rs",
+    "sha256": "dfeae1ac87e71f71b05fde894d4d5d9dc2498362fcc2c04d6361c2543f71692a"
+  },
+  {
+    "path": "crates/host-core/src/db/worktree_migration.rs",
+    "sha256": "900b137f83e41d2ca2de89a8104a1abbbd060ed9aa7015f41b7766c57d1c7597"
+  },
+  {
+    "path": "crates/host-core/src/keyboard.rs",
+    "sha256": "39a234c46b2b40773760f35838b8e0fc4d783a18a925cbfcb97827203e47edaf"
+  },
+  {
+    "path": "crates/host-core/src/main.rs",
+    "sha256": "27c9e806fe503be7fcdc0e19e50d592c4ee90a74f54c6ce7380ae703137fd787"
+  },
+  {
+    "path": "crates/host-core/src/mcp_servers.rs",
+    "sha256": "31db067a06cbbf794978e4ed4c3ce993c165b032840316da79ac4d6989210800"
+  },
+  {
+    "path": "crates/host-core/src/mcp_servers/certificates.rs",
+    "sha256": "97b3056decb80049f577397864f4ff1cf1ac9b3ab6eab257c22475d44c096dc1"
+  },
+  {
+    "path": "crates/host-core/src/mcp_servers/tests.rs",
+    "sha256": "8490b492f1161fdc9d2abcd846c3a0bf64a4287ef93e19f53e200afcbaca49d7"
+  },
+  {
+    "path": "crates/host-core/src/network_policy.rs",
+    "sha256": "6d554fd8826b82c6e07d1274cc241c35b7f1110afb3bb50da63ebac8db3aabbc"
+  },
+  {
+    "path": "crates/host-core/src/network_proxy.rs",
+    "sha256": "723b3996bf01746780ebbb00ed95e12c87933fdf375a9e1f106eb3ffbc99e8bf"
+  },
+  {
+    "path": "crates/host-core/src/notifications.rs",
+    "sha256": "e8bb712842a75ff56e879046ee743f5315fba474c935884d053893a264e7d8a2"
+  },
+  {
+    "path": "crates/host-core/src/permissions.rs",
+    "sha256": "04ee9b5c01d616abf15967efa1f67cfbddcb978c1305056b979192590a663caa"
+  },
+  {
+    "path": "crates/host-core/src/personal_todos.rs",
+    "sha256": "c890e881c536e8f5e56e83cb69e69964764c03abd6ee7b658f91e8f45bb32d14"
+  },
+  {
+    "path": "crates/host-core/src/plans.rs",
+    "sha256": "8f441603c4fe7e9b4c7cffdc785aef96c554b3eabbf8c0b74c593762ab4db453"
+  },
+  {
+    "path": "crates/host-core/src/plans/approval.rs",
+    "sha256": "adf9fc74a5a54f65a25d5f6bdec64b09d64c0735e9d70405b6fa28d8dac2660f"
+  },
+  {
+    "path": "crates/host-core/src/plans/artifact.rs",
+    "sha256": "f1afcd6d4c23f24020efe81a6da5671968a3921e5fdeada524027f2059129b8f"
+  },
+  {
+    "path": "crates/host-core/src/plans/execution.rs",
+    "sha256": "35c5de62630d79edc4ef3b363d98e8c3d40c18d8c82ee246df7cd7f6eb3c4f71"
+  },
+  {
+    "path": "crates/host-core/src/plans/history_tests.rs",
+    "sha256": "1c728887eef5f78f1a5000412f6e0a115ca529b999b415cf5ddd068376ea0833"
+  },
+  {
+    "path": "crates/host-core/src/plans/model.rs",
+    "sha256": "dd34cbf70ae42c50b633277a57860e96cfdd4d7bf85c6f382b92d473ce7e6745"
+  },
+  {
+    "path": "crates/host-core/src/plans/repository.rs",
+    "sha256": "4913356dc784ad8c1c57af71ecc7b4ae1b09b413b77d481113027d3441cae07f"
+  },
+  {
+    "path": "crates/host-core/src/plans/tests.rs",
+    "sha256": "713dd8af8888832b899a27a47be8920334783fc503dd32ad9c8995e90e0867b7"
+  },
+  {
+    "path": "crates/host-core/src/plugin_sessions.rs",
+    "sha256": "dd22a6061c38f68230d71209f6ed41dee8d309009db99f90c19b783a599c37ae"
+  },
+  {
+    "path": "crates/host-core/src/plugin_usage.rs",
+    "sha256": "e51c12e5a4459e18198783d11306c0c3e9bffa2d4c67c66056e0ce29724632ca"
+  },
+  {
+    "path": "crates/host-core/src/plugins.rs",
+    "sha256": "bc621360d0a74526de950a2b433e308652e5a7ab6177fdd03287ff9c014633b9"
+  },
+  {
+    "path": "crates/host-core/src/plugins/device.rs",
+    "sha256": "dfecb7ece400d766ebd502aa2a53c0c859092ec23f375b86055e297a4e663649"
+  },
+  {
+    "path": "crates/host-core/src/plugins/execution.rs",
+    "sha256": "b03bb94e350a4413ee8f71c74a6009a9ccf82c7aef0528d3abb08cb46f51eebc"
+  },
+  {
+    "path": "crates/host-core/src/plugins/install.rs",
+    "sha256": "f02696be02aed7e76e65a92100ce52125651159b4de4d7c3c90924fc6c7099e8"
+  },
+  {
+    "path": "crates/host-core/src/plugins/manifest.rs",
+    "sha256": "dfdb35b69a45afc646e5071b05357c12da957a3da70f74f7ec021c0bed937f55"
+  },
+  {
+    "path": "crates/host-core/src/plugins/marketplace.rs",
+    "sha256": "83dc2c99cf8ae6c83dac5d4374875efafa6ca231971e060da6bf990267987108"
+  },
+  {
+    "path": "crates/host-core/src/plugins/marketplace/catalog.rs",
+    "sha256": "5a83e6733991d1364716c71d8604d83cd499034c4fc70dcbc35e717d3dddfd69"
+  },
+  {
+    "path": "crates/host-core/src/plugins/model.rs",
+    "sha256": "b61e5313f783444dd3145549f1b506d60789a46919402baf4b2e631873d5b026"
+  },
+  {
+    "path": "crates/host-core/src/plugins/permissions.rs",
+    "sha256": "b2e4ab9f1884d1be4964a9303139bb55aa5b7ae32da37fbec53582c3281c78c5"
+  },
+  {
+    "path": "crates/host-core/src/plugins/progress.rs",
+    "sha256": "d64b35df77a000c837686c7495c3e63c44d41d57d14ab0ab65a8084b70f0af70"
+  },
+  {
+    "path": "crates/host-core/src/plugins/provider_validation.rs",
+    "sha256": "b3008904e080e34d58c9838080fb3ed695323a11927437c700ade747ee17d7dd"
+  },
+  {
+    "path": "crates/host-core/src/plugins/providers.rs",
+    "sha256": "fe75f54b5b7ff2ab1385ccfe6449846977a8e679904c7b523d2d826b47cf64c9"
+  },
+  {
+    "path": "crates/host-core/src/plugins/providers/tests.rs",
+    "sha256": "bc655cabba122b366b023d81a07e3303dbd6f0b262383412823257d1ff0b162c"
+  },
+  {
+    "path": "crates/host-core/src/plugins/registry.rs",
+    "sha256": "55a7be602f3f6b7817ffaad33a580d9d720e4e841d2a00930b83b54e7747c82a"
+  },
+  {
+    "path": "crates/host-core/src/plugins/renderer.rs",
+    "sha256": "5cd3a721fadf0b03511c4931165b208de60d2899da6562d6282d4fda3d4e75a5"
+  },
+  {
+    "path": "crates/host-core/src/plugins/resolve.rs",
+    "sha256": "cc975e7d83f7f9f0fe173e45554c5d2a0d4846d5faf73408515d973ebf380b3b"
+  },
+  {
+    "path": "crates/host-core/src/plugins/reviews.rs",
+    "sha256": "d85ba739165aedcb600e11a3ad6fa217d576970c3299f8d92bc9f4402cae35b4"
+  },
+  {
+    "path": "crates/host-core/src/plugins/tests.rs",
+    "sha256": "26285bd68e7ee71e3f38d44445f5c3cccc4499c5c51cf931442397e797397fea"
+  },
+  {
+    "path": "crates/host-core/src/plugins/validation.rs",
+    "sha256": "dc17447e4d3143e88d522402a90efa706cee8b3138428f712e66285805146ee8"
+  },
+  {
+    "path": "crates/host-core/src/plugins/validation/composer_transforms.rs",
+    "sha256": "5062bb41681f7ef36f0da7aed380e1009c4f920872ac7ab110aeef8f747e4421"
+  },
+  {
+    "path": "crates/host-core/src/plugins/validation/contribution_ids.rs",
+    "sha256": "d05a8622c14a6635392bfa34c2574e6c2ad75ab07d72368bedaa47a38945224b"
+  },
+  {
+    "path": "crates/host-core/src/plugins/validation/provider_catalog.rs",
+    "sha256": "09fa2dbd4912073df9d19148090929267ccf056c6a0a4600d5d8b0d73be12d46"
+  },
+  {
+    "path": "crates/host-core/src/plugins/validation/theme_assets.rs",
+    "sha256": "6d0b365a7577ef135ae1d4efb40383f84090be4b19ebb8bc1c757ee65a434305"
+  },
+  {
+    "path": "crates/host-core/src/plugins/workspace_grants.rs",
+    "sha256": "285025083158e9f71527f77a0080ec3395aa8d7e735b841b03544da00b1b72c8"
+  },
+  {
+    "path": "crates/host-core/src/providers.rs",
+    "sha256": "be56765d59605a8b94f88e4bcedb8f26020f481d04fe44f8e0e5eadec631a505"
+  },
+  {
+    "path": "crates/host-core/src/providers/catalog.rs",
+    "sha256": "fa7b2e4afa6dffb1bc923eaf243085765b4e8d54d20bbc544b581cd29b5f4967"
+  },
+  {
+    "path": "crates/host-core/src/providers/credentials.rs",
+    "sha256": "5c5a01eba5d2bd0654bebcaaf1e534af08caf0815550a1ac343f8659c32e8cb3"
+  },
+  {
+    "path": "crates/host-core/src/providers/model.rs",
+    "sha256": "7e217854766d1754b416dc5a99791ef9aef0c96c040234aa8b9a456b4e53f2ed"
+  },
+  {
+    "path": "crates/host-core/src/providers/order.rs",
+    "sha256": "f4968cc87ec700ab23a44c8254f5cee574fbe8b74af3ecbb1811b0da99515367"
+  },
+  {
+    "path": "crates/host-core/src/providers/order_tests.rs",
+    "sha256": "625c11fe9d47ec0e5eb2b81ceddc86d905c8681662ed2e241c5225aead663dd8"
+  },
+  {
+    "path": "crates/host-core/src/providers/repository.rs",
+    "sha256": "277480e5423f095ceef5f268f0aa415b883b3f982dc9cc29ad487f50d2bf6241"
+  },
+  {
+    "path": "crates/host-core/src/providers/tests.rs",
+    "sha256": "418ba91b255c170707c447d604540e0c0d1b097a08df4840f8c1d0d8c94172dc"
+  },
+  {
+    "path": "crates/host-core/src/providers/validation.rs",
+    "sha256": "d169b0f9d0fa279ceaff5a8e6cc246d883a5b0c5461f300c89cc49d090b1f5e6"
+  },
+  {
+    "path": "crates/host-core/src/review.rs",
+    "sha256": "6301485d5ab663dbb906a3e4c9adf0794f5e98bdc7212319c141b2db45a2dc7c"
+  },
+  {
+    "path": "crates/host-core/src/rpc/config_sync_rpc.rs",
+    "sha256": "9470c96a615d66f09f94df36efa1a25fb952c1922cf8b31745e4c897aa96fc11"
+  },
+  {
+    "path": "crates/host-core/src/rpc/gen_ui.rs",
+    "sha256": "9de823f866b901a2e834c91712bdd73e95874766062b5cfe37f9edb40ad0c2ff"
+  },
+  {
+    "path": "crates/host-core/src/rpc/mod.rs",
+    "sha256": "9758102e18b0b0815fe7dcf1b7576e296c694e83feedad2b5c7df646ca6bb0e5"
+  },
+  {
+    "path": "crates/host-core/src/rpc/personal_todos.rs",
+    "sha256": "fc53d6bebc84b03db2e6d9c37ce716e3a40aae022fdc02816f182fe64259df21"
+  },
+  {
+    "path": "crates/host-core/src/rpc/plugin_reviews_rpc.rs",
+    "sha256": "151e9d639d8108c498d27cc35d6d1a87005c9210cd0fa01e30898c433cd77a6d"
+  },
+  {
+    "path": "crates/host-core/src/rpc/plugin_reviews_rpc_tests.rs",
+    "sha256": "9cb234e2e9e9019e7e8d58c1d5cc54b970a232adf84bb9fe74e8cf5bf0f3e142"
+  },
+  {
+    "path": "crates/host-core/src/rpc/remote_tools.rs",
+    "sha256": "709aa2ef7811bf0cbaa38d998220ea898751e7609259b4f526a169d4101bc37a"
+  },
+  {
+    "path": "crates/host-core/src/rpc/remote_tools_tests.rs",
+    "sha256": "8416d9d739d16ce1e2279530e3569de9e42a6c74e39657ede6f9a35763ec45c2"
+  },
+  {
+    "path": "crates/host-core/src/rpc/scheduled_calendar_tests.rs",
+    "sha256": "ad745bf35c2af4d1d373debebd62c44e79e1d10573a0913e6e920946f3139708"
+  },
+  {
+    "path": "crates/host-core/src/rpc/scheduled_project_tests.rs",
+    "sha256": "1cb342ee5421eeba78a0d00646ab5f85a77cbe0f5477de3579a97af44e061e7f"
+  },
+  {
+    "path": "crates/host-core/src/rpc/scheduled_rpc.rs",
+    "sha256": "117040988b615b5e48effa8e133e2d7208662de117959c374bbb2c4ca498ae43"
+  },
+  {
+    "path": "crates/host-core/src/rpc/scheduled_tools.rs",
+    "sha256": "ef27386636c073f216f9e9495f983a8e449be19b97243a33ee3801d0099f3825"
+  },
+  {
+    "path": "crates/host-core/src/rpc/todos.rs",
+    "sha256": "b71af83407936fa6bb94e392da4648d1846bcdeb798724d472a5a50d717c33ca"
+  },
+  {
+    "path": "crates/host-core/src/rpc/visualization_tests.rs",
+    "sha256": "21fcdd626b4c0587bb85134bf83404d768c3cba2a22facf1cb5c0479e69f6fe4"
+  },
+  {
+    "path": "crates/host-core/src/rpc/visualization_tests/fork.rs",
+    "sha256": "2e46860ee373d786c75b289c7cac02df684f9924ec26190e78dfd8f954a2f59f"
+  },
+  {
+    "path": "crates/host-core/src/rpc/window_corner_rpc.rs",
+    "sha256": "16eeb45e3028d56f2b896fb5dddef4e9f306d51671484a4810413acfb6030e8f"
+  },
+  {
+    "path": "crates/host-core/src/rpc/worktree_rpc.rs",
+    "sha256": "61672e12be8083e205a86a4d700f094e23cc5160cc13dad41851ed7671b52ff7"
+  },
+  {
+    "path": "crates/host-core/src/rpc/worktree_rpc/tests.rs",
+    "sha256": "edae42fdbdc302bd2fa6e58a171a5dd92314df1614243d84721565993b7566db"
+  },
+  {
+    "path": "crates/host-core/src/scheduled.rs",
+    "sha256": "b3edac8f688ae846651477e2aa76779279dd76745dac402a8f61a7cd22ae6708"
+  },
+  {
+    "path": "crates/host-core/src/scheduled/automation.rs",
+    "sha256": "3db55492c14e448d72d3242788657c9b7e7f0c296d5df89a3de5e9f3d7c1c59a"
+  },
+  {
+    "path": "crates/host-core/src/scheduled/project.rs",
+    "sha256": "a8d7f407588492f438f46083b12741649dbeac23fa2ba7db9051a7f6be4f9544"
+  },
+  {
+    "path": "crates/host-core/src/scheduled/timing.rs",
+    "sha256": "db7f3b42a3908d607d5ee8bc7b77d3db922dd91f4b6d9e318f9c73f1089f3205"
+  },
+  {
+    "path": "crates/host-core/src/scratch.rs",
+    "sha256": "3e792c63f75d11802cf118da80e998c980fc03ab64c75d79e84d949fa6e6c2a0"
+  },
+  {
+    "path": "crates/host-core/src/secrets.rs",
+    "sha256": "39e3104ee86b7c272bf1391f1b7dd3ab5163717ffdf08403491c8fae08ad3689"
+  },
+  {
+    "path": "crates/host-core/src/session_collaboration/mod.rs",
+    "sha256": "12ed9fee60aa71284934f8f163ce4e1f8f83bc955b7670bebcd848b9ecd8249e"
+  },
+  {
+    "path": "crates/host-core/src/session_collaboration/permissions.rs",
+    "sha256": "28be63fc5ba216fefbe09d8102c225134b7de1f057aadd6244eaeaba5aca8491"
+  },
+  {
+    "path": "crates/host-core/src/session_collaboration/projections.rs",
+    "sha256": "d04f1fa2c2402b89d0927d3504deec0ecde5fc9b9bd1206c440abfb72630bd8d"
+  },
+  {
+    "path": "crates/host-core/src/session_collaboration/provenance.rs",
+    "sha256": "eff68435c37f0a064ccfd5427bb8fd716ac674978cdcc31a0a5bc6e6f5f76184"
+  },
+  {
+    "path": "crates/host-core/src/session_collaboration/repository.rs",
+    "sha256": "aa99f557142678273901e7a44f35a785e955dc84cf3ce25987eecb5df9914d1d"
+  },
+  {
+    "path": "crates/host-core/src/session_collaboration/schema.sql",
+    "sha256": "629088145e22a9ae1aedb936e214e49b8c4a08a0f5622db1c5a5ac3e5b5c7c3c"
+  },
+  {
+    "path": "crates/host-core/src/session_collaboration/settlement.rs",
+    "sha256": "806c11bdd08a1af8f6972b1acba9f2d5a38c2a37816e7cfefcb10c9efcc99cc7"
+  },
+  {
+    "path": "crates/host-core/src/session_collaboration/tests.rs",
+    "sha256": "600e80d5cefce8e53f9c7598d1e06fb31cea0b37a652b4fa40860628ffed30fa"
+  },
+  {
+    "path": "crates/host-core/src/session_search.rs",
+    "sha256": "183ea12461354d9c89abcb66f03248b939d5f11386ec1108078474969337b188"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/delegate.rs",
+    "sha256": "889c93818200b6eb5c65aa0762368fffda604a2203cc5bc84a5c9d2158dacd2b"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/delegate/tests.rs",
+    "sha256": "8203e9dc5235d6bd199ca917b4e857d3345eb71ce29c127613c4cf830ac13501"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/git.rs",
+    "sha256": "6eda873fc46cee58922c27b4d83a88db1130d01d8fc65513f1fd3ed0aa23cd6e"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/include.rs",
+    "sha256": "e2df47847db7191ff3165469a355efefe7524625180e7abd5976465f7f50bd43"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/lifecycle.rs",
+    "sha256": "63a3d211eda35a536474e2e4feb29262e300a06e8c2ccdebf701e65c78302055"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/lifecycle/tests.rs",
+    "sha256": "177ff47cc6d7c26da1c8fc41bc10dff55cc882da64cc9ace84fc9069bd5f099b"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/merge.rs",
+    "sha256": "acdfe76cbad15f395ccb3e0ba40c8075bc57334b5530e5e3f1c01f246a7024c8"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/merge/tests.rs",
+    "sha256": "24ccbbd4d15f516b2892b14374b90944f302c54cf7025b00e8032bf4c1a631d0"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/mod.rs",
+    "sha256": "9f072656f3abbdd3eff27d7fb5e9c3689d017a777e840b53a8379e678e17afd3"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/probe.rs",
+    "sha256": "756b58f3bc815b800381f6d53c12150ae2d8f6eb80f8599285b11a63e9103764"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/registry.rs",
+    "sha256": "ed873220fe6e099fc23dd14e34228c28d7800e0c7809a00d258d640df5277dfd"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/remove.rs",
+    "sha256": "dd6059762b02783bfb5c420b2dc29ac028192c21b0b83e6b4395dc188c201ce9"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/repo_lock.rs",
+    "sha256": "a10ea62d4826e3bb4d64cb00f17dfd38ef687386f756752d9544826a16e88a0f"
+  },
+  {
+    "path": "crates/host-core/src/session_worktrees/test_support.rs",
+    "sha256": "ea267ea73157ee1cf74fb02d191801709dc0a7626ec751faf7f6c74fdbcc19dc"
+  },
+  {
+    "path": "crates/host-core/src/sessions.rs",
+    "sha256": "e14d51f6c0d0c2cfe555813c5266da02c00e8dce4f8dcd215a2c131f5ee05dab"
+  },
+  {
+    "path": "crates/host-core/src/sessions/fork_files.rs",
+    "sha256": "be7a8004abb77d2ff63639741c30368d55e39a5a08c6695daf6e6eae2c3676d9"
+  },
+  {
+    "path": "crates/host-core/src/sessions/history_mutations.rs",
+    "sha256": "56b982bc7091c889eeee7956deddff05cdd966f19df19ecacbee30c35ab75fb6"
+  },
+  {
+    "path": "crates/host-core/src/sessions/history_mutations/tests.rs",
+    "sha256": "fe0f23fcda4426dc24e0790d2979a9429b3d7f7e92521c2ec6df34e9badebdf7"
+  },
+  {
+    "path": "crates/host-core/src/sessions/model_system.rs",
+    "sha256": "4c38c8feb21567b40c9717f5149f0e981ae720e0e9c80c4e9af6b46fd3b5f329"
+  },
+  {
+    "path": "crates/host-core/src/sessions/usage.rs",
+    "sha256": "5d1ca0ca21ce4fe2d99b9f944ee84279f1f8058e182f6b695a190684087a21ad"
+  },
+  {
+    "path": "crates/host-core/src/state.rs",
+    "sha256": "2fcc0cb16d718f332c66ba7b26f4007d4579068380a793a4d89d21906bc98ecd"
+  },
+  {
+    "path": "crates/host-core/src/todos.rs",
+    "sha256": "3e993590581297cc88a2de0e778b6d48ea782dd47b45106209d37d1e4034d157"
+  },
+  {
+    "path": "crates/host-core/src/tool_budget.rs",
+    "sha256": "b4c6039030c22d17f23b1c4491941a91e8218ba839f7200aacc561666dd36cfb"
+  },
+  {
+    "path": "crates/host-core/src/tool_budget/tests.rs",
+    "sha256": "6f6b0f0e5ad36c1247f3c3cff4423fcbcfeb12ea37cb457f5f3c3d82647c6ff1"
+  },
+  {
+    "path": "crates/host-core/src/tools/grep_rg.rs",
+    "sha256": "c11619588d0777b227c87723537099b7ac89505300241c5a6efed3a2d4408d11"
+  },
+  {
+    "path": "crates/host-core/src/tools/hashline/apply.rs",
+    "sha256": "257924098ab70da09d3199774f1fa3e39fbfa196f4002794e62642a0e6b6f37c"
+  },
+  {
+    "path": "crates/host-core/src/tools/hashline/mod.rs",
+    "sha256": "e04ebb1dae91988b9306a8b84bfe5530ef0dffe288c7cb0a5dcd55b58e4de1ce"
+  },
+  {
+    "path": "crates/host-core/src/tools/hashline/parse.rs",
+    "sha256": "81d25a80e660d64d0503ed076d10a5fa9e74723c144b7d95d582c348b3cabdc7"
+  },
+  {
+    "path": "crates/host-core/src/tools/hashline/store.rs",
+    "sha256": "1c06cadfad9624eb6417ba99c407ea15cd562975055a61fc817776808bd8629b"
+  },
+  {
+    "path": "crates/host-core/src/tools/hashline/tag.rs",
+    "sha256": "a71382bf8cb76b6e98cfe7a21e608ce54019c2c5ddb8b9e16b89a4722994c83f"
+  },
+  {
+    "path": "crates/host-core/src/tools/ignore_rules.rs",
+    "sha256": "11426523002ee0eb26f05e3e0329ff939d02f5cd92377e422b105363b2ab65fa"
+  },
+  {
+    "path": "crates/host-core/src/tools/image_dimensions.rs",
+    "sha256": "789686a200874eb4ef5f716d3ab27494351597b974046f604f1bf4333df5a8d4"
+  },
+  {
+    "path": "crates/host-core/src/tools/mod.rs",
+    "sha256": "92a7c9fba88944c92258fd738da5dce233c1c6f7b3a5ff49c8d64018820222bf"
+  },
+  {
+    "path": "crates/host-core/src/tools/shell.rs",
+    "sha256": "9f6c9cade02bbdfba8b069fe55c7822158cf07add424fb12c97b8d8476bc9c10"
+  },
+  {
+    "path": "crates/host-core/src/tools/shell_process.rs",
+    "sha256": "8a44657e15f7eb4aa74eb3d2b3cd6bd0b9bcc8f69186b954418680d4a92980e4"
+  },
+  {
+    "path": "crates/host-core/src/tools/windows_process_tree.rs",
+    "sha256": "915dce97baef1a153f2beeb143feee4d8053c2035b07528a3ad10e0edd22f0b1"
+  },
+  {
+    "path": "crates/host-core/src/transcripts.rs",
+    "sha256": "b76ce93fbf5094e738816d86a1bd7ccf902c153c2b1559d54676e80b4082a455"
+  },
+  {
+    "path": "crates/host-core/src/transcripts/binary_integrity.rs",
+    "sha256": "ec2711f60471ac92ffa42ae3dc67de9f6048291a652af158885508f09af5e0b8"
+  },
+  {
+    "path": "crates/host-core/src/transcripts/binary_integrity_tests.rs",
+    "sha256": "c86d59256ffb4e1c91949cfa7754ac1e6c02e0754b7e1fd245796e0b213fb09b"
+  },
+  {
+    "path": "crates/host-core/src/transcripts/binary_migration.rs",
+    "sha256": "7b900c3d0066e5fc1a7dc87877b2374f53531e4fc90ad655acce64e87552e4a7"
+  },
+  {
+    "path": "crates/host-core/src/transcripts/binary_storage.rs",
+    "sha256": "4a36b9f054a3ef5f359af7ccf9ed402a67085626fe9bc5d4000566dfcfe72311"
+  },
+  {
+    "path": "crates/host-core/src/transcripts/binary_storage_tests.rs",
+    "sha256": "84054a7754f975706b1216009c438effc72f054fe6776bd6a98793da038d74a2"
+  },
+  {
+    "path": "crates/host-core/src/transcripts/layout.rs",
+    "sha256": "8d895830378eabebbaeefb417a8bcb8ddf5ff25da944028e9d784d3e8c08d93c"
+  },
+  {
+    "path": "crates/host-core/src/transcripts_layout_tests.rs",
+    "sha256": "0f51b97966744237a3c7e4f6698ac2b931fa37ac9581a018568f57bf4aedaa3b"
+  },
+  {
+    "path": "crates/host-core/src/turn_queue.rs",
+    "sha256": "562dfab0bd3e4b337eedbf23939b6af99ad4f50f8c24907ecfa8498be792ca72"
+  },
+  {
+    "path": "crates/host-core/src/user_skills.rs",
+    "sha256": "6aaa9619e0e6f5684daa4dede5c1e88ef1c3ec765fe4247cb5dd7db24cec45fa"
+  },
+  {
+    "path": "crates/host-core/src/user_skills/package_sync.rs",
+    "sha256": "f87852f6e1d00dc74586c0e389ec3487f9b34c26348afb32c04f2a2f44e4a1e7"
+  },
+  {
+    "path": "crates/host-core/src/user_skills/package_tests.rs",
+    "sha256": "e6297fa47cb47a47777ddc7e1f919d3c7b302b8fb0f1db7115b54d29bb893acd"
+  },
+  {
+    "path": "crates/host-core/src/user_skills/tests.rs",
+    "sha256": "cdea3c85602e9c59de5d83faca0db09772902943b6a7911c643136bc1f33592a"
+  },
+  {
+    "path": "crates/host-core/src/user_subagents.rs",
+    "sha256": "320718ffa39cf6b2af12c6d0fc2c030fe54ea1fb2208f354154a7a5629d1c970"
+  },
+  {
+    "path": "crates/host-core/src/user_subagents/model_fallbacks.rs",
+    "sha256": "670c8403e09e78b85d6b4fd8925b61b9a78eb14bed6d7c519a9f10e023d1fcdd"
+  },
+  {
+    "path": "crates/host-core/src/visualizations.rs",
+    "sha256": "0efc21145448cf7c904e45f45ba1bf73fa7c345e749cc0c77630af05ec5f1693"
+  },
+  {
+    "path": "crates/host-core/src/visualizations/files.rs",
+    "sha256": "19bc97a6fed2691860f67eb61431559df349f933fe03a2753103ceecd7f1120f"
+  },
+  {
+    "path": "crates/host-core/src/visualizations/files/tests.rs",
+    "sha256": "dd23d8cfd2102982c19f695318e37237550c4577ada03e9c8c1722bdd84bda76"
+  },
+  {
+    "path": "crates/host-core/src/visualizations/files/unix.rs",
+    "sha256": "5dab5d8ef112780f53e04f18e65e2a5d91a4153a63e33488693ace1f78ac2279"
+  },
+  {
+    "path": "crates/host-core/src/visualizations/files/unix_tests.rs",
+    "sha256": "dea86f600c10dd170c7ecc450269bab9dead2c8d2919733ddef1b3714a85b6e7"
+  },
+  {
+    "path": "crates/host-core/src/visualizations/files/windows.rs",
+    "sha256": "f65f288ac9da6f3fa2c80f7abd6192b697647708a5da7c0a8f7c05e84af96db7"
+  },
+  {
+    "path": "crates/host-core/src/visualizations/files/windows_native.rs",
+    "sha256": "af240ac43def32e09d0ebc2d8394d6b9a0c083a0f7f3763e7cae0f7e52a81985"
+  },
+  {
+    "path": "crates/host-core/src/visualizations/files/windows_tests.rs",
+    "sha256": "65df4f4e51931a5f885e6e759881664bf864962edf5315c6018eb31b502a4085"
+  },
+  {
+    "path": "crates/host-core/src/visualizations/references.rs",
+    "sha256": "0580f1ee5476b374d6084492f46d67d83cb19df5f0d52774c30036e65e6eff30"
+  },
+  {
+    "path": "crates/host-core/src/workspace.rs",
+    "sha256": "27fccdd91a9f17bca321b2d2d284d19d63b0fc73299e1a6c229015927a88da21"
+  }
+]

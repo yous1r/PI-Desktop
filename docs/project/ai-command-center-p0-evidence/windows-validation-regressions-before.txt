@@ -1,0 +1,77 @@
+   Compiling host-core v0.22.3 (D:\Packages\PI-Desktop\worktrees\windows-validation-blockers\crates\host-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 28.45s
+     Running unittests src\main.rs (D:/Packages/PI-Desktop/target\debug\deps\pi_desktop_host_core-3a6e4e8952c538a2.exe)
+
+running 1 test
+
+thread 'rpc::remote_tools::tests::remote_permission_paths_use_posix_rules_on_every_controller' (16168) panicked at crates\host-core\src\rpc\remote_tools_tests.rs:14:9:
+inside: README.md
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test rpc::remote_tools::tests::remote_permission_paths_use_posix_rules_on_every_controller ... FAILED
+
+failures:
+
+failures:
+    rpc::remote_tools::tests::remote_permission_paths_use_posix_rules_on_every_controller
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1103 filtered out; finished in 0.00s
+
+error: test failed, to rerun pass `-p host-core --bin pi-desktop-host-core`
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.33s
+     Running unittests src\main.rs (D:/Packages/PI-Desktop/target\debug\deps\pi_desktop_host_core-3a6e4e8952c538a2.exe)
+
+running 1 test
+
+thread 'tools::shell_process::tests::cmd_preserves_quoted_paths_metacharacters_unicode_and_exit_code' (15084) panicked at crates\host-core\src\tools\shell_process.rs:44:9:
+assertion `left == right` failed: The filename, directory name, or volume label syntax is incorrect.
+
+  left: Some(1)
+ right: Some(7)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test tools::shell_process::tests::cmd_preserves_quoted_paths_metacharacters_unicode_and_exit_code ... FAILED
+
+failures:
+
+failures:
+    tools::shell_process::tests::cmd_preserves_quoted_paths_metacharacters_unicode_and_exit_code
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1103 filtered out; finished in 0.04s
+
+error: test failed, to rerun pass `-p host-core --bin pi-desktop-host-core`
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.54s
+     Running unittests src\main.rs (D:/Packages/PI-Desktop/target\debug\deps\pi_desktop_host_core-3a6e4e8952c538a2.exe)
+
+running 6 tests
+test rpc::worktree_rpc::tests::an_isolated_session_is_not_created_for_a_project_without_git ... ok
+test rpc::worktree_rpc::tests::deleting_with_a_locked_file_fails_visibly_and_can_be_retried ... ok
+
+thread 'rpc::worktree_rpc::tests::a_path_beyond_260_characters_is_created_and_removed' (13132) panicked at crates\host-core\src\rpc\worktree_rpc\tests.rs:443:5:
+assertion `left == right` failed
+  left: "deep\r\n"
+ right: "deep\n"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test rpc::worktree_rpc::tests::a_path_beyond_260_characters_is_created_and_removed ... FAILED
+
+thread 'rpc::worktree_rpc::tests::sync_from_project_through_rpc' (1604) panicked at crates\host-core\src\rpc\worktree_rpc\tests.rs:380:5:
+assertion `left == right` failed
+  left: "new\r\n"
+ right: "new\n"
+test rpc::worktree_rpc::tests::sync_from_project_through_rpc ... FAILED
+test rpc::worktree_rpc::tests::resolving_a_conflict_through_a_tool_call_clears_the_badge ... ok
+
+thread 'rpc::worktree_rpc::tests::isolated_session_user_path_from_create_to_delete' (18284) panicked at crates\host-core\src\rpc\worktree_rpc\tests.rs:187:5:
+assertion `left == right` failed
+  left: "isolated\r\n"
+ right: "isolated\n"
+test rpc::worktree_rpc::tests::isolated_session_user_path_from_create_to_delete ... FAILED
+
+failures:
+
+failures:
+    rpc::worktree_rpc::tests::a_path_beyond_260_characters_is_created_and_removed
+    rpc::worktree_rpc::tests::isolated_session_user_path_from_create_to_delete
+    rpc::worktree_rpc::tests::sync_from_project_through_rpc
+
+test result: FAILED. 3 passed; 3 failed; 0 ignored; 0 measured; 1098 filtered out; finished in 6.70s
+
+error: test failed, to rerun pass `-p host-core --bin pi-desktop-host-core`

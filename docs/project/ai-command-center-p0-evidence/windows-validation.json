@@ -1,0 +1,35 @@
+{
+  "sourceCommit": "38c502af7ee67c13db929e9f998def706a0e2bb0",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "platform": "win32",
+  "invocationHead": "8fa4b7e217995838e53f51ea1ea7190fb697b7bf",
+  "provenance": "Validation began before the implementation commit. All recorded Rust/build inputs remained unchanged and match its committed source.",
+  "rust": {
+    "passed": 1103,
+    "failed": 0,
+    "ignored": 1,
+    "filteredOut": 0,
+    "durationSeconds": 827.22
+  },
+  "checks": {
+    "format": "PASS",
+    "clippyDenyWarnings": "PASS",
+    "build": "PASS"
+  },
+  "inputCount": 194,
+  "inputManifestSha256": "3d93ea93d8f11f77716b19ff3bb72d1c9c1a6c4fc6e14a662dc0f658f85707d2",
+  "fullLogSha256": "7fa2ee62f36d900ea755dfa0b24a1a2ec8f73b2c5fc3027dd2d3ab1170548572",
+  "hostBinarySha256": "d13925a6722ca96e08acfcd9f76782aeed609c388301b0fa0a0a4e6d823ef37f",
+  "historicalFailures": {
+    "originallyReported": 20,
+    "addressedEarlier": 5,
+    "addressedInThisFix": 15,
+    "retroactivePassClaim": false
+  },
+  "limitations": [
+    "Windows runner only",
+    "Existing ignored test retained with its original reason",
+    "No 2-core/8-GB product performance qualification",
+    "Full S03b/native/mobile product acceptance remains separate"
+  ]
+}
