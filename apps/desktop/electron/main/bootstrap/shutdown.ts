@@ -18,10 +18,12 @@ import { getActiveRemoteHostsBoot, setActiveRemoteHostsBoot } from "./remote-hos
 import type { LiveCallService } from "../live-voice/call-service";
 
 import { disposeWorkspaceTerminals } from "./workspace-terminals";
+import type { DesktopHandoffAdmission } from "../runtime/handoff-admission";
 
 const QUIT_TURN_SETTLE_BUDGET_MS = 2_000;
 
 export type ShutdownState = {
+  readonly handoffAdmission: DesktopHandoffAdmission;
   shutdownComplete: boolean;
   shutdownPromise: Promise<void> | null;
   quitting: boolean;
@@ -160,6 +162,7 @@ export function registerShutdownHandlers({
       return;
     }
     state.quitting = true;
+    state.handoffAdmission.dispose();
     // Persist the confirmed shutdown before any awaited cleanup so a forced
     // process termination still leaves an observable lifecycle boundary.
     logger.app("lifecycle", "info", "app shutdown");

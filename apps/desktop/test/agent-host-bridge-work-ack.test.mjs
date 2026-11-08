@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import { IPC } from "@pi-desktop/shared";
+import { currentSourceAliases } from "./helpers/current-source-vite.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -11,6 +12,7 @@ test("AgentHost work controls require explicit structured acknowledgements", asy
   const server = await createServer({
     root: dirname(here),
     configFile: false,
+    resolve: { alias: currentSourceAliases(resolve(here, "../../..")) },
     server: { middlewareMode: true, hmr: false, ws: false },
     appType: "custom",
     optimizeDeps: { noDiscovery: true, include: [] },
@@ -46,4 +48,23 @@ test("AgentHost work controls require explicit structured acknowledgements", asy
   assert.deepEqual(await bridge.stopWorkSession({ sessionId: "session-a", expectedTurnId: "turn-1", urgency: "immediate" }), { status: "stale-target" });
   response = { aborted: true };
   assert.deepEqual(await bridge.stopWorkSession({ sessionId: "session-a", expectedTurnId: "turn-1", urgency: "immediate" }), { status: "requested" });
+});
+
+test("Desktop bridge refuses queued work through the shared handoff gate before Host effects", async (t) => {
+  const server = await createServer({
+    root: dirname(here), configFile: false,
+    resolve: { alias: currentSourceAliases(resolve(here, "../../..")) },
+    server: { middlewareMode: true, hmr: false, ws: false },
+    appType: "custom", optimizeDeps: { noDiscovery: true, include: [] },
+  });
+  t.after(() => server.close());
+  const { createAgentHostBridge } = await server.ssrLoadModule("/electron/main/agent-host-bridge.ts");
+  const effects = [];
+  const bridge = createAgentHostBridge({
+    channels: IPC.invoke, gate: { isClosed: () => true },
+    getHost: () => ({ async call(method) { effects.push(method); throw new Error("unexpected Host call"); } }),
+    log: () => undefined, async invoke(channel) { effects.push(channel); },
+  });
+  await assert.rejects(bridge.queue.push({ sessionId: "session-a", content: "queued work" }), { errorCode: "HOST_BUSY" });
+  assert.deepEqual(effects, []);
 });

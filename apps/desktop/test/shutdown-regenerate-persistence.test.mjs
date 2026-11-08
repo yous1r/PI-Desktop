@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { register, registerHooks } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -23,12 +23,13 @@ registerHooks({
     return next(url, context);
   },
 });
-register(new URL("./helpers/ts-import-hooks.mjs", import.meta.url));
+register(new URL("./helpers/current-source-import-hooks.mjs", import.meta.url));
 
 const { app } = await import("electron");
 const { createEventPersistence } = await import("../electron/main/runtime/event-persistence.ts");
 const { PersistenceOutbox } = await import("../electron/main/persistence-outbox.ts");
 const { registerShutdownHandlers } = await import("../electron/main/bootstrap/shutdown.ts");
+const { DesktopHandoffAdmission } = await import("../electron/main/runtime/handoff-admission.ts");
 const transcriptRewrite = {
   beginTranscriptRewrite: () => ({ commit() {}, rollback: () => [] }),
   deferTranscriptEvent: () => false,
@@ -37,7 +38,7 @@ const transcriptRewrite = {
 
 for (const outcome of ["complete", "error", "unresponsive"]) {
 test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) => {
-  const dataDir = await mkdtemp(join(tmpdir(), "pi-quit-regenerate-"));
+  const dataDir = await mkdtemp(join(process.env.PI_SCRATCH_DIR || tmpdir(), "pi-quit-regenerate-"));
   const archiveStarted = Promise.withResolvers();
   const releaseArchive = Promise.withResolvers();
   const sidecarStopped = Promise.withResolvers();
@@ -85,6 +86,7 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
     finishApprovedExecution: async () => {}, emitAgentEvent() {},
   });
   const state = {
+    handoffAdmission: new DesktopHandoffAdmission(),
     shutdownComplete: false, shutdownPromise: null, quitting: false,
     quitConfirmed: true, closeBehavior: "quit", tray: null,
     pluginLauncherAccelerator: null, toggleWindowAccelerator: null,
@@ -112,6 +114,7 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
     await state.shutdownPromise;
     await persistence.flush();
     app.removeAllListeners();
+    await rm(dataDir, { recursive: true, force: true });
   });
   const reply = {
     id: "answer", role: "assistant", content: "Completed regenerated answer",
@@ -125,6 +128,7 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
   if (outcome === "unresponsive") t.mock.timers.enable({ apis: ["setTimeout"] });
   app.emit("before-quit", { preventDefault() {} });
   await sidecarStopped.promise;
+  assert.equal(state.handoffAdmission.isClosed(), true, "confirmed quit closes new admission before disposal");
   assert.equal(hostDisposed, false, "quit must wait for the branch already being saved");
   if (outcome === "unresponsive") {
     await new Promise((resolve) => setImmediate(resolve));
@@ -155,6 +159,7 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
   const confirmations = [];
   let confirmationCount = 0;
   const state = {
+    handoffAdmission: new DesktopHandoffAdmission(),
     shutdownComplete: false,
     shutdownPromise: null,
     quitting: false,
@@ -212,10 +217,12 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
   assert.equal(confirmationCount, 1);
   assert.equal(state.shutdownPromise, null);
   assert.equal(state.quitting, false);
+  assert.equal(state.handoffAdmission.isClosed(), false);
 
   confirmations[0](false);
   await Promise.resolve();
   assert.equal(state.quitConfirmed, false);
+  assert.equal(state.handoffAdmission.isClosed(), false, "cancelled confirmation keeps normal admission");
   assert.equal(requestQuit(), true);
   assert.equal(confirmationCount, 2);
 
@@ -224,12 +231,14 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
   assert.ok(state.shutdownPromise);
   await state.shutdownPromise;
   assert.equal(state.shutdownComplete, true);
+  assert.equal(state.handoffAdmission.isClosed(), true);
 });
 
 test("personal todo preparation blocks disposal and permits a cancelled quit to retry", async (t) => {
   app.removeAllListeners();
   const originalQuit = app.quit;
   const state = {
+    handoffAdmission: new DesktopHandoffAdmission(),
     shutdownComplete: false, shutdownPromise: null, quitting: false,
     quitConfirmed: true, closeBehavior: "quit", tray: null,
     pluginLauncherAccelerator: null, toggleWindowAccelerator: null,
@@ -273,6 +282,7 @@ test("personal todo preparation blocks disposal and permits a cancelled quit to 
   assert.equal(state.quitting, false);
   assert.equal(state.quitConfirmed, false);
   assert.equal(hostDisposed, false);
+  assert.equal(state.handoffAdmission.isClosed(), false, "unsaved todos keep the application usable");
   state.quitConfirmed = true;
   app.quit();
   assert.equal(preparations.length, 2);
@@ -283,4 +293,5 @@ test("personal todo preparation blocks disposal and permits a cancelled quit to 
   assert.equal(releaseResources, true);
   assert.equal(hostDisposed, true);
   assert.equal(state.shutdownComplete, true);
+  assert.equal(state.handoffAdmission.isClosed(), true);
 });

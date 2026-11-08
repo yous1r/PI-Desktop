@@ -109,3 +109,44 @@ describe("RuntimeSupervisor", () => {
     expect(events.filter((event) => event.phase === "restarting")).toHaveLength(1);
   });
 });
+
+it("does not run restart follow-up or publish readiness after shutdown during start", async () => {
+  let shuttingDown = false;
+  let followups = 0;
+  const events: SupervisorEvent[] = [];
+  const supervisor = new RuntimeSupervisor({
+    start: { host: async () => { shuttingDown = true; }, sidecar: async () => {} },
+    afterRestart: async () => { followups += 1; },
+    isShuttingDown: () => shuttingDown, sleep: async () => {}, onEvent: event => events.push(event),
+  });
+  await supervisor.superviseRestart("host");
+  expect(followups).toBe(0);
+  expect(events.map(event => event.phase)).toEqual(["restarting"]);
+});
+
+it("does not publish readiness after shutdown during restart follow-up", async () => {
+  let shuttingDown = false;
+  const events: SupervisorEvent[] = [];
+  const supervisor = new RuntimeSupervisor({
+    start: { host: async () => {}, sidecar: async () => {} },
+    afterRestart: async () => { shuttingDown = true; },
+    isShuttingDown: () => shuttingDown, sleep: async () => {}, onEvent: event => events.push(event),
+  });
+  await supervisor.superviseRestart("host");
+  expect(events.map(event => event.phase)).toEqual(["restarting"]);
+});
+
+it("refuses an externally blocked restart and rechecks the block after backoff", async () => {
+  let blocked = true;
+  let starts = 0;
+  const supervisor = new RuntimeSupervisor({
+    start: { host: async () => { starts += 1; }, sidecar: async () => {} },
+    isBlocked: () => blocked,
+    sleep: async () => { blocked = true; },
+  });
+  await supervisor.superviseRestart("host");
+  expect(starts).toBe(0);
+  blocked = false;
+  await supervisor.superviseRestart("host");
+  expect(starts).toBe(0);
+});

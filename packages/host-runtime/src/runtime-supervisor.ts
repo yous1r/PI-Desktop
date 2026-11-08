@@ -43,6 +43,8 @@ export type RuntimeSupervisorOptions = {
    * the first such failure instead of burning the restart budget.
    */
   isUnrecoverable?: (error: unknown) => boolean;
+  /** Stop before or after a child start when the embedding owner is closing. */
+  isBlocked?: () => boolean;
   isShuttingDown?: () => boolean;
   onEvent?: (event: SupervisorEvent) => void;
   policy?: Partial<RestartPolicy>;
@@ -88,7 +90,7 @@ export class RuntimeSupervisor {
   }
 
   private shuttingDown(): boolean {
-    return this.options.isShuttingDown?.() ?? false;
+    return Boolean(this.options.isShuttingDown?.() || this.options.isBlocked?.());
   }
 
   private emit(event: SupervisorEvent): void {
@@ -119,7 +121,9 @@ export class RuntimeSupervisor {
       if (this.shuttingDown()) return;
       try {
         await this.options.start[kind]();
+        if (this.shuttingDown()) return;
         await this.options.afterRestart?.(kind);
+        if (this.shuttingDown()) return;
         this.emit({ kind, phase: "restarted", attempt });
         return;
       } catch (error) {

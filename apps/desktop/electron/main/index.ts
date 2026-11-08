@@ -900,7 +900,7 @@ function registerIpc() {
     },
     traySessions: applicationLifecycle!.traySessions,
     taskbarUnreadBadge: applicationLifecycle!.taskbarUnreadBadge,
-    ipcMain,
+    ipcMain, handoffAdmission: mainState.handoffAdmission,
     getMainWindow,
     getHost,
     getSidecar,

@@ -19953,3 +19953,23 @@ session data is used.
   Desktop handoff require H1-H5 integration; no product-level acceptance is
   inferred from schema or stream fixtures.
 - **Spec:** [H0 contracts](../03-runtime/06-host-rpc-protocol.md#executable-owner-handoff-integration-contracts-h0).
+
+### Desktop admission integration prerequisites (H1 partial)
+
+- **Entry:** `node --test apps/desktop/test/handoff-admission.test.mjs apps/desktop/test/handoff-lifecycle.test.mjs apps/desktop/test/agent-host-bridge-work-ack.test.mjs apps/desktop/test/scheduled-runner.test.mjs apps/desktop/test/shutdown-regenerate-persistence.test.mjs apps/desktop/test/plugin-restore-notifies-renderer.test.mjs`.
+  Tests load the current worktree sources. `PI_COMMAND_CENTER_DEPENDENCIES` may
+  reference an already-provisioned compatible Pi dependency root; no installation
+  or real provider is required.
+- **Steps:** Hold admission during a local invoke, deferred routing, scheduled
+  launch, restart backoff, pending child start and boot. Exercise remote routing,
+  normal Host/sidecar restart, plugin restore, cancelled quit, pending todo save
+  and confirmed quit while transcript persistence settles.
+- **Expected:** Every admitted setup stays visible until completion; closed
+  admission prevents later execution effects. Remote routing and authenticated
+  quit dialogs retain their behavior. Normal restart preserves rebind, locale
+  and plan drain order. Confirmed quit closes admission before resource disposal;
+  cancelled confirmation remains usable and existing transcript saving completes.
+- **Boundary:** These component/service fixtures qualify the application gate
+  composition, not real Desktop ownership transfer or native process closure.
+  H1 resource inventory and H2-H5 integration still require process acceptance.
+- **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).

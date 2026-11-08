@@ -681,3 +681,28 @@ real-process coordinator acceptance remain pending. H1 is not accepted, and no
 production transfer entry point or target readiness is enabled by this checkpoint.
 Continue with the shared Desktop admission owner, IPC and AgentHost wiring,
 scheduler integration, plan/restart races and resource-owner inventory.
+
+## H1 Desktop admission and lifecycle checkpoint
+
+Desktop now owns one shared admission object for local IPC (including internal
+and event-bearing invokes), AgentHost, scheduling, boot and restart setup.
+Pending work remains counted until its original async operation settles.
+Remote routing remains ahead of local admission; only quit and authenticated
+lifecycle dialogs bypass closure. Confirmed shutdown closes admission, while
+cancelled confirmation leaves it usable. Restart closure prevents follow-up
+execution and readiness; normal rebind, locale and plan-drain behavior is covered.
+
+The seven focused Desktop files pass 43 tests, including actual bridge/router/
+scheduler/lifecycle composition and existing quit persistence cases. The shared
+supervisor passes nine tests; two new shutdown-during-start/follow-up failures
+were reproduced before correction. The earlier partial lifecycle edit is repaired.
+Full Desktop source typechecking with the provisioned Pi 1.4.0 declarations passes.
+It exposed a production-only missing upstream AgentMessage augmentation: an
+explicit type-only import fixes it, with byte-identical JavaScript emission when
+comments are removed. Configured lint covers 227 files and passes.
+
+This is a local implementation checkpoint, not complete H1 or process acceptance.
+Desktop plan admission/finalization/retry ownership, all-resource inventory,
+bounded original-owner journal transport and native/coordinator integration are
+still pending. Default transfer remains unavailable; continue those H1 items
+before joining H2-H5.

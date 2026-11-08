@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { app, BrowserWindow, crashReporter, Menu, safeStorage } from "electron";
 import { createScheduledRunner } from "../runtime/scheduled-runner";
+import type { DesktopHandoffAdmission } from "../runtime/handoff-admission";
 import {
   APP_NAME,
   APP_VERSION,
@@ -62,6 +63,8 @@ function formatRemoteLogData(data: unknown): string | undefined {
 }
 
 export type StartupState = {
+  readonly handoffAdmission: DesktopHandoffAdmission;
+  scheduledRunner: ReturnType<typeof createScheduledRunner> | null;
   applicationBooted: boolean;
   closeBehavior: CloseBehavior;
   agentHostBridge: AgentHostBridge | null;
@@ -271,6 +274,7 @@ export function registerApplicationStartup(deps: StartupDependencies): void {
       invoke: invokeIpc,
       channels: IPC.invoke,
       getHost,
+      gate: state.handoffAdmission.gate,
       isSessionBusy,
       onQueueChange: (event) => {
         sendToRenderer(IPC.event.agentQueueChanged, event);
@@ -307,9 +311,11 @@ export function registerApplicationStartup(deps: StartupDependencies): void {
     if (!bootError) planUiProbe.install();
     const scheduledRunner = createScheduledRunner({
       getHost,
+      gate: state.handoffAdmission,
       execute: (id) => invokeIpc(IPC.invoke.scheduledExecute, [id, true]),
       report: (error) => logger.app("runtime", "warn", "scheduled task dispatch failed", { data: String(error) }),
     });
+    state.scheduledRunner = scheduledRunner;
     scheduledRunner.start();
     app.once("before-quit", () => scheduledRunner.stop());
     if (!bootError && state.agentHostBridge) {

@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import ts from "typescript";
+import { register } from "node:module";
+register(new URL("./helpers/current-source-import-hooks.mjs", import.meta.url));
+const { DesktopHandoffAdmission } = await import("../electron/main/runtime/handoff-admission.ts");
 
 function loadLifecycle(imports) {
   const source = readFileSync(
@@ -35,7 +38,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-test("startup plugin restore notifies the renderer after every enabled plugin loads", async () => {
+test("startup plugin restore notifies the renderer after every enabled plugin loads", async (t) => {
   const order = [];
   const events = [];
   const firstLoad = deferred();
@@ -75,6 +78,7 @@ test("startup plugin restore notifies the renderer after every enabled plugin lo
     { id: "demo.second", path: "/plugins/second", enabled: true, permissions: [], source: "dev" },
   ];
   const runtimeState = {
+    handoffAdmission: new DesktopHandoffAdmission(),
     host: {
       call: async (method) => {
         if (method === "settings.get") return {};
@@ -85,6 +89,7 @@ test("startup plugin restore notifies the renderer after every enabled plugin lo
     },
     sidecar: null,
   };
+  t.after(() => runtimeState.handoffAdmission.dispose());
   const plugins = {
     setServices() {},
     loadFromPath: async (path) => {
@@ -124,12 +129,14 @@ test("startup plugin restore notifies the renderer after every enabled plugin lo
 
   const boot = lifecycle.bootBackends();
   await firstStarted.promise;
+  assert.equal(runtimeState.handoffAdmission.inFlightCount(), 1);
   assert.deepEqual(events, [], "the renderer stays untouched while restore is in flight");
   firstLoad.resolve();
   await secondStarted.promise;
   assert.deepEqual(events, [], "the event waits for the entire restore pass");
   secondLoad.resolve();
   await boot;
+  assert.equal(runtimeState.handoffAdmission.inFlightCount(), 0);
 
   assert.deepEqual(events, [{
     channel: "pluginChanged",

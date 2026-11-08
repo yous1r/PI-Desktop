@@ -1,3 +1,5 @@
+// Load the upstream AgentMessage extensions for production-only type consumers.
+import type {} from "@earendil-works/pi-coding-agent";
 import type { Message } from "@earendil-works/pi-ai";
 import { hostedSearchReplayProjection } from "@earendil-works/pi-ai/utils/hosted-search";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";

@@ -24,6 +24,7 @@ import type { AgentSidecar } from "../agent-sidecar";
 import type { AgentHostBridge } from "../agent-host-bridge";
 import type { McpControlController, McpControlServer } from "../mcp-control";
 import type { BackendRouter } from "../remote/backend-router";
+import { DesktopHandoffAdmission } from "../runtime/handoff-admission";
 
 export type MenuRendererReadyGate = {
   window: BrowserWindow;
@@ -65,6 +66,8 @@ export class MainProcessState {
   workPanelChatResizeTimer: NodeJS.Timeout | null = null;
   setWorkPanelChatWidthForWindow: ((width: number) => number) | null = null;
 
+  readonly handoffAdmission = new DesktopHandoffAdmission();
+  scheduledRunner: StartupState["scheduledRunner"] = null;
   host: HostProcess | null = null;
   sidecar: AgentSidecar | null = null;
   mcpControl: McpControlServer | null = null;
@@ -276,6 +279,7 @@ export class MainProcessState {
     };
 
     this.runtimeState = {
+      handoffAdmission: this.handoffAdmission,
       get host() {
         return self.host;
       },
@@ -355,6 +359,9 @@ export class MainProcessState {
     };
 
     this.startupState = {
+      handoffAdmission: this.handoffAdmission,
+      get scheduledRunner() { return self.scheduledRunner; },
+      set scheduledRunner(value) { self.scheduledRunner = value; },
       get applicationBooted() {
         return self.applicationBooted;
       },
@@ -394,6 +401,7 @@ export class MainProcessState {
     };
 
     this.shutdownState = {
+      handoffAdmission: this.handoffAdmission,
       get shutdownComplete() {
         return self.shutdownComplete;
       },

@@ -2,8 +2,10 @@ import { IPC } from "@pi-desktop/shared";
 import type { HostProcess } from "../host-process";
 import type { IpcRegistrar } from "./types";
 import { executeScheduledTask } from "../runtime/scheduled-runner";
+import type { DesktopHandoffAdmission } from "../runtime/handoff-admission";
 
 export type ScheduledIpcDependencies = {
+  admission: DesktopHandoffAdmission;
   registrar: IpcRegistrar;
   getHost: () => HostProcess | null;
   scheduledRunsBySession: Map<string, string>;
@@ -17,6 +19,7 @@ export function registerScheduledIpc({
   scheduledRunsBySession,
   invoke,
   isQuitting,
+  admission,
 }: ScheduledIpcDependencies): void {
   // The Scheduled workspace renders one task's own history and one newest run
   // per task for the column, so the caller may scope or summarize the read. The
@@ -45,6 +48,7 @@ export function registerScheduledIpc({
     if (!host) throw new Error("host unavailable");
     return executeScheduledTask({
       host, id, automatic, runs: scheduledRunsBySession,
+      gate: admission,
       isCurrent: () => !isQuitting() && getHost() === host,
       prompt: (sessionId, content) => invoke(IPC.invoke.agentPrompt, [{ sessionId, content }]),
     });
@@ -73,6 +77,7 @@ export function registerScheduledIpc({
   });
   handle(IPC.invoke.scheduledRun, async (host: HostProcess | null, id: string) => {
     if (!host) throw new Error("host unavailable");
+    if (admission.isClosed()) throw Object.assign(new Error("HOST_BUSY"), { errorCode: "HOST_BUSY" });
     const result = await host.call<{
       sessionId: string;
       prompt: string;

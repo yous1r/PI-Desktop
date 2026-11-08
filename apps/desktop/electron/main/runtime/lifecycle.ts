@@ -68,6 +68,12 @@ export function createRuntimeLifecycle({
   bootBackends: () => Promise<void>;
 } {
   let runtimeArchCache: ReturnType<typeof detectRuntimeArch> | null = null;
+  const admission = runtimeState.handoffAdmission;
+  const assertAdmission = (): void => {
+    if (isQuitting() || admission.isClosed()) {
+      throw Object.assign(new Error("HOST_BUSY"), { errorCode: "HOST_BUSY" });
+    }
+  };
 
   /**
    * Fatal boot refusals a restart can never fix (D380): the schema check comes
@@ -109,6 +115,7 @@ export function createRuntimeLifecycle({
     start: {
       host: async () => {
         await startHost();
+        assertAdmission();
         const sidecar = runtimeState.sidecar;
         const host = runtimeState.host;
         if (sidecar && host) sidecar.setHost(host);
@@ -116,12 +123,14 @@ export function createRuntimeLifecycle({
         // the language-dependent rows it draws have to be restored here:
         // nothing else re-applies settings after a crash.
         await syncPluginDisplayLocale(host, getDisplayLocale());
+        assertAdmission();
       },
       sidecar: startSidecar,
     },
-    afterRestart: () => drainApprovedPlanExecutions(),
+    afterRestart: () => { assertAdmission(); return drainApprovedPlanExecutions(); },
     isUnrecoverable: (error) => Boolean(schemaTooNewOf(error)) || isGlibcUnsupportedError(error),
     isShuttingDown: isQuitting,
+    isBlocked: () => admission.isClosed(),
     onEvent: (event) => {
       const { kind } = event;
       switch (event.phase) {
@@ -167,8 +176,10 @@ export function createRuntimeLifecycle({
     },
   });
 
-  const superviseRestart = (kind: RestartKind): Promise<void> =>
-    supervisor.superviseRestart(kind);
+  const superviseRestart = (kind: RestartKind): Promise<void> => {
+    if (isQuitting() || admission.isClosed()) return Promise.resolve();
+    return admission.run(() => supervisor.superviseRestart(kind));
+  };
 
   /**
    * Boot outcome pushed once the renderer has mounted. Known unrecoverable
@@ -214,23 +225,38 @@ export function createRuntimeLifecycle({
     return runtimeArchCache;
   };
 
-  const bootBackends = async (): Promise<void> => {
+  const bootBackends = (): Promise<void> => admission.run(async () => {
+    assertAdmission();
     mkdirSync(join(dataDir, "logs"), { recursive: true });
     logger.app("lifecycle", "info", "app boot " + APP_NAME + " " + APP_VERSION, {
       data: { protocolVersion: PROTOCOL_VERSION },
     });
     await startHost();
+    assertAdmission();
+    const host = runtimeState.host;
+    if (!host) throw Object.assign(new Error("host unavailable"), { errorCode: ErrorCodes.HOST_UNAVAILABLE });
+    const assertHost = (): void => {
+      assertAdmission();
+      if (runtimeState.host !== host) {
+        throw Object.assign(new Error("host changed during boot"), { errorCode: ErrorCodes.HOST_UNAVAILABLE });
+      }
+    };
     // Plugin rows are resolved in the host, so the app language is pushed once
     // the process answers. The startup sequence re-applies it with the stored
     // settings; this keeps a host that boots without that write honest.
-    await syncPluginDisplayLocale(runtimeState.host, getDisplayLocale());
+    await syncPluginDisplayLocale(host, getDisplayLocale());
+    assertHost();
     try {
-      const stored = await runtimeState.host!.call("settings.get");
+      const stored = await host.call("settings.get");
+      assertHost();
       await applyNetworkProxyFromAppSettings(stored);
     } catch {
+      assertHost();
       await applyNetworkProxyFromAppSettings({ mode: "system" });
     }
+    assertHost();
     await startSidecar();
+    assertHost();
 
     // Keep plugin host services wired to live workspace / app metadata.
     plugins.setServices({
@@ -245,24 +271,29 @@ export function createRuntimeLifecycle({
       getAppVersion: () => APP_VERSION,
     });
     try {
-      const workspace = await runtimeState.host!.call<{
+      const workspace = await host.call<{
         workspace: { path?: string } | null;
       }>("workspace.get");
+      assertHost();
       setCurrentWorkspacePath(workspace.workspace?.path ?? null);
     } catch {
+      assertHost();
       setCurrentWorkspacePath(null);
     }
 
     // Restore enabled plugins.
     try {
-      const listed = await runtimeState.host!.call<{ plugins: any[] }>("plugins.list");
+      const listed = await host.call<{ plugins: any[] }>("plugins.list");
+      assertHost();
       rememberPluginScopes(listed.plugins ?? []);
       for (const plugin of listed.plugins ?? []) {
+        assertHost();
         if (plugin.enabled && plugin.path) {
           try {
             await plugins.loadFromPath(plugin.path, plugin.permissions ?? [], {
               development: plugin.source === "dev",
             });
+            assertHost();
             // Dev plugins keep hot reload across restarts: the folder was picked
             // once, and the edit loop should not have to pick it again.
             if (plugin.source === "dev") plugins.watchDevPlugin(plugin.id);
@@ -270,6 +301,7 @@ export function createRuntimeLifecycle({
               pluginId: plugin.id,
             });
           } catch (error) {
+            assertHost();
             logger.app("plugin", "error", "plugin restore failed", {
               pluginId: plugin.id,
               data: String(error),
@@ -283,6 +315,7 @@ export function createRuntimeLifecycle({
       // a restored plugin keeps no renderer UI until something else changes.
       sendToRenderer(IPC.event.pluginChanged, { reason: "restore" });
     } catch (error) {
+      assertHost();
       logger.app("plugin", "error", "plugin list failed", {
         data: String(error),
       });
@@ -291,12 +324,14 @@ export function createRuntimeLifecycle({
     // The user's MCP servers are only registered here; each one connects the
     // first time a session that can see it is assembled.
     await refreshUserMcp();
+    assertHost();
     await drainApprovedPlanExecutions().catch((error) =>
       logger.app("runtime", "warn", "queued approved plan drain failed", {
         data: String(error),
       }),
     );
-  };
+    assertHost();
+  });
 
   return { superviseRestart, bootHostStatus, runtimeArch, bootBackends };
 }

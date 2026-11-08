@@ -543,10 +543,35 @@ tools from their existing owners. Terminal persistence completion can precede
 AgentHost's asynchronous queue inspection, so coordinators must inspect all
 owners rather than infer idle from one terminal event.
 
-Approved-plan admission is counted before waiting on the session lock and
-rechecked inside it before durable claim. Claimed work stays counted through
+Headless approved-plan admission is counted before waiting on the session lock
+and rechecked inside it before durable claim. Claimed work stays counted through
 launch and settlement; a concurrent idle request refuses instead of stranding a
 claimed row. Failed finalization and deferred retries remain busy. Disposal
 cancels retry timers and prevents later claims; a claimed execution whose launch
 has not begun is finalized as interrupted. These prerequisites do not yet enable
 Desktop transfer, successor readiness or complete application resource inventory.
+
+### Desktop admission composition
+
+Electron Main owns one `DesktopHandoffAdmission` around the existing maintenance
+gate. Local renderer invokes, internal invokes and event-bearing IPC handlers
+share it; admitted setup remains counted until the original operation settles.
+Renderer calls route to their remote owner before local admission. A delayed
+local routing result rechecks the gate. Event-bearing handlers remain unavailable
+to internal invokers and retain their existing sender authorization.
+
+Only application quit and its authenticated lifecycle-dialog callbacks bypass a
+closed gate. Names such as `get` or `list` do not imply safe observation because
+some handlers initialize resources. AgentHost queue admission and scheduled
+poll/dispatch share the same gate. Confirmed shutdown permanently closes it;
+cancelling the quit confirmation or an unsaved-todo prompt does not close it.
+
+Boot and restart setup, including restart backoff, retain admission until their
+asynchronous work settles. Closure prevents subsequent startup effects, plan
+draining and restart-ready announcements. Normal Host restart still rebinds the
+sidecar and restores display locale; both child restart kinds still drain plans.
+Boot verifies its original Host after asynchronous work before using later results.
+
+This composition does not enable a transfer request. Desktop plan dispatch,
+complete owner inventory, source journal transport, native closure and target
+readiness remain separate H1-H5 acceptance work.

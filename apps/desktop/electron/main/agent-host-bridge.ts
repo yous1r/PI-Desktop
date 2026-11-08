@@ -59,6 +59,7 @@ export type AgentHostBridgeOptions = {
   invoke: IpcInvoke;
   channels: typeof IPC.invoke;
   getHost: () => HostLike | null;
+  gate?: { isClosed(): boolean };
   /** Runtime-side busy state the event stream cannot see (active turn map,
    * manual compaction). */
   isSessionBusy?: (sessionId: string) => boolean;
@@ -275,6 +276,7 @@ export function createAgentHostBridge(options: AgentHostBridgeOptions) {
     sessions,
     approvals,
     queueStore,
+    gate: options.gate,
     onQueueChange: (sessionId, entries) => {
       options.onQueueChange?.({ sessionId, entries: entries.map(toQueueSummary) });
     },

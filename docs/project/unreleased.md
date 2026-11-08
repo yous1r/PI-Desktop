@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Share Desktop admission across local IPC, AgentHost, scheduled work and runtime
+  setup. Confirmed shutdown blocks new starts, and a restart that closes while
+  awaiting a child no longer drains plans or announces readiness. Complete idle
+  ownership transfer remains under development.
 - Add strict ownership-handoff contracts and a bounded Node consumer for the
   existing restricted Rust recovery mode. Ambiguous replies cannot be reused
   for later operations; exact identity, phase and native exit checks remain

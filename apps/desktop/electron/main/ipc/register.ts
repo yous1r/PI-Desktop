@@ -1,10 +1,10 @@
 import { join } from "node:path";
 import { dialog, shell, type BrowserWindow, type IpcMain, type IpcMainInvokeEvent } from "electron";
-import { err, ErrorCodes, IPC, ok, type LifecycleDialogChoice, type Result } from "@pi-desktop/shared";
+import { ErrorCodes, IPC, type LifecycleDialogChoice } from "@pi-desktop/shared";
 import type { AgentHostBridge } from "../agent-host-bridge";
 import type { AgentSidecar } from "../agent-sidecar";
 import type { HostProcess } from "../host-process";
-import { ROUTE_LOCAL, type BackendRouter } from "../remote/backend-router";
+import type { BackendRouter } from "../remote/backend-router";
 import { registerAgentExtensionIpc } from "../agent-extensions-ipc";
 import { runAgentExtensionCommand } from "../agent-extension-command";
 import { readNpmPath, writeNpmPath } from "../npm-preferences";
@@ -49,10 +49,13 @@ import type { IpcRegistrar } from "./types";
 import type { PersonalTodosRuntime } from "../personal-todos/runtime";
 import type { createTraySessions } from "../tray-sessions";
 import type { createTaskbarUnreadBadge } from "../taskbar-unread-badge";
+import { createIpcInvocationRouter } from "./invocation-router";
+import type { DesktopHandoffAdmission } from "../runtime/handoff-admission";
 
 export type RegisterIpcDependencies = {
   isQuitting: () => boolean;
   ipcMain: IpcMain;
+  handoffAdmission: DesktopHandoffAdmission;
   getMainWindow: () => BrowserWindow | null;
   getHost: () => HostProcess | null;
   traySessions: ReturnType<typeof createTraySessions>;
@@ -93,17 +96,6 @@ export type RegisterIpcDependencies = {
   [name: string]: any;
 };
 
-function wrap<T>(fn: () => Promise<T>): Promise<Result<T>> {
-  return fn()
-    .then((data) => ok(data))
-    .catch((e: any) =>
-      err(
-        e?.data?.errorCode || e?.errorCode || ErrorCodes.INTERNAL,
-        e instanceof Error ? e.message : String(e),
-        { retriable: e?.data?.retriable === true, details: e?.data },
-      ),
-    );
-}
 
 export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
   const {
@@ -209,38 +201,15 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
   } = dependencies;
 
 
-  const ipcHandlers = new Map<string, (...args: any[]) => Promise<any>>();
-  const handle = (channel: string, fn: (...args: any[]) => Promise<any>) => {
-    const handler = async (...args: any[]) => {
-      const result = await fn(...args);
+  const { handle, handleWithEvent, invoke } = createIpcInvocationRouter({
+    ipcMain,
+    admission: dependencies.handoffAdmission,
+    getBackendRouter,
+    observeInvoke: (channel) => {
       traySessions.observeInvoke(channel);
       taskbarUnreadBadge.observeInvoke(channel);
-      return result;
-    };
-    ipcHandlers.set(channel, handler);
-    // The interception seam for remote-host routing: a renderer call whose
-    // session is owned by a paired remote host is served over RACP-WS; every
-    // other call (and every internal invoke, which never reaches this wrapper)
-    // runs the existing local handler byte-for-byte unchanged.
-    ipcMain.handle(channel, async (_event, ...args) =>
-      wrap(async () => {
-        const router = getBackendRouter?.();
-        if (router) {
-          const outcome = await router.route(channel, args);
-          if (outcome !== ROUTE_LOCAL) return outcome.value;
-        }
-        return handler(...args);
-      }),
-    );
-  };
-  const handleWithEvent = (
-    channel: string,
-    fn: (event: IpcMainInvokeEvent, ...args: any[]) => Promise<any>,
-  ) => {
-    ipcMain.handle(channel, async (event, ...args) =>
-      wrap(() => fn(event, ...args)),
-    );
-  };
+    },
+  });
   const assertMainWindowSender = (event: IpcMainInvokeEvent): void => {
     if (event.sender.id !== getMainWindow()?.webContents.id) {
       throw Object.assign(new Error("renderer is not the main window"), {
@@ -388,11 +357,8 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
     getHost,
     scheduledRunsBySession,
     isQuitting: dependencies.isQuitting,
-    invoke: async (channel, args) => {
-      const handler = ipcHandlers.get(channel);
-      if (!handler) throw new Error("scheduled prompt handler unavailable");
-      return handler(...args);
-    },
+    admission: dependencies.handoffAdmission,
+    invoke,
   });
   registerWorkspaceIpc({
     registrar,
@@ -570,13 +536,5 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
   });
 
 
-  return async (channel: string, args: readonly unknown[] = []) => {
-    const handler = ipcHandlers.get(channel);
-    if (!handler) {
-      throw Object.assign(new Error(`IPC channel is not available to external agents: ${channel}`), {
-        errorCode: ErrorCodes.NOT_FOUND,
-      });
-    }
-    return handler(...args);
-  };
+  return invoke;
 }
