@@ -4,14 +4,14 @@ import test from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-register(new URL("./helpers/ts-import-hooks.mjs", import.meta.url));
+register(new URL("./helpers/current-source-import-hooks.mjs", import.meta.url));
 const { WorkspaceTerminalRouter } = await import("../electron/main/terminal/workspace-terminal-router.ts");
 const { terminalWorkspaceId } = await import("@pi-desktop/shared");
 
 test("remote terminal stays bound across project switches and never falls back locally",async()=>{
   let selected="remote-project:p"; let state="connected"; let generation=1; let localSpawns=0;
   const calls=[]; const handlers=new Map(); const events=[];
-  const host={call:async(method)=>{
+  const host={generation:1,call:async(method)=>{
     if(method==="session.get") return {session:{projectPath:"remote-project:p"}};
     if(method==="project.groups.list") return {groups:[{id:"p",name:"Remote",primaryPath:"remote-project:p",roots:[{path:"remote-project:p",name:"Remote",position:0}],remote:{hostKey:"a",path:"/repo"}}]};
     throw Error(method);
@@ -23,7 +23,7 @@ test("remote terminal stays bound across project switches and never falls back l
     if(input.action==="replay")return{data:Buffer.from("history").toString("base64")};
     return {ok:true};
   }};
-  const router=new WorkspaceTerminalRouter({getHost:()=>host,currentWorkspacePath:()=>selected,remoteClient:key=>{assert.equal(key,"a");return client;},emit:event=>events.push(event),loadPty:()=>{localSpawns++;return null;}});
+  const router=new WorkspaceTerminalRouter({isAdmissionClosed:()=>false,getHost:()=>host,currentWorkspacePath:()=>selected,remoteClient:key=>{assert.equal(key,"a");return client;},emit:event=>events.push(event),loadPty:()=>{localSpawns++;return null;}});
   try {
     const target={sessionId:"s",workspaceId:terminalWorkspaceId({hostKey:"a",path:"remote-project:p"}),tabId:"tab"};
     for (const hint of [target, {...target,sessionId:undefined}, {...target,workspaceId:terminalWorkspaceId({hostKey:"a",path:"/repo"})}]) {
@@ -57,10 +57,10 @@ for (const sessionId of ["s", undefined]) test(`local terminal accepts native pa
   // Host workspace snapshots use native separators; durable sessions/groups use '/'.
   const storedRoot = root.replaceAll("\\", "/");
   let selected = root;
-  const host={call:async(method)=>method==="session.get"?{session:{projectPath:storedRoot}}:{groups:[{
+  const host={generation:1,call:async(method)=>method==="session.get"?{session:{projectPath:storedRoot}}:{groups:[{
     id:"local-project",name:"Local",primaryPath:storedRoot,roots:[{path:storedRoot,name:"Local",position:0}],
   }]}};
-  const router=new WorkspaceTerminalRouter({getHost:()=>host,currentWorkspacePath:()=>selected,remoteClient:()=>{throw Error("unexpected remote lookup");},emit:()=>{},loadPty:()=>({spawn:(_file,_args,options)=>{
+  const router=new WorkspaceTerminalRouter({isAdmissionClosed:()=>false,getHost:()=>host,currentWorkspacePath:()=>selected,remoteClient:()=>{throw Error("unexpected remote lookup");},emit:()=>{},loadPty:()=>({spawn:(_file,_args,options)=>{
     assert.ok(options.cwd.includes("local-terminal-router-"));
     return{pid:1,write:data=>writes.push(data),resize:()=>{},kill:()=>{killed++;},onData:()=>({dispose(){}}),onExit:()=>({dispose(){}})};
   }})});
@@ -89,6 +89,7 @@ test("remote sessions use the owning Host session terminal and close without a l
     },
   };
   const router = new WorkspaceTerminalRouter({
+    isAdmissionClosed:()=>false,
     getHost: () => { throw Error("Unexpected local Host lookup"); },
     currentWorkspacePath: () => "unrelated",
     remoteClient: key => { assert.equal(key,"host-a");return client; },

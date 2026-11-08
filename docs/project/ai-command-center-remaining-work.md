@@ -868,3 +868,36 @@ received the required fixture admission dependency and syntax validation; it
 was not used as acceptance because its separate dist/provider fixture is outside
 this resource-owner slice. Next: remaining actual H1 resource owners and the
 coordinator/native/source-status composition, followed by H2-H5 integration.
+
+### H1 workspace terminal activity checkpoint
+
+Terminal router entries share Desktop admission, capture original Host and
+remote connection generations, and retain pending binding/create/actions through
+window retirement. Local service admission is checked after directory I/O before
+native spawn or input. Late creation/attachment cleanup uses the original
+connection; explicit reconnect and concurrent replay remain supported. Output
+already accepted by a sink remains counted until its original completion.
+
+The window registry retains active retirement and then compacts settled routers
+to saturated unqualified-resource counts. Local PTY creation attempts, remote
+creation/legacy attachment and unconfirmed cleanup cannot disappear when handles
+or windows are removed. Catalog filesystem checks alone remain idle. Counts are
+refusal evidence, not capacity or native-family closure certificates.
+
+- Three behavior regressions failed on the prior source: closed entries,
+  closure during binding and stale-client input dispatch. They are corrected.
+  An intermediate same-owner concurrent-replay regression was also reproduced
+  and fixed before acceptance.
+- 57 Desktop regressions passed across terminal handoff/routing, workspace
+  resolution, protocol, Main wiring and shutdown. Ten shared terminal service
+  tests passed, including five new admission/output/uncertainty cases.
+- The dirty process run passed both real PTY user paths and observed each
+  original PTY exit. The provisioned node-pty 1.1.0 ConPTY cleanup helper also
+  emitted `AttachConsole failed`: its process-list request races native close
+  and retains a five-second PID fallback. This is recorded as a native cleanup
+  limitation, not a process-family closure pass. No dependency/native cleanup
+  policy was changed; unqualified-resource refusal remains required.
+- Desktop source typecheck, Biome (246 files), architecture and diff checks
+  passed. Clean-candidate execution and final documentation checks follow the
+  implementation commit; full H1 resource/coordinator/native composition remains
+  open. No Electron transfer, live provider or hardware qualification ran.

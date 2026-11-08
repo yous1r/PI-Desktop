@@ -22,6 +22,7 @@ type RecordState = {
   sink: WorkspaceTerminalSink | null; cleanup: (() => void)[]; pending: Promise<void>; queuedBytes: number;
   expiry?: ReturnType<typeof setTimeout>; closed: boolean;
 };
+type Admission = { cancelled: boolean; assertCurrent?: () => void };
 const RING_BYTES = 256 * 1024;
 const FRAME_BYTES = 32 * 1024;
 const QUEUE_BYTES = 1024 * 1024;
@@ -47,7 +48,9 @@ export function workspaceShellEnvironment(base: NodeJS.ProcessEnv = process.env)
 export class WorkspaceTerminalService {
   private readonly records = new Map<string, RecordState>();
   private sealed = false;
-  private readonly admissions = new Map<string, Set<{ cancelled: boolean }>>();
+  private readonly admissions = new Map<string, Set<Admission>>();
+  private readonly deliveries = new Set<Promise<void>>();
+  private uncontainedResources = 0;
   constructor(private readonly options: {
     pty: WorkspacePtyModule;
     shells: (refresh?: boolean) => TerminalShellProfile[];
@@ -56,21 +59,26 @@ export class WorkspaceTerminalService {
     onError?: (message: string) => void;
   }) {}
 
-  async handle(input: WorkspaceTerminalRequest, owner: WorkspaceTerminalOwner, sink: WorkspaceTerminalSink): Promise<unknown> {
-    const token = { cancelled: false };
-    const requests = this.admissions.get(owner.connectionId) ?? new Set<{ cancelled: boolean }>();
+  async handle(input: WorkspaceTerminalRequest, owner: WorkspaceTerminalOwner, sink: WorkspaceTerminalSink, assertCurrent?: () => void): Promise<unknown> {
+    const token: Admission = { cancelled: false, assertCurrent };
+    const requests = this.admissions.get(owner.connectionId) ?? new Set<Admission>();
     requests.add(token); this.admissions.set(owner.connectionId, requests);
     try { return await this.execute(input, owner, sink, token); }
     finally { requests.delete(token); if (!requests.size) this.admissions.delete(owner.connectionId); }
   }
 
-  private async execute(input: WorkspaceTerminalRequest, owner: WorkspaceTerminalOwner, sink: WorkspaceTerminalSink, token: { cancelled: boolean }): Promise<unknown> {
-    if (this.sealed) throw failure("TERMINAL_HOST_OFFLINE", "Terminal service is stopping");
+  private assertAdmission(token: Admission): void {
+    if (this.sealed || token.cancelled) throw failure("TERMINAL_HOST_OFFLINE", "Terminal service is stopping");
+    token.assertCurrent?.();
+  }
+
+  private async execute(input: WorkspaceTerminalRequest, owner: WorkspaceTerminalOwner, sink: WorkspaceTerminalSink, token: Admission): Promise<unknown> {
+    this.assertAdmission(token);
     if (!owner.deviceId || !owner.connectionId) throw failure("FORBIDDEN", "Terminal owner is required");
     if (!isAbsolute(input.path) || /[\u0000-\u001f]/.test(input.path)) throw failure("INVALID_ARGUMENT", "Invalid workspace root");
     const root = await realpath(input.path).catch(() => null);
     if (!root || !(await stat(root)).isDirectory()) throw failure("REMOTE_PATH_NOT_FOUND", "Workspace root is unavailable");
-    if (token.cancelled || this.sealed) throw failure("TERMINAL_HOST_OFFLINE", "Terminal connection closed");
+    this.assertAdmission(token);
     if (input.action === "list") return { shells: this.options.shells(input.refresh) };
     if (input.action === "create") return this.create(input, root, owner, sink, token);
     const record = this.records.get(input.terminalId);
@@ -112,7 +120,7 @@ export class WorkspaceTerminalService {
     }
   }
 
-  private async create(input: Extract<WorkspaceTerminalRequest, { action: "create" }>, root: string, owner: WorkspaceTerminalOwner, sink: WorkspaceTerminalSink, token: { cancelled: boolean }) {
+  private async create(input: Extract<WorkspaceTerminalRequest, { action: "create" }>, root: string, owner: WorkspaceTerminalOwner, sink: WorkspaceTerminalSink, token: Admission) {
     if ([...this.records.values()].some(record => record.deviceId === owner.deviceId && record.workspaceId === input.workspaceId && record.tabId === input.tabId)) {
       throw failure("CONFLICT", "This tab already owns a terminal; attach or close it first");
     }
@@ -123,11 +131,13 @@ export class WorkspaceTerminalService {
     if (!profile?.path) throw failure("TERMINAL_SHELL_UNAVAILABLE", "The selected shell is unavailable");
     const cwd = input.cwd ? await realpath(input.cwd).catch(() => null) : root;
     if (!cwd || !inside(root, cwd) || !(await stat(cwd)).isDirectory()) throw failure("REMOTE_PATH_FORBIDDEN", "Terminal directory must stay inside the workspace");
-    if (this.sealed || token.cancelled) throw failure("TERMINAL_HOST_OFFLINE", "Terminal service is stopping");
+    this.assertAdmission(token);
     // Recheck after directory I/O: concurrent creates must not bypass limits/tab ownership.
     if (this.records.size >= 64 || [...this.records.values()].filter(record => record.deviceId === owner.deviceId).length >= 8) throw failure("TERMINAL_LIMIT_REACHED", "Terminal limit reached");
     if ([...this.records.values()].some(record => record.deviceId === owner.deviceId && record.workspaceId === input.workspaceId && record.tabId === input.tabId)) throw failure("CONFLICT", "This tab already owns a terminal");
     let pty: WorkspacePty;
+    // An ordinary PTY has no qualified native-family closure certificate.
+    this.uncontainedResources = Math.min(Number.MAX_SAFE_INTEGER, this.uncontainedResources + 1);
     try { pty = this.options.pty.spawn(profile.path, profile.args ?? [], { name: "xterm-256color", cwd, cols: input.cols, rows: input.rows, env: workspaceShellEnvironment(this.options.env) }); }
     catch { throw failure("TERMINAL_SHELL_UNAVAILABLE", "The selected shell could not be started"); }
     const record: RecordState = {
@@ -142,9 +152,9 @@ export class WorkspaceTerminalService {
       const exitListener = pty.onExit(({ exitCode }) => {
         const target = record.sink;
         // Preserve final output ordering: close only after already accepted frames.
-        record.pending = record.pending.then(async () => {
+        record.pending = this.trackDelivery(record.pending.then(async () => {
           if (!record.closed && record.sink === target) await target?.({ terminalId: record.id, exitCode });
-        }).catch(() => undefined).finally(() => this.closeRecord(record, false));
+        }).catch(() => undefined).finally(() => this.closeRecord(record, false)));
       });
       record.cleanup.push(() => exitListener.dispose());
     } catch (error) { this.closeRecord(record); throw error; }
@@ -172,14 +182,14 @@ export class WorkspaceTerminalService {
       offset = end;
       const sequence = ++record.sequence;
       if (!sink || !connection) continue;
-      record.pending = record.pending.then(async () => {
+      record.pending = this.trackDelivery(record.pending.then(async () => {
         if (!record.closed && record.sink === sink && record.connectionId === connection) await sink({ terminalId: record.id, data: chunk.toString("base64"), sequence });
       }).catch(() => {
         if (record.sink === sink) this.detachRecord(record);
       }).finally(() => {
         record.queuedBytes -= chunk.length;
         if (!record.closed && record.queuedBytes < FRAME_BYTES) record.pty.resume?.();
-      });
+      }));
     }
   }
 
@@ -203,6 +213,18 @@ export class WorkspaceTerminalService {
     this.records.delete(record.id);
     for (const dispose of record.cleanup) dispose();
     if (kill) { try { record.pty.kill(); } catch { /* The OS may have already reaped the PTY. */ } }
+  }
+  private trackDelivery(pending: Promise<void>): Promise<void> {
+    this.deliveries.add(pending);
+    void pending.then(() => this.deliveries.delete(pending), () => this.deliveries.delete(pending));
+    return pending;
+  }
+  /** Disposal cannot erase a sink that has already accepted output. */
+  async drainOutput(): Promise<void> {
+    await Promise.allSettled([...this.deliveries]);
+  }
+  getHandoffActivity(): { terminals: number; uncontainedResources: number } {
+    return { terminals: this.inUse() + this.deliveries.size, uncontainedResources: this.uncontainedResources };
   }
   /** Open PTYs plus calls still being admitted; derived from the existing records. */
   inUse(): number {

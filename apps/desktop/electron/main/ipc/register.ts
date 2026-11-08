@@ -239,7 +239,7 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
   };
 
   dependencies.personalTodos?.register(registrar);
-  registerWorkspaceTerminals({ registrar, getMainWindow, getHost, currentWorkspacePath });
+  registerWorkspaceTerminals({ registrar, getMainWindow, getHost, currentWorkspacePath, handoffAdmission: dependencies.handoffAdmission });
   registerAppIpc({
     registrar,
     getHost,

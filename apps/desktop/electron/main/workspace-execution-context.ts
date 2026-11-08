@@ -29,7 +29,9 @@ export function createWorkspaceExecutionResolver(deps: {
   let nextGeneration = 0;
   let previousHost: WorkspaceHost | null = null;
   const samePath = (left: string, right: string) => sameWorkspacePath(left, right, deps.platform);
-  return async (input: WorkspaceInvocationOwner = {}): Promise<WorkspaceExecutionContext | null> => {
+  // A caller may capture its transport identity while preserving this resolver's
+  // workspace revision history. The override is process-local, never wire input.
+  return async (input: WorkspaceInvocationOwner = {}, remoteState = deps.remoteState): Promise<WorkspaceExecutionContext | null> => {
     const host = deps.getHost();
     if (!host) throw fail("HOST_UNAVAILABLE", "Workspace owner is unavailable");
     if (host !== previousHost) { revisions.clear(); previousHost = host; }
@@ -63,7 +65,7 @@ export function createWorkspaceExecutionResolver(deps: {
     let connectionGeneration = 0;
     if (remote) {
       if (!remote.hostKey || !posix.isAbsolute(remote.path) || /[\u0000-\u001f]/.test(remote.path)) throw fail("INVALID_WORKSPACE_CONTEXT", "Remote workspace binding is invalid");
-      const state = await deps.remoteState(remote.hostKey);
+      const state = await remoteState(remote.hostKey);
       if (deps.getHost() !== host) throw fail("HOST_UNAVAILABLE", "Workspace owner was replaced");
       if (!state.connected) throw fail("HOST_UNAVAILABLE", "Remote workspace is disconnected");
       const current = await host.call<{ groups: ProjectGroupRecord[] }>("project.groups.list");

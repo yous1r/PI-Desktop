@@ -20031,3 +20031,32 @@ session data is used.
   plus session-launch, main-wiring and confirmed-shutdown regressions.
 - **Expected:** cached/retired/unconfirmed resources cannot disappear from idle
   admission; no late client creation, tool replay or stale-client dispatch.
+
+### E2E-HANDOFF-workspace-terminal-activity — Retain terminal ownership after window closure
+
+- **Scope:** the real Desktop router, workspace resolver, terminal registry,
+  shared admission and PTY service. This prerequisite does not enable transfer
+  or qualify local/remote native containment.
+- **Component entries:** `apps/desktop/test/handoff-workspace-terminal.test.mjs`
+  and `packages/host-runtime/src/workspace-terminal-handoff.test.ts`. Cover
+  closed entries, pending binding/create/actions, Host/connection replacement,
+  same-object generation changes, late cleanup, failed acknowledgements,
+  concurrent replay and retained window/output activity. Idle shell discovery
+  does not create a process; attempted spawn and remote attachment retain
+  unqualified-resource evidence after retirement.
+- **Process entry:** `node --test apps/desktop/test/workspace-terminal-user-path.e2e.mjs`.
+  Reuse installed `node-pty`, with an isolated temporary cwd/home/environment;
+  `PI_COMMAND_CENTER_DEPENDENCIES` may select the provisioned Pi toolchain.
+  Through the actual IPC handlers, list shells, create a PTY, refuse handoff,
+  enter arithmetic, resize, replay, switch the selected project, continue input,
+  close and retire the window. Await the original PTY exit event. A new window
+  retains the old refusal evidence and closed admission prevents another spawn.
+- **Expected:** both session-bound and sessionless paths preserve terminal
+  routing. No unverified late result may use a replacement owner. A completed
+  root exit or remote close acknowledgement cannot clear native uncertainty.
+  Record native-helper diagnostics separately; a successful PTY callback or test
+  exit does not establish complete process-family cleanup.
+- **Compatibility:** existing terminal router/service, workspace resolver,
+  terminal protocol, Main wiring and confirmed-shutdown tests. No live Desktop,
+  provider, external remote Host or minimum-hardware qualification is involved.
+- **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).

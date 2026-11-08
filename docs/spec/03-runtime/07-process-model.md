@@ -609,6 +609,26 @@ Retired client objects need not be retained for this refusal evidence. Saved but
 never initialized records alone do not imply a live resource. Disposal blocks
 all later work and prevents pending OAuth/handshake work from resurrecting clients.
 
+Workspace terminal entries require that same gate. Their router captures the
+original Host generation and remote connection object/generation, rechecking
+after binding and action awaits. Local PTY requests also recheck the caller's
+binding after directory I/O and before spawn or input. Only explicit replay may
+admit a new remote connection; input is never replayed. Late creation and
+reattachment cleanup addresses the captured connection, never its replacement.
+Concurrent replay on an unchanged owner remains valid.
+
+Terminal inventory includes admitted router/service operations, live handles,
+pending output delivery and disposal. Window retirement seals immediately and
+waits for the original work. Settled routers reduce to saturating scalar refusal
+evidence; removing a window or clearing handles cannot erase it. Every local
+PTY spawn attempt and remote create/legacy-attach request remains unqualified
+after errors, ordinary exit or close acknowledgements. Cleanup failures are
+observable and also retain refusal evidence. These counts describe activity
+and missing containment proof, not execution capacity or native-family closure.
+Filesystem-only shell discovery does not launch a process or invent a PTY.
+The shared remote connection itself remains owned by its existing remote-host
+service and requires separate inventory composition.
+
 This composition does not enable a transfer request. Complete owner inventory,
 bounded source journal transport, native/coordinator integration and target
 readiness remain separate H1-H5 acceptance work.

@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Gate workspace terminal work during idle handoff and keep delayed operations
+  bound to their original Host and connection. Window retirement retains pending
+  output and unqualified PTY/remote-terminal resources; close or ordinary exit
+  does not establish native-family closure. Full transfer remains in development.
 - Include user MCP setup and calls in Desktop handoff activity. Closed admission
   prevents late client creation and stale-client dispatch; cancellation, timeout
   and ordinary close retain unqualified resource evidence. Complete ownership
