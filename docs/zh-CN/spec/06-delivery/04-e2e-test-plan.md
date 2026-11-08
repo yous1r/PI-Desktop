@@ -10139,3 +10139,7 @@ PluginPack 产物的解包目录，仅用于开发验证。验收 #1711 前需�
 - 验收：真实隔离 Electron/Host 用户路径和可控失败测试。
 - 里程碑：个人效率功能；Windows 候选已通过，证据和平台限制见 `docs/project/global-floating-todo.md`。
 - 平台说明：DOM/API 测试不能证明安全桌面和全屏优先级，需单独记录原生平台覆盖情况。
+
+#### E2E-ISSUE-1707
+
+生产 SSH 引导使用合成 Darwin 目标，按 IPC 形态传递错误并解析界面提示：显示 Linux 安装包范围，不下载或上传。Linux 及其他安装失败提示保持原行为。

@@ -19487,3 +19487,7 @@ substitute for native Linux packaging or SSH acceptance.
   actual evidence and platform limits are in `docs/project/global-floating-todo.md`.
 - Platform note: DOM/API tests do not prove OS secure-surface/fullscreen precedence;
   report native platform coverage separately.
+
+#### E2E-ISSUE-1707
+
+Use synthetic Darwin x64/arm64 uname responses through production SSH bootstrap, serialize its code/details as IPC does, and resolve the renderer error. The platform explanation appears, no checksum or upload occurs. Linux and other bootstrap failures keep existing messages. Coverage: remote-host-ssh-bootstrap.test.mjs and remote-host-errors.test.mjs.
