@@ -130,3 +130,12 @@ baseline failures or the full-suite integration gate. The next applicable
 prerequisite is Windows background-process termination, before full S03b handoff.
 The earlier full Rust result remains historical; it has not been rerun or
 retroactively changed.
+
+Clean committed CLI verification: `cad0a6402e65ee792ad31b6acbc472eaa1be3e82`,
+base `fd28eb89866ac513912ed109716e7120cf60f18c`, Windows, four checks passed,
+`dirty:false`. The
+[candidate report](ai-command-center-p0-evidence/relocation-capability-after.json)
+records binary SHA-256
+`2b413a296e708113537ad39d4effc49c630c7ebc3feaf9b3eda64b6744fe3e24`.
+An earlier post-commit run had an untracked task-generated `NUL` SSH artifact;
+that report was not used as clean-candidate evidence.

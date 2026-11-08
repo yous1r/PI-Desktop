@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "startedAt": "2026-11-08T02:31:50.920Z",
+  "platform": "win32",
+  "candidate": "cad0a6402e65ee792ad31b6acbc472eaa1be3e82",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "binarySha256": "2b413a296e708113537ad39d4effc49c630c7ebc3feaf9b3eda64b6744fe3e24",
+  "scriptSha256": "b7f236956c395dc542855070fad6ce2b78fc4acba8e4e34077753ac55f58a19f",
+  "checks": [
+    "project disabled state uses canonical capability key after relocation",
+    "global/external settings and source bytes preserved",
+    "repeated relocation does not rewrite already moved settings",
+    "canonical destination collision refuses without rewriting capability file"
+  ],
+  "finishedAt": "2026-11-08T02:31:51.107Z"
+}
