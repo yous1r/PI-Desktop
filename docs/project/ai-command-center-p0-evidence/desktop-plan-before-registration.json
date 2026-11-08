@@ -1,0 +1,18 @@
+{
+  "status": "FAIL",
+  "candidate": "b2902ac2962eccd6c71d701bb89b7da94467820d",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "binarySha256": "99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b",
+  "scriptSha256": "609bbacd7eee60b0c5c053c3eba29d5de7d788c85cdc9edc30a58592f58d8809",
+  "cleanupConfirmed": true,
+  "scope": "Desktop plan runtime and launch resolver with real Rust RPC and a contained deterministic sidecar; not complete Desktop ownership transfer",
+  "inputs": 3232,
+  "inputsSha256": "4b79f9fe867a34d3e32d29fba2fe2540cca45ed65472797139328efc55f6ef09",
+  "bundleSha256": "da41d74c9c27637f3d9ffc7b8f9ad958e0db8ba5a7b81c7be515787cfdcc61ed",
+  "checks": [],
+  "isolatedExtensionRegistries": true,
+  "error": "Error: database is locked\n    at HostProcess.onLine (file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/desktop-plan-EUxyGI/worker.mjs:84428:23)\n    at file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/desktop-plan-EUxyGI/worker.mjs:84345:22\n    at emit (file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/desktop-plan-EUxyGI/worker.mjs:15334:5)\n    at Socket.onData (file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/desktop-plan-EUxyGI/worker.mjs:15344:7)\n    at Socket.emit (node:events:508:28)\n    at addChunk (node:internal/streams/readable:559:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)\n    at Readable.push (node:internal/streams/readable:390:5)\n    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)",
+  "harnessError": "AssertionError [ERR_ASSERTION]: (node:11916) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n\n\n1 !== 0\n\n    at file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/scripts/e2e-desktop-plan-handoff.mjs:52:10",
+  "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\desktop-plan-EUxyGI\\report.json"
+}

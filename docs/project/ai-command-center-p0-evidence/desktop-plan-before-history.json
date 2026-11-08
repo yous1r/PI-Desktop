@@ -1,0 +1,21 @@
+{
+  "status": "FAIL",
+  "candidate": "3621a26351497e98d5aa32f5b9ed747cdfed4e9b",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": true,
+  "binarySha256": "99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b",
+  "scriptSha256": "447bcfef11636118ffabc5eb3e98f110c13637035d71310ef759ea86102f95b5",
+  "cleanupConfirmed": true,
+  "scope": "Desktop plan runtime and launch resolver with real Rust RPC and a contained deterministic sidecar; not complete Desktop ownership transfer",
+  "inputs": 3232,
+  "inputsSha256": "b49e9ad9272c91257d656a88a628b434dba5c6a82b28e72ccd096f12bac3244f",
+  "bundleSha256": "d2737297fda58ceefb462954b2c2a5645476b6dd7dfa0d0cca5c0c9410d88425",
+  "checks": [
+    "closed admission leaves the approved durable execution queued and sends no sidecar request",
+    "real Rust claim, production launch resolution, one contained sidecar dispatch and acknowledged turn/execution finalization",
+    "gate closure after durable beginTurn closes the original turn and execution without a second sidecar launch"
+  ],
+  "error": "TypeError: Cannot read properties of undefined (reading 'find')\n    at file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/desktop-plan-CYkwgj/worker.mjs:88675:42\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)",
+  "harnessError": "AssertionError [ERR_ASSERTION]: (node:17960) ExperimentalWarning: SQLite is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\nmcp active list failed\nsubagent definitions have problems\nmcp active list failed\nsubagent definitions have problems\napproved plan execution failed to start\n\n\n1 !== 0\n\n    at file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/scripts/e2e-desktop-plan-handoff.mjs:51:10",
+  "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\desktop-plan-CYkwgj\\report.json"
+}

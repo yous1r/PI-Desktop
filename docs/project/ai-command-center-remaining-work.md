@@ -753,3 +753,36 @@ Next: inventory all actual resource families, compose the coordinator with
 bounded original-source journal operations, and validate the complete process
 path before joining H2-H5. Loaded or unconfirmed resources must still refuse
 idle transfer; absent counters cannot be filled with zero.
+
+### Clean plan lifecycle candidate evidence
+
+Production implementation: `b2902ac2962eccd6c71d701bb89b7da94467820d`.
+Test readiness correction and tested candidate:
+`de9a8f7d921076775295fd64b8f275ceedc2692b`, with base
+`fd28eb89866ac513912ed109716e7120cf60f18c`. The workspace was clean during the
+four-check process run; extension registries were isolated, native registration
+was confirmed before user work, and all owned native processes were confirmed
+closed. This accepts the ready-owner plan lifecycle slice only.
+
+- [Clean process report](ai-command-center-p0-evidence/desktop-plan-after.json):
+  SHA-256 `ee034c36f745d452606661536a670cdf36a5b63f6c91be7661cb3c860a62fccd`.
+- [Build inputs](ai-command-center-p0-evidence/desktop-plan-build-inputs.json):
+  3,232 inputs; normalized manifest digest
+  `19b9af6830506cd7a7b926ad8dea440902c427da1004c26609e1b011bdf9b9aa`;
+  archived file SHA-256
+  `b7e10c7ef9d0bc6fb3d8ccc55cd060723f43c10d549f7a8d15a0987bf04ed9ff`.
+- Candidate bundle SHA-256:
+  `42cdf42b2a3864dfd8ecca99fcdb9914f30317e1302dbda5daa6e6790def6400`.
+- Unchanged Rust binary SHA-256:
+  `99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b`.
+- Retained failures: [missing fixture history and capability isolation](ai-command-center-p0-evidence/desktop-plan-before-history.json)
+  and [approval before confirmed registration readiness](ai-command-center-p0-evidence/desktop-plan-before-registration.json).
+  Both confirmed cleanup; neither is counted as passing acceptance.
+
+The 105 focused tests, complete Desktop source typecheck, Biome check (234 files),
+architecture check, agent-policy check, main-ancestry check and documentation
+link check (631 pages) passed. The locale check still reports the existing
+Chinese source-notice mismatches for runtime error codes and the E2E plan.
+No live Desktop probe, external provider, new full Rust suite or minimum-hardware
+qualification was run. H1 remains open, including the observed pre-readiness
+SQLite contention investigation and complete resource/native integration.
