@@ -1583,4 +1583,44 @@ unconfirmed. Confirmation requires the registration task to end and native Job
 emptiness plus original root exit if assigned. No native query/termination error
 is converted to success. Repeating Stop for the same generation is supported;
 superseded generations refuse. Calls are not automatically replayed on transport
-loss. This is process-local containment, not a durable transfer receipt.
+loss. Native registration is durable in schema v28; a Stop response alone is not
+a successor-admission or transfer-readiness receipt.
+
+## Restricted owner-handoff bootstrap (Windows)
+
+`--owner-handoff` is an exclusive launch mode, before ordinary AppState and RPC.
+It accepts only an existing configured profile and holds the same directory OS
+lock. The current Host and its live same-user parent are identified natively.
+Commands arrive over inherited private stdin, never argv or public discovery.
+Owner discovery continues to advertise only `status`; it exposes no transfer API.
+
+Each request/response is a u32 little-endian byte count followed by 1..16,384
+bytes of strict UTF-8 JSON. Unknown fields/operations are rejected. The request
+budget is 30 seconds, response budget 5 seconds; Windows synchronous I/O is
+cancelled and joined on timeout or parent exit, with a 2-second cleanup bound.
+An unconfirmed cleanup exits the restricted process with an explicit error.
+Clean EOF exits without opening ordinary AppState. No transmitted request is
+automatically retried.
+
+| Operation | Fields in addition to `operation` |
+|---|---|
+| `status` | `version: 1`, `transfer_id` |
+| `claim` | `version: 1`, `request_id`, `transfer_id`, `source_epoch`, `expected_revision`, `target_epoch`, `capability` |
+| `recover` | Same fields as claim; target epoch and capability must rotate |
+
+IDs/capabilities are canonical non-nil UUID strings. Capability bytes are hashed
+before repository operations; only the hash enters durable state or request
+fingerprints. Responses contain `{version: 1, record}` or
+`{version: 1, error: {code}}`. Records use the versioned camelCase storage model;
+process creation FILETIMEs remain exact decimal strings. Status returns no raw
+capability. Unclassified failures return a stable refusal without echoing input.
+
+Claim checks the reserved identity/capability, exact executable hash and supported
+schema/protocol, then proves prior execution ended before atomically registering
+the current native Host as target. Recovery needs no lost old capability, but
+requires current-user/profile/build validation and independent proof that source
+and previously claimed target containment ended. It rotates the reservation in
+the same transaction as retirement and the idempotency receipt. Exact duplicate
+request fingerprints return the stored result; altered payloads conflict.
+Receipt replay never grants execution. This mode has no `prepare`, `ready`,
+tool/model, arbitrary PID/path or ordinary RPC operation.

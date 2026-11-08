@@ -15,6 +15,7 @@ mod network_policy;
 mod network_proxy;
 mod notifications;
 mod owner_control;
+mod owner_handoff;
 mod permissions;
 mod personal_todos;
 mod plans;
@@ -67,6 +68,7 @@ async fn run(
     if let Some(code) = execution_fence::run_cli().await? {
         std::process::exit(code);
     }
+    owner_handoff::validate_cli()?;
     owner_control::validate_cli()?;
     if data_relocation::run_cli()? {
         return Ok(());
@@ -99,6 +101,9 @@ async fn run(
     if owner_control::query_cli(&data_dir).await? {
         return Ok(());
     }
+    if owner_handoff::run_cli(&data_dir, data_owner).await? {
+        return Ok(());
+    }
 
     std::fs::create_dir_all(&data_dir)?;
     // Hold through shutdown: a losing startup must not migrate or recover a
@@ -106,8 +111,11 @@ async fn run(
     *data_owner = Some(data_directory_owner::DataDirectoryOwner::acquire(
         &data_dir,
     )?);
-    let owner_control = owner_control::Control::start(&data_dir)?;
-    let execution_fence = execution_fence::start()?;
+    let prior_owner = owner_handoff::startup::inspect_directory(&data_dir)?;
+    let mut execution_fence = execution_fence::start(&data_dir)?;
+    let owner_control =
+        owner_control::Control::start(&data_dir, execution_fence::owner_epoch(&execution_fence))?;
+    prior_owner.commit()?;
     std::fs::create_dir_all(data_dir.join("logs"))?;
     std::fs::create_dir_all(data_dir.join("plugins/installed"))?;
     std::fs::create_dir_all(data_dir.join("plugins/data"))?;
@@ -117,6 +125,7 @@ async fn run(
     std::fs::create_dir_all(data_dir.join("scratch"))?;
 
     let mut app_state = AppState::open(&data_dir)?;
+    execution_fence::bind_journal(&mut execution_fence, &data_dir)?;
     app_state.execution_fence = execution_fence;
     let state = Arc::new(Mutex::new(app_state));
     tracing::info!(path = %data_dir.display(), "host-core starting");

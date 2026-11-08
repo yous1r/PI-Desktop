@@ -3,9 +3,15 @@ use crate::owner_control::identity::{
     authenticate_with_access, Identity, Peer, SecurityDescriptor,
 };
 use crate::owner_control::protocol::{read_frame, write_frame};
+use crate::owner_handoff::{
+    model::{Generation, Owner, VERSION},
+    native::record,
+    repository::Journal,
+};
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::os::windows::io::AsRawHandle;
+use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -108,18 +114,46 @@ pub struct Registry {
     identity: Identity,
     coordinator: Arc<Coordinator>,
     current: Option<Arc<Lease>>,
+    owner: Owner,
+    journal: Option<Arc<Mutex<Journal>>>,
 }
 impl Registry {
-    pub fn start() -> Result<Self> {
+    pub fn start(directory: &Path) -> Result<Self> {
         let identity = Identity::current()?;
         let coordinator = Arc::new(Coordinator::capture(&identity)?);
+        let owner = Owner {
+            version: VERSION,
+            epoch: uuid::Uuid::new_v4().to_string(),
+            profile: crate::owner_control::profile_id(directory)?,
+            host: record(std::process::id(), &identity),
+            coordinator: record(coordinator.pid, &coordinator.identity),
+        };
         Ok(Self {
             identity,
             coordinator,
             current: None,
+            owner,
+            journal: None,
         })
     }
+    pub fn epoch(&self) -> &str {
+        &self.owner.epoch
+    }
+    pub fn bind_journal(&mut self, directory: &Path) -> Result<()> {
+        if self.journal.is_some() {
+            bail!("HANDOFF_OWNER_ALREADY_REGISTERED");
+        }
+        let mut journal = Journal::open(&directory.join("pi.sqlite"), false)?;
+        journal.register_owner(&self.owner)?;
+        self.journal = Some(Arc::new(Mutex::new(journal)));
+        Ok(())
+    }
     pub fn prepare(&mut self) -> Result<Ticket> {
+        let journal = self
+            .journal
+            .as_ref()
+            .context("HANDOFF_OWNER_NOT_REGISTERED")?
+            .clone();
         if native::exited(self.coordinator.handle.as_raw_handle())? {
             bail!("EXECUTION_FENCE_COORDINATOR_EXITED");
         }
@@ -127,6 +161,10 @@ impl Registry {
             if !current.status()?.confirmed || !current.task.is_finished() {
                 bail!("EXECUTION_FENCE_BUSY");
             }
+            journal
+                .lock()
+                .map_err(|_| anyhow::anyhow!("HANDOFF_JOURNAL_UNAVAILABLE"))?
+                .close_generation(&current.generation)?;
         }
         let generation = uuid::Uuid::new_v4().to_string();
         let ticket = Ticket {
@@ -151,7 +189,19 @@ impl Registry {
                     std::ptr::from_mut(&mut attributes).cast(),
                 )
         }?;
-        let job = Arc::new(Job::create()?);
+        let registration = Generation {
+            version: VERSION,
+            id: generation.clone(),
+            owner_epoch: self.owner.epoch.clone(),
+            profile: self.owner.profile.clone(),
+            job_name: Generation::job_name(&self.owner.profile, &self.owner.epoch, &generation),
+            root: None,
+        };
+        let job = Arc::new(Job::create(&registration.job_name, &self.identity.sid)?);
+        journal
+            .lock()
+            .map_err(|_| anyhow::anyhow!("HANDOFF_JOURNAL_UNAVAILABLE"))?
+            .register_generation(&registration)?;
         let progress = Arc::new(Mutex::new(Progress {
             state: "pending",
             root: None,
@@ -163,6 +213,7 @@ impl Registry {
             job: job.clone(),
             progress: progress.clone(),
             issued_at: native::now(),
+            journal,
         };
         let task = tokio::spawn(async move {
             actor.run(pipe).await;
@@ -190,6 +241,7 @@ struct Registration {
     job: Arc<Job>,
     progress: Arc<Mutex<Progress>>,
     issued_at: u64,
+    journal: Arc<Mutex<Journal>>,
 }
 impl Registration {
     async fn register(&self, pipe: &mut NamedPipeServer) -> Result<()> {
@@ -221,6 +273,10 @@ impl Registration {
             {
                 bail!("EXECUTION_FENCE_CANCELLED");
             }
+            self.journal
+                .lock()
+                .map_err(|_| anyhow::anyhow!("HANDOFF_JOURNAL_UNAVAILABLE"))?
+                .bind_root(&self.ticket.generation, &record(peer.pid, &peer.identity))?;
             self.job.assign(peer.handle.as_raw_handle())?;
             progress.root = Some(peer);
             progress.state = "running";

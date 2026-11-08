@@ -479,6 +479,41 @@ failed registration never fall back to an ordinary sidecar launch.
 
 This additive path is available to coordinators; default Desktop/headless launch
 is unchanged. It does not adopt unrelated applications or other process families.
-Durable owner registration, successor startup/recovery and all-resource idle
-handoff remain separate prerequisites. Other platforms refuse this mode. See
-[the execution-fence ADR](../../adr/windows-execution-fence.md).
+All-resource idle handoff and readiness remain separate prerequisites. Other
+platforms refuse this mode. See [the execution-fence ADR](../../adr/windows-execution-fence.md).
+
+## Durable owner registration and restricted recovery
+
+Schema v28 stores each opt-in owner's epoch, native profile identity, Host and
+coordinator identities before serving execution RPC. A protected current-SID
+`Global\\pi-execution-v1-{profile}-{owner}-{generation}` Job is registered before
+returning a startup ticket; the authenticated launcher identity commits before
+native assignment and acknowledgement. Registration rechecks both active-owner
+state and unfinished transfers. Job-name collisions refuse without modifying the
+existing Job. Discovery and journal use the same owner epoch.
+
+After taking the data-directory lock, ordinary startup performs read-only journal
+inspection before AppState, migration, maintenance, turn recovery or scheduling.
+Any unfinished transfer blocks ordinary startup, including metadata copied from
+another native profile. Unsupported schemas, downgraded journal metadata,
+identity mismatch, access denial, live owners or active containment fail closed.
+Without an unfinished transfer, every retained generation of the previous owner
+must pass native proof, even if its durable flag says closed. Retirement commits
+only after any requested discovery endpoint is acquired successfully.
+
+Explicit Windows `--owner-handoff` is an existing-profile-only restricted mode.
+It accepts bounded private stdio status/claim/recover frames, captures the current
+Host and parent identity natively, and never opens AppState. Claim validates the
+reserved epoch, capability hash and exact executable SHA-256/schema/protocol;
+source retirement, target identity, phase and receipt commit atomically. Recover
+proves the source and any previously claimed target plus retained generations
+ended, then atomically retires them and rotates the reserved target/capability.
+It never adopts or terminates a process by a persisted PID or Job name.
+
+The restricted mode holds the OS lock until exit. Its operations do not publish
+`ready`, admit execution, replay turns/tools or change permission modes. A receipt
+is a historical operation result, not execution authorization. Complete idle
+inventory, source prepare/cancel/fencing, successor readiness and client
+reattachment remain the next integration slice. Default app launch is unchanged.
+The [private transport contract](06-host-rpc-protocol.md#restricted-owner-handoff-bootstrap-windows)
+defines framing and timeout behavior.

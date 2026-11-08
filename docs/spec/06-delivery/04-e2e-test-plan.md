@@ -19832,3 +19832,39 @@ session data is used.
   durable successor recovery, other native process family or non-Windows claim.
 - **Specs:** [Process model](../03-runtime/07-process-model.md),
   [execution-fence ADR](../../adr/windows-execution-fence.md).
+
+### E2E-HOST-durable-owner-handoff-recovery
+
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-owner-handoff.mjs`
+  with `PI_SCRATCH_DIR` on Windows and the provisioned Node `node:sqlite` runtime.
+- **Steps:** Start an opt-in Host and contained fixture; the fixture reads the
+  committed owner/generation/root before creating its marker or detached child.
+  Inject durable `prepared`, `source_fencing`, `source_fenced`, and
+  `release_pending` states in temporary profiles, then crash the source. Observe
+  original process handles, attempt ordinary startup, explicitly recover and
+  claim, repeat the same request, race a second target, then crash after claim
+  and rotate recovery again. Exercise unsupported metadata, stale requests,
+  unknown fields, live/reused native identities and malformed/truncated frames.
+  Also crash before any transfer prepare, leave a response reader blocked, and
+  terminate the restricted coordinator while its Host is waiting for input.
+- **Expected:** Exactly one directory owner; ordinary startup refuses before
+  maintenance or running-turn recovery. Native closure is independently proven;
+  target identity, source retirement and receipt commit atomically. Exact request
+  replay returns its original result; old capabilities cannot claim after
+  recovery rotation. Failures leave journal/turn state unchanged. Truncated input
+  and blocked output time out, cancel I/O and release the lock without a global
+  buffered-stdout exit flush. Coordinator death closes the original restricted
+  Host. Pre-prepare crashes still require native proof before ordinary restart.
+  All direct fixtures close; descendants use original-handle observations.
+- **Lower-level coverage:** Populated v27 migration and backup/reopen; failed
+  migration rollback; phase/revision/request conflicts; cancelled-vs-fencing CAS;
+  claim rollback and concurrent claim; pending-root admission closure; retained
+  paginated history; no early writes on proof failure; unsupported/corrupt
+  schemas; exact creation identity with an exited process handle retained.
+- **Boundary:** Phase injection tests the production recovery/bootstrap path;
+  it does not qualify source idle orchestration, `ready`, client reattachment,
+  live user profiles, services, other platforms or minimum-hardware capacity.
+- **Specs:** [Storage](../03-runtime/04-data-storage.md),
+  [process model](../03-runtime/07-process-model.md),
+  [private transport](../03-runtime/06-host-rpc-protocol.md),
+  [idle handoff](../../project/ai-command-center-idle-handoff.md).

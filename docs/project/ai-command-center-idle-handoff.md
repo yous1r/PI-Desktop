@@ -147,10 +147,10 @@ group alone is not asserted to contain arbitrary detached descendants.
 
 ## Rust-owned journal and transitions
 
-Store the transfer journal in a dedicated Rust repository and assign a schema
-version only when the migration is implemented. Preserve existing profiles and
-transcripts. Require one active transfer per profile, transactional revision CAS,
-and unique transfer/request identities. Do not keep a second JavaScript journal.
+Schema v28 stores the transfer journal in a dedicated Rust repository. Preserve
+existing profiles and transcripts with the additive migration and v27 backup.
+Require one active transfer per profile, transactional revision CAS and unique
+transfer/request identities. Do not keep a second JavaScript journal.
 The user has selected no automatic deletion of terminal or unresolved control
 receipts and transfer journals in the first release. Keep hot caches bounded and
 durable reads paginated. Exhausting a storage budget must not silently lose a
@@ -266,6 +266,9 @@ handles anchor creation identity; the current Host lifetime scopes the ticket.
 Default app launch remains unchanged until durable startup and the complete idle
 inventory are integrated. See [the execution-fence decision](../adr/windows-execution-fence.md).
 
-This process-local generation does not yet implement the persisted owner epoch,
-containment recovery identity or pre-AppState startup guard specified above.
-Those remain mandatory in S03b-3 before enabling any transfer operation.
+S03b-3 now has candidate durable owner/containment registration, a pre-AppState
+ordinary-startup guard and explicit restricted claim/recover. Named Jobs retain
+the native recovery identity. Source prepare/phase orchestration remains test-only
+until S03b-4 supplies complete idle inventory; restricted recovery never declares
+readiness or admits execution. Current validation and remaining gates are tracked
+in the [remaining-work register](ai-command-center-remaining-work.md).

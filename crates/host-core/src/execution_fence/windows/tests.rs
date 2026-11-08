@@ -2,7 +2,11 @@ use super::*;
 
 #[tokio::test]
 async fn pending_registration_is_not_confirmed_until_cancelled() {
-    let mut registry = Registry::start().unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    drop(crate::db::Database::open_in_dir(directory.path()).unwrap());
+    let mut registry = Registry::start(directory.path()).unwrap();
+    assert!(registry.prepare().is_err());
+    registry.bind_journal(directory.path()).unwrap();
     let ticket = registry.prepare().unwrap();
     let lease = registry.lease(&ticket.generation).unwrap();
     let pending = lease.status().unwrap();
@@ -49,8 +53,13 @@ fn native_job_and_coordinator_have_explicit_live_identity() {
     let coordinator = Coordinator::capture(&identity).unwrap();
     assert!(!native::exited(coordinator.handle.as_raw_handle()).unwrap());
     assert!(coordinator.identity.created_at < identity.created_at);
-    let job = Job::create().unwrap();
+    let name = format!("Global\\pi-execution-test-{}", uuid::Uuid::new_v4());
+    let job = Job::create(&name, &identity.sid).unwrap();
+    assert!(Job::create(&name, &identity.sid).is_err());
+    assert_eq!(Job::recorded_active(&name).unwrap(), Some(0));
     assert_eq!(job.active().unwrap(), 0);
     job.terminate().unwrap();
     assert_eq!(job.active().unwrap(), 0);
+    drop(job);
+    assert_eq!(Job::recorded_active(&name).unwrap(), None);
 }

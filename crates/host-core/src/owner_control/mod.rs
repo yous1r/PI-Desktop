@@ -9,6 +9,11 @@ mod windows;
 use anyhow::{bail, Result};
 use std::path::Path;
 
+#[cfg(windows)]
+pub(crate) fn profile_id(directory: &Path) -> Result<String> {
+    Ok(windows::address(directory, &identity::Identity::current()?)?.1)
+}
+
 pub fn validate_cli() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|arg| arg == "--owner-status") {
@@ -60,19 +65,26 @@ pub struct Control {
 }
 impl Control {
     /// Claim the discovery endpoint after the data lock, before AppState/recovery.
-    pub fn start(directory: &Path) -> Result<Self> {
+    pub fn start(directory: &Path, epoch: Option<&str>) -> Result<Self> {
         let enabled = std::env::args().any(|arg| arg == "--owner-control");
         #[cfg(windows)]
         {
             Ok(Self {
                 native: enabled
-                    .then(|| windows::Control::start(directory))
+                    .then(|| {
+                        windows::Control::start_with_epoch(
+                            directory,
+                            epoch
+                                .map(str::to_owned)
+                                .unwrap_or_else(|| uuid::Uuid::new_v4().to_string()),
+                        )
+                    })
                     .transpose()?,
             })
         }
         #[cfg(not(windows))]
         {
-            let _ = directory;
+            let _ = (directory, epoch);
             if enabled {
                 bail!("OWNER_CONTROL_UNSUPPORTED");
             }

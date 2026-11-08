@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Add durable Windows execution-owner registration and guarded recovery in
+  schema v28. Unfinished transfers block ordinary startup; explicit private
+  claim/recover validates native closure and keeps retained idempotent receipts.
+  Full Desktop-to-background idle handoff is still under development.
 - Add opt-in Windows native sidecar containment. The Rust Host admits the
   runtime before Node starts and can confirm closure of its owned process
   family. Default app startup is unchanged; durable handoff remains pending.

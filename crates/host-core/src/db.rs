@@ -7,7 +7,7 @@ pub(crate) use serde_json::Value;
 pub(crate) use std::path::{Path, PathBuf};
 
 /// Current SQLite schema version.
-pub const SCHEMA_VERSION: i64 = 29;
+pub const SCHEMA_VERSION: i64 = 30;
 
 /// Absolute approval deadline for a newly submitted Plan or Goal proposal.
 pub const PLAN_APPROVAL_TIMEOUT_MS: i64 = 30 * 60 * 1000;
@@ -19,6 +19,7 @@ mod migrations;
 mod mode_runs_migration;
 mod model;
 mod model_discovery_migration;
+pub(crate) mod owner_handoff_migration;
 mod plugin_providers_migration;
 mod project_groups;
 mod repositories;
@@ -163,3 +164,6 @@ pub fn ms_to_ts(ms: i64) -> String {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod owner_handoff_tests;

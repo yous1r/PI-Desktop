@@ -1179,3 +1179,40 @@ uses the `pi-desktop/modes/*` IPC channels and never writes SQLite directly.
 pending Bash gate command. The Host records the exit code; a model-supplied
 verdict cannot pass a command gate. Stage completion may write only declared
 artifacts within the workspace. Staged runs reject remote workspaces.
+
+## Windows execution containment and restricted recovery addendum
+
+The authoritative [English contract](/spec/03-runtime/06-host-rpc-protocol)
+defines these additive private operations. Normal Host RPC remains version 11;
+execution containment requires `--execution-fence` and the normal handshake.
+
+| Method | Strict parameters | Result |
+|---|---|---|
+| `executionFence.prepare` | `{}` | Version-1 ticket: `generation`, `address`, `capability`, `ownerPid`, `ownerCreatedAt` |
+| `executionFence.status` | `{generation}` | Native containment status |
+| `executionFence.stop` | `{generation, timeoutMs}`; integer 0..2000 | Bounded closure observation |
+
+Rust persists the owner/generation/root before admitting Node startup. Stop
+requires task completion, empty native containment and original root exit;
+timeouts remain unconfirmed. Exact FILETIME values stay decimal strings.
+No transmitted request or lost acknowledgement automatically replays execution.
+
+`--owner-handoff` is a separate existing-profile-only pre-AppState mode holding
+the directory lock. Its private stdio frames contain a u32 little-endian length
+and 1..16,384 UTF-8 JSON bytes. Request/response budgets are 30/5 seconds, with
+cancellable Windows I/O and a 2-second cleanup bound. Unknown fields refuse.
+
+| Operation | Fields in addition to `operation` |
+|---|---|
+| `status` | `version: 1`, `transfer_id` |
+| `claim` | `version: 1`, `request_id`, `transfer_id`, `source_epoch`, `expected_revision`, `target_epoch`, `capability` |
+| `recover` | Same fields as claim; target epoch and capability must rotate |
+
+Claim validates native user/profile, the reserved capability and exact executable
+hash/schema/protocol. Recovery independently proves source and prior target
+containment ended, then rotates the reservation. Ownership/phase/revision and
+idempotency receipt commit atomically. Raw capabilities never enter durable
+state, status or logs. Responses contain `{version: 1, record}` or
+`{version: 1, error: {code}}`. This mode cannot prepare source transfer, publish
+readiness, admit work or open ordinary AppState. Full idle orchestration and
+client reattachment remain separate integration work.

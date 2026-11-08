@@ -1,4 +1,4 @@
-# 04. Data Storage (Schema v27)
+# 04. Data Storage (Schema v28)
 
 
 ### Lossless tool-image storage (#1868)
@@ -1624,7 +1624,7 @@ truncating at a guessed position.
 - JSON columns are read blind on hot paths (shipped to the renderer as-is);
   anything filtered or summed is a promoted column by rule.
 
-## 7. Versioning, v7 reset, and v8-to-v27 migration
+## 7. Versioning, v7 reset, and v8-to-v28 migration
 
 - `PRAGMA user_version` stays the schema authority; future structural changes
   add ordered Rust migration fns again, each in one transaction, with a
@@ -1635,7 +1635,7 @@ truncating at a guessed position.
   Sessions, providers, and settings from the old file are not carried over;
   the archive remains for manual recovery. All pre-v7 migration code
   (v1 `settings.sqlite` import, v2→v6 chain) is deleted.
-- Fresh installs run the full v27 DDL directly.
+- Fresh installs run the full v28 DDL directly.
 - **Schema v7 first reaches v8, then uses the guarded path.** The v7→v8
   migration is followed by the same guarded v8→v15 migration; schema-v9 and
   schema-v10 databases take the same guarded path and receive an exact readable
@@ -1712,6 +1712,21 @@ truncating at a guessed position.
   session `/fast` switch, defaulting to `0` for every existing session. Forks
   copy it; scheduled runs and delegated workers start at `0`. The migration
   keeps a v26 backup.
+- **Schema v28 is additive.** It adds independent `execution_owners`,
+  `execution_generations`, `owner_handoffs` and `owner_handoff_receipts` tables.
+  A readable v27 backup precedes the transaction; existing sessions, settings,
+  turns and transcript files remain intact. Conflicting journal objects fail
+  validation and roll back without changing the schema version or old data.
+  Fresh creation and upgrades validate journal table/index/trigger definitions.
+  Owner/profile, generation/owner and unfinished-transfer/profile uniqueness
+  protect admission; `(principal, request_id)` protects idempotent receipts.
+  Journal transitions use existing-file-only connections, `synchronous=FULL`
+  and immediate transactions. Phase, revision, ownership change and receipt
+  commit together. FILETIME stays an exact decimal string; revisions are
+  integers in 1..9,007,199,254,740,991; strict records are at most 16 KiB.
+  No automatic deletion or session/task cascade removes these records.
+  Retained generation reads use 100-row pages. See the
+  [guarded bootstrap contract](07-process-model.md#durable-owner-registration-and-restricted-recovery).
 - **Schema v14 is additive.** It adds nullable `sessions.deleted_at`, the
   partial deletion index, and `session_import_origins`. Existing sessions stay
   active and have no origin rows. The migration runs in the same guarded
@@ -1740,6 +1755,10 @@ destructive migration or a second settings store.
 - audit_log: prune rows older than 90 days (configurable) at boot;
   `incremental_vacuum` afterwards.
 - task_runs: keep last 100 per task (prune with the same boot pass).
+- execution_owners / execution_generations / owner_handoffs /
+  owner_handoff_receipts: no automatic deletion, including terminal records.
+  Session/task deletion preserves idempotency identities. A future explicit
+  purge requires a separate retention and compatibility design.
 - notifications: enforce the newest-200 global cap after every insert and at
   boot as a defensive repair; rows otherwise survive restart until cleared,
   pruned, or cascade-deleted with their session.

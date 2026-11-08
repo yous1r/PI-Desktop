@@ -1,6 +1,6 @@
 //! Opt-in native execution containment. Durable handoff is a separate layer.
 #[cfg(windows)]
-mod native;
+pub(crate) mod native;
 #[cfg(windows)]
 mod runner;
 #[cfg(windows)]
@@ -18,18 +18,39 @@ use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-pub fn start() -> Result<Option<Registry>> {
+pub fn start(directory: &std::path::Path) -> Result<Option<Registry>> {
     if !std::env::args().any(|arg| arg == "--execution-fence") {
         return Ok(None);
     }
     #[cfg(windows)]
     {
-        Ok(Some(Registry::start()?))
+        Ok(Some(Registry::start(directory)?))
     }
     #[cfg(not(windows))]
     {
+        let _ = directory;
         bail!("EXECUTION_FENCE_UNSUPPORTED")
     }
+}
+pub fn owner_epoch(registry: &Option<Registry>) -> Option<&str> {
+    #[cfg(windows)]
+    {
+        registry.as_ref().map(Registry::epoch)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = registry;
+        None
+    }
+}
+pub fn bind_journal(registry: &mut Option<Registry>, directory: &std::path::Path) -> Result<()> {
+    #[cfg(windows)]
+    if let Some(registry) = registry {
+        registry.bind_journal(directory)?;
+    }
+    #[cfg(not(windows))]
+    let _ = (registry, directory);
+    Ok(())
 }
 pub async fn run_cli() -> Result<Option<i32>> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();

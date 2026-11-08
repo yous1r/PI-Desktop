@@ -148,6 +148,7 @@ impl Database {
                 tx.execute_batch(crate::session_collaboration::SCHEMA)?;
                 tx.execute_batch(WORKTREE_DDL)?;
                 tx.execute_batch(super::MODE_RUNS_SCHEMA)?;
+                tx.execute_batch(super::owner_handoff_migration::DDL)?;
                 tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
                 tx.commit()?;
             }
@@ -219,6 +220,7 @@ impl Database {
             }
             27 => {}
             28 => {}
+            29 => {}
             legacy @ 1..=6 => {
                 let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
                 drop(conn);
@@ -281,11 +283,16 @@ impl Database {
         }
         if migrated_version == 26 {
             migrate_v26_to_v27(&conn, path)?;
+            migrated_version = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
         }
-        let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        if version == 27 || version == 28 {
+        if migrated_version == 27 || migrated_version == 28 {
             super::mode_runs_migration::migrate(&conn, path)?;
+            migrated_version = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
         }
+        if migrated_version == 29 {
+            super::owner_handoff_migration::migrate(&conn, path)?;
+        }
+        super::owner_handoff_migration::validate(&conn)?;
         let db = Self { conn, data_dir };
         db.boot_maintenance()?;
         crate::session_collaboration::recover(&db)?;

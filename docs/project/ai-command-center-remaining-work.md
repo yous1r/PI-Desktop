@@ -433,3 +433,53 @@ The [old-binary failure](ai-command-center-p0-evidence/execution-fence-before.js
 retains the missing-method baseline and confirmed cleanup. No source changed
 during either committed-candidate run. Proceed to S03b-3 durable owner/journal
 migration, CAS and guarded bootstrap; the broader product gates remain open.
+
+## S03b-3 durable journal and restricted recovery candidate
+
+Schema v28 now adds retained owner/generation/transfer/receipt tables with a v27
+backup and transactional migration. Named current-user Jobs and native owner/root
+identities commit before runtime admission. Ordinary startup performs read-only
+inspection before AppState; unfinished transfers, unknown schemas and unproven
+native closure block it. Retirement waits until discovery endpoint acquisition.
+
+The explicit existing-profile-only Windows `--owner-handoff` mode implements
+private status/claim/recover. Claim atomically retires the source and records the
+native target identity with its phase/revision/receipt. Recovery proves source
+and any prior claimed target ended before rotating the target/capability. It does
+not open AppState, publish readiness or admit execution. Source orchestration is
+test-only until P0-4 supplies complete idle inventory and admission closure.
+
+Two repository regressions first failed (pending root admitted after prepare;
+generic phase advancement without target identity), then passed after atomic
+admission/claim corrections. A real crash run exposed Windows image queries
+failing on an exited process whose handle remains retained. A native regression
+reproduced this before the fix: exact creation FILETIME plus signalled original
+handle now proves exit; live/mismatched/inaccessible identities still refuse.
+The fixed targeted Rust set passes 72 tests, including 40 existing database tests.
+Strict all-target Clippy, Rust formatting, Biome lint over 187 files and the
+630-page documentation check pass. No new full Rust suite is claimed.
+
+The first restricted process run failed conservatively and cleaned all 7 direct
+fixtures. The next dirty candidate passes 8 checks with all 50 direct fixtures
+closed, original-handle observations, each source phase and target-claimed crash,
+no early turn recovery, capability rotation and truncated-input cancellation.
+Expanded output-backpressure/coordinator cleanup and clean committed-candidate
+acceptance are still pending; P0-3 is not yet accepted.
+
+The broader Biome `check` invocation also applies import organization and reports
+95 errors; the configured `biome lint` gate passes without edits to unrelated
+files. Locale verification still reports pre-existing structural mismatches in
+`03-runtime/08-error-codes.md` and `06-delivery/04-e2e-test-plan.md`; the RPC
+containment/recovery addendum is synchronized. Local base and agent-policy checks
+pass. P0-4, P1-P4 and minimum-hardware/external-device acceptance remain open.
+
+The expanded precommit run now passes all 11 checks with 58 direct fixture
+processes closed, plus original-handle descendant observations. It also covers
+crash before transfer prepare, output backpressure and restricted coordinator
+death. An earlier expanded run failed at blocked output and cleaned 51 fixtures;
+a focused diagnostic reproduced `HANDOFF_IO_TIMEOUT` followed by an unbounded
+global stdout flush on process exit. Independent owned pipe handles remove that
+flush; the same probe exits in 8.652 seconds and confirms cleanup. The final
+targeted Rust run remains 72/72 after this correction. Precommit binary SHA-256:
+`7e3362d0fee8049659521a01ae3441b12ebc89c2ae27512b9ba654b6e5a45ef8`.
+Clean committed-candidate acceptance is the remaining P0-3 gate.

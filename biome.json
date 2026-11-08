@@ -18,6 +18,7 @@
 			"packages/shared/src/execution-fence*.ts",
 			"packages/host-runtime/src/execution-fence*.ts",
 			"scripts/e2e-execution-fence.mjs",
+			"scripts/e2e-owner-handoff.mjs",
 			"packages/host-runtime/src/{host-process,host-write-admission,turn-persistence,turn-events,runtime-service}.ts",
 			"packages/host-runtime/src/{host-write-admission,turn-persistence,turn-events,runtime-service}.test.ts",
 			"packages/host-runtime/src/host-data-directory*.ts",

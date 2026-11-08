@@ -16,7 +16,7 @@ use windows_sys::Win32::Storage::FileSystem::{
 
 const EXCHANGE_TIMEOUT: Duration = Duration::from_secs(2);
 
-fn address(directory: &Path, identity: &Identity) -> Result<(String, String)> {
+pub(super) fn address(directory: &Path, identity: &Identity) -> Result<(String, String)> {
     let directory = std::fs::OpenOptions::new()
         .read(true)
         .custom_flags(FILE_FLAG_BACKUP_SEMANTICS)
@@ -64,12 +64,16 @@ pub struct Control {
     pub task: tokio::task::JoinHandle<Result<()>>,
 }
 impl Control {
+    #[cfg(test)]
     pub fn start(directory: &Path) -> Result<Self> {
+        Self::start_with_epoch(directory, uuid::Uuid::new_v4().to_string())
+    }
+    pub fn start_with_epoch(directory: &Path, owner_epoch: String) -> Result<Self> {
         let identity = Identity::current()?;
         let (name, profile_id) = address(directory, &identity)?;
         let first = listener(&name, &identity, true)?;
         let owner = OwnerStatus {
-            owner_epoch: uuid::Uuid::new_v4().to_string(),
+            owner_epoch,
             profile_id,
             process_id: std::process::id(),
             process_created_at: identity.created_at.to_string(),

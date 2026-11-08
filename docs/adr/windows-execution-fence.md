@@ -1,7 +1,7 @@
 # ADR: Rust-owned Windows sidecar execution fence
 
-- Status: Implemented candidate; Windows native and real-process validation passed
-- Scope: S03b-2, prerequisite to durable idle handoff
+- Status: S03b-2 accepted on Windows; S03b-3 durable recovery candidate under validation
+- Scope: Native execution containment and durable owner recovery prerequisites
 - Context: [Idle handoff](../project/ai-command-center-idle-handoff.md)
 
 ## Context
@@ -25,8 +25,11 @@ Job Object with kill-on-close and no breakaway permission. Only one pending or
 live generation is admitted. The five-second private registration pipe has a
 current-user protected DACL, first-instance ownership, remote-client rejection,
 strict bounded frames and a one-use capability. It is bound to the exact live
-Host PID/creation identity and thus its data-directory owner lifetime. This
-process-local binding is not the durable profile/owner journal required by S03b-3.
+Host PID/creation identity and thus its data-directory owner lifetime. Schema v28
+extends this with a protected named Job, durable profile/owner/generation records,
+and a pre-AppState recovery guard. Owner registration precedes execution RPC;
+generation registration precedes ticket return; root identity commits before
+assignment and acknowledgement. Collision with an existing Job refuses.
 
 The coordinator starts the same Rust executable in stateless internal-runner
 mode. Both pipe peers authenticate their kernel process identity and canonical
@@ -68,8 +71,27 @@ binary path. Same-user executable replacement/injection and privileged actors
 remain outside the identity boundary. Other process families (plugin/MCP owners,
 terminals and external applications) are not implicitly adopted. Full handoff
 must inventory and fence every application-owned resource, and must durably prove
-previous execution closure before successor recovery. This slice does not install
-a service, alter persisted state or claim macOS/Linux support.
+previous execution closure before successor recovery. The v28 migration is
+additive and retains journals/receipts independently of session deletion. No
+service installation or macOS/Linux native recovery support is included.
+
+Across Host lifetimes, recovery opens the recorded Job for query only and checks
+every retained generation. Process reopening requires query/synchronize access
+and the exact recorded creation FILETIME; access errors or PID reuse refuse.
+For an already signalled process handle, creation identity proves original exit:
+Windows may no longer provide the exited image path. Live handles still require
+SID/image validation and are refused as alive. This never terminates or adopts
+an arbitrary process. A durable `closed` flag is not native proof.
+
+An explicit existing-profile-only `--owner-handoff` mode provides private framed
+status/claim/recover before AppState. It holds the directory lock, validates the
+target executable hash/schema/protocol and current native user/profile, proves
+old owners ended, then commits ownership, revision/phase and receipt atomically.
+Recovery rotates the target reservation and capability hash, retaining earlier
+identities and receipts. Named Jobs permit conservative cross-lifetime queries;
+they add collision/ACL failure modes, which remain refusals rather than fallback.
+The restricted mode cannot publish readiness or start execution. Full idle
+inventory and source orchestration remain required before enabling app transfer.
 
 ## Validation
 

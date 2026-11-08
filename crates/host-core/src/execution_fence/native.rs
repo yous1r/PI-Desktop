@@ -1,17 +1,18 @@
 //! Native process identities and non-inheritable, kill-on-close containment.
-use crate::owner_control::identity::Identity;
+use crate::owner_control::identity::{Identity, SecurityDescriptor};
 use anyhow::{bail, Context, Result};
 use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
 use windows_sys::Win32::Foundation::{
-    FILETIME, HANDLE, INVALID_HANDLE_VALUE, WAIT_OBJECT_0, WAIT_TIMEOUT,
+    GetLastError, ERROR_ALREADY_EXISTS, ERROR_FILE_NOT_FOUND, FILETIME, HANDLE,
+    INVALID_HANDLE_VALUE, WAIT_OBJECT_0, WAIT_TIMEOUT,
 };
 use windows_sys::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
 use windows_sys::Win32::System::JobObjects::{
     AssignProcessToJobObject, CreateJobObjectW, JobObjectBasicAccountingInformation,
-    JobObjectExtendedLimitInformation, QueryInformationJobObject, SetInformationJobObject,
-    TerminateJobObject, JOBOBJECT_BASIC_ACCOUNTING_INFORMATION,
+    JobObjectExtendedLimitInformation, OpenJobObjectW, QueryInformationJobObject,
+    SetInformationJobObject, TerminateJobObject, JOBOBJECT_BASIC_ACCOUNTING_INFORMATION,
     JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
 };
 use windows_sys::Win32::System::SystemInformation::GetSystemTimePreciseAsFileTime;
@@ -83,12 +84,19 @@ impl Coordinator {
 }
 pub struct Job(OwnedHandle);
 impl Job {
-    pub fn create() -> Result<Self> {
-        let raw = unsafe { CreateJobObjectW(std::ptr::null(), std::ptr::null()) };
+    pub fn create(name: &str, sid: &str) -> Result<Self> {
+        let security = SecurityDescriptor::for_user(sid)?;
+        let attributes = security.attributes();
+        let name: Vec<u16> = name.encode_utf16().chain(Some(0)).collect();
+        let raw = unsafe { CreateJobObjectW(&attributes, name.as_ptr()) };
+        let already_exists = unsafe { GetLastError() } == ERROR_ALREADY_EXISTS;
         if raw.is_null() {
             return Err(std::io::Error::last_os_error()).context("EXECUTION_FENCE_JOB_UNAVAILABLE");
         }
         let job = Self(unsafe { OwnedHandle::from_raw_handle(raw) });
+        if already_exists {
+            bail!("EXECUTION_FENCE_JOB_COLLISION");
+        }
         let mut limits: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = unsafe { std::mem::zeroed() };
         // No BREAKAWAY or SILENT_BREAKAWAY; no handle is duplicated to a child.
         limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
@@ -104,6 +112,19 @@ impl Job {
             return Err(std::io::Error::last_os_error()).context("EXECUTION_FENCE_JOB_UNAVAILABLE");
         }
         Ok(job)
+    }
+    pub fn recorded_active(name: &str) -> Result<Option<u32>> {
+        let name: Vec<u16> = name.encode_utf16().chain(Some(0)).collect();
+        // JOB_OBJECT_QUERY only. Recovery never adopts or terminates by name.
+        let raw = unsafe { OpenJobObjectW(0x0004, 0, name.as_ptr()) };
+        if raw.is_null() {
+            if unsafe { GetLastError() } == ERROR_FILE_NOT_FOUND {
+                return Ok(None);
+            }
+            return Err(std::io::Error::last_os_error()).context("HANDOFF_CONTAINMENT_UNAVAILABLE");
+        }
+        let job = Self(unsafe { OwnedHandle::from_raw_handle(raw) });
+        Ok(Some(job.active()?))
     }
     pub fn assign(&self, process: HANDLE) -> Result<()> {
         if unsafe { AssignProcessToJobObject(self.0.as_raw_handle(), process) } == 0 {
