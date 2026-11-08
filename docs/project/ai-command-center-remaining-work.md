@@ -201,3 +201,12 @@ cleanup. Host build, formatting, Clippy (four unchanged warnings), script lint,
 documentation check and current-main ancestry check pass. A clean-commit RPC
 report is recorded separately after committing this fix. No full Rust rerun,
 Desktop UI, service installation, live profile or paid provider is involved.
+
+Clean committed Stop verification: `c33392f566f70ccc817e4a0ffa48113d377b6f65`,
+base `fd28eb89866ac513912ed109716e7120cf60f18c`, Windows, `dirty:false`.
+All four RPC checks pass and process cleanup is confirmed; retain the
+[candidate report](ai-command-center-p0-evidence/process-stop-after.json).
+Host binary SHA-256:
+`f8b25e417a3f5253f9c5e15aea13a7c82c8ab14027ee4a8a1c967efcee53b887`.
+The two lower V3 overview regions remain intentionally unassigned and
+non-interactive; later UI work must not invent functions for them.
