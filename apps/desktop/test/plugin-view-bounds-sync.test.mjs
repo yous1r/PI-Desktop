@@ -6,7 +6,6 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { resolveElectronBinary } from "../../../scripts/e2e/boot.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../..");
 const require = createRequire(join(root, "packages/agent-runtime/package.json"));
@@ -126,8 +125,10 @@ test(
         alias: {
           "@pi-desktop/i18n": join(root, "packages/i18n/src/index.ts"),
           "@pi-desktop/shared": join(root, "packages/shared/src/index.ts"),
-          react: join(root, "apps/desktop/node_modules/react"),
-          "react-dom": join(root, "apps/desktop/node_modules/react-dom"),
+          react: dirname(require.resolve("react/package.json")),
+          "react-dom": dirname(require.resolve("react-dom/package.json")),
+          i18next: dirname(require.resolve("i18next/package.json")),
+          "react-i18next": dirname(require.resolve("react-i18next/package.json")),
         },
         nodePaths: [join(root, "apps/desktop/node_modules")],
       });
@@ -143,7 +144,7 @@ const path = require("node:path");
 app.setPath("userData", path.join(__dirname, "profile"));
 app.whenReady().then(async () => {
   const window = new BrowserWindow({
-    show: false,
+    show: true,
     width: 800,
     height: 600,
     webPreferences: {
@@ -166,10 +167,13 @@ app.whenReady().then(async () => {
 `,
       );
 
-      const env = { ...process.env };
-      delete env.ELECTRON_RUN_AS_NODE;
+      const env = {};
+      for (const key of ["PATH", "Path", "SystemRoot", "WINDIR", "ComSpec", "PATHEXT", "DISPLAY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR"]) {
+        if (process.env[key] !== undefined) env[key] = process.env[key];
+      }
+      Object.assign(env, { HOME: temp, USERPROFILE: temp, TEMP: temp, TMP: temp, APPDATA: temp, LOCALAPPDATA: temp });
       const child = spawn(
-        resolveElectronBinary(root).electronBinary,
+        require("electron"),
         [join(temp, "main.cjs")],
         { env, stdio: ["ignore", "pipe", "pipe"] },
       );

@@ -1,3 +1,4 @@
+import { PluginSurfaceActivity, type PluginSurfaceOptions } from "./plugin-surface-activity";
 import type { LocalResourceGrant } from "./local-resource-grant";
 import type { WorkspaceExecutionContext } from "@pi-desktop/shared";
 import {
@@ -11,7 +12,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { getModuleDirectory } from "./module-path";
 import { parseAllowedExternalUrl } from "./safe-open-external";
-import { PanelSenders, pageGoneWithin } from "./plugin-panel-senders";
+import { PanelSenders } from "./plugin-panel-senders";
 import {
   PLUGIN_VIEW_LOCATION_EVENT,
   PLUGIN_VIEW_LOCATION_PARAM,
@@ -119,6 +120,7 @@ export function pluginViewKey(pluginId: string, viewId: string): string {
 
 export class PluginViewHost {
   private views = new Map<string, LiveView>();
+  private readonly activity: PluginSurfaceActivity;
   private readonly selected = new Map<string, string>();
   private readonly contexts = new Map<number, { context: WorkspaceExecutionContext; sessionId?: string; localResource?: LocalResourceGrant }>();
 
@@ -160,9 +162,13 @@ export class PluginViewHost {
    */
   private senders = new PanelSenders();
 
-  constructor(onBlockedRequest?: PluginPanelBlockedRequest) {
+  constructor(options: PluginSurfaceOptions, onBlockedRequest?: PluginPanelBlockedRequest) {
+    this.activity = new PluginSurfaceActivity(options);
     this.onBlockedRequest = onBlockedRequest;
   }
+
+  getHandoffActivity() { return this.activity.getHandoffActivity(); }
+  assertSenderCurrent(senderId: number): void { this.activity.assertSender(senderId); }
 
   /**
    * Fired when the visible plugin view changes. The work-panel browser guest
@@ -189,12 +195,14 @@ export class PluginViewHost {
    * preload channel `pi-plugin-panel-event:<event>`.
    */
   broadcast(event: string, payload: unknown, filter?: (pluginId: string) => boolean): void {
+    if (this.activity.isClosed()) return;
     const channel = `pi-plugin-panel-event:${event}`;
     for (const entry of this.views.values()) {
       if (filter && !filter(entry.pluginId)) continue;
       if (this.contexts.has(entry.view.webContents.id) && (event === "workspace:changed" || event === "session:activated")) continue;
       const wc = entry.view.webContents;
       if (wc.isDestroyed()) continue;
+      if (!this.activity.isCurrent(wc.id)) continue;
       try {
         wc.send(channel, payload);
       } catch {
@@ -204,6 +212,7 @@ export class PluginViewHost {
   }
 
   setWindow(window: BrowserWindow | null): void {
+    if (window) this.activity.assertOpen();
     if (this.window === window) return;
     this.detachVisible();
     this.unbindZoom();
@@ -217,6 +226,7 @@ export class PluginViewHost {
     const contents = this.window && !this.window.isDestroyed() ? this.window.webContents : null;
     if (!contents || contents.isDestroyed()) return;
     const onChange = () => {
+      if (this.activity.isClosed()) return;
       if (this.lastCssBounds) {
         this.bounds = scaleBoundsToDip(this.lastCssBounds, this.currentZoomFactor());
       }
@@ -270,19 +280,22 @@ export class PluginViewHost {
    * not discarded by navigation.
    */
   open(request: PluginViewOpenRequest): string {
+    const assertCurrent = this.activity.capture(request.pluginId);
+    assertCurrent();
     const publicKey = pluginViewKey(request.pluginId, request.viewId);
     const context = request.context;
     const key = context ? JSON.stringify([publicKey, context.authority, context.workspaceId, context.generation, request.sessionId, request.tabId]) : publicKey;
     this.selected.set(publicKey, key);
     const location = normalizeLocation(request.location);
     const existing = this.views.get(key);
-    if (existing) {
+    if (existing && !this.activity.isCurrent(existing.view.webContents.id)) void this.destroy(key);
+    if (existing && this.views.get(key) === existing) {
       if(context) this.contexts.set(existing.view.webContents.id,{context,sessionId:request.sessionId,...(request.localResource ? {localResource:request.localResource} : {})});
       existing.usedAt = ++this.clock;
       this.deliverLocation(existing, location);
       return existing.surfaceId;
     }
-    const view = this.createView(request);
+    const view = this.createView(request, assertCurrent);
     const entry: LiveView = {
       key,
       surfaceId: randomUUID(),
@@ -295,6 +308,7 @@ export class PluginViewHost {
       loaded: false,
     };
     this.views.set(key, entry);
+    this.selected.set(publicKey, key);
     // A docked view can call the bridge from its first script, so its identity is
     // registered before the document loads and released only when the page is
     // gone — never when the host merely drops the cached surface around it.
@@ -306,6 +320,7 @@ export class PluginViewHost {
       this.contexts.delete(senderId);
     });
     view.webContents.once("did-finish-load", () => {
+      if (this.views.get(key) !== entry) return;
       entry.loaded = true;
     });
     this.load(entry);
@@ -339,12 +354,9 @@ export class PluginViewHost {
   }
 
   private load(entry: LiveView): void {
-    void entry.view.webContents
-      .loadURL(viewEntryUrl(entry.htmlPath, entry.location))
-      .catch(() => {
-        // Load failures surface to the user as the tab's empty state; the view
-        // stays cached so a plugin reload can retry into the same slot.
-      });
+    this.activity.assertSender(entry.view.webContents.id);
+    void this.activity.track(() => entry.view.webContents.loadURL(viewEntryUrl(entry.htmlPath, entry.location)))
+      .catch(error => this.activity.report(error));
   }
 
   setBounds(bounds: PluginViewBounds): void {
@@ -439,8 +451,10 @@ export class PluginViewHost {
       if (this.visibleKey === key) this.detachVisible();
       return;
     }
+    this.activity.assertOpen();
     const entry = this.views.get(key);
     if (!entry) return;
+    this.activity.assertSender(entry.view.webContents.id);
     if (this.visibleKey && this.visibleKey !== key) this.detachVisible();
     entry.usedAt = ++this.clock;
     if (!this.window || this.window.isDestroyed()) return;
@@ -471,24 +485,23 @@ export class PluginViewHost {
    * it. Shutdown sequences this before that stop.
    */
   async dispose(): Promise<void> {
-    await Promise.allSettled(
-      [...this.views.values()].map(async (entry) => {
-        // Captured while the view is alive; `destroy` closes the page below.
-        const page = entry.view.webContents;
-        this.destroy(entry.key);
-        await pageGoneWithin(page);
-      }),
-    );
+    this.activity.seal();
+    this.unbindZoom();
+    await Promise.allSettled([...this.views.keys()].map(key => this.destroy(key)));
+    this.window = null;
   }
 
-  private destroy(key: string): void {
+  private destroy(key: string): Promise<void> {
     const entry = this.views.get(key);
-    if (!entry) return;
+    if (!entry) return Promise.resolve();
     if (this.visibleKey === key) this.detachVisible();
     this.views.delete(key);
     const publicKey = pluginViewKey(entry.pluginId, entry.viewId);
     if (this.selected.get(publicKey) === key) this.selected.delete(publicKey);
-    if (!entry.view.webContents.isDestroyed()) entry.view.webContents.close();
+    const page = entry.view.webContents;
+    const closing = this.activity.closePage(page, () => { if (!page.isDestroyed()) page.close(); });
+    void closing.catch(error => this.activity.report(error));
+    return closing;
   }
 
   /**
@@ -549,7 +562,9 @@ export class PluginViewHost {
     }
   }
 
-  private createView(request: PluginViewOpenRequest): WebContentsView {
+  private createView(request: PluginViewOpenRequest, assertCurrent: () => void): WebContentsView {
+    assertCurrent();
+    this.activity.nativeAttempt();
     const ses = session.fromPartition(pluginSessionPartition(request.pluginId), {
       cache: true,
     });
@@ -560,6 +575,8 @@ export class PluginViewHost {
       onBlockedRequest: this.onBlockedRequest,
     });
 
+    assertCurrent();
+    this.activity.nativeAttempt();
     const view = new WebContentsView({
       webPreferences: {
         session: ses,
@@ -579,17 +596,22 @@ export class PluginViewHost {
       },
     });
     const wc = view.webContents;
+    this.activity.own(wc, assertCurrent);
     // A docked view gets exactly one web contents. `window.open` would mint a
     // chromeless window outside the egress policy applied above.
     wc.setWindowOpenHandler(({ url }) => {
       const allowed = parseAllowedExternalUrl(url);
-      if (allowed) void shell.openExternal(allowed);
+      const live = [...this.views.values()].some(entry => entry.view === view);
+      if (allowed && live && this.activity.isCurrent(wc.id)) {
+        void this.activity.track(async () => { this.activity.nativeAttempt(); await shell.openExternal(allowed); })
+          .catch(error => this.activity.report(error));
+      }
       return { action: "deny" };
     });
     // A page renders at 100% until the host can touch it, so set the factor now
     // and again on each fresh document: the first paint is already sized.
     this.applyZoom(wc, this.viewZoom());
-    wc.on("dom-ready", () => this.applyZoom(wc, this.viewZoom()));
+    wc.on("dom-ready", () => { if (this.activity.isCurrent(wc.id)) this.applyZoom(wc, this.viewZoom()); });
     return view;
   }
 }

@@ -162,7 +162,7 @@ test("panel windows and docked views bind bridge identity to the page", () => {
   );
   assert.match(
     reuse,
-    /await ensureOsMicrophone\(request\.allowMicrophone\);[\s\S]*if \(!existing\.isDestroyed\(\)\) \{/,
+    /await ensureOsMicrophone\(request\.allowMicrophone, [^\n]+\);[\s\S]*if \(!existing\.isDestroyed\(\)\) \{/,
   );
 
   // `close` must not unregister a page it is closing: the calls that page has
@@ -183,7 +183,7 @@ test("panel windows and docked views bind bridge identity to the page", () => {
 
   assert.match(
     viewHostSource,
-    /import \{ PanelSenders, pageGoneWithin \} from "\.\/plugin-panel-senders"/,
+    /import \{ PanelSenders \} from "\.\/plugin-panel-senders"/,
   );
   assert.match(viewHostSource, /this\.senders\.register\(senderId, request\.pluginId\)/);
   assert.match(viewHostSource, /this\.senders\.release\(senderId\)/);
@@ -366,7 +366,7 @@ test("the open path races the page load against that budget (#998)", () => {
     panelHostSource.indexOf("async close(pluginId"),
   );
   assert.ok(open.length > 0);
-  assert.match(open, /await panelReadyWithin\(\s*win\.loadURL\(/);
+  assert.match(open, /await panelReadyWithin\(\s*this\.activity\.track\(\(\) => win\.loadURL\(/);
   // The timeout error surfaces through the open path's own `catch`, which
   // destroys the hidden window before the rejection reaches the click.
   assert.match(

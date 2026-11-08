@@ -314,7 +314,7 @@ test("docked views follow the app's type scale and the window zoom", () => {
   assert.match(viewHostSource, /wc\.setZoomFactor\(zoom\)/);
   // Every fresh document re-applies it, so a reload or a navigation cannot
   // leave a plugin page at its author size.
-  assert.match(viewHostSource, /wc\.on\("dom-ready", \(\) => this\.applyZoom\(wc, this\.viewZoom\(\)\)\)/);
+  assert.match(viewHostSource, /wc\.on\("dom-ready", \(\) => \{ if \(this\.activity\.isCurrent\(wc\.id\)\) this\.applyZoom\(wc, this\.viewZoom\(\)\); \}\)/);
   // The browser guest is placed from chrome CSS pixels, so the surface carries
   // the factor the chrome is painting at.
   assert.match(viewHostSource, /scale: this\.viewZoom\(\)/);

@@ -7,8 +7,9 @@ const { PluginViewHost } = await import("../electron/main/plugin-view-host.ts");
 const { pages } = await import("./helpers/plugin-surface-electron.mjs");
 const context = (id, generation = 1) => ({ workspaceId:id, projectId:id, authority:{kind:"remote",hostKey:"host"}, roots:[{path:`/work/${id}`,name:id,primary:true}], platform:"linux", connectionState:"connected", generation });
 const request = (id, sessionId = id, generation = 1) => ({pluginId:"test.plugin",viewId:"files",htmlPath:"C:/fixtures/view.html",locale:"en",theme:"light",context:context(id,generation),sessionId});
+const options = { isAdmissionClosed: () => false, captureOwner: () => () => {}, onError: error => { throw error; } };
 test("retained workspace views keep session ownership and late hide/close cannot affect another surface", async () => {
-  const host = new PluginViewHost();
+  const host = new PluginViewHost(options);
   const contents = Object.assign(new EventEmitter(), {isDestroyed:()=>false,getZoomFactor:()=>1});
   const children = [];
   host.setWindow({isDestroyed:()=>false,webContents:contents,contentView:{children,addChildView:view=>children.push(view),removeChildView:view=>children.splice(children.indexOf(view),1)}});
@@ -40,7 +41,7 @@ test("retained workspace views keep session ownership and late hide/close cannot
   assert.equal(host.contextForSender(pageB.id),undefined);
 });
 test("legacy desktop views retain the public view key", async () => {
-  const host = new PluginViewHost();
+  const host = new PluginViewHost(options);
   const input = request("desktop"); delete input.context;
   const id = host.open(input);
   assert.equal(host.has("test.plugin","files"),true);

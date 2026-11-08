@@ -1226,3 +1226,65 @@ the ten matching committed-source SSH fixture failures and two corrected local
 implementation regressions. The focused input list is not a complete dependency
 manifest. This socket/workspace-resource slice is accepted within its stated
 scope; remaining external owners and full H1 composition continue.
+
+### H1 plugin panel, view and shortcut ownership checkpoint
+
+Panel/view hosts and global shortcut registries now share Desktop admission.
+The new `plugin-surface-activity.ts` owns original page/work activity separately
+from the live window/view cache. A panel captures the original installation before
+serialization and permission waits; closing retires earlier queued opens, and
+shutdown seals admission synchronously. Original load promises remain counted
+after the existing fifteen-second caller deadline destroys the hidden window.
+Panel bridge and view-popup operations retain their original completion. Retiring
+pages remain resources until their own destroyed events, even after cache removal.
+
+View reopening, visibility, external links and panel senders recheck the original
+installation. Renderer panel/view entrypoints capture it before workspace lookup
+and recheck immediately after the await. View disposal removes the original zoom
+listener. Temporary admission closure preserves completed load state, so cancelling
+a hold does not cause an unnecessary fresh navigation of a retained view.
+Shortcut callbacks require the exact current registration; original callback work
+remains counted after unregister. Actual service wiring returns the callback
+promise, supplies the immutable shared gate and combines surface/shortcut activity
+into the existing plugin runtime snapshot. Missing configured statistics refuse
+handoff. Native attempts retain saturated uncertainty after ordinary cleanup.
+
+Twenty-three new regression/boundary cases pass. The first run recorded eleven
+behavioral failures and five missing-interface baselines. Later tests reproduced
+two IPC continuation races and one implementation regression that discarded view
+readiness while admission was temporarily closed; all were corrected. Four older
+source-shape assertions were updated for tracked loads, permission checks and the
+shared close helper. The existing shortcut conflict/permission/limit, panel chrome,
+view location/scale/navigation/context, plugin lifecycle/callback and shutdown
+behavior remains covered by the relevant passing tests.
+
+The new isolated Electron path uses the actual sandbox preload, panel/view hosts,
+shared admission and a real Node plugin child. Both local HTML control paths return
+exact bridge results; hiding/reopening retains the view; a registry callback runs
+the plugin command; busy inspection refuses handoff; closed admission refuses new
+page/bridge work; original teardown destroys both pages and exits the child.
+Final runtime activity is zero operations/plugins/schedules with six unqualified
+resource attempts (panel two, view two, shortcut one, plugin child one).
+The status is `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`; the native key-registration
+edge is deterministic and does not inject real OS keys.
+
+The first process build failed before startup because the existing bundle helper
+did not map two MCP wildcard exports. Explicit current-source mappings fixed it.
+A second fixture used a top-level ESM ready await and never entered its probe;
+the parent deadline terminated its original Electron child and observed closure.
+Registering the ready continuation instead fixed startup. The existing renderer
+bounds fixture initially could not resolve hard-coded worktree dependency paths;
+it now references provisioned packages and uses an isolated visible window for
+animation frames. Its position-only bounds check passes. Failures remain evidence,
+not product regressions or successful process runs.
+
+Full Desktop source types, Biome 298 files, architecture, agent policy, current
+main ancestry, whitespace and 631 documentation-page checks pass. The initial
+successful Electron run was uncommitted; clean-candidate acceptance follows the
+implementation commit. No dependency installation, live Desktop/profile/provider,
+microphone, real SSH, Rust change, full transfer or hardware qualification occurred.
+
+Next: speech/voice, OAuth/user-MCP raw transport, extension-owner and remote Host
+ownership; then complete the nineteen-family inventory, bounded original-Rust
+status and fenced Desktop/coordinator composition. H2-H5 and the remaining approved
+command-center dependency plan continue after their prerequisites.

@@ -131,6 +131,7 @@ export function registerPluginUiIpc({
   handle(IPC.invoke.pluginOpenPanel, async (id: string) => {
     const loaded = plugins.getLoaded(id);
     if (!loaded) throw new Error("plugin not loaded");
+    const assertCurrent = plugins.captureSurfaceOwner(id);
     const manifest = loaded.manifest;
     if (!manifest.ui?.panel) throw new Error("plugin has no panel");
     if (!(loaded.permissions.has("ui.panel"))) {
@@ -138,8 +139,10 @@ export function registerPluginUiIpc({
     }
     const htmlPath = resolveInsidePluginRoot(loaded.path, manifest.ui.panel);
     if (!htmlPath) throw new Error("plugin panel must stay inside the plugin");
+    const context = await plugins.captureWorkspaceContext(id);
+    assertCurrent();
     await pluginPanels.open({
-      context: await plugins.captureWorkspaceContext(id),
+      context,
       pluginId: id,
       title: resolvePluginLocalizedString(manifest.ui.title, getUpdaterLocale(), manifest.name),
       locale: getUpdaterLocale(),
@@ -280,6 +283,7 @@ export function registerPluginUiIpc({
       const isBrowserView = pluginId === BROWSER_PLUGIN_ID && viewId === BROWSER_VIEW_ID;
       const loaded = plugins.getLoaded(pluginId);
       if (!loaded) throw new Error("plugin not loaded");
+      const assertCurrent = plugins.captureSurfaceOwner(pluginId);
       if (!loaded.permissions.has("ui.view")) {
         throw new Error("PERMISSION_DENIED: ui.view");
       }
@@ -292,13 +296,15 @@ export function registerPluginUiIpc({
       if (!view) throw new Error("plugin has no such view");
       const htmlPath = join(loaded.path, view.entry);
       if (!existsSync(htmlPath)) throw new Error("view entry missing");
+      const context = await plugins.captureWorkspaceContext(pluginId, sessionId || undefined);
+      assertCurrent();
       if (isBrowserView && sessionId) {
         browserHost.setChromeSession(sessionId, typeof payload.tabId === "string" ? payload.tabId : undefined, location);
       }
       const surfaceId = pluginViews.open({
         sessionId: sessionId || undefined,
         tabId: payload.tabId,
-        context: await plugins.captureWorkspaceContext(pluginId, sessionId || undefined),
+        context,
         localResource: plugins.createLocalResourceGrant(location,sessionId || undefined),
         pluginId,
         viewId,

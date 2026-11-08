@@ -668,6 +668,12 @@ defines this accounting. Plugin sockets and workspace resource/forward leases
 now join the runtime snapshot, including original HTTP reads and response/close
 work after owner retirement. Shared admission is mandatory at these resource
 boundaries, and missing configured resource statistics retain refusal evidence.
+Plugin panel/view and shortcut owners also join that snapshot. They capture
+original installations/registrations before asynchronous boundaries, retain
+original page loads, bridge work and retiring pages after cache removal, and
+seal native creation synchronously during shutdown. Temporary admission closure
+does not discard a page's completed load state. Original page destruction,
+shortcut removal and plugin child exit retain unqualified native evidence.
 Other external owners and qualified native-family closure must still join before
 connecting a complete inventory to the coordinator.
 

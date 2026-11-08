@@ -16,6 +16,7 @@
  * The class owns no Electron import of its own, so the registry can be driven
  * by a stub in tests and by the real `globalShortcut` in the app.
  */
+import { ExternalResourceActivity } from "./external-resource-activity";
 import {
   KEYBOARD_SHORTCUTS,
   isAllowedKeybinding,
@@ -36,6 +37,7 @@ export const MAX_PLUGIN_GLOBAL_SHORTCUTS = 8;
 const HOST_GLOBAL_SHORTCUT_IDS = ["openPluginLauncher", "toggleWindow"] as const;
 
 export type PluginShortcutErrorCode =
+  | "HOST_BUSY"
   | "INVALID_ACCELERATOR"
   | "SHORTCUT_CONFLICT"
   | "SHORTCUT_UNAVAILABLE"
@@ -64,11 +66,13 @@ export type PluginShortcutEntry = {
 };
 
 export type PluginShortcutDependencies = {
+  isAdmissionClosed: () => boolean;
+  onError?: (error: unknown) => void;
   /** Electron `globalShortcut.register`; false means the platform refused it. */
   register: (accelerator: string, handler: () => void) => boolean;
   unregister: (accelerator: string) => void;
   /** Runs one of the plugin's own commands for a trigger. */
-  onTrigger: (entry: PluginShortcutEntry) => void;
+  onTrigger: (entry: PluginShortcutEntry) => void | Promise<void>;
   platform: ShortcutPlatform;
   /** Optional diagnostics sink; never used for control flow. */
   onRefused?: (entry: { pluginId: string; accelerator: string; code: PluginShortcutErrorCode }) => void;
@@ -89,9 +93,11 @@ export class PluginShortcutRegistry {
   private readonly owners = new Map<string, string>();
   private readonly deps: PluginShortcutDependencies;
   private readonly maxPerPlugin: number;
+  private readonly activity: ExternalResourceActivity;
 
   constructor(deps: PluginShortcutDependencies) {
     this.deps = deps;
+    this.activity = new ExternalResourceActivity(deps.isAdmissionClosed);
     this.maxPerPlugin = deps.maxPerPlugin ?? MAX_PLUGIN_GLOBAL_SHORTCUTS;
   }
 
@@ -106,6 +112,7 @@ export class PluginShortcutRegistry {
     accelerator: string;
     command: string;
   }): PluginShortcutEntry {
+    if (this.activity.isClosed()) throw new PluginShortcutError("HOST_BUSY", "Host admission is closed");
     const { pluginId, id, command } = request;
     const key = entryKey(pluginId, id);
     const accelerator = normalizeKeybinding(request.accelerator);
@@ -182,14 +189,11 @@ export class PluginShortcutRegistry {
       electronAccelerator,
       command,
     };
+    this.activity.nativeAttempt();
     const registered = this.deps.register(electronAccelerator, () => {
-      // A throw here would unwind into the native event loop; a failed command
-      // run is the plugin's problem, not a reason to lose the shortcut.
-      try {
-        this.deps.onTrigger(entry);
-      } catch {
-        // Swallowed on purpose; the caller audits failures.
-      }
+      if (this.activity.isClosed() || this.entries.get(key) !== entry) return;
+      void this.activity.track(async () => { await this.deps.onTrigger(entry); })
+        .catch(error => this.deps.onError?.(error));
     });
     if (!registered) {
       throw this.refuse(
@@ -199,6 +203,10 @@ export class PluginShortcutRegistry {
           `${accelerator} could not be registered with the operating system`,
         ),
       );
+    }
+    if (this.activity.isClosed()) {
+      try { this.deps.unregister(electronAccelerator); } catch (error) { this.deps.onError?.(error); }
+      throw new PluginShortcutError("HOST_BUSY", "Host admission is closed");
     }
     this.entries.set(key, entry);
     this.owners.set(accelerator, key);
@@ -221,6 +229,12 @@ export class PluginShortcutRegistry {
     }
   }
 
+  getHandoffActivity() { return this.activity.snapshot(this.entries.size); }
+  dispose(): void {
+    this.activity.seal();
+    for (const entry of [...this.entries.values()]) this.release(entry);
+  }
+
   /** Entries this plugin currently holds, in registration order. */
   list(pluginId: string): PluginShortcutEntry[] {
     return [...this.entries.values()].filter((entry) => entry.pluginId === pluginId);
@@ -233,14 +247,15 @@ export class PluginShortcutRegistry {
 
   private release(entry: PluginShortcutEntry): void {
     const key = entryKey(entry.pluginId, entry.id);
+    if (this.entries.get(key) !== entry) return;
     this.entries.delete(key);
     if (this.owners.get(entry.accelerator) === key) {
       this.owners.delete(entry.accelerator);
     }
     try {
       this.deps.unregister(entry.electronAccelerator);
-    } catch {
-      // Teardown is best effort: a wedged platform call must not block unload.
+    } catch (error) {
+      this.deps.onError?.(error);
     }
   }
 

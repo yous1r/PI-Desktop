@@ -212,6 +212,29 @@ terminating an already active forward. Cleanup failures are observable and do no
 clear unqualified-resource evidence. A configured resource service without an
 activity getter makes the runtime inventory refuse handoff.
 
+Panel/view hosts and global shortcut registries require the same admission
+source. A surface captures its original plugin installation before queued opens
+or workspace/permission awaits; every continuation rechecks it before creation,
+publication or a new bridge call. Old page senders and native shortcut callbacks
+cannot use a replacement installation or registration. Closing a panel retires
+earlier queued opens; permanent shutdown seals creation before asynchronous
+cleanup. Later ordinary reopening remains available before shutdown.
+
+Original page loads, bridge requests, external-application calls and close waits
+remain counted independently of the caller's timeout or cache removal. Retiring
+pages remain resources until their own destroyed event. View disposal removes
+the original window's zoom listener. A temporary hold still records page-load
+completion, preserving retained view state instead of causing a fresh navigation
+after cancellation. Global shortcut callback promises remain counted after
+unregister; actual service wiring returns those promises instead of dropping them.
+Cleanup and page/window close remain available while ordinary admission is closed.
+
+The runtime aggregates panel/view and shortcut snapshots. Configured surface or
+shortcut services without reporting refuse handoff. Session/window/view allocation,
+microphone permission prompts, external launches and native shortcut registration
+attempts retain saturated unqualified-resource evidence after ordinary closure.
+This evidence is not an execution quota or a native-family closure certificate.
+
 Remaining external-resource owners and qualified native containment must still
 join the Desktop coordinator. This work does not enable ownership transfer or
 change Plugin SDK permissions, message serialization or durable storage formats.

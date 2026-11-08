@@ -140,9 +140,15 @@ export function createPluginServices({
   const isHostUnavailable = (error: unknown): boolean =>
     (error as { errorCode?: string } | null | undefined)?.errorCode ===
     ErrorCodes.HOST_UNAVAILABLE;
+  const surfaceOptions = {
+    isAdmissionClosed: () => handoffAdmission.isClosed(),
+    captureOwner: (pluginId: string) => plugins.captureSurfaceOwner(pluginId),
+    onError: () => logger.app("plugin", "warn", "Plugin surface operation failed; idle handoff remains unavailable"),
+  };
   const pluginPanels = new PluginPanelHost(
     async (pluginId, channel, payload, context) =>
       plugins.invokePanelBridge(pluginId, channel, payload, context),
+    surfaceOptions,
     // A panel reaching for an undeclared host is the shape an exfiltration
     // attempt takes, so it is logged like a denied API call rather than dropped
     // silently in the network layer.
@@ -215,6 +221,8 @@ export function createPluginServices({
         ? "win32"
         : "linux";
   const pluginShortcuts = new PluginShortcutRegistry({
+    isAdmissionClosed: () => handoffAdmission.isClosed(),
+    onError: () => logger.app("plugin", "warn", "Plugin shortcut operation failed; idle handoff remains unavailable"),
     platform: shortcutPlatform,
     // The launcher owns the app's own global accelerators; asking it what it
     // currently holds keeps a rebound accelerator available to plugins instead
@@ -226,9 +234,7 @@ export function createPluginServices({
     },
     // Late-bound: the runtime is constructed just below, and a trigger can
     // only arrive once the app is running and a plugin holds a shortcut.
-    onTrigger: (entry) => {
-      void plugins.triggerPluginShortcut(entry);
-    },
+    onTrigger: (entry) => plugins.triggerPluginShortcut(entry),
     onRefused: (info) =>
       logger.app("plugin", "warn", "plugin global shortcut refused", { data: info }),
   });
@@ -690,14 +696,14 @@ export function createPluginServices({
     getActiveSession: () => pluginSession.snapshot(),
     log: (message, data) => logger.app("plugin", "warn", message, { data }),
   });
-  const pluginViews = new PluginViewHost(({ pluginId, url }) => {
+  const pluginViews = new PluginViewHost(surfaceOptions, ({ pluginId, url }) => {
     logger.app("plugin", "warn", "plugin.api", {
       pluginId,
       code: "PERMISSION_DENIED",
       data: { api: "view.egress", ok: false, url, ts: Date.now() },
     });
   });
-  pluginPanels.addSenderResolver((senderId) => pluginViews.pluginIdForSender(senderId));
+  pluginPanels.addSenderResolver((senderId) => pluginViews.pluginIdForSender(senderId), senderId => pluginViews.assertSenderCurrent(senderId));
   pluginPanels.addContextResolver((senderId) => pluginViews.contextForSender(senderId));
   const browserBackingHost = new BrowserBackingHost();
   const browserHost = new BrowserHost({
@@ -748,6 +754,11 @@ export function createPluginServices({
     browserHost.setChromeSurface(surface);
   };
   plugins.setServices({
+    surfaceActivity: () => {
+      const panels = pluginPanels.getHandoffActivity(), views = pluginViews.getHandoffActivity();
+      return { operations: panels.operations + views.operations, resources: panels.resources + views.resources,
+        uncontainedResources: Math.min(Number.MAX_SAFE_INTEGER, panels.uncontainedResources + views.uncontainedResources) };
+    },
     ...createWorkspacePluginServices({getHost,currentWorkspacePath:getWorkspacePath,requestConsent:workspaceConsent.request,
       client:hostKey=>{const boot=getActiveRemoteHostsBoot();if(!boot)throw new Error("Workspace Host is unavailable");return boot.workspaceClient(hostKey);}}),
     readRemoteWorkspaceFiles: createPluginWorkspaceReader({ getHost, getBoot: getActiveRemoteHostsBoot }),

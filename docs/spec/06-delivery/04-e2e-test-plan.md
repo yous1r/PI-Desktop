@@ -20170,3 +20170,33 @@ session data is used.
 - **Limits:** ordinary child/socket/server closure is not native-family proof.
   Full external-owner aggregation, fenced Desktop composition and H1-H5 transfer
   remain separate acceptance work.
+
+### E2E-HANDOFF-plugin-surfaces
+
+- **Goal:** retain original panel/view and shortcut ownership across admission
+  closure, installation replacement, caller deadlines and asynchronous cleanup.
+- **Entries:** `apps/desktop/test/handoff-plugin-surfaces.test.mjs` and
+  `node scripts/e2e-plugin-surfaces-handoff.mjs`, using provisioned dependencies
+  and `PI_SCRATCH_DIR` for isolated profiles, logs and build inputs.
+- **Faults:** close admission during queued opens, page loading and native
+  shortcut registration; replace an installation during workspace lookup or
+  loading; deliver old page/shortcut callbacks; expire a load caller's deadline;
+  remove a view before its original load/close settles; fail an external launch.
+- **Expected:** no late native creation/publication or replacement authority;
+  original operations and retiring pages stay counted; cleanup remains available;
+  missing configured service statistics refuse handoff. Temporary holds retain
+  completed page-load state, and ordinary tab changes retain the same surface.
+- **Process path:** start an isolated Electron process and real Node plugin child,
+  open a real sandboxed panel and embedded view using the current preload, click
+  their local HTML controls and verify exact bridge results, hide/reopen the same
+  view, invoke a shortcut through its registry, refuse busy handoff, close
+  admission and clean up through original owners. Observe both page destruction
+  and original child/Electron exit while retained native uncertainty stays positive.
+- **Compatibility:** panel identity/controls, workspace-bound retained surfaces,
+  location/scale/navigation, configurable shortcut conflicts/permissions/limits,
+  plugin lifecycle/callbacks and shutdown. The renderer position-only bounds
+  fixture uses an isolated visible window for animation-frame measurements.
+- **Limits:** shortcut registration is a deterministic platform edge, with no
+  real OS key injection. No real microphone, live provider or user Desktop/profile
+  is used. Page destruction and process exit do not qualify native-family closure,
+  the complete nineteen-family Desktop inventory or H1-H5 transfer.

@@ -55,6 +55,7 @@ function fakePlatform({ platform = "linux", registerReturns = [], hostBindings }
    * is what asks the registry for its shipped-default fallback.
    */
   const deps = {
+    isAdmissionClosed: () => false,
     platform,
     register: (accelerator, handler) => {
       calls.registered.push(accelerator);
@@ -652,6 +653,7 @@ function createRealPlatform({ platform = "linux", registerReturns = [], onTrigge
   const triggered = [];
   const handlers = new Map();
   const registry = new PluginShortcutRegistry({
+    isAdmissionClosed: () => false,
     platform,
     register: (accelerator, handler) => {
       registered.push(accelerator);
@@ -665,7 +667,7 @@ function createRealPlatform({ platform = "linux", registerReturns = [], onTrigge
     },
     onTrigger: (entry) => {
       triggered.push(entry);
-      onTrigger?.(entry);
+      return onTrigger?.(entry);
     },
   });
   return { registry, registered, unregistered, triggered, handlers };

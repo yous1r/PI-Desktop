@@ -418,6 +418,7 @@ export type PluginHostServices = {
   closeWorkspaceResources?: (ownerId: string) => void;
   disposeWorkspaceResources?: () => void;
   workspaceResourceActivity?: () => { operations: number; resources: number; uncontainedResources: number };
+  surfaceActivity?: () => { operations: number; resources: number; uncontainedResources: number };
   /** Reveal one already-authorized file in the OS file manager. */
   revealPath?: (fullPath: string) => Promise<void>;
   readClipboard: () => Promise<string>;
@@ -1563,12 +1564,14 @@ export class PluginRuntime {
   /** Plugin ids inside `reloadDevPlugin`, whose watch must outlive the unload. */
   private reloading = new Set<string>();
   private watcher: DevPluginWatcher;
+  private surfaceServiceConfigured = false;
 
   constructor(
     services: Partial<PluginHostServices> & Pick<PluginHostServices, "isAdmissionClosed">,
     watcherOptions?: Pick<DevPluginWatcherDeps, "watch" | "debounceMs" | "max">,
   ) {
     this.lifecycle = new PluginLifecycle(services.isAdmissionClosed);
+    this.surfaceServiceConfigured = !!services.openPanel;
     this.services = {
       getWorkspacePath: () => null,
       showToast: (message, level) => {
@@ -1617,6 +1620,7 @@ export class PluginRuntime {
   }
 
   setServices(services: Partial<PluginHostServices>): void {
+    if (services.openPanel) this.surfaceServiceConfigured = true;
     this.services = { ...this.services, ...services };
   }
 
@@ -1954,6 +1958,13 @@ export class PluginRuntime {
     return this.loaded.get(pluginId);
   }
 
+  captureSurfaceOwner(pluginId: string): () => void {
+    const loaded = this.loaded.get(pluginId);
+    if (!loaded) throw apiError("PLUGIN_UNLOADED", "Plugin host process is no longer active");
+    this.assertPluginCurrent(loaded);
+    return () => this.assertPluginCurrent(loaded);
+  }
+
   /** OAuth provider entries exposed to the Host's provider sign-in surface. */
   listOAuthProviders(): PluginOAuthProvider[] {
     const result: PluginOAuthProvider[] = [];
@@ -2168,7 +2179,9 @@ export class PluginRuntime {
   getHandoffActivity() {
     const missing = { operations: 0, resources: 0, uncontainedResources: 1 };
     const resources = [this.services.pluginSockets && (this.services.pluginSockets.getHandoffActivity?.() ?? missing),
-      this.services.workspaceResourceActivity?.() ?? ((this.services.openWorkspaceResource || this.services.openWorkspacePort) && missing)];
+      this.services.workspaceResourceActivity?.() ?? ((this.services.openWorkspaceResource || this.services.openWorkspacePort) && missing),
+      this.services.pluginShortcuts && (this.services.pluginShortcuts.getHandoffActivity?.() ?? missing),
+      this.services.surfaceActivity?.() ?? (this.surfaceServiceConfigured && missing)];
     const activities = [this.lifecycle.snapshot(), this.connections.getHandoffActivity(), ...resources.filter(value => !!value)];
     return { operations: activities.reduce((sum, item) => sum + item.operations, 0) + resources.reduce((sum, item) => sum + (item ? item.resources : 0), 0),
       uncontainedResources: activities.reduce((sum, item) => Math.min(Number.MAX_SAFE_INTEGER, sum + item.uncontainedResources), 0),
@@ -2429,6 +2442,7 @@ export class PluginRuntime {
     this.services.disposeWorkspaceProcesses?.();
     this.services.disposeWorkspaceResources?.();
     this.services.pluginSockets?.dispose();
+    this.services.pluginShortcuts?.dispose?.();
     this.serviceStates.clear();
   }
 

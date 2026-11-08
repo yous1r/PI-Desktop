@@ -1,3 +1,4 @@
+import { PluginSurfaceActivity, type PluginSurfaceOptions } from "./plugin-surface-activity";
 import type { LocalResourceGrant } from "./local-resource-grant";
 import type { WorkspaceExecutionContext } from "@pi-desktop/shared";
 import { BrowserWindow, ipcMain, Menu, session, systemPreferences } from "electron";
@@ -159,10 +160,11 @@ export function applyPluginEgressPolicy(
 }
 
 /** macOS TCC: a sandboxed file:// panel often never prompts on its own. */
-async function ensureOsMicrophone(allowMicrophone?: boolean): Promise<void> {
+async function ensureOsMicrophone(allowMicrophone: boolean | undefined, beforePrompt: () => void): Promise<void> {
   if (!allowMicrophone || process.platform !== "darwin") return;
   try {
     if (systemPreferences.getMediaAccessStatus("microphone") === "granted") return;
+    beforePrompt();
     await systemPreferences.askForMediaAccess("microphone");
   } catch {
     // Headless tests have no TCC surface.
@@ -181,6 +183,8 @@ export function pluginSessionPartition(pluginId: string): string {
  */
 export class PluginPanelHost {
   private windows = new Map<string, BrowserWindow>();
+  private readonly activity: PluginSurfaceActivity;
+  private readonly senderOwners: Array<(senderId: number) => void> = [];
   private bridge: BridgeHandler;
   private onBlockedRequest?: PluginPanelBlockedRequest;
   private handlerReady = false;
@@ -222,9 +226,11 @@ export class PluginPanelHost {
 
   constructor(
     bridge: BridgeHandler,
+    options: PluginSurfaceOptions,
     onBlockedRequest?: PluginPanelBlockedRequest,
     onBridgeError?: (pluginId: string, channel: string, error: unknown) => void,
   ) {
+    this.activity = new PluginSurfaceActivity(options);
     this.bridge = bridge;
     this.onBlockedRequest = onBlockedRequest;
     this.onBridgeError = onBridgeError;
@@ -232,10 +238,27 @@ export class PluginPanelHost {
   }
 
   /** Lets another host serve `pluginBridge` calls from its own web contents. */
-  addSenderResolver(resolve: (senderId: number) => string | null): void {
+  addSenderResolver(resolve: (senderId: number) => string | null, assertCurrent: (senderId: number) => void): void {
     this.senderResolvers.push(resolve);
+    this.senderOwners.push(assertCurrent);
   }
 
+  getHandoffActivity() { return this.activity.getHandoffActivity(); }
+
+  private assertSenderCurrent(senderId: number): void {
+    if (this.senders.pluginFor(senderId)) return this.activity.assertSender(senderId);
+    const index = this.senderResolvers.findIndex(resolve => resolve(senderId) !== null);
+    this.activity.assertOpen();
+    if (index < 0) throw new Error("invalid panel invoker");
+    this.senderOwners[index]!(senderId);
+  }
+
+  private invokeBridge(senderId: number, pluginId: string, channel: string, payload?: Record<string, unknown>, droppedPath?: string): Promise<unknown> {
+    return this.activity.run(async () => {
+      this.assertSenderCurrent(senderId);
+      return this.bridge(pluginId, channel, payload, { ...this.contextForSender(senderId), ...(droppedPath ? { droppedPath } : {}) });
+    });
+  }
   private ensureHandlers(): void {
     if (this.handlerReady) return;
     this.handlerReady = true;
@@ -262,11 +285,12 @@ export class PluginPanelHost {
           channel === "fs.registerDropped"
             ? this.consumeDroppedPath(event.sender.id, payload?.path)
             : undefined;
-        return this.bridge(pluginId, channel, payload, { ...this.contextForSender(event.sender.id), ...(droppedPath ? { droppedPath } : {}) });
+        return this.invokeBridge(event.sender.id, pluginId, channel, payload, droppedPath ?? undefined);
       },
     );
 
     ipcMain.on("pi-plugin-panel-drop", (event, rawPaths: unknown) => {
+      if (this.activity.isClosed()) return;
       const pluginId = this.pluginIdForSender(event.sender.id);
       if (!pluginId || !Array.isArray(rawPaths)) return;
       this.recordDroppedPaths(
@@ -296,7 +320,7 @@ export class PluginPanelHost {
         // rejects when the plugin is unloaded or times out, and a panel page
         // can call this at will, so the rejection must be observed here
         // rather than surfacing as an unhandled rejection in main.
-        this.bridge(pluginId, channel, payload, this.contextForSender(event.sender.id)).catch((error) => {
+        this.invokeBridge(event.sender.id, pluginId, channel, payload).catch((error) => {
           this.onBridgeError?.(pluginId, channel, error);
         });
         event.returnValue = { ok: true, accepted: true };
@@ -317,6 +341,7 @@ export class PluginPanelHost {
         if (!isPluginPanelWindowControlAction(rawAction)) {
           throw new Error("unsupported panel window control action");
         }
+        if (rawAction !== "close") this.assertSenderCurrent(event.sender.id);
         this.applyWindowControl(window, rawAction);
         return {
           maximized: !window.isDestroyed() && window.isMaximized(),
@@ -462,11 +487,14 @@ export class PluginPanelHost {
   }
 
   async open(request: PluginPanelOpenRequest): Promise<void> {
-    return this.serializer.run(request.pluginId, async () => {
+    return this.activity.runOpen(request.pluginId, assertCurrent => this.serializer.run(request.pluginId, async () => {
+      assertCurrent();
       const existing = this.windows.get(request.pluginId);
+      if (existing && !existing.isDestroyed() && !this.activity.isCurrent(existing.webContents.id)) existing.destroy();
       if (existing && !existing.isDestroyed()) {
         this.applyEgressPolicy(existing.webContents.session, request);
-        await ensureOsMicrophone(request.allowMicrophone);
+        await ensureOsMicrophone(request.allowMicrophone, () => this.activity.nativeAttempt());
+        assertCurrent();
         // The microphone prompt is asynchronous: the panel can be closed while the
         // user answers it, and a destroyed window has no `show`. Fall through and
         // build the requested panel instead of reusing a window that is gone.
@@ -479,12 +507,15 @@ export class PluginPanelHost {
       }
 
       const partition = pluginSessionPartition(request.pluginId);
+      this.activity.nativeAttempt();
       const ses = session.fromPartition(partition, { cache: true });
       this.applyEgressPolicy(ses, request);
-      await ensureOsMicrophone(request.allowMicrophone);
+      await ensureOsMicrophone(request.allowMicrophone, () => this.activity.nativeAttempt());
+      assertCurrent();
 
       const widget = request.shape === "widget";
       const minSize = widget ? PLUGIN_PANEL_WIDGET_MIN_SIZE : PLUGIN_PANEL_MIN_SIZE;
+      this.activity.nativeAttempt();
       const win = new BrowserWindow({
         width: Math.max(minSize.width, request.width || (widget ? 220 : 480)),
         height: Math.max(minSize.height, request.height || (widget ? 220 : 360)),
@@ -529,6 +560,7 @@ export class PluginPanelHost {
           ],
         },
       });
+      this.activity.own(win.webContents, assertCurrent);
       // A panel owns its visible surface; do not add a native application menu
       // to the window around the plugin's own UI.
       win.setMenu(null);
@@ -578,9 +610,10 @@ export class PluginPanelHost {
         // that asked for the panel can then show why nothing appeared, and the
         // `catch` below destroys the hidden window.
         await panelReadyWithin(
-          win.loadURL(pathToFileURL(request.htmlPath).toString()),
+          this.activity.track(() => win.loadURL(pathToFileURL(request.htmlPath).toString())),
           request.pluginId,
         );
+        assertCurrent();
         if (!win.isDestroyed()) {
           win.show();
         }
@@ -590,7 +623,7 @@ export class PluginPanelHost {
         }
         throw error;
       }
-    });
+    }));
   }
 
   /**
@@ -603,7 +636,8 @@ export class PluginPanelHost {
    * destroys the window if it refuses to close.
    */
   async close(pluginId: string, options?: { force?: boolean }): Promise<void> {
-    return this.serializer.run(pluginId, async () => {
+    this.activity.retire(pluginId);
+    return this.activity.track(() => this.serializer.run(pluginId, async () => {
       const win = this.windows.get(pluginId);
       if (!win || win.isDestroyed()) {
         this.windows.delete(pluginId);
@@ -617,7 +651,7 @@ export class PluginPanelHost {
       if (options?.force && !win.isDestroyed()) {
         win.destroy();
       }
-    });
+    }));
   }
 
   /**
@@ -628,6 +662,7 @@ export class PluginPanelHost {
    * nobody can act on.
    */
   async closeAll(): Promise<void> {
+    this.activity.seal();
     await Promise.allSettled(
       [...this.windows.keys()].map((pluginId) => this.close(pluginId)),
     );
@@ -640,9 +675,11 @@ export class PluginPanelHost {
    * receivers; the event names are fixed by the host (e.g. `appearance:changed`).
    */
   broadcast(event: string, payload: unknown): void {
+    if (this.activity.isClosed()) return;
     const channel = `pi-plugin-panel-event:${event}`;
     for (const win of this.windows.values()) {
       if (win.isDestroyed() || win.webContents.isDestroyed()) continue;
+      if (!this.activity.isCurrent(win.webContents.id)) continue;
       if (this.contexts.has(win.webContents.id) && (event === "workspace:changed" || event === "session:activated")) continue;
       try {
         win.webContents.send(channel, payload);

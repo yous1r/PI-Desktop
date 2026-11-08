@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Bind plugin panels, embedded views and global shortcuts to shared handoff
+  admission and their original installation/registration. Late opens and old
+  callbacks cannot use a replacement; timed-out page loads, bridge work and
+  retiring pages remain counted. Temporary admission holds preserve loaded view
+  state. Complete resource inventory and native-family qualification remain open.
 - Bind plugin sockets and workspace previews/downloads to shared handoff admission
   and their original owners. Retired work, HTTP reads and asynchronous cleanup stay
   counted; old socket events cannot reach a reloaded plugin. Late validation,
