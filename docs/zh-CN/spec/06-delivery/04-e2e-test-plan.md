@@ -10143,3 +10143,10 @@ PluginPack 产物的解包目录，仅用于开发验证。验收 #1711 前需�
 #### E2E-ISSUE-1707
 
 生产 SSH 引导使用合成 Darwin 目标，按 IPC 形态传递错误并解析界面提示：显示 Linux 安装包范围，不下载或上传。Linux 及其他安装失败提示保持原行为。
+
+### E2E-FILE-MANAGER-git-deadline
+
+`file-manager-git-timeout.test.mjs` 对真实测试文件调用内置 `fm.list` 和
+`fm.read`，仅控制子进程边界。子进程从不关闭时推进 Git 截止时间，目录及
+预览仍完成，Git 元数据不可用。原有 Electron 目录定位和文件修改旅程验证
+正常读取、保存和目录浏览。

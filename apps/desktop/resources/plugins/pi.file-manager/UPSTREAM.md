@@ -98,7 +98,7 @@ is recorded here. `UPSTREAM.md` is the provenance record, not a runtime input.
 | `LICENSE` | 1067 | `ebaec3ae096498a39f6b86e3ac8017e39818fb5aaff80b452349f94bc275ec0d` |
 | `README.md` | 38470 | `4ecf6e3afa2051b59b479907c485d156caca54ef6d1f4e3c410805807942a268` |
 | `desktop.js` | 827 | `702e6a3f66bc0003c76d9323a3538440ff7b3a2b754f1dc78f8911b2dded66b2` |
-| `main.js` | 126134 | `4261d73756736efd0a740d3308996f40c37e0aec59826bf48d606c382f4149e6` |
+| `main.js` | 126368 | `1bdd1a78ecfdd14adcc056b6ce5da60a3b4d721a0c1afb8ce0ce79c783bc9edc` |
 | `manifest.json` | 41327 | `ff6c563b5186a03473bed6544dbfdf94069eb07d8182063928ee9d83bc0b7f3f` |
 | `package.json` | 25 | `8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a` |
 | `remote-workspace.js` | 3757 | `931a579801fd4b334c3d96231aafc7ff52e0c03e7baebbabaf00b4c5e17cc366` |
@@ -128,3 +128,10 @@ is recorded here. `UPSTREAM.md` is the provenance record, not a runtime input.
    integration pin with that real tag/commit and marketplace provenance; preserve
    the search-theme fix if that release does not yet contain it. Do not rewrite
    an existing upstream tag or label the local artifact as a marketplace release.
+
+## Desktop Git deadline repair (#1731)
+
+The Git timeout rejects immediately and destroys its captured output streams,
+instead of waiting for a `close` event that inherited child pipes may delay.
+The existing best-effort snapshot path returns unavailable Git metadata while
+preserving directory listing and preview. No upstream release is claimed.

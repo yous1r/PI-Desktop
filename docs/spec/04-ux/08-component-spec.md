@@ -4628,3 +4628,7 @@ Native secure desktops and OS compositor restrictions are outside stacking contr
 The personal todo surface follows language and font preferences and system/light/
 dark appearance. Plugin theme CSS is not exported through its narrow bridge;
 plugin theme preferences therefore fall back to system light/dark.
+
+File Manager Git deadlines settle the command at the deadline even when child
+output pipes remain open. A failed snapshot omits Git badges and does not block
+directory listings or file previews indefinitely (Refs #1731).
