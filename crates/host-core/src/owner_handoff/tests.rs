@@ -512,3 +512,36 @@ fn phase_mutation(record: &Transfer, phase: Phase) -> Mutation {
 }
 
 mod recovery;
+
+#[test]
+fn journal_shared_wire_fixture_preserves_native_identity_and_bootstrap_commands() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../packages/shared/test/fixtures/owner-handoff.json"
+    ))
+    .unwrap();
+    let record: Transfer = serde_json::from_value(fixture["response"]["record"].clone()).unwrap();
+    record.validate().unwrap();
+    assert_eq!(record.requester.created_at, "134115649234567891");
+    assert_eq!(
+        serde_json::to_value(&record).unwrap(),
+        fixture["response"]["record"]
+    );
+    for value in fixture["bootstrap"].as_array().unwrap() {
+        let command: super::service::Command = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(serde_json::to_value(command).unwrap(), *value);
+    }
+    for field in ["counts", "idle", "adopt_pid", "path"] {
+        let mut invalid = fixture["bootstrap"][1].clone();
+        invalid[field] = serde_json::json!(true);
+        assert!(serde_json::from_value::<super::service::Command>(invalid).is_err());
+    }
+    let mut invalid = fixture["bootstrap"][1].clone();
+    invalid["operation"] = serde_json::json!("ready");
+    assert!(serde_json::from_value::<super::service::Command>(invalid).is_err());
+    let mut invalid = record.clone();
+    invalid.requester.created_at = "18446744073709551616".into();
+    assert!(invalid.validate().is_err());
+    invalid = record;
+    invalid.target_epoch.clone_from(&invalid.source_epoch);
+    assert!(invalid.validate().is_err());
+}

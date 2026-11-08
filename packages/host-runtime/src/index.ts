@@ -1,3 +1,5 @@
+export * from "./owner-handoff-process.js";
+export * from "./owner-handoff-ports.js";
 export * from "./host-process.js";
 export * from "./workspace-terminal-service.js";
 export * from "./terminal-shell-registry.js";

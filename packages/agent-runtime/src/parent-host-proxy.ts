@@ -20,8 +20,10 @@ export class ParentHostProxy {
   private closeHandlers = new Set<ParentHostCloseHandler>();
   private closed = false;
   private unconfirmedTimeout = false;
+  private readonly admissionClosed: () => boolean;
 
-  constructor(private readonly admissionClosed: () => boolean = () => false) {
+  constructor(admissionClosed: () => boolean = () => false) {
+    this.admissionClosed = admissionClosed;
     process.stdin.on("end", this.handleParentClose);
     process.stdin.on("close", this.handleParentClose);
     process.stdin.on("error", this.handleParentClose);

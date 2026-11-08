@@ -19925,3 +19925,31 @@ session data is used.
   durable source prepare/cancel, successor readiness, remote/mobile behavior or
   minimum-hardware capacity.
 - **Spec:** [Private sidecar protocol](../03-runtime/06-host-rpc-protocol.md#private-sidecar-quiescence-protocol).
+
+### E2E-HOST-owner-handoff-client
+
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-owner-handoff-client.mjs`
+  with `PI_SCRATCH_DIR` and Node `node:sqlite` on Windows.
+- **Steps:** Bundle the current production restricted-process consumer. Start a
+  temporary real Host with durable containment registration, prove closure of
+  its pending generation, and exercise a competing restricted process. Inject a
+  prepared transfer only into the isolated fixture profile. Query with a wrong
+  profile binding, then recover/claim with the production consumer. Repeat exact
+  requests, race another restricted owner, close/reopen, rotate recovery and
+  retry the old claim. Keep an existing running turn unchanged throughout.
+- **Expected:** Live lock contenders exit; profile mismatch invalidates the
+  consumer without mutation; exact replies retain FILETIME and receipts; one
+  restricted owner; old capability invalid after rotation; no ordinary turn
+  recovery/model/tool replay or capability logging; every original process exit
+  confirmed during cleanup.
+- **Lower-level coverage:** Shared TS/Rust record/command fixture; missing and
+  unsupported fields; exact identities/revisions and byte caps; all 19 resource
+  counters; incorrect readiness and illegal phase jumps. Stream tests cover
+  fragmented/invalid/oversized/trailing/truncated frames, one in-flight request,
+  timeout poisoning, late responses and no automatic resend. Process-boundary
+  fixtures cover final stdout after exit, spawn failure and bounded cleanup.
+- **Boundary:** Injected durable phases qualify the existing restricted
+  bootstrap consumer. Source prepare/fencing, target readiness and complete
+  Desktop handoff require H1-H5 integration; no product-level acceptance is
+  inferred from schema or stream fixtures.
+- **Spec:** [H0 contracts](../03-runtime/06-host-rpc-protocol.md#executable-owner-handoff-integration-contracts-h0).

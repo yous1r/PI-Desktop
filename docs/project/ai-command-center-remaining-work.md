@@ -607,3 +607,41 @@ The [initial startup failure](ai-command-center-p0-evidence/sidecar-handoff-befo
 is retained unchanged. All three archived files were verified byte-for-byte.
 A0 is complete; proceed to H0 executable handoff contracts and the H1-H4
 integration lanes. Full P0-4 remains open.
+
+## H0 executable contracts and restricted consumer candidate
+
+Shared schemas now bind source intent, durable v28 records, internal original-
+coordinator inventory exchanges and target readiness. They preserve exact u64
+FILETIME, canonical identities, signed-safe revisions, UTF-8 byte caps and strict
+unknown-field refusal. The 19-count inventory type is shared with the existing
+maintenance gate. Source intent cannot supply idle/process proof or an arbitrary
+phase; advisory preflight cannot grant readiness. The ready snapshot must match
+the committed ready record. These schemas do not register source/ready operations.
+
+`OwnerHandoffProcess` and its fixed-buffer serialized channel consume the existing
+Rust restricted status/claim/recover service. Transport timeout/frame corruption
+or identity mismatch poisons the channel without retry; known Rust refusal is a
+typed response. Cleanup targets only the created child. Two new red lifecycle
+regressions now pass: final stdout is consumed after process exit, and failed
+spawn cleans without inventing exit confirmation. The same record/command fixture
+passes Rust parsing and identity validation. Production source transitions,
+coordinator transport wiring and target ready publication still belong to H1-H4.
+
+At this checkpoint the shared source suite passes 693 tests, AgentHost passes
+90 and the targeted Rust owner-handoff set passes 22. The real Node-to-Rust
+consumer fixture passes four checks with five restricted children cleaned on a
+dirty candidate. A broad host-runtime run exposed a Node strip-only compatibility
+regression from the earlier proxy parameter-property syntax; it is replaced by
+an equivalent ordinary field assignment, and the real-child regression plus
+proxy tests pass. The same broad run hit unrelated large-filesystem fixture
+timeouts; the focused 15-second-budget retry passed, with each case taking about
+three seconds. The final full-suite run and clean process acceptance are recorded
+after completion, without reclassifying those failed runs. Shared build, source
+typecheck, configured lint, Rust formatting and documentation checks pass.
+
+The final host-runtime run passes 235 tests with 3 existing skips across 36
+source test files, using two workers and the unchanged default test deadline.
+The eight focused retry tests are not added again to that count. H0 source and
+readiness schemas remain integration contracts; only the existing restricted
+bootstrap has a live consumer in this slice. Clean-candidate process acceptance
+is the remaining H0 gate.

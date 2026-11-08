@@ -1,3 +1,5 @@
+import type { OwnerHandoffInventory } from "@pi-desktop/shared";
+
 export const HOST_MAINTENANCE_LEASE_MS = 120_000;
 
 export type MaintenanceBusyState = {
@@ -12,19 +14,7 @@ export type MaintenanceBusyState = {
 };
 
 /** Every owner must report; omitted/unknown resource families never imply idle. */
-export type HandoffBusyState = MaintenanceBusyState & {
-  admissions: number;
-  finalizations: number;
-  writes: number;
-  children: number;
-  workers: number;
-  schedules: number;
-  approvals: number;
-  inputs: number;
-  nativeSessions: number;
-  mcp: number;
-  uncontainedResources: number;
-};
+export type HandoffBusyState = OwnerHandoffInventory;
 export type MaintenanceLease = { leaseId: string; expiresAt: string };
 /** Process-local authority; only source orchestration may retain this handle. */
 export type HandoffAdmission = {

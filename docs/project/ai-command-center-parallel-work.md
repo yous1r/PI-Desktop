@@ -112,8 +112,8 @@ must survive session/task deletion; no new purge behavior is introduced.
 
 ### Efficient scheduling and stop conditions
 
-- **Immediate capacity:** A0 is the primary lane; independent C1 and Q0 preparation
-  can use other lanes. H0 begins after A0. Do not start all 22 packages at once.
+- **Immediate capacity:** A0 is accepted. H0 is now the primary lane; independent
+  C1 and Q0 preparation can use other lanes. Do not start all 22 packages at once.
 - **After H0:** Give H1 and H4 the first available implementation slots because
   their incremental risk is lower; start H2 and H3 in the other two slots with
   contract/native-state tests first. All four converge at H5. Four is a maximum,
@@ -217,9 +217,9 @@ remain mandatory as stated in the work-package table.
 
 ## Execution waves and exclusive write ownership
 
-1. **Now:** Integrator completes A0. Independently, C1 can develop against the
-   committed baseline and Q0 can prepare fixtures/environment inventories. H0
-   can be analyzed read-only while the sidecar contract awaits acceptance.
+1. **Now:** A0 is accepted at `0d8e7f609`; the integrator completes H0 contract and
+   consumer acceptance. Independently, C1 can develop against committed source
+   and Q0 can prepare fixtures/environment inventories.
 2. **Contract wave:** H0 starts after A0; any remaining C1 work proceeds in parallel.
    The integrator owns shared export barrels, RPC registration and migration
    version allocation. No simultaneous writes to the same file.
@@ -268,7 +268,7 @@ logs and artifacts even when tests otherwise run concurrently.
 
 | Blocker | Missing item | Blocks | Work that can continue |
 |---|---|---|---|
-| B0 | A0 clean committed-candidate evidence | Parallel code consuming current sidecar changes | Independent C1, Q0 and read-only handoff analysis |
+| B0 (resolved) | A0 accepted at `0d8e7f609` | None; committed sidecar baseline is available | H0, independent C1 and Q0 |
 | B1 | H0 source/target contracts not yet frozen | H1-H4 implementation and reliable cross-lane integration | H0, C1 and external environment inventory |
 | B2 | All application resource owners and gates not yet connected | H5 and enabling transfer in production | H1-H4 development; unsupported families remain explicit refusals |
 | E1 | Exact two-core/8-GB CPU/OS/SSD runner and access | Minimum-target Q1 performance acceptance | Local comparison tests, instrumentation and fixture correctness |

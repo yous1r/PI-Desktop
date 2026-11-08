@@ -1673,3 +1673,64 @@ The production consumer binds one original transport, validates all response
 fields and operation state, uses a five-second call deadline and never retries a
 transmitted request automatically. Full source transfer and readiness remain
 separate application integration prerequisites.
+
+## Executable owner-handoff integration contracts (H0)
+
+`packages/shared/src/owner-handoff.ts` defines strict version-1 integration
+contracts and validates the existing schema-v28 Rust records. It preserves exact
+decimal u64 FILETIME strings, non-nil canonical UUIDs, lowercase SHA-256 digests,
+safe signed journal revisions, UTF-8 field byte limits and the 16-KiB frame cap.
+Source and target epochs differ. A shared fixture is parsed by TypeScript and
+Rust; the current restricted bootstrap keeps its snake_case command fields and
+`{version: 1, record}` / `{version: 1, error: {code}}` responses.
+
+The source-facing command contract uses camelCase and admits only:
+
+- `preflight`: version/request ID/source epoch plus the selected target build;
+  compatibility results bind those identities and require idle operation. They
+  never authorize release. Executable paths are resolved by the trusted launcher.
+- `prepare`: transfer ID, source epoch, reserved target epoch, target build,
+  capability hash and expected revision zero. Native requester/profile/source
+  build and actual idle state come from their owners, never request fields.
+- `status`: transfer and source identity. It does not mutate or replay work.
+- `cancel`, `fence`, `release`: exact transfer/source identity, request ID and
+  positive expected journal revision. There is no generic client phase setter.
+
+The source endpoint is not implemented or advertised by H0. H1/H2 must wire
+complete admission and native proof before registering it. The phase helper is
+client vocabulary only: cancel is legal only from prepared; fencing intent
+precedes native effects; source-fenced requires real closure; release-pending
+requires source exit before claim; target-claimed is not ready. Rust remains the
+authoritative transition/receipt repository. No schema or default changes here.
+
+`OwnerHandoffCoordinatorPort` binds an internal exchange on the original private
+coordinator relationship. Requests contain exchange/transfer/source identity and
+an admission revision. Hold creates a local hold ID; inspect/seal/cancel require
+it. Replies echo the identities, state and all 19 owner-derived inventory counts.
+The admission revision stays fixed for that hold; it is distinct from journal
+CAS revisions that advance through transfer phases. Unknown fields, missing
+counts, stale exchange or a nonzero successful hold/seal report refuse. A cancel
+exchange is sent only after Rust confirms durable cancellation; source-sealed
+admission cannot reopen. External source commands cannot contain these reports.
+
+`OwnerHandoffContainmentPort` retains the original registered generation and
+delegates status/stop to native ownership. It never accepts arbitrary PIDs,
+paths or process inventories. An inventory of zero is not native exit proof.
+
+`OwnerHandoffProcess` starts the trusted existing-profile Windows Host only in
+restricted mode. Commands/capabilities travel in inherited stdin, never argv.
+Its channel keeps one outstanding request, a fixed 16-KiB receive buffer, fatal
+UTF-8 parsing and strict profile/transfer/mutation-result correlation. Invalid
+frames, timeout or mismatch permanently invalidate that transport; late replies
+cannot settle another call. Classified Rust refusals remain usable responses.
+No automatic retries occur. Closing sends EOF, then may signal only the original
+child after a bounded grace; `confirmExit` remains a separate original-child
+observation. Exit before stdout close does not discard a final buffered reply;
+spawn failure cleans up without claiming that an absent process exited.
+
+Readiness binds a committed `ready` record to transfer/profile/target-owner
+identity, record revision, Host protocol 11 and the new event epoch. It requires
+`snapshotRequired: true`; a target-claimed receipt or old event stream cannot
+authorize client reattachment. H3/H4 must publish and consume it only after
+authenticated target initialization, and negotiate actual RACP capabilities
+separately. H0 alone never opens execution or publishes a ready owner.

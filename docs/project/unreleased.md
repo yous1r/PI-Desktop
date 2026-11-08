@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Add strict ownership-handoff contracts and a bounded Node consumer for the
+  existing restricted Rust recovery mode. Ambiguous replies cannot be reused
+  for later operations; exact identity, phase and native exit checks remain
+  required. Complete Desktop transfer and readiness remain under development.
 - Add private sidecar quiescence for ownership handoff, with strict identity,
   initialization/background execution counts, lost-response reconciliation and
   irreversible local sealing. Unconfirmed reverse Host calls and unqualified
