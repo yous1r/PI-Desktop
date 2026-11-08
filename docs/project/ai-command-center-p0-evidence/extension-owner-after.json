@@ -1,0 +1,207 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "de881ccbf2565cd93fde8ab44840a9719549d73d",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-08T21:48:32.540Z",
+  "endedAt": "2026-11-08T21:48:41.686Z",
+  "command": [
+    "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+    "--import",
+    "file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-mcp-test-loader.mjs",
+    "--test",
+    "--test-reporter=tap",
+    "--test-concurrency=2",
+    "--test-timeout=25000",
+    "test/handoff-extension-owner.test.mjs",
+    "test/plugin-extension-owner-broker.test.mjs",
+    "test/plugin-extension-owner-main.test.mjs",
+    "test/plugin-extension-owner-flow.test.mjs",
+    "test/plugin-extension-owner-process.test.mjs"
+  ],
+  "sourceInputs": {
+    "count": 1617,
+    "sha256": "67eedf1b91b1d69c34511226177623d3b30c19a6108492c839d7871f5a12212d",
+    "unchanged": true,
+    "manifest": "handoff-extension-candidate-inputs.json",
+    "scope": "Tracked code/JSON/HTML/YAML in Desktop main/tests and participating runtime/contract packages; not a complete third-party dependency graph."
+  },
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "processExitCode": 0,
+  "processSignal": null,
+  "log": {
+    "path": "handoff-extension-candidate.log",
+    "bytes": 18560,
+    "sha256": "db2096942c3425088d8a3ef081746f84974438ea36278fbdc64aca925135ed0a"
+  },
+  "observations": [
+    {
+      "kind": "extension-sidecar",
+      "test": "sidecar retains original bridge work through replacement and disposal",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "old disposeSession cannot clear a replacement lifecycle",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "old disposeSession cannot clear a replacement launch",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "retirement query from a replaced lifecycle cannot dispose or launch a session",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "timed-out original session cleanup retains uncertainty after a late reply and root exit",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "missing or invalid lifecycle activity remains a refusal after disposal",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 2
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "real plugin process inherits authoritative owner scope and rejects descendant SDK calls after completion",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 1,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "owner cancellation crosses the real plugin process and prevents follow-up host mutation",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 2,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "real PluginRuntime unload invalidates Main ownership and cancels the live subprocess invocation",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 2,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "owner previews through a real plugin process emit bounded success and failure audits",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 1,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "closed admission delivers one authorized retirement and descendant SDK reply through the real plugin process",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 1,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-plugin",
+      "test": "cancelled retirement retains its real host callback after plugin unload until original work settles",
+      "originalChildrenClosed": 1,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "uncontainedResources": 2,
+        "plugins": 0,
+        "schedules": 0
+      },
+      "nativeFamilyQualified": false
+    }
+  ],
+  "environment": {
+    "platform": "win32",
+    "release": "10.0.19045",
+    "node": "v24.12.0",
+    "nodeSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8",
+    "logicalCpus": 6,
+    "memoryBytes": 25765265408,
+    "dependencies": "Existing provisioned packages and cached Pi 1.4.0 overlay; no installation."
+  },
+  "limitations": [
+    "Original root and plugin-child exit observations do not certify complete native-family closure.",
+    "Host persistence and model networking use deterministic/local fixtures; no live profile, Desktop, provider or paid API.",
+    "Other trusted-extension resources, all nineteen families, fenced Desktop composition and H1-H5 transfer remain unfinished."
+  ],
+  "tests": {
+    "passed": 68,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "files": 5,
+    "newOwnerRegressions": 26,
+    "pluginProcessPaths": 6
+  }
+}

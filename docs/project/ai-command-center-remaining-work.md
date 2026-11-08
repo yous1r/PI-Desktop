@@ -1366,3 +1366,23 @@ bounded original-Rust journal status and the fenced Desktop/coordinator factory.
 H2-H5 and the rest of the approved dependency plan remain in progress. No live
 Desktop/profile/provider, microphone, real SSH, paid API, dependency installation,
 hardware qualification or remote delivery was used for this slice.
+
+Clean candidate `de881ccbf2565cd93fde8ab44840a9719549d73d`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`, passed the 68-case five-file
+selection with zero failures, cancellations or skips. The worktree was clean
+before and after; all 1617 tracked source input hashes remained unchanged
+(manifest digest `67eedf1b91b1d69c34511226177623d3b30c19a6108492c839d7871f5a12212d`).
+This tracked source set is not a complete third-party dependency manifest.
+All six instrumented sidecar roots and six plugin children exited, with zero
+remaining operations and retained uncertainty where required. Native-family
+qualification remains false: `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+
+The [candidate report](ai-command-center-p0-evidence/extension-owner-after.json)
+is 6666 bytes, SHA-256
+`06a1fa01df913fd8e3d67fde9328f52543c22ab598fd5a8ed7f15c61f6a185d9`.
+The [verification archive](ai-command-center-p0-evidence/extension-owner-verification.json)
+is 407249 bytes, SHA-256
+`73ffb2abf13fe1c150ca68920647c95735e9dc48eb848ab944533c855de95bfd`.
+It retains twenty exact raw artifacts, their byte hashes, the source manifest and
+the 123 unique related passing test names. This owner-call slice is accepted;
+other trusted-extension/external owners and complete H1 composition continue.
