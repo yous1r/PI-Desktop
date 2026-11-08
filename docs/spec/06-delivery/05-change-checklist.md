@@ -135,11 +135,11 @@ After implementation (or alongside it):
   rerun when the landed executable content changed. Any required suite not run
   is recorded with its reason, alternative validation, and remaining risk;
   delivery remains incomplete until that gate passes.
-- [ ] Hosting-platform E2E jobs that start before the remote merge were observed
-  and reported but do not replace the local `main` gate; a post-merge rerun
-  happened when the landed executable content differs from the commit the gate
-  ran on. Dispatch or rerun follows the hosting platform's or repository
-  workflow's requirements.
+- [ ] Hosting-platform results were tied to the actual PR integration candidate
+  (merge ref, merge queue or equivalent trusted tree). Task-candidate validation
+  stays in the dedicated request worktree and does not require a local-main
+  merge. If the executable integration tree changes, rerun the affected suites;
+  observe and report their results before landing through repository gates.
 
 ---
 
