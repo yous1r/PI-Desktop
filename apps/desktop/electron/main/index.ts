@@ -305,7 +305,7 @@ const vendorOAuth = new VendorOAuth({
 
 let sessionLaunchRuntime: ReturnType<typeof createSessionLaunchRuntime> | null = null;
 const pluginServices = createPluginServices({
-  dataDir,
+  dataDir, handoffAdmission: mainState.handoffAdmission,
   logger,
   pluginActiveInProject,
   getMainWindow,

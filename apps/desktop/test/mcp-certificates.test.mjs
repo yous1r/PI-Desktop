@@ -39,7 +39,7 @@ async function fixture(t, override) {
 }
 
 function runtime(t) {
-  const rt = new UserMcpRuntime({ createClient: config => new McpServerClient(config), connectTimeoutMs: 1500, callTimeoutMs: 1500 });
+  const rt = new UserMcpRuntime({ isAdmissionClosed: () => false, createClient: config => new McpServerClient(config), connectTimeoutMs: 1500, callTimeoutMs: 1500 });
   t.after(() => rt.disposeAll());
   return rt;
 }

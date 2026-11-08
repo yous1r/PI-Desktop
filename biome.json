@@ -11,6 +11,7 @@
 			"apps/desktop/src/features/settings/**/*.ts",
 			"apps/desktop/src/features/settings/**/*.tsx",
 			"apps/desktop/electron/main/runtime/session-launch*.ts",
+			"apps/desktop/electron/main/user-mcp.ts",
 			"apps/desktop/electron/main/ipc/workspace-ipc.ts",
 			"apps/desktop/electron/main/runtime/{handoff-admission,approved-plan-dispatch,plans,scheduled-runner,lifecycle,context}.ts",
 			"apps/desktop/electron/main/ipc/{invocation-router,scheduled-ipc}.ts",

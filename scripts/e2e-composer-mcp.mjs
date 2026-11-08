@@ -64,7 +64,7 @@ createInterface({input:process.stdin}).on("line", line=>{
  if(msg.method==="tools/call")result={content:[{type:"text",text:${JSON.stringify(nonce)}}]};
  process.stdout.write(JSON.stringify({jsonrpc:"2.0",id:msg.id,result})+"\\n");
 });`);
-const mcp = new UserMcpRuntime({ createClient: config => new McpServerClient(config) });
+const mcp = new UserMcpRuntime({ isAdmissionClosed: () => false, createClient: config => new McpServerClient(config) });
 mcp.setRecords([{id:"chosen",label:"Validation MCP",transport:"stdio",command:process.execPath,args:[mcpFile],env:{},enabled:true,scope:{mode:"global",projects:[]}}]);
 const service = createComposerCommandService({
  plugins:{listLoaded:()=>[],getSkills:()=>[],getCommands:()=>[]},

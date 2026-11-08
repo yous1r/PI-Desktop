@@ -241,7 +241,7 @@ test("cold composer discovery connects enabled MCP servers before the first prom
   let connected = false;
   let calls = 0;
   const tools = [{ name: "search", inputSchema: { type: "object", properties: {} } }];
-  const runtime = new UserMcpRuntime({ createClient: () => ({
+  const runtime = new UserMcpRuntime({ isAdmissionClosed: () => false, createClient: () => ({
     async connect() { connected = true; return tools; },
     isConnected: () => connected,
     getTools: () => connected ? tools : [],

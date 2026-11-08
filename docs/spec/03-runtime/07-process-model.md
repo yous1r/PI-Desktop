@@ -593,6 +593,22 @@ replacement Host or replaying execution. The existing idempotent terminal-write
 retry uses its original Host and frozen outcome. These local bindings do not
 replace Rust ownership or provide native exit proof.
 
+User-configured MCP uses the same application gate for discovery, connection
+tests, tool calls and status probes. Admitted work remains counted through OAuth,
+handshake and original operation completion, including after cache replacement,
+cancellation or disposal. Parallel discovery waits for all admitted setup to
+settle. Delayed setup rechecks admission and current configuration; a tool call
+cannot dispatch through a client that its owner has retired.
+
+`UserMcpRuntime.getHandoffActivity()` reports pending operations plus cached
+connections as `mcp`. Every client construction attempt also increments a
+saturating safe-integer `uncontainedResources` count before invoking the factory.
+Ordinary MCP transports have no qualified native-family closure contract, so
+failure, timeout, `close()`, invalidation and disposal never decrement that count.
+Retired client objects need not be retained for this refusal evidence. Saved but
+never initialized records alone do not imply a live resource. Disposal blocks
+all later work and prevents pending OAuth/handshake work from resurrecting clients.
+
 This composition does not enable a transfer request. Complete owner inventory,
 bounded source journal transport, native/coordinator integration and target
 readiness remain separate H1-H5 acceptance work.

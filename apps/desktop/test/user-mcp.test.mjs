@@ -100,6 +100,7 @@ function stubRecord(dir, overrides = {}) {
 function runtime(t, options = {}) {
   const { spawnImpl, ...rest } = options;
   const instance = new UserMcpRuntime({
+    isAdmissionClosed: () => false,
     createClient: (config) => new McpServerClient({ ...config, spawnImpl }),
     connectTimeoutMs: 5_000,
     callTimeoutMs: 5_000,
@@ -174,6 +175,7 @@ test("the stdio connection cache stays bounded and evicted workspaces reconnect"
   let peakActive = 0;
   let handshakes = 0;
   const rt = new UserMcpRuntime({
+    isAdmissionClosed: () => false,
     createClient: () => {
       let connected = false;
       const tools = [{ name: "lookup" }];
@@ -240,7 +242,7 @@ test("refreshing HTTP MCP status detects a server that went offline", async (t) 
       failCall?.(new Error("tool call interrupted by close"));
     },
   };
-  const rt = new UserMcpRuntime({ createClient: () => client });
+  const rt = new UserMcpRuntime({ isAdmissionClosed: () => false, createClient: () => client });
   t.after(() => rt.disposeAll());
   rt.setRecords([stubRecord("/unused", { transport: "http", command: undefined, args: undefined, url: "http://127.0.0.1:9999/mcp" })]);
 
@@ -272,7 +274,7 @@ test("stopping one session cancels only its active MCP call", async (t) => {
       started.get(args.id)();
     }),
   };
-  const rt = new UserMcpRuntime({ createClient: () => client });
+  const rt = new UserMcpRuntime({ isAdmissionClosed: () => false, createClient: () => client });
   t.after(() => rt.disposeAll());
   rt.setRecords([stubRecord("/unused")]);
   await rt.toolsForProject("/repo");
@@ -417,7 +419,7 @@ function reconnectingRuntime(t) {
     },
     callTool: async (name) => { state.calls.push(name); return name; },
   };
-  const rt = new UserMcpRuntime({ createClient: () => client });
+  const rt = new UserMcpRuntime({ isAdmissionClosed: () => false, createClient: () => client });
   t.after(() => rt.disposeAll());
   rt.setRecords([stubRecord("/unused")]);
   return { rt, client, state };
@@ -590,6 +592,7 @@ test("disposing the runtime kills the server processes", async (t) => {
   const projectPath = projectDir();
   const pidFile = join(dir, "pid");
   const rt = new UserMcpRuntime({
+    isAdmissionClosed: () => false,
     createClient: (config) => new McpServerClient(config),
     connectTimeoutMs: 5_000,
     callTimeoutMs: 5_000,
@@ -663,6 +666,7 @@ test("a server whose catalog cannot be listed lands as failed with the reason", 
 test("custom timeoutSeconds overrides default connect and call timeouts on client creation", () => {
   let createdConfig = null;
   const rt = new UserMcpRuntime({
+    isAdmissionClosed: () => false,
     createClient: (config) => {
       createdConfig = config;
       return {

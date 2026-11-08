@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Include user MCP setup and calls in Desktop handoff activity. Closed admission
+  prevents late client creation and stale-client dispatch; cancellation, timeout
+  and ordinary close retain unqualified resource evidence. Complete ownership
+  transfer remains under development.
 - Fix Plan/Goal approval and lazy expiry failing immediately under an overlapping
   SQLite writer. Both transactions reserve the writer before reading, preserving
   the existing busy timeout and atomic state/audit updates without replaying RPCs.

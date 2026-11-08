@@ -43,6 +43,8 @@ export type UserMcpOAuthHandler = {
 };
 
 export type UserMcpRuntimeOptions = {
+  /** The application-owned gate; every work entry and delayed setup rechecks it. */
+  isAdmissionClosed: () => boolean;
   /**
    * How a connection is made.
    *
@@ -91,11 +93,36 @@ export class UserMcpRuntime {
   private discoveredTools = new Map<string, Set<string>>();
   private records: McpServerRecord[] = [];
   private options: UserMcpRuntimeOptions;
+  private pendingOperations = 0;
+  private uncontainedResources = 0;
+  private disposed = false;
 
   // Spelled out rather than a constructor parameter property, because the test
   // runner loads this file with Node's type-stripping loader, which rejects them.
   constructor(options: UserMcpRuntimeOptions) {
     this.options = options;
+  }
+
+  getHandoffActivity(): { mcp: number; uncontainedResources: number } {
+    return { mcp: this.pendingOperations + this.entries.size, uncontainedResources: this.uncontainedResources };
+  }
+
+  private requireAdmission(): void {
+    if (this.disposed || this.options.isAdmissionClosed()) {
+      throw Object.assign(new Error("HOST_BUSY"), { errorCode: "HOST_BUSY" });
+    }
+  }
+
+  private async run<T>(operation: () => Promise<T>): Promise<T> {
+    this.requireAdmission();
+    this.pendingOperations += 1;
+    try {
+      const result = await operation();
+      this.requireAdmission();
+      return result;
+    } finally {
+      this.pendingOperations -= 1;
+    }
   }
 
   /**
@@ -131,6 +158,10 @@ export class UserMcpRuntime {
 
   /** Confirm ready remote connections when the settings page refreshes. */
   async refreshStatuses(): Promise<McpServerStatus[]> {
+    return this.run(() => this.refreshStatusesActive());
+  }
+
+  private async refreshStatusesActive(): Promise<McpServerStatus[]> {
     await Promise.all([...this.entries].map(async ([key, entry]) => {
       if (entry.record.transport === "stdio" || entry.status.state !== "ready") return;
       let pending = this.statusRefreshes.get(key);
@@ -184,6 +215,10 @@ export class UserMcpRuntime {
    * status rather than thrown.
    */
   async toolsForProject(projectPath: string | null | undefined): Promise<UserMcpToolDescriptor[]> {
+    return this.run(() => this.toolsForProjectActive(projectPath));
+  }
+
+  private async toolsForProjectActive(projectPath: string | null | undefined): Promise<UserMcpToolDescriptor[]> {
     const active = this.records.filter((record) => isActiveInProject(record, projectPath));
     const admitted = active.slice(0, MAX_ACTIVE_SERVERS);
     if (admitted.length < active.length) {
@@ -192,10 +227,14 @@ export class UserMcpRuntime {
         skipped: active.length - admitted.length,
       });
     }
-    const lists = await Promise.all(admitted.map(async (record) => {
+    const results = await Promise.allSettled(admitted.map(async (record) => {
       const result = await this.connect(record, projectPath);
       return result.tools;
     }));
+    const lists = results.map((result) => {
+      if (result.status === "rejected") throw result.reason;
+      return result.value;
+    });
     const out: UserMcpToolDescriptor[] = [];
     admitted.forEach((record, index) => {
       for (const tool of lists[index]) {
@@ -228,7 +267,7 @@ export class UserMcpRuntime {
     projectPath: string | null | undefined,
     sessionId?: string,
   ): Promise<unknown> {
-    return this.calls.run(sessionId, (signal) => this.callToolActive(fullName, args, projectPath, signal));
+    return this.run(() => this.calls.run(sessionId, (signal) => this.callToolActive(fullName, args, projectPath, signal)));
   }
 
   private async callToolActive(
@@ -257,6 +296,7 @@ export class UserMcpRuntime {
       });
     }
     try {
+      this.requireAdmission();
       // Configuration or scope can change while the handshake is in flight.
       const current = this.records.find((entry) => entry.id === found.serverId);
       if (!current || !isActiveInProject(current, projectPath)) {
@@ -266,6 +306,7 @@ export class UserMcpRuntime {
         );
       }
       if (
+        this.entries.get(entry.key) !== entry ||
         configurationChanged(record, current) ||
         entry.status.state !== "ready" || !entry.client.isConnected()
       ) {
@@ -305,6 +346,10 @@ export class UserMcpRuntime {
    * use it.
    */
   async test(serverId: string): Promise<McpServerStatus> {
+    return this.run(() => this.testActive(serverId));
+  }
+
+  private async testActive(serverId: string): Promise<McpServerStatus> {
     const record = this.records.find((entry) => entry.id === serverId);
     if (!record) {
       return {
@@ -337,6 +382,7 @@ export class UserMcpRuntime {
 
   /** Drop every connection, e.g. on quit. */
   disposeAll(): void {
+    this.disposed = true;
     this.calls.cancelAll();
     for (const entry of this.entries.values()) entry.client.close();
     this.entries.clear();
@@ -372,6 +418,9 @@ export class UserMcpRuntime {
         oauthToken = null;
       }
     }
+    this.requireAdmission();
+    const current = this.records.find((candidate) => candidate.id === record.id);
+    if (!current || configurationChanged(record, current)) return { tools: [] };
 
     const key = connectionKey(record, projectPath);
     let existing = this.entries.get(key);
@@ -425,6 +474,10 @@ export class UserMcpRuntime {
     };
     try {
       const tools = await entry.client.connect();
+      if (this.disposed || this.options.isAdmissionClosed()) {
+        entry.client.close();
+        this.requireAdmission();
+      }
       // An edited/deleted record must not resurrect a discarded connection.
       if (this.entries.get(entry.key) !== entry) {
         entry.client.close();
@@ -457,6 +510,8 @@ export class UserMcpRuntime {
         serverId: record.id,
         message: entry.status.message,
       });
+      // Return through the caller's cleanup before its admission recheck; pinned
+      // tool setup must release activeCalls even when closure ended a handshake.
       return [];
     }
   }
@@ -475,6 +530,11 @@ export class UserMcpRuntime {
       typeof record.timeoutSeconds === "number" && record.timeoutSeconds > 0
         ? record.timeoutSeconds * 1000
         : undefined;
+    this.requireAdmission();
+    // Client construction can start uncontained processes or sockets. No current
+    // close/timeout API proves native closure, including after cache removal.
+    // Keep a bounded-size count without retaining retired client objects.
+    this.uncontainedResources = Math.min(Number.MAX_SAFE_INTEGER, this.uncontainedResources + 1);
     const client = this.options.createClient({
       // Stdio servers inherit the session workspace as their cwd. HTTP
       // transports do not spawn a child and keep the existing home default.

@@ -69,9 +69,11 @@ import { createPluginSessionContext } from "./plugin-session-context";
 import { createComposerSuggestionRelay } from "./composer-suggestion";
 import type { Logger } from "../logger";
 import type { PluginAppearance } from "../../shared/plugin-panel-chrome";
+import type { DesktopHandoffAdmission } from "../runtime/handoff-admission";
 
 export type PluginServicesDependencies = {
   dataDir: string;
+  handoffAdmission: Pick<DesktopHandoffAdmission, "isClosed">;
   logger: Logger;
   getMainWindow: () => BrowserWindow | null;
   getHost: () => HostProcess | null;
@@ -112,6 +114,7 @@ export type PluginServicesDependencies = {
  */
 export function createPluginServices({
   dataDir,
+  handoffAdmission,
   logger,
   getMainWindow,
   getHost,
@@ -572,6 +575,7 @@ export function createPluginServices({
     },
   });
   userMcp = new UserMcpRuntime({
+    isAdmissionClosed: () => handoffAdmission.isClosed(),
     createClient: (config) => new McpServerClient({ ...config, tlsTunnel: managedConnectionTunnel }),
     oauth: mcpOAuth,
     connectTimeoutMs: MCP_CONNECT_TIMEOUT_MS,

@@ -38,6 +38,7 @@ async function fixture(t, { enabled = true, failLoad = false, market = false, be
   const handlers = new Map();
   const childExits = [];
   const runtime = new UserMcpRuntime({
+    isAdmissionClosed: () => false,
     createClient: (config) => new McpServerClient({ ...config, spawnImpl: (...args) => {
       const child = spawn(...args);
       childExits.push(new Promise((resolve) => child.once("close", resolve)));

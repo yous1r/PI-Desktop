@@ -20009,3 +20009,25 @@ session data is used.
   MCP/plugin/native services. It qualifies this plan lifecycle, not complete
   resource inventory, Electron transfer, a successor Host or target readiness.
 - **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
+
+### E2E-HANDOFF-user-mcp-activity — Preserve MCP ownership through retirement
+
+- **Scope:** the actual Desktop `UserMcpRuntime`, shared application admission
+  and ordinary MCP client. This is a resource-inventory prerequisite; it does
+  not enable complete Desktop ownership transfer or qualify MCP containment.
+- **Entry:** `apps/desktop/test/handoff-user-mcp.test.mjs`. The process case
+  creates one isolated stdio server, discovers its real tool, holds a call at
+  an explicit fixture signal, and confirms that handoff refuses. It releases
+  the response, closes the runtime and awaits the original child `close` event.
+  Handoff still refuses because ordinary child exit does not qualify the native
+  process family. No real provider, live Desktop or external MCP server is used.
+- **Additional deterministic races:** closed work entries, pending OAuth,
+  retired handshake, cancellation with an unsettled tool call, removed status
+  probes, parallel setup failure, failed/replaced clients, stale client dispatch
+  and record removal during OAuth. All original promises remain counted until
+  completion. Never initialized disabled records have zero live resources.
+- **Compatibility:** run `user-mcp`, `mcp-oauth`, `mcp-certificates`,
+  `composer-mcp`, `plugin-install-refreshes-mcp` and `mcp-call-registry` tests,
+  plus session-launch, main-wiring and confirmed-shutdown regressions.
+- **Expected:** cached/retired/unconfirmed resources cannot disappear from idle
+  admission; no late client creation, tool replay or stale-client dispatch.

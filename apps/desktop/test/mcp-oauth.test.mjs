@@ -585,6 +585,7 @@ test("UserMcpRuntime: rebuilds live client when OAuth token is updated", async (
   };
 
   const runtime = new UserMcpRuntime({
+    isAdmissionClosed: () => false,
     createClient: mockClientFactory,
     oauth: manager,
   });
@@ -631,6 +632,7 @@ test("UserMcpRuntime: maps 401 in callTool to authRequired", async (t) => {
   };
 
   const runtime = new UserMcpRuntime({
+    isAdmissionClosed: () => false,
     createClient: () => mockClient,
   });
   t.after(() => runtime.disposeAll());
