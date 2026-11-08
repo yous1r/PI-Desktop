@@ -1,0 +1,58 @@
+{
+  "status": "PASS",
+  "checks": [
+    "same-directory refusal before turn recovery",
+    "different directories remain independent",
+    "directory aliases share one lock",
+    "offline relocation refuses a live destination",
+    "graceful release preserves existing transcript",
+    "OS releases lock after forced termination",
+    "simultaneous starts elect exactly one owner"
+  ],
+  "candidate": "60bbb5ddc774af6e1695f7583d44c93d653802f6",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "scriptSha256": "64335b7d83ea4f5eaf978ec88b8290c40c43d0a6d56ae012b886a64196617859",
+  "hostBinarySha256": "b892cb1e584a8cea0a5189bc622ad9a9173b1bc5ed17fda0bcaf771880769203",
+  "transportSha256": "28f6d3205a6ec9a047ff4dba5334b7d69170c092771b07c4c5451e225bac110a",
+  "platform": "win32",
+  "exits": [
+    {
+      "code": 0,
+      "signal": null
+    },
+    {
+      "code": 1,
+      "signal": null
+    },
+    {
+      "code": 0,
+      "signal": null
+    },
+    {
+      "code": 1,
+      "signal": null
+    },
+    {
+      "code": 1,
+      "signal": null
+    },
+    {
+      "code": null,
+      "signal": "SIGKILL"
+    },
+    {
+      "code": 0,
+      "signal": null
+    },
+    {
+      "code": 0,
+      "signal": null
+    },
+    {
+      "code": 1,
+      "signal": null
+    }
+  ],
+  "cleanupConfirmed": true
+}

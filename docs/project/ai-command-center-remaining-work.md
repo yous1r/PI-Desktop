@@ -87,3 +87,21 @@ Before progressing to S03b acceptance, resolve the applicable baseline failures
 and prove the complete execution-owner lifecycle. No user data migration,
 service installation, force takeover or automatic replay is performed by S03a.
 The raw process report for the committed candidate is recorded separately.
+
+Committed-candidate verification: `60bbb5ddc774af6e1695f7583d44c93d653802f6`
+contains remote base `fd28eb89866ac513912ed109716e7120cf60f18c`. The production
+HostProcess/Rust test completed all seven scenarios from a clean worktree, with
+nine observed process exits and confirmed cleanup. Retain the exact
+[candidate report](ai-command-center-p0-evidence/host-owner-after.json).
+Host binary SHA-256:
+`b892cb1e584a8cea0a5189bc622ad9a9173b1bc5ed17fda0bcaf771880769203`.
+The final ownership/relocation tests were rebuilt and explicitly ran four tests;
+a stale shared-target invocation that selected zero tests was discarded. The
+final candidate build, `cargo fmt --check` and Clippy completed successfully.
+
+S03a is implemented and its focused Windows checks pass. Full Rust integration,
+S03b and all subsequent product milestones remain open. Next priority is the
+baseline compatibility failures relevant to safe ownership handoff, then the
+idle-only transfer journal/sidecar fencing and recovery flow. Receipt retention
+and real native/mobile workload inputs remain required before their dependent
+steps are accepted.
