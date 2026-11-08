@@ -29,7 +29,8 @@ async function probe(output: string) {
   const panes: BrowserPane[] = [];
   const reveals: string[] = [];
   const host = new BrowserHost({
-    createPane: (onState, onOpenUrl) => { const pane = new BrowserPane(onState, onOpenUrl); panes.push(pane); return pane; },
+    isAdmissionClosed: () => false,
+    createPane: (onState, onOpenUrl, owner) => { const pane = new BrowserPane(onState, onOpenUrl, undefined, owner); panes.push(pane); return pane; },
     isPluginLoaded: () => true,
     getFileRoots: async () => [],
     getScratchDir: (sessionId) => sessionId ? join(output, sessionId) : null,

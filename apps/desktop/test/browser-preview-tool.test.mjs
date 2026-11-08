@@ -64,12 +64,13 @@ test("main serves BrowserPreview from its originating session workspace", async 
   assert.match(handler, /browserHost\.getFileRoots\(sessionId\)/);
   assert.doesNotMatch(handler, /workspace\.get/);
   assert.match(handler, /browserHost\.previewFile\(\)/);
-  const services = await readFile(new URL("../electron/main/services/plugin-services.ts", import.meta.url), "utf8");
-  const roots = services.slice(services.indexOf("getFileRoots: async"), services.indexOf("getScratchDir:"));
+  assert.match(pluginServicesSource, /createBrowserSessionServices\(\{/);
+  const services = await readFile(new URL("../electron/main/services/browser-session-services.ts", import.meta.url), "utf8");
+  const roots = services.slice(services.indexOf("async getFileRoots"), services.indexOf("getScratchDir:"));
   assert.match(roots, /"session\.get", \{ id: sessionId \}/);
   assert.match(roots, /res\.session\.worktree/);
   assert.match(roots, /"worktree\.location", \{ sessionId \}/);
-  assert.match(roots, /return \[path, join\(dataDir, "scratch", sessionId\)\]/);
+  assert.match(roots, /return \[path, join\(deps\.dataDir, "scratch", sessionId\)\]/);
   assert.ok(
     handler.indexOf("resolveLocalFile(raw, root)") <
       handler.indexOf("browserHost.openTab"),

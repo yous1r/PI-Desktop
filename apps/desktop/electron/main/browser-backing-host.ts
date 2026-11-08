@@ -5,9 +5,10 @@ export class BrowserBackingHost {
   private window: BrowserWindow | null = null;
   private readonly surfaces = new Set<View>();
 
-  attach(surface: View, size: { width: number; height: number }): BrowserWindow {
+  attach(surface: View, size: { width: number; height: number }, beforeCreate?: () => void): BrowserWindow {
     let window = this.window;
     if (!window || window.isDestroyed()) {
+      beforeCreate?.();
       window = new BrowserWindow({
         show: false,
         skipTaskbar: true,

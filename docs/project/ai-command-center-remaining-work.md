@@ -926,3 +926,54 @@ Next: browser/plugin/voice/remote resource ownership and complete inventory.
 The shared-service and RACP archived logs remove one trailing blank line each
 to satisfy repository whitespace checks; their original scratch logs remain
 unchanged. Candidate logs and report are byte-identical copies.
+
+### H1 browser activity checkpoint
+
+BrowserHost now requires the application admission callback and passes an
+original-page scope into its Pane and CDP owners. `BrowserActivity` retains
+original operations independently of page maps, and `BrowserPageOperations`
+owns caller deadlines, viewport execution and screenshot output. BrowserHost
+shrinks from 657 to 605 lines. `createBrowserSessionServices` binds session roots,
+worktree lookup and link preferences to the original Host object/generation.
+
+Navigation's early commit result does not release the native `loadURL` promise.
+CDP timeout does not release the underlying command. Concurrent initialization
+joins one binding; later commands and element uids cannot use a replacement
+binding. An old timeout cannot detach a new connection on the same WebContents.
+Queued captures recheck admission, and late results cannot create screenshot
+files after closure. Background console/link failures are observed. Temporary
+guest disposal permits plugin reload, while permanent disposal seals entry.
+
+The inventory exposes operations, pages and a saturating count of unqualified
+WebContents/backing-window/watcher/external-launch attempts. Ordinary destruction,
+failure, timeout or cache removal never supplies native-family closure proof.
+Retired owners remain only while their original work needs them; historical
+refusal evidence is scalar. Full nineteen-family composition and H1 transfer
+acceptance remain open.
+
+Validation before the fixed candidate: 133 Desktop tests passed across 16 files,
+including 29 new ownership/session races, 80 browser compatibility cases and
+24 main-wiring/plugin/quit checks. Full Desktop plus browser fixture types,
+Biome (268 files), architecture, agent-policy, source syntax, diff whitespace,
+631 documentation pages and latest-main ancestry passed. Three prior-source
+behavior failures established admission/late navigation/retired CDP dispatch;
+additional valid failures covered stale deadline cleanup and old native UIDs.
+
+The isolated Electron preflight passed four steps with real visible-page
+screenshots, background input, pending evaluation and persistent handoff refusal.
+Two original WebContents, all fixture windows and the original Electron child
+were observed closed. This is not native-family closure qualification. A prior
+fixture could not find Electron at a hard-coded worktree path; package resolution
+now reuses the provisioned Electron binary without installation.
+
+**Retained existing defect:** never-presented background screenshots time out at
+30 seconds on both committed `2d489098fb9cf25ec5cf725e37cc968502be47df`
+and changed code under Windows/Electron 43.6.0. The committed baseline's layout
+query completed before `Page.captureScreenshot` stalled. Adding a main window
+alone did not resolve it. The four-step acceptance uses a visible screenshot
+before background input and makes no claim to close this defect. Full browser
+qualification must revisit it; this slice does not increase the deadline or
+change native settings.
+
+Next: archive the fixed-candidate browser evidence, then continue plugin, voice
+and remote resource owners before complete H1 composition and H2-H5 transfer.

@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Bind browser operations to shared Desktop admission and their original page,
+  Host generation and debugger connection. Timed-out or retired work stays
+  counted until it settles; late screenshots cannot write new files after
+  admission closes. Native creation attempts remain unqualified after ordinary
+  disposal, and complete ownership transfer remains under development.
 - Gate workspace terminal work during idle handoff and keep delayed operations
   bound to their original Host and connection. Window retirement retains pending
   output and unqualified PTY/remote-terminal resources; close or ordinary exit

@@ -69,6 +69,7 @@ function harness() {
     return pane;
   };
   const host = new BrowserHost({
+    isAdmissionClosed: () => false,
     createPane, isPluginLoaded: () => true,
     getFileRoots(sessionId) {
       const done = deferred(); roots.push({ sessionId, ...done }); return done.promise;

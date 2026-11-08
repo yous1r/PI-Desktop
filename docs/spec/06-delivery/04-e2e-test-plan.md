@@ -20060,3 +20060,30 @@ session data is used.
   terminal protocol, Main wiring and confirmed-shutdown tests. No live Desktop,
   provider, external remote Host or minimum-hardware qualification is involved.
 - **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
+
+### E2E-HANDOFF-browser-activity
+
+- **Goal**: browser work uses shared admission and retains original operation
+  ownership through timeouts, page removal, native replacement and plugin unload.
+- **Automated paths**: `handoff-browser.test.mjs`,
+  `handoff-browser-session.test.mjs`, existing browser navigation/background/
+  capture tests, and `pnpm test:e2e:browser-handoff`.
+- **Deterministic faults**: close admission during roots, worktree lookup, link
+  preferences, CDP initialization, element resolution and queued captures;
+  replace Host object/generation; retire pages while native loads or commands
+  remain pending; expire old deadlines after a new debugger binding exists.
+- **Expected**: no late dispatch through a replacement owner, no stale element
+  mutation, no screenshot file after closure, no unhandled background failure.
+  Activity releases only when original promises settle. Reveal, temporary
+  unload/reload and permanent shutdown retain their distinct lifecycle behavior.
+- **Native user path**: isolated profile and local HTML; hold/cancel empty
+  admission, navigate a visible page, fill and capture it, switch sessions and
+  input to the original background page, refuse handoff during native evaluation,
+  close original WebContents, retain unqualified evidence and refuse new work
+  after permanent disposal. Record tested head/base, source inputs, original
+  Electron child exit and native-closure limitations.
+- **Qualification limit**: this suite covers visible native screenshots and
+  background input. A never-presented background guest's screenshot timed out on
+  both committed and changed code in the Windows Electron 43.6.0 environment;
+  preserve that failure separately. Native-family closure, full Desktop transfer
+  and minimum-hardware browser qualification remain open.

@@ -50,6 +50,8 @@ export class BrowserCdp {
     this.calls.push("attach");
   }
 
+  captureDetach(wc) { return () => this.detach(wc); }
+
   detach(wc) {
     this.calls.push("detach");
     this.detached.push(wc);

@@ -19,6 +19,7 @@ function harness() {
   const panes = [], roots = [], loads = [], published = [], presentation = [], reveals = [];
   let enabled = true;
   const host = new BrowserHost({
+    isAdmissionClosed: () => false,
     createPane(onState) {
       let state = null;
       let attached = false;

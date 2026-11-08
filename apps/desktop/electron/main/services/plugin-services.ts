@@ -61,6 +61,7 @@ import { SESSION_SCOPED_EVENTS, sessionEventScopeFilter } from "../plugin-sessio
 import { BrowserPane } from "../browser-view";
 import { BrowserBackingHost } from "../browser-backing-host";
 import { BrowserHost, BROWSER_PLUGIN_ID } from "../browser-host";
+import { createBrowserSessionServices } from "./browser-session-services";
 import { OAUTH_AUTH_KIND, type VendorOAuth } from "../oauth";
 import type { ClipboardHistory } from "../clipboard-history";
 import type { TurnEndedPayload } from "../runtime/session-coordination";
@@ -697,41 +698,14 @@ export function createPluginServices({
   pluginPanels.addContextResolver((senderId) => pluginViews.contextForSender(senderId));
   const browserBackingHost = new BrowserBackingHost();
   const browserHost = new BrowserHost({
-    createPane: (onState, onOpenUrl) => new BrowserPane(onState, onOpenUrl, browserBackingHost),
-    onOpenUrl: (url, sessionId) => {
-      void (async () => {
-        const settings = await getHost()?.call<AppSettings>("settings.get");
-        if (!sessionId || settings?.linkOpenTarget === "external" || !/^https?:/i.test(url)) {
-          await shell.openExternal(url);
-        } else {
-          sendToRenderer(IPC.event.browserPreview, { sessionId, url });
-        }
-      })().catch((error) => logger.app("plugin", "warn", "browser.link.open.failed", { data: String(error) }));
-    },
+    isAdmissionClosed: () => handoffAdmission.isClosed(),
+    createPane: (onState, onOpenUrl, owner) => new BrowserPane(onState, onOpenUrl, browserBackingHost, owner),
+    ...createBrowserSessionServices({
+      dataDir, getHost, getWorkspacePath,
+      openExternal: (url) => shell.openExternal(url),
+      preview: (sessionId, url) => sendToRenderer(IPC.event.browserPreview, { sessionId, url }),
+    }),
     isPluginLoaded: (pluginId) => Boolean(plugins.getLoaded(pluginId)),
-    getFileRoots: async (sessionId) => {
-      if (!sessionId) return projectFolderPaths(getWorkspacePath());
-      const host = getHost();
-      if (!host) throw new Error("Browser preview host is unavailable.");
-      const res = await host.call<{ session: { projectPath?: string; worktree?: unknown } | null }>(
-        "session.get", { id: sessionId },
-      );
-      if (!res?.session) throw new Error("Browser preview session is unavailable.");
-      if (res.session.worktree) {
-        const location = await host.call<{ path?: string }>("worktree.location", { sessionId });
-        const path = location.path?.trim();
-        if (!path) throw new Error("Browser preview worktree is unavailable.");
-        return [path, join(dataDir, "scratch", sessionId)];
-      }
-      return [
-        ...projectFolderPaths(res.session.projectPath?.trim() || null),
-        join(dataDir, "scratch", sessionId),
-      ];
-    },
-    getScratchDir: (sessionId) => {
-      if (!sessionId) return null;
-      return join(dataDir, "scratch", sessionId);
-    },
     onState: emitBrowserState,
     onPresentationState: emitBrowserPresentationState,
     onRevealView: (sessionId, tabId, location) =>

@@ -20,6 +20,7 @@ const VIEW = { x: 100, y: 20, width: 400, height: 600 };
 function harness() {
   const panes = [];
   const host = new BrowserHost({
+    isAdmissionClosed: () => false,
     createPane: (onState) => {
       let state = null;
       const pane = {

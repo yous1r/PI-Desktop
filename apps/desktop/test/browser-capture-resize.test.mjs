@@ -100,7 +100,8 @@ const { WebContentsView, BrowserWindow } = await import("electron");
 
 async function harness(t) {
   const host = new BrowserHost({
-    createPane: (onState, onOpenUrl) => new BrowserPane(onState, onOpenUrl),
+    isAdmissionClosed: () => false,
+    createPane: (onState, onOpenUrl, owner) => new BrowserPane(onState, onOpenUrl, undefined, owner),
     isPluginLoaded: () => true, getFileRoots: async () => [], onState: () => {},
   });
   const children = [];

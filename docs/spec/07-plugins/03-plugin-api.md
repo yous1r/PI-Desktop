@@ -1041,11 +1041,20 @@ Full-page `screenshot` captures are proportionally scaled to no more than
 1280×2048 output pixels. Viewport screenshots and raw `Page.captureScreenshot`
 CDP calls retain their existing dimensions.
 
-Screenshot captures, including raw `Page.captureScreenshot` CDP calls, have a
-30-second host-side deadline. A capture that exceeds it fails with `TIMEOUT`;
-the host detaches the stalled CDP session and releases that page's capture
-queue so a later capture can reattach and proceed. Other CDP methods retain
-their existing timeout behavior.
+Screenshot captures, including raw `Page.captureScreenshot`, and other CDP
+operations have a 30-second host-side deadline. A call exceeding it fails with
+`TIMEOUT`; recovery detaches only its original debugger connection. The page's
+capture queue is released so a later call can reattach. Old deadlines and element
+uids cannot target a replacement connection. Deadline expiry does not prove that
+the underlying native operation has completed.
+
+Desktop handoff admission rejects new browser execution with `HOST_BUSY`.
+Pending roots, navigation, CDP setup and page mutations recheck their original
+owner before further effects. Temporary plugin unload permits later new pages;
+permanent host disposal rejects entry with `UNAVAILABLE`. Already produced native
+results may return, but a retired or closed scope cannot write a screenshot file.
+Browser activity and unqualified native resource evidence survive ordinary
+disposal; this contract does not enable ownership transfer.
 
 `getHistory` returns newest-first entries explicitly recorded by the host, with
 text and images interleaved in capture order. Content written through

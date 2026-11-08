@@ -125,35 +125,43 @@ function consoleText(args: unknown): string {
     .join(" ");
 }
 
+type CdpBinding = {
+  wc: WebContents;
+  ready: Promise<void>;
+  listener: (event: unknown, method: string, params: unknown) => void;
+};
+
 /**
  * CDP session bound to one guest WebContents. Re-attaches when the view is
  * recreated. Snapshot uids are valid only until the next snapshot.
  */
 export class BrowserCdp {
-  private attachedId: number | null = null;
+  private binding: CdpBinding | null = null;
+  private readonly assertOwner: () => void;
   private uids = new Map<string, number>();
   private messages: BrowserConsoleMessage[] = [];
-  private onDebuggerMessage?: (
-    event: unknown,
-    method: string,
-    params: unknown,
-  ) => void;
+
+  constructor(assertOwner: () => void = () => {}) { this.assertOwner = assertOwner; }
 
   isAttached(wc: WebContents): boolean {
-    return this.attachedId === wc.id && !wc.isDestroyed() && wc.debugger.isAttached();
+    return this.binding?.wc === wc && !wc.isDestroyed() && wc.debugger.isAttached();
   }
 
-  async attach(wc: WebContents): Promise<void> {
-    if (wc.isDestroyed()) {
-      throw new Error("browser guest is not available");
+  async attach(wc: WebContents): Promise<void> { await this.connect(wc); }
+
+  private async connect(wc: WebContents): Promise<CdpBinding> {
+    this.assertOwner();
+    if (wc.isDestroyed()) throw Object.assign(new Error("browser guest is not available"), { code: "UNAVAILABLE" });
+    if (this.isAttached(wc) && this.binding) {
+      const binding = this.binding;
+      await binding.ready;
+      this.assertBinding(binding);
+      return binding;
     }
-    if (this.isAttached(wc)) return;
     this.detach();
-    if (!wc.debugger.isAttached()) {
-      wc.debugger.attach(BROWSER_CDP_PROTOCOL);
-    }
-    this.attachedId = wc.id;
-    this.onDebuggerMessage = (_event, method, params) => {
+    if (!wc.debugger.isAttached()) wc.debugger.attach(BROWSER_CDP_PROTOCOL);
+    const listener: CdpBinding["listener"] = (_event, method, params) => {
+      if (this.binding !== binding) return;
       if (method !== "Runtime.consoleAPICalled" && method !== "Console.messageAdded") {
         return;
       }
@@ -171,33 +179,54 @@ export class BrowserCdp {
       this.messages.push({ type, text, timestamp: Date.now() });
       if (this.messages.length > MAX_CONSOLE_MESSAGES) this.messages.shift();
     };
-    wc.debugger.on("message", this.onDebuggerMessage);
-    await wc.debugger.sendCommand("Runtime.enable");
-    await wc.debugger.sendCommand("Console.enable");
-    await wc.debugger.sendCommand("Page.enable");
-    await wc.debugger.sendCommand("DOM.enable");
-    await wc.debugger.sendCommand("Accessibility.enable");
-    // Chromium ignores input on detached guests unless it emulates focus.
-    // This does not focus or attach a native window, so background tools can
-    // interact with their own page without disturbing the visible session.
-    await wc.debugger.sendCommand("Emulation.setFocusEmulationEnabled", { enabled: true });
+    const binding: CdpBinding = { wc, listener, ready: Promise.resolve() };
+    this.binding = binding;
+    wc.debugger.on("message", listener);
+    binding.ready = this.initialize(binding);
+    try { await binding.ready; }
+    catch (error) {
+      if (this.binding === binding) this.detach(wc);
+      throw error;
+    }
+    this.assertBinding(binding);
+    return binding;
+  }
+
+  private async initialize(binding: CdpBinding): Promise<void> {
+    for (const method of ["Runtime.enable", "Console.enable", "Page.enable", "DOM.enable", "Accessibility.enable"]) {
+      await this.command(binding, method);
+    }
+    // Focus emulation supports background input without moving the native focus.
+    await this.command(binding, "Emulation.setFocusEmulationEnabled", { enabled: true });
+  }
+
+  private assertBinding(binding: CdpBinding): void {
+    this.assertOwner();
+    if (this.binding !== binding || binding.wc.isDestroyed() || !binding.wc.debugger.isAttached()) {
+      throw Object.assign(new Error("browser guest is not available"), { code: "UNAVAILABLE" });
+    }
+  }
+
+  private command(binding: CdpBinding, method: string, params?: Record<string, unknown>): Promise<unknown> {
+    this.assertBinding(binding);
+    return binding.wc.debugger.sendCommand(method, params);
+  }
+
+  captureDetach(wc: WebContents): () => void {
+    const binding = this.binding;
+    return () => { if (binding && binding.wc === wc && this.binding === binding) this.detach(wc); };
   }
 
   detach(wc?: WebContents): void {
-    const target = wc && !wc.isDestroyed() ? wc : null;
-    if (target?.debugger.isAttached()) {
-      if (this.onDebuggerMessage) {
-        target.debugger.off("message", this.onDebuggerMessage);
-      }
-      try {
-        target.debugger.detach();
-      } catch {
-        // Already detached.
-      }
-    }
-    this.onDebuggerMessage = undefined;
-    this.attachedId = null;
+    const binding = this.binding;
+    if (!binding || (wc && binding.wc !== wc)) return;
+    this.binding = null;
     this.uids.clear();
+    binding.wc.debugger.off("message", binding.listener);
+    if (!binding.wc.isDestroyed() && binding.wc.debugger.isAttached()) {
+      try { binding.wc.debugger.detach(); }
+      catch (error) { console.warn("Browser debugger detach failed", error); }
+    }
   }
 
   async send(wc: WebContents, method: string, params?: unknown): Promise<unknown> {
@@ -206,20 +235,20 @@ export class BrowserCdp {
         code: "PERMISSION_DENIED",
       });
     }
-    await this.attach(wc);
-    return wc.debugger.sendCommand(
+    const binding = await this.connect(wc);
+    return this.command(binding,
       method,
       (params && typeof params === "object" ? params : {}) as Record<string, unknown>,
     );
   }
 
   async snapshot(wc: WebContents): Promise<SnapshotResult> {
-    await this.attach(wc);
-    const raw = (await wc.debugger.sendCommand("Accessibility.getFullAXTree")) as {
+    const binding = await this.connect(wc);
+    const raw = (await this.command(binding, "Accessibility.getFullAXTree")) as {
       nodes?: AxNode[];
     };
     const flattened = flattenAxTree(Array.isArray(raw?.nodes) ? raw.nodes : []);
-    this.uids = flattened.uids;
+    if (this.binding === binding) this.uids = flattened.uids;
     return {
       tree: flattened.tree,
       url: wc.getURL(),
@@ -231,10 +260,10 @@ export class BrowserCdp {
     wc: WebContents,
     input: { fullPage?: boolean } = {},
   ): Promise<{ mimeType: string; data: string }> {
-    await this.attach(wc);
+    const binding = await this.connect(wc);
     let clip: { x: number; y: number; width: number; height: number; scale: number } | undefined;
     if (input.fullPage) {
-      const metrics = (await wc.debugger.sendCommand("Page.getLayoutMetrics")) as {
+      const metrics = (await this.command(binding, "Page.getLayoutMetrics")) as {
         contentSize?: { width?: number; height?: number };
         cssContentSize?: { width?: number; height?: number };
       };
@@ -248,7 +277,7 @@ export class BrowserCdp {
       );
       clip = { x: 0, y: 0, width, height, scale };
     }
-    const result = (await wc.debugger.sendCommand("Page.captureScreenshot", {
+    const result = (await this.command(binding, "Page.captureScreenshot", {
       format: "jpeg",
       quality: 70,
       ...(clip ? { clip, captureBeyondViewport: true } : {}),
@@ -260,18 +289,18 @@ export class BrowserCdp {
   }
 
   async click(wc: WebContents, uid: string): Promise<void> {
+    const binding = await this.connect(wc);
     const backendNodeId = this.requireUid(uid);
-    await this.attach(wc);
-    await wc.debugger.sendCommand("Emulation.setFocusEmulationEnabled", { enabled: false });
-    await wc.debugger.sendCommand("Emulation.setFocusEmulationEnabled", { enabled: true });
-    const resolved = (await wc.debugger.sendCommand("DOM.resolveNode", { backendNodeId })) as {
+    await this.command(binding, "Emulation.setFocusEmulationEnabled", { enabled: false });
+    await this.command(binding, "Emulation.setFocusEmulationEnabled", { enabled: true });
+    const resolved = (await this.command(binding, "DOM.resolveNode", { backendNodeId })) as {
       object?: { objectId?: string };
     };
     const objectId = resolved.object?.objectId;
     if (!objectId) throw Object.assign(new Error(`could not resolve ${uid}`), { code: "NOT_FOUND" });
     // CDP box quads can include the detached native view's offscreen offset.
     // Resolve the actual element in its page viewport, then use trusted input.
-    const evaluated = (await wc.debugger.sendCommand("Runtime.callFunctionOn", {
+    const evaluated = (await this.command(binding, "Runtime.callFunctionOn", {
       objectId,
       functionDeclaration: `function () {
         const view = this.ownerDocument.defaultView;
@@ -294,10 +323,10 @@ export class BrowserCdp {
       throw Object.assign(new Error(`no visible box for ${uid}`), { code: "NOT_FOUND" });
     }
     const { x, y } = point;
-    await wc.debugger.sendCommand("Input.dispatchMouseEvent", {
+    await this.command(binding, "Input.dispatchMouseEvent", {
       type: "mouseMoved", x, y, button: "none", buttons: 0,
     });
-    await wc.debugger.sendCommand("Input.dispatchMouseEvent", {
+    await this.command(binding, "Input.dispatchMouseEvent", {
       type: "mousePressed",
       x,
       y,
@@ -305,7 +334,7 @@ export class BrowserCdp {
       buttons: 1,
       clickCount: 1,
     });
-    await wc.debugger.sendCommand("Input.dispatchMouseEvent", {
+    await this.command(binding, "Input.dispatchMouseEvent", {
       type: "mouseReleased",
       x,
       y,
@@ -316,16 +345,16 @@ export class BrowserCdp {
   }
 
   async fill(wc: WebContents, uid: string, text: string): Promise<void> {
+    const binding = await this.connect(wc);
     const backendNodeId = this.requireUid(uid);
-    await this.attach(wc);
-    const resolved = (await wc.debugger.sendCommand("DOM.resolveNode", { backendNodeId })) as {
+    const resolved = (await this.command(binding, "DOM.resolveNode", { backendNodeId })) as {
       object?: { objectId?: string };
     };
     const objectId = resolved.object?.objectId;
     if (!objectId) {
       throw Object.assign(new Error(`could not resolve ${uid}`), { code: "NOT_FOUND" });
     }
-    await wc.debugger.sendCommand("Runtime.callFunctionOn", {
+    await this.command(binding, "Runtime.callFunctionOn", {
       objectId,
       functionDeclaration: `function (value) {
         this.focus({ preventScroll: true });
@@ -343,8 +372,8 @@ export class BrowserCdp {
   }
 
   async evaluate(wc: WebContents, expression: string): Promise<unknown> {
-    await this.attach(wc);
-    const result = (await wc.debugger.sendCommand("Runtime.evaluate", {
+    const binding = await this.connect(wc);
+    const result = (await this.command(binding, "Runtime.evaluate", {
       expression,
       returnByValue: true,
       awaitPromise: true,

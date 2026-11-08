@@ -34,8 +34,9 @@ async function probe(artifactDir: string) {
   const window = new BrowserWindow({ width: 1100, height: 750, show: true, alwaysOnTop: true });
   const panes: BrowserPane[] = [];
   const host = new BrowserHost({
-    createPane: (onState, onOpenUrl) => {
-      const pane = new BrowserPane(onState, onOpenUrl);
+    isAdmissionClosed: () => false,
+    createPane: (onState, onOpenUrl, owner) => {
+      const pane = new BrowserPane(onState, onOpenUrl, undefined, owner);
       panes.push(pane);
       return pane;
     },

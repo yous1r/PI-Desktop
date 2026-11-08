@@ -629,6 +629,30 @@ Filesystem-only shell discovery does not launch a process or invent a PTY.
 The shared remote connection itself remains owned by its existing remote-host
 service and requires separate inventory composition.
 
+Browser execution uses the application admission gate and an original-page
+scope. Navigation roots and link preferences capture the original Host object
+and generation across RPC awaits. CDP initialization is shared by concurrent
+callers, but every command retains its original debugger binding; stale timeout
+cleanup and element uids cannot act through a replacement connection.
+
+`BrowserHost.getHandoffActivity()` reports `operations`, `pages` and
+`uncontainedResources`. Original native `loadURL` promises, queued viewport work,
+CDP commands, reveal waits, link opening and console setup remain counted through
+their actual settlement, including after caller timeout or page/plugin removal.
+These are activity counts, not execution-capacity counts. Creating a WebContents,
+hidden backing window, file watcher or external application increments bounded
+refusal evidence before the attempt. Failure, ordinary destruction and debugger
+detach cannot decrement it without a qualified native-family closure contract.
+Deleting page maps therefore neither certifies idle nor loses unsettled work.
+
+Temporary guest disposal invalidates old scopes while permitting later plugin
+reload; permanent BrowserHost disposal seals new entry. Accepted native results
+may complete their callers, but retired scopes cannot launch more commands or
+write a late screenshot file. Native navigation, popup and live-reload callbacks
+also recheck their owner before dispatch. The existing page partition, file/URL
+rules, background routing, presentation ownership and public CDP allowlist remain
+unchanged.
+
 This composition does not enable a transfer request. Complete owner inventory,
 bounded source journal transport, native/coordinator integration and target
 readiness remain separate H1-H5 acceptance work.

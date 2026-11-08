@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import type { BrowserState } from "@pi-desktop/shared";
 import { isAllowedHttpUrl, parseAllowedExternalUrl } from "./safe-open-external";
 import { BrowserBackingHost } from "./browser-backing-host";
+import type { BrowserOperationOwner } from "./browser-activity";
 
 /**
  * Work panel embedded preview browser (D100, ADR 0019).
@@ -145,15 +146,19 @@ export class BrowserPane {
 
   private readonly onOpenUrl?: (url: string) => void;
   private readonly backingHost: BrowserBackingHost;
+  private readonly owner?: BrowserOperationOwner;
+  private disposed = false;
 
   constructor(
     onState: (state: BrowserState) => void,
     onOpenUrl?: (url: string) => void,
     backingHost = BrowserPane.sharedBackingHost,
+    owner?: BrowserOperationOwner,
   ) {
     this.onState = onState;
     this.onOpenUrl = onOpenUrl;
     this.backingHost = backingHost;
+    this.owner = owner;
   }
 
   setWindow(window: BrowserWindow | null): void {
@@ -196,9 +201,11 @@ export class BrowserPane {
   }
 
   withStableViewport<T>(operation: (wc: WebContents) => Promise<T>): Promise<T> {
+    this.assertCurrent();
     // Pin identity before queueing; a replacement cannot receive old work.
     const wc = this.getWebContents();
     const task = this.operationTail.then(async () => {
+      this.assertCurrent();
       if (!wc || wc.isDestroyed() || this.getWebContents() !== wc) {
         throw Object.assign(new Error("browser guest is not available"), { code: "UNAVAILABLE" });
       }
@@ -245,6 +252,7 @@ export class BrowserPane {
     fileRoot: string | null = null,
     timeoutMs = 15_000,
   ): Promise<BrowserState | null> {
+    this.assertCurrent();
     if (fileRoot) this.fileRoot = fileRoot;
     const localPath = resolveBrowserLocalFile(raw, this.fileRoot);
     const trimmed = raw.trim();
@@ -284,6 +292,7 @@ export class BrowserPane {
         if (epoch !== this.navigationEpoch) { resolve(null); return; }
         this.cancelPending = null;
         this.pendingTarget = null;
+        if (!this.isCurrent()) { resolve(null); return; }
         if (error) this.loadError = { url: target, message: error };
         const state = this.getState();
         if (committed && state) this.enableStateEvents(epoch, state.url);
@@ -310,14 +319,16 @@ export class BrowserPane {
       wc.on("did-navigate", onCommit);
       wc.on("did-redirect-navigation", onRedirect);
       wc.on("did-fail-load", onFailure);
-      void wc.loadURL(target).then(
-        () => { if (destinations.has(wc.getURL())) finish(true); },
+      const load = this.owner ? this.owner.run(() => wc.loadURL(target)) : wc.loadURL(target);
+      void load.then(
+        () => { if (!settled && !wc.isDestroyed() && destinations.has(wc.getURL())) finish(true); },
         (error: unknown) => finish(false, error instanceof Error ? error.message : String(error)),
       );
     });
   }
 
   action(action: "back" | "forward" | "reload" | "stop"): void {
+    this.assertCurrent();
     const wc = this.view?.webContents;
     if (!wc || wc.isDestroyed()) return;
     if (action === "stop" && this.pendingTarget) {
@@ -372,16 +383,21 @@ export class BrowserPane {
   }
 
   openExternal(): void {
+    this.assertCurrent();
     const url = this.getWebContents()?.getURL();
     if (!url) return;
     const allowed = parseAllowedExternalUrl(url);
     if (allowed) {
-      void shell.openExternal(allowed);
+      this.launchExternal(() => shell.openExternal(allowed));
       return;
     }
     if (this.isAllowedFileUrl(url)) {
       try {
-        void shell.openPath(fileURLToPath(url));
+        const path = fileURLToPath(url);
+        this.launchExternal(async () => {
+          const error = await shell.openPath(path);
+          if (error) throw new Error(error);
+        });
       } catch {
         // Invalid file URL — leave the preview in place.
       }
@@ -389,6 +405,7 @@ export class BrowserPane {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.invalidateNavigation();
     this.clearLiveReload();
     this.detach();
@@ -401,7 +418,22 @@ export class BrowserPane {
     }
   }
 
+  private isCurrent(): boolean { return !this.disposed && (this.owner?.isCurrent() ?? true); }
+
+  private assertCurrent(): void {
+    if (this.disposed) throw Object.assign(new Error("browser guest is not available"), { code: "UNAVAILABLE" });
+    this.owner?.assertCurrent();
+  }
+
+  private launchExternal(operation: () => Promise<void>): void {
+    this.assertCurrent();
+    this.owner?.nativeAttempt();
+    const pending = this.owner ? this.owner.run(operation) : operation();
+    void pending.catch((error) => console.warn("Browser external opening failed", error));
+  }
+
   private attach(): void {
+    if (!this.isCurrent()) { this.detach(); return; }
     if (!this.window || this.window.isDestroyed() || !this.surface) return;
     if (this.attachedWindow !== this.window) this.detach();
     const children = this.window.contentView.children;
@@ -421,13 +453,14 @@ export class BrowserPane {
     if (!this.surface || !this.view || !this.getWebContents()) return;
     if (this.attachedWindow && this.attachedWindow !== this.window && !this.attachedWindow.isDestroyed()) return;
     this.detach();
+    if (!this.isCurrent()) return;
     const bounds = this.view.getBounds();
     const size = { width: bounds.width || 1024, height: bounds.height || 768 };
     if (!bounds.width || !bounds.height) this.view.setBounds({ x: 0, y: 0, ...size });
     this.surface.setBounds({ x: 0, y: 0, ...size });
     this.surface.setVisible(true);
     this.view.setVisible(true);
-    this.attachedWindow = this.backingHost.attach(this.surface, size);
+    this.attachedWindow = this.backingHost.attach(this.surface, size, () => this.owner?.nativeAttempt());
   }
 
   private detach(): void {
@@ -442,9 +475,11 @@ export class BrowserPane {
 
   /** Watch the previewed file's directory so page + asset edits re-render. */
   private watchDirForReload(dir: string): void {
+    if (!this.isCurrent()) return;
     if (this.watcher && this.watchedDir === dir) return;
     this.clearLiveReload();
     try {
+      this.owner?.nativeAttempt();
       this.watcher = watch(dir, { persistent: false }, () => this.scheduleReload());
       this.watchedDir = dir;
     } catch {
@@ -454,9 +489,11 @@ export class BrowserPane {
   }
 
   private scheduleReload(): void {
+    if (!this.isCurrent()) return;
     if (this.reloadTimer) clearTimeout(this.reloadTimer);
     this.reloadTimer = setTimeout(() => {
       this.reloadTimer = null;
+      if (!this.isCurrent()) return;
       const wc = this.view?.webContents;
       if (wc && !wc.isDestroyed() && wc.getURL().startsWith("file:")) {
         wc.reloadIgnoringCache();
@@ -484,9 +521,11 @@ export class BrowserPane {
   }
 
   private ensureView(): WebContentsView {
+    this.assertCurrent();
     if (this.view && this.getWebContents()) return this.view;
     this.detach();
     if (this.view) this.surface?.removeChildView(this.view);
+    this.owner?.nativeAttempt();
     const view = new WebContentsView({
       webPreferences: {
         sandbox: true,
@@ -503,10 +542,11 @@ export class BrowserPane {
     this.surface = surface;
     const wc = view.webContents;
     wc.setWindowOpenHandler(({ url }) => {
+      if (!this.isCurrent()) return { action: "deny" };
       const allowed = parseAllowedExternalUrl(url);
       if (allowed) {
         if (this.onOpenUrl) this.onOpenUrl(allowed);
-        else void shell.openExternal(allowed);
+        else this.launchExternal(() => shell.openExternal(allowed));
       }
       return { action: "deny" };
     });
@@ -514,6 +554,7 @@ export class BrowserPane {
       callback(false);
     });
     wc.on("will-navigate", (event, url) => {
+      if (!this.isCurrent()) { event.preventDefault(); return; }
       if (isAllowedHttpUrl(url)) {
         this.nativeNavigationPending = this.hasCurrentStateEventScope();
         return;
@@ -596,7 +637,7 @@ export class BrowserPane {
   }
 
   private hasCurrentStateEventScope(): boolean {
-    return this.stateEventsEpoch === this.navigationEpoch && this.stateUrl !== null;
+    return this.isCurrent() && this.stateEventsEpoch === this.navigationEpoch && this.stateUrl !== null;
   }
 
   private acceptNativeNavigation(url: string): boolean {
