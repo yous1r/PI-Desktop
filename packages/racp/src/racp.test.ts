@@ -285,6 +285,36 @@ describe("RACP-WS reconnect", () => {
     expect(events.length).toBeGreaterThan(0);
   });
 
+  it("resyncs after byte eviction below the event-count cap and continues live without restarting", async () => {
+    const h = await harness();
+    const { client, events } = await h.connect(OWNER_TOKEN);
+    try {
+      await client.request("session/attach", { sessionId: "s1" });
+      const early = h.host.hub.stream("s1").cursor();
+      for (let index = 0; index < 20; index++) {
+        h.host.ingest(envelope("s1", "rt_1", { type: "message_end", message: {
+          id: `large-${index}`, role: "assistant", content: "x".repeat(512 * 1024),
+          createdAt: "2026-09-18T00:00:01.000Z", status: "complete",
+        } }));
+      }
+      const attached = await client.request<{ replayComplete: boolean; resyncReason?: string; snapshot?: RacpSessionSnapshot }>(
+        "session/attach", { sessionId: "s1", after: early });
+      expect(attached.replayComplete).toBe(false);
+      expect(attached.resyncReason).toBe("evicted");
+      expect(attached.snapshot).toBeDefined();
+      const subscription = await client.request<{ replayComplete: boolean }>("events/subscribe", {
+        scope: "session", sessionId: "s1", after: attached.snapshot!.cursor,
+      });
+      expect(subscription.replayComplete).toBe(true);
+      h.host.ingest(envelope("s1", "rt_1", { type: "message_end", message: {
+        id: "after-resync", role: "assistant", content: "live", createdAt: "2026-09-18T00:00:01.000Z", status: "complete",
+      } }));
+      await flush();
+      expect(events.at(-1)?.kind).toBe("item.completed");
+      expect(h.runtime.prompts).toHaveLength(0);
+    } finally { await client.close(); }
+  });
+
   it("rejects in-flight requests on a drop with HOST_DISCONNECTED and reports state changes", async () => {
     const h = await harness();
     const states: string[] = [];

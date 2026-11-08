@@ -1,13 +1,14 @@
 # AI command center: development design
 
-- Status: Proposed development design; not implemented or approved for rollout
+- Status: Proposed development design; initial P0 measurement implemented, rollout not approved
 - Date: 2026-11-08
 - Source baseline: `origin/main` at `fd28eb89866ac513912ed109716e7120cf60f18c` (v0.22.3)
 - Architecture rationale: [AI command center ADR](../adr/ai-command-center.md)
 - Product requirements and quantitative gates: [Requirements proposal](ai-command-center-requirements.md)
 - Proposed staffing, dates and gate ownership: [Implementation schedule](ai-command-center-schedule.md)
 - Latest presentation feedback: [V3 desktop toolbar](ai-command-center-visual-review.md#v3-desktop-toolbar-and-settings) removes the global left sidebar; Overview, History and Settings become top icons. Workspace entry tabs and the two undecided lower overview regions remain. Host/quota boundaries are unchanged.
-- Delivery scope: documentation and local Git submission only; no code, migration, listener, deployment or default change
+- Current delivery: [P0 runtime baseline and capability gaps](ai-command-center-p0-baseline.md), followed by [1 MiB persistence/settlement validation](ai-command-center-1mib-validation.md). Bounded write admission and durable terminal ordering are implemented; migrations, service exposure and UI retain their separate gates.
+- P0 follow-up preparation: [Control contract draft](ai-command-center-control-contracts.md) and [Host capability/handoff matrix](ai-command-center-host-parity.md) provide concrete identities, state transitions and acceptance cases; they do not advertise unimplemented APIs.
 
 ## Contents
 

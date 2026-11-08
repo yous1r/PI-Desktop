@@ -8,6 +8,7 @@ import {
   rpcTimeoutMs,
   stripProxyEnv,
 } from "@pi-desktop/shared";
+import { HostWriteAdmission, TRANSCRIPT_WRITE_METHODS } from "./host-write-admission.js";
 
 const HOST_DISPOSE_GRACE_MS = 3_000;
 const HOST_FORCE_KILL_GRACE_MS = 1_000;
@@ -67,6 +68,7 @@ function isHostOverloaded(error: unknown): boolean {
  */
 export class HostProcess {
   private child: ChildProcessWithoutNullStreams;
+  private readonly writeAdmission = new HostWriteAdmission();
   private pending = new Map<
     string,
     {
@@ -148,6 +150,7 @@ export class HostProcess {
     if (this.closed) return;
     this.available = false;
     this.closed = true;
+    this.writeAdmission.close(error);
     for (const [, p] of this.pending) {
       if (p.timer) clearTimeout(p.timer);
       p.reject(error);
@@ -300,6 +303,7 @@ export class HostProcess {
       throw this.unavailableError(`host RPC unavailable: ${method}`);
     }
     const id = randomUUID();
+    const startedAt = Date.now();
     const timeoutMs = timeoutOverrideMs ?? rpcTimeoutMs(method, params);
     const payload = JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n";
     const requestBytes = Buffer.byteLength(payload, "utf8");
@@ -313,6 +317,15 @@ export class HostProcess {
         data: { scope: "host-request", method, requestBytes, limitBytes: MAX_HOST_STDIN_LINE_BYTES },
       });
     }
+    const boundedWrite = TRANSCRIPT_WRITE_METHODS.has(method);
+    const release = boundedWrite
+      ? await this.writeAdmission.acquire(requestBytes, method, timeoutMs)
+      : () => undefined;
+    const remainingMs = timeoutMs === undefined ? undefined : timeoutMs - (Date.now() - startedAt);
+    if (remainingMs !== undefined && remainingMs <= 0) {
+      release();
+      throw new Error(`host RPC timeout: ${method}`);
+    }
     return new Promise<T>((resolve, reject) => {
       let timer: ReturnType<typeof setTimeout> | undefined;
       let settled = false;
@@ -322,6 +335,7 @@ export class HostProcess {
         this.pending.delete(id);
         if (timer) clearTimeout(timer);
         finish();
+        release();
       };
       this.pending.set(id, {
         resolve: (value) => settle(() => resolve(value)),
@@ -331,11 +345,14 @@ export class HostProcess {
         settle(() => reject(this.unavailableError(`host RPC unavailable: ${method}`)));
         return;
       }
-      if (timeoutMs !== undefined) {
-        timer = setTimeout(
-          () => settle(() => reject(new Error(`host RPC timeout: ${method}`))),
-          timeoutMs,
-        );
+      if (remainingMs !== undefined) {
+        timer = setTimeout(() => {
+          const fail = () => reject(new Error(`host RPC timeout: ${method}`));
+          // A deadline is not cancellation. Keep a write's permit until the
+          // peer replies or exits, so timed-out operations cannot multiply.
+          if (boundedWrite) fail();
+          else settle(fail);
+        }, remainingMs);
       }
       try {
         this.child.stdin.write(payload, (error) => {

@@ -10700,6 +10700,9 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 
 | Acceptance | Scenarios |
 |---|---|
+| Quality — Command-center P0 runtime baseline (partial evidence for proposed AC-07) | E2E-COMMAND-CENTER-runtime-baseline |
+| Quality — Command-center one-hour fixed-context diagnostic | E2E-COMMAND-CENTER-runtime-soak |
+| C / Quality — Bounded replay and explicit snapshot recovery | E2E-RACP-replay-byte-budget |
 | C / E / Security / Quality — Gemini work setup | E2E-LIVE-VOICE-gemini-work-schema |
 | C / Quality — Continue after malformed tool output | E2E-RUNTIME-malformed-tool-call-continue-recovery |
 | B / Security / Quality — Optional provider client certificate requests | E2E-PROVIDER-optional-client-certificate |
@@ -19576,3 +19579,104 @@ file, then reject a missing native session. The test asserts no native session
 or scratch RPC reaches Desktop storage. `native-workspace-files.test.mjs`
 additionally rejects replaced sidecars. No provider execution or native user
 session data is used.
+
+## AI command center P0
+
+### E2E-COMMAND-CENTER-runtime-baseline
+
+- **Preconditions:** Dedicated request worktree containing current remote main;
+  Windows Node 22+; compatible patched Pi dependencies; Host binary built from the
+  candidate source; explicit isolated scratch directory. No user Desktop/profile,
+  configured provider credential or paid API is used.
+- **Entry:** `node scripts/e2e-command-center-baseline.mjs --host-bin <candidate.exe>
+  --scratch-dir <scratch> --sessions 12`, then `--sessions 36`. The package alias
+  is `test:e2e:command-center-baseline`; the direct command supports linked host
+  environments where the package-manager launcher refuses junctions.
+- **Steps:** Create fresh sessions through real Host RPC; start through AgentHost;
+  hold each model request at a loopback provider barrier until all sessions are
+  connected; verify the entire requested context at provider ingress; stream
+  deterministic chunks; await durable turn settlement; read each transcript
+  through Host RPC and compare its entire user and assistant text before runtime
+  disposal; stop sampling and confirm owned child process closure. Run 12 and
+  repeated 36-session loads with `--context-bytes 1048576`; also run 36 with
+  `--context-kind utf8 --ticks 600 --interval-ms 50`. Reopen each completed run
+  with `node scripts/e2e-command-center-reopen.mjs <run-directory>` and verify
+  message counts, statuses and content hashes from a new Host process.
+- **Expected:** Actual overlapping requests, complete persisted text, no unexpected
+  tools/approvals/errors or persistence diagnostics, stable PID/start identities,
+  complete memory samples and confirmed cleanup. Failures return nonzero and keep
+  their report. Concurrent process Private Bytes are summed within samples; sample
+  gaps and collection skew remain visible. This is independent main-session
+  runtime coverage, not workspace quota, UI, native-child or browser qualification.
+- **Specs:** [Requirements](../../project/ai-command-center-requirements.md),
+  [development design](../../project/ai-command-center-development-design.md),
+  [headless runtime boundary](../../adr/0284-headless-runtime-boundary.md).
+- **Acceptance:** Proposed command-center AC-07 preparation only. Full AC-07 still
+  requires its token-counted mixed workload, entire application process set,
+  startup coverage, sampling cadence and applicable UI/platform evidence.
+- **Milestone:** P0 / M0; initial measurement slice, not M0 closure.
+- **Status:** Automated. Historical 12/36 runs at 128 KiB passed; a historical
+  36-session 512 KiB run exposed `HOST_OVERLOADED`. After bounded write admission
+  and durable terminal-event ordering, four 1 MiB runs (120 sessions total),
+  including UTF-8 and 600 output chunks, pass and reopen without lost/duplicate
+  text. They still miss the strict 100-ms sampling gate. See the
+  [1 MiB report and artifacts](../../project/ai-command-center-1mib-validation.md)
+  and [historical P0 baseline](../../project/ai-command-center-p0-baseline.md).
+  Fourteen Node harness tests cover payload integrity, overlap/output, invalid
+  input, process lifecycle, identity and report validation. Host-runtime tests
+  exercise 36 overlapping final writes, queued expiry, active timeout capacity,
+  process loss, retry exhaustion, byte/count caps, abort ownership, persistence
+  failure, stale-turn isolation and terminal events withheld until persistence.
+
+### E2E-COMMAND-CENTER-runtime-soak
+
+- **Preconditions:** Same isolated environment as the runtime baseline; no paid
+  provider or user profile; source and Host binary frozen at run start.
+- **Entry:** Baseline runner with `--sessions 36 --context-bytes 1048576
+  --context-kind utf8 --ticks 100 --interval-ms 500 --duration-seconds 3600
+  --budget-bytes 6000000000 --target-bytes 4000000000 --sample-ms 250`.
+- **Steps:** Keep the same coordinator, RuntimeService, AgentHost, Rust Host and
+  sidecar processes alive for at least one hour. Each round starts 36 streams at
+  a provider barrier, checks input/output exactly and waits for durable settlement.
+  Release per-session runtimes and clear only verified synthetic history through
+  public APIs, then immediately start the next round. Finish the final round in
+  full. Write raw memory, telemetry and round evidence during execution; reopen
+  the last retained round after shutdown; export SVG/CSV using
+  `scripts/e2e-command-center-curve.mjs`.
+- **Expected:** Every round verifies 36 results, no persistence/error diagnostics,
+  no process generation replacement, at least 3600 seconds of repeated workload,
+  and confirmed cleanup. Concurrent Private Bytes never exceed the sampled
+  6,000,000,000-byte hard limit; report the 4,000,000,000-byte target independently.
+  Record per-process Private Bytes/working set/CPU/handles/threads, memory
+  distribution, sampling gaps, event-loop delay, pending writes, round/settlement
+  latency, throughput and full-stream overlap. A short/failed run stays failed.
+- **Scope:** Fixed context/history policy; same process lifetime, not unbounded
+  historical context. Sampling is requested at 250 ms and actual gaps are retained.
+  This is the operator's one-hour diagnostic gate, not full-workbench AC-07 or the
+  two-hour/100-cycle mixed-resource AC-09 qualification.
+- **Status:** Automated; final fixed candidate ran 3,654.042 seconds and verified
+  2,124 turns in 59 rounds, with a 1,330,749,440-byte sampled peak and confirmed
+  cleanup. The final round reopened 36/36. A 595-ms maximum sampling gap and
+  222-ms unsampled final-verification tail remain explicit limitations; the
+  strict full-lifecycle sampling gate is not passed. See the
+  [soak report and evidence](../../project/ai-command-center-soak-report.md).
+
+### E2E-RACP-replay-byte-budget
+
+- **Preconditions:** Production EventHub/AgentHost and RACP client/server with
+  deterministic runtime and session-store boundaries.
+- **Steps:** Publish large UTF-8 durable messages below the count limit; exceed
+  per-stream and shared replay byte caps, including a dormant session and an
+  oversized event. Attach from an evicted cursor, accept snapshot resync, subscribe
+  from the new cursor and receive a later live message.
+- **Expected:** Eight MiB/stream and 128 MiB/EventHub serialized replay budgets;
+  oldest prefix eviction, released accounting, no fabricated sequence continuity,
+  unchanged full live events, no transcript deletion or restarted prompt. Age
+  expiry is applied to dormant history on read. Existing role/epoch/slow-client
+  semantics remain intact.
+- **Specs:** [RACP replay](../03-runtime/19-remote-agent-control-protocol.md#8-event-replay-and-backpressure).
+- **Acceptance:** Resource-bound correction supporting AC-03/07/09; does not
+  establish full command-center capacity by itself.
+- **Status:** Automated through `packages/agent-host/src/event-log.test.ts` and
+  `packages/racp/src/racp.test.ts`; four new byte/age regressions failed before
+  the correction, then passed alongside existing AgentHost/RACP tests.

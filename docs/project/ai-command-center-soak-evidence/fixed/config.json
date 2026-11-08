@@ -1,0 +1,18 @@
+{
+  "sessions": 36,
+  "ticks": 100,
+  "intervalMs": 500,
+  "contextBytes": 1048576,
+  "contextKind": "utf8",
+  "budgetBytes": 6000000000,
+  "durationSeconds": 3600,
+  "targetBytes": 4000000000,
+  "sampleMs": 250,
+  "hostBin": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\a6fa9016-c24e-432f-8859-b0744dea889d\\command-center-p0-36-LdfKkg\\pi-desktop-host-core.exe",
+  "help": false,
+  "workerEntry": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\a6fa9016-c24e-432f-8859-b0744dea889d\\command-center-p0-36-LdfKkg\\worker.mjs",
+  "sidecarEntry": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\a6fa9016-c24e-432f-8859-b0744dea889d\\command-center-p0-36-LdfKkg\\sidecar.mjs",
+  "inputsSha256": "025f0d7ac74283ee007f7924435e7f6b094487697c6d4faf493ff0fdafc41db5",
+  "runDir": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\a6fa9016-c24e-432f-8859-b0744dea889d\\command-center-p0-36-LdfKkg",
+  "deadlineMs": 3830000
+}

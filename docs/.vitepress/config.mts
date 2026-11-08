@@ -165,6 +165,21 @@ const zhNav: DefaultTheme.NavItem[] = [
 ]
 
 export default defineConfig({
+  buildEnd(config) {
+    // Markdown download links are not automatically emitted as Vite assets.
+    // Publish only the task's retained, non-executable measurement evidence.
+    for (const name of ['ai-command-center-p0-evidence', 'ai-command-center-soak-evidence']) {
+      const source = path.join(docsRoot, 'project', name)
+      if (!fs.existsSync(source)) continue
+      fs.cpSync(source, path.join(config.outDir, 'project', name), {
+        recursive: true,
+        filter(file) {
+          const entry = fs.lstatSync(file)
+          return entry.isDirectory() || (entry.isFile() && /\.(json|csv|svg|txt)$/.test(file))
+        },
+      })
+    }
+  },
   title: 'PI-Desktop',
   description: 'A modular desktop workspace for AI agents',
   // Product shell is dark-base; lock docs to the same charcoal system.

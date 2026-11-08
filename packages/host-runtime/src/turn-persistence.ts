@@ -38,6 +38,7 @@ function isDuplicateMessageIdError(error: unknown): boolean {
  */
 export class TurnPersistence {
   private readonly chains = new Map<string, Promise<void>>();
+  private readonly turns = new Map<string, { turnId: string; error?: Error }>();
   private pendingCount = 0;
   private disposed = false;
 
@@ -54,24 +55,47 @@ export class TurnPersistence {
     return this.pendingCount;
   }
 
-  /** Queue one append behind the session's earlier ones; resolves once it landed or was given up. */
-  append(entry: MessageAppend): Promise<void> {
-    if (this.disposed) return Promise.resolve();
+  beginTurn(sessionId: string, turnId: string): void {
+    this.turns.set(sessionId, { turnId });
+  }
+
+  /** Drain this session and surface any failure belonging to the owning turn. */
+  async flushTurn(sessionId: string, turnId: string): Promise<void> {
+    const turn = this.turns.get(sessionId);
+    while (this.chains.has(sessionId)) await this.chains.get(sessionId);
+    if (turn?.turnId !== turnId) return;
+    if (this.turns.get(sessionId) === turn) this.turns.delete(sessionId);
+    if (turn.error) throw turn.error;
+  }
+
+  /** Queue in session order; failures also remain observable at the turn barrier. */
+  append(entry: MessageAppend, beforeWrite?: Promise<void>): Promise<void> {
     this.pendingCount += 1;
     const previous = this.chains.get(entry.sessionId) ?? Promise.resolve();
-    const run = previous
-      .then(() => this.write(entry))
-      .finally(() => {
-        this.pendingCount -= 1;
-        if (this.chains.get(entry.sessionId) === run) this.chains.delete(entry.sessionId);
+    const run = previous.then(async () => {
+      await beforeWrite;
+      await this.write(entry);
+    }).finally(() => { this.pendingCount -= 1; });
+    // Observe failures immediately, including fire-and-forget event ingress.
+    // Continue the chain so a failed row never discards subsequent rows.
+    const observed = run.catch((error: unknown) => {
+      const turn = this.turns.get(entry.sessionId);
+      if (turn && turn.turnId === entry.turnId) {
+        turn.error ??= error instanceof Error ? error : new Error(String(error));
+      }
+      this.deps.log("warn", "transcript append failed", {
+        sessionId: entry.sessionId, messageId: entry.message?.id, error: String(error),
       });
-    this.chains.set(entry.sessionId, run);
+    }).finally(() => {
+      if (this.chains.get(entry.sessionId) === observed) this.chains.delete(entry.sessionId);
+    });
+    this.chains.set(entry.sessionId, observed);
     return run;
   }
 
   /** Wait until every queued append has been attempted. */
   async flush(): Promise<void> {
-    await Promise.allSettled([...this.chains.values()]);
+    while (this.chains.size) await Promise.all([...this.chains.values()]);
   }
 
   dispose(): void {
@@ -80,7 +104,7 @@ export class TurnPersistence {
 
   private async write(entry: MessageAppend): Promise<void> {
     for (let attempt = 0; ; attempt += 1) {
-      if (this.disposed) return;
+      if (this.disposed) throw Object.assign(new Error("transcript persistence disposed"), { errorCode: ErrorCodes.HOST_UNAVAILABLE });
       const host = this.deps.getHost();
       if (host && (host.isAvailable?.() ?? true)) {
         try {
@@ -92,23 +116,12 @@ export class TurnPersistence {
           return;
         } catch (error) {
           if (isDuplicateMessageIdError(error)) return;
-          if (!isHostUnavailable(error)) {
-            this.deps.log("warn", "transcript append failed", {
-              sessionId: entry.sessionId,
-              messageId: entry.message?.id,
-              error: String(error),
-            });
-            return;
-          }
+          if (!isHostUnavailable(error)) throw error;
         }
       }
       const delay = RETRY_DELAYS_MS[Math.min(attempt, RETRY_DELAYS_MS.length - 1)];
       if (attempt >= RETRY_DELAYS_MS.length * 2) {
-        this.deps.log("error", "transcript append abandoned: host unavailable", {
-          sessionId: entry.sessionId,
-          messageId: entry.message?.id,
-        });
-        return;
+        throw Object.assign(new Error("transcript append abandoned: host unavailable"), { errorCode: ErrorCodes.HOST_UNAVAILABLE });
       }
       await (this.deps.sleep ?? defaultSleep)(delay);
     }

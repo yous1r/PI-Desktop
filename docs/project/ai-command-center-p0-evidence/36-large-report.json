@@ -1,0 +1,126 @@
+{
+  "status": "FAIL",
+  "failures": [
+    "runtime_failure",
+    "runtime_diagnostics",
+    "incomplete_transcripts"
+  ],
+  "scope": "headless-session-runtime-baseline",
+  "fullWorkbenchAcceptance": "NOT_RUN",
+  "memory": {
+    "metric": "Windows Private Bytes",
+    "peakConcurrentBytes": 844554240,
+    "budgetBytes": 4000000000,
+    "sampleCount": 89,
+    "loadSampleCount": 53,
+    "maxGapMs": 150,
+    "maxCollectionMs": 55.810199999999895,
+    "samplingTargetMs": 100,
+    "samplingTargetMet": false,
+    "limitation": "Sampled maximum only; process readings within each sample are sequential. No OS allocation trace. Includes test coordinator/provider overhead; excludes outer test driver, sampler, desktop renderer/plugins/native resources."
+  },
+  "workload": {
+    "sessions": 36,
+    "topology": "independent main sessions",
+    "contextBytes": 524288,
+    "contextTokens": "NOT_MEASURED",
+    "ticks": 50,
+    "intervalMs": 100
+  },
+  "exclusions": [
+    "native subagents",
+    "RACP/browser transport",
+    "headless launch resolver",
+    "desktop renderer",
+    "native programs",
+    "tools/mixed workload",
+    "real providers",
+    "long-history/soak qualification"
+  ],
+  "inventory": [
+    {
+      "role": "coordinator",
+      "pid": 18720
+    },
+    {
+      "role": "host",
+      "pid": 10812
+    },
+    {
+      "role": "sidecar",
+      "pid": 9564
+    }
+  ],
+  "outcome": {
+    "kind": "outcome",
+    "completed": 11,
+    "verified": 0,
+    "unexpectedEvents": 0,
+    "outputBytes": 0,
+    "error": "Turn did not settle successfully",
+    "fixture": {
+      "requests": 36,
+      "maxConcurrent": 36,
+      "finished": 36,
+      "aborted": 0,
+      "startedAt": 1794090081420,
+      "endedAt": 1794090086707,
+      "overlapMs": 5287
+    },
+    "diagnostics": [
+      {
+        "level": "warn",
+        "message": "transcript append failed",
+        "detail": {
+          "sessionId": "712e243f-f696-4bc7-88e6-c0d41efb39cc",
+          "messageId": "5739cb2d-3f0e-4e87-a70c-ac049ffc7294",
+          "error": "Error: host RPC capacity is exhausted"
+        }
+      },
+      {
+        "level": "warn",
+        "message": "endTurn failed",
+        "detail": {
+          "sessionId": "712e243f-f696-4bc7-88e6-c0d41efb39cc",
+          "turnId": "50c376cf-8555-491e-ad86-37ffbbe754b7",
+          "error": "Error: host RPC capacity is exhausted"
+        }
+      }
+    ]
+  },
+  "exits": [
+    {
+      "kind": "owned-process-exit",
+      "role": "sidecar",
+      "pid": 9564,
+      "code": null,
+      "signal": "SIGTERM"
+    },
+    {
+      "kind": "owned-process-exit",
+      "role": "host",
+      "pid": 10812,
+      "code": 0,
+      "signal": null
+    },
+    {
+      "kind": "exit",
+      "code": 0,
+      "signal": null
+    }
+  ],
+  "cleanupConfirmed": true,
+  "metadata": {
+    "head": "7674ca53cd839a13f44749de52453111ea192e0d",
+    "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+    "dirty": true,
+    "recordedAt": "2026-11-07T22:21:13.460Z",
+    "platform": "win32",
+    "osRelease": "10.0.19045",
+    "node": "v24.12.0",
+    "cpus": 6,
+    "totalMemoryBytes": 25765265408,
+    "hostBinarySha256": "104a99fc334c43548cbd384c8b170bb09093de4d8883bb5369e7eacaad93fe4d",
+    "inputsSha256": "a77da7e07c7afd08cd9e3b92bcdde79b6f6e9ec4e897b2dbfb6d2c52bf9830cb"
+  }
+}

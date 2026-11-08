@@ -1,0 +1,44 @@
+{
+  "status": "PASS_WITH_SAMPLING_LIMITATIONS",
+  "sampledOneHourGate": "PASS",
+  "completeLifecycleSampling": "FAIL",
+  "unsampledFinalVerificationMs": 222,
+  "sourceInputsMatched": 3558,
+  "measuredSeconds": 3654.066,
+  "loadSeconds": 3654.0422567,
+  "rounds": 59,
+  "verifiedTurns": 2124,
+  "peakPrivateBytes": 1330749440,
+  "reopenedSessions": 36,
+  "inputsSha256": "025f0d7ac74283ee007f7924435e7f6b094487697c6d4faf493ff0fdafc41db5",
+  "artifacts": [
+    {
+      "path": "report.json",
+      "sha256": "1c56fb521544b1dbff448d63b98d9d571cc6f54866d96a73b3fc553c521967ee"
+    },
+    {
+      "path": "config.json",
+      "sha256": "f772ba1db384168035e522c345cfd3560da21d06bfa84a7ab672ebe99256e626"
+    },
+    {
+      "path": "build-inputs.json",
+      "sha256": "e0f9daaced8379665358d8b562edfe595a80b3ed9529f795783cdf43932d0f7d"
+    },
+    {
+      "path": "memory.ndjson.txt",
+      "sha256": "ca68ac3ea08fe281b6651033a330d5949832b1c1712cad80b29777cc65e945ca"
+    },
+    {
+      "path": "rounds.ndjson.txt",
+      "sha256": "51741247148d20fa4e1e2582726e0ae87016e9e7c8b9f78e1a5fe180ecf9e798"
+    },
+    {
+      "path": "telemetry.ndjson.txt",
+      "sha256": "9d351a69693e71e0e8b557967af6bc22bf5ff7224b6247104a2efb5ed96dbccb"
+    },
+    {
+      "path": "reopen-report.json",
+      "sha256": "1af185e624472c7f55a93af495fb33e1fc37e0e4e7200616c6ea5bf0889e2e95"
+    }
+  ]
+}

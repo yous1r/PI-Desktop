@@ -46,7 +46,7 @@ export type TurnEndedInfo = {
   turnId: string;
   reason: TurnEndReason;
   errorCode?: string;
-  /** Whether host-core acknowledged the durable end of this turn. */
+  /** Whether transcript writes and the durable turn end were acknowledged. */
   settled: boolean;
 };
 
@@ -74,7 +74,7 @@ export type RuntimeServiceOptions = {
   checkpointIntervalMs?: number;
 };
 
-type FinishTurnOptions = { turnId: string; recoverInflight?: boolean };
+type FinishTurnOptions = { turnId: string; recoverInflight?: boolean; terminalEvent?: AgentEventEnvelope };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -242,6 +242,7 @@ export class RuntimeService implements RuntimePort {
     this.disposed = true;
     for (const detach of this.detachers.splice(0)) detach();
     await this.events.dispose();
+    await Promise.allSettled([...this.turnFinalizations.values()]);
     this.listeners.clear();
     this.turnEndListeners.clear();
   }
@@ -532,7 +533,7 @@ export class RuntimeService implements RuntimePort {
     const turnId = String(turn?.turnId ?? "").trim();
     if (!turnId) throw new Error("session.beginTurn returned no turn");
     this.activeTurns.set(sessionId, turnId);
-    this.events.resetTurnUsage(sessionId);
+    this.events.beginTurn(sessionId, turnId);
     return turnId;
   }
 
@@ -586,31 +587,41 @@ export class RuntimeService implements RuntimePort {
       this.pendingAbortReasons.delete(key);
       return Promise.resolve();
     }
-    const reason = this.pendingAbortReasons.get(key) ?? status;
+    let reason = this.pendingAbortReasons.get(key) ?? status;
     const turnUsage = this.events.takeTurnUsage(id);
     const recoverInflight = options.recoverInflight === true;
     let settled = false;
+    let persistenceFailed = false;
 
     const run = async (): Promise<void> => {
       try {
-        const host = this.options.getHost();
-        if (host) {
-          try {
-            const result = await host.call<{ ok: boolean; recovered?: UiMessage }>("session.endTurn", {
-              turnId,
-              status: reason,
-              errorCode,
-              createNotification: false,
-              ...(turnUsage ? { usage: turnUsage } : {}),
-              ...(recoverInflight ? { recoverInflight: true } : {}),
-            });
-            settled = true;
-            if (result.recovered) {
-              this.emit({ sessionId: id, turnId, ts: this.now(), event: { type: "message_end", message: result.recovered } });
-            }
-          } catch (error) {
-            this.options.log("warn", "endTurn failed", { sessionId: id, turnId, error: String(error) });
+        try {
+          await this.events.flushTurn(id, turnId);
+        } catch (error) {
+          persistenceFailed = true;
+          if (reason === "completed") reason = "error";
+          errorCode ??= errorCodeOf(error) ?? ErrorCodes.INTERNAL;
+          this.options.log("warn", "turn transcript persistence failed", { sessionId: id, turnId, error: String(error) });
+        }
+        try {
+          const host = this.requireHost();
+          const result = await host.call<{ ok: boolean; recovered?: UiMessage }>("session.endTurn", {
+            turnId,
+            status: reason,
+            errorCode,
+            createNotification: false,
+            ...(turnUsage ? { usage: turnUsage } : {}),
+            ...(recoverInflight ? { recoverInflight: true } : {}),
+          });
+          if (result.ok !== true) throw typedError("turn settlement was not acknowledged", ErrorCodes.INTERNAL);
+          settled = !persistenceFailed;
+          if (result.recovered) {
+            this.emit({ sessionId: id, turnId, ts: this.now(), event: { type: "message_end", message: result.recovered } });
           }
+        } catch (error) {
+          if (reason === "completed") reason = "error";
+          errorCode ??= errorCodeOf(error) ?? ErrorCodes.INTERNAL;
+          this.options.log("warn", "endTurn failed", { sessionId: id, turnId, error: String(error) });
         }
       } finally {
         if (this.activeTurns.get(id) === turnId) this.activeTurns.delete(id);
@@ -622,6 +633,19 @@ export class RuntimeService implements RuntimePort {
       this.turnFinalizations.delete(key);
       this.pendingAbortReasons.delete(key);
       const info: TurnEndedInfo = { sessionId: id, turnId, reason, ...(errorCode ? { errorCode } : {}), settled };
+      // Subscribers must never close a successful turn before its transcript
+      // and terminal row have landed. Publish once, from the claimed owner.
+      if (options.terminalEvent) {
+        const terminal = options.terminalEvent;
+        this.emit(reason === "error" && terminal.event.type === "agent_end"
+          ? { ...terminal, event: { type: "error", error: {
+              code: errorCode ?? ErrorCodes.INTERNAL,
+              message: "Turn persistence could not be confirmed.",
+              retriable: false,
+              traceId: turnId,
+            } } }
+          : terminal);
+      }
       for (const listener of this.turnEndListeners) {
         try {
           listener(info);

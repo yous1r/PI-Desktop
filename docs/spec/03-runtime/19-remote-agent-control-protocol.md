@@ -902,10 +902,13 @@ so `session/create` never needs a path.
 
 ## 8. Event replay and backpressure
 
-The Host MUST retain enough durable events to cover the configured replay
-window. The initial target is:
+The Host retains durable events within all configured count, age and memory
+bounds. The initial limits are:
 
-- 10,000 durable events per session or 24 hours, whichever comes first;
+- 10,000 durable events per session, 24 hours, or 8 MiB of serialized UTF-8
+  envelopes per stream, whichever comes first;
+- 128 MiB of serialized envelopes across all session and host streams in one
+  EventHub, evicting globally oldest entries when needed;
 - ephemeral events are never retained;
 - eight subscriptions per session per principal;
 - sixteen connected clients per Agent Host;
@@ -915,6 +918,16 @@ window. The initial target is:
 Because deltas and activity phases are ephemeral, a long streaming turn cannot
 exhaust the replay window by itself; the window is consumed only by item and
 lifecycle boundaries.
+
+Byte accounting bounds retained serialized payloads, not total JavaScript heap
+or process Private Bytes. Object/string overhead and live transport buffers are
+measured separately. Eviction releases both stream and shared-budget accounting;
+age is also checked when reading dormant history. An event larger than a replay
+budget still reaches live subscribers, but its old replay prefix is discarded
+so the log cannot claim a continuous sequence across a missing event. Neither
+byte eviction nor cursor resync deletes canonical transcript history. Existing
+`replayWindowEvents` and `replayWindowMs` are upper bounds, not guarantees that
+memory pressure cannot require an earlier snapshot. Wire fields are unchanged.
 
 Where the log lives is an ownership decision, not a binding detail. In the
 first implementation the durable event log is kept in Agent Host process
@@ -1193,7 +1206,7 @@ The initial target limits are:
 | Prompt payload | 256 KiB |
 | Attachment | 50 MiB |
 | Host link attachment chunk | 256 KiB |
-| Durable session event replay | 10,000 events or 24 hours |
+| Durable session event replay | 10,000 events, 24 hours or 8 MiB/stream; 128 MiB/EventHub total |
 | Ephemeral events | Not retained |
 | Queued turns per session | 8 |
 | Concurrent subscriptions per connection | 8 |

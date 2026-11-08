@@ -1,0 +1,50 @@
+{
+  "sampleCount": 3185,
+  "measuredSeconds": 796.002,
+  "peakPrivateBytes": 1943834624,
+  "meanPrivateBytes": 1314930147.8681319,
+  "p50": 1324531712,
+  "p95": 1735319552,
+  "p99": 1889742848,
+  "targetBytes": 4000000000,
+  "hardLimitBytes": 6000000000,
+  "targetMet": true,
+  "hardLimitMet": true,
+  "samplesAboveTarget": 0,
+  "sampleGapMaxMs": 481,
+  "collectionMaxMs": 184.33600000001024,
+  "postWarmupMinuteMinimumSlopeBytesPerMinute": 62562694.0952381,
+  "processMetrics": {
+    "coordinator": {
+      "peakPrivateBytes": 1153490944,
+      "firstPrivateBytes": 72003584,
+      "lastPrivateBytes": 1087918080,
+      "cpuSeconds": 36.359375,
+      "firstHandles": 298,
+      "lastHandles": 332,
+      "peakHandles": 335,
+      "peakThreads": 17
+    },
+    "host": {
+      "peakPrivateBytes": 284069888,
+      "firstPrivateBytes": 29184000,
+      "lastPrivateBytes": 149835776,
+      "cpuSeconds": 201.40625,
+      "firstHandles": 156,
+      "lastHandles": 164,
+      "peakHandles": 172,
+      "peakThreads": 22
+    },
+    "sidecar": {
+      "peakPrivateBytes": 532205568,
+      "firstPrivateBytes": 92631040,
+      "lastPrivateBytes": 494608384,
+      "cpuSeconds": 39.5625,
+      "firstHandles": 248,
+      "lastHandles": 286,
+      "peakHandles": 289,
+      "peakThreads": 18
+    }
+  },
+  "note": "Slope uses minute minima after 5 minutes and excludes the final partial minute. It is diagnostic, not a leak guarantee. SVG uses peak per second for each series; CSV preserves every sample."
+}

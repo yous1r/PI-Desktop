@@ -1,0 +1,106 @@
+{
+  "status": "PASS",
+  "failures": [],
+  "scope": "headless-session-runtime-baseline",
+  "fullWorkbenchAcceptance": "NOT_RUN",
+  "memory": {
+    "metric": "Windows Private Bytes",
+    "peakConcurrentBytes": 745959424,
+    "budgetBytes": 4000000000,
+    "sampleCount": 76,
+    "loadSampleCount": 53,
+    "maxGapMs": 122,
+    "maxCollectionMs": 42.005300000000034,
+    "samplingTargetMs": 100,
+    "samplingTargetMet": false,
+    "limitation": "Sampled maximum only; process readings within each sample are sequential. No OS allocation trace. Includes test coordinator/provider overhead; excludes outer test driver, sampler, desktop renderer/plugins/native resources."
+  },
+  "workload": {
+    "sessions": 12,
+    "topology": "independent main sessions",
+    "contextBytes": 1048576,
+    "contextKind": "ascii",
+    "contextTokens": "NOT_MEASURED",
+    "ticks": 50,
+    "intervalMs": 100
+  },
+  "exclusions": [
+    "native subagents",
+    "RACP/browser transport",
+    "headless launch resolver",
+    "desktop renderer",
+    "native programs",
+    "tools/mixed workload",
+    "real providers",
+    "long-history/soak qualification"
+  ],
+  "inventory": [
+    {
+      "role": "coordinator",
+      "pid": 14944
+    },
+    {
+      "role": "host",
+      "pid": 17080
+    },
+    {
+      "role": "sidecar",
+      "pid": 4620
+    }
+  ],
+  "outcome": {
+    "kind": "outcome",
+    "completed": 12,
+    "verified": 12,
+    "inputVerified": 12,
+    "verifiedBeforeDispose": true,
+    "unexpectedEvents": 0,
+    "outputBytes": 554598,
+    "fixture": {
+      "requests": 12,
+      "contextVerified": 12,
+      "maxConcurrent": 12,
+      "finished": 12,
+      "aborted": 0,
+      "startedAt": 1794092381222,
+      "endedAt": 1794092386532,
+      "overlapMs": 5310
+    },
+    "diagnostics": []
+  },
+  "exits": [
+    {
+      "kind": "owned-process-exit",
+      "role": "sidecar",
+      "pid": 4620,
+      "code": null,
+      "signal": "SIGTERM"
+    },
+    {
+      "kind": "owned-process-exit",
+      "role": "host",
+      "pid": 17080,
+      "code": 0,
+      "signal": null
+    },
+    {
+      "kind": "exit",
+      "code": 0,
+      "signal": null
+    }
+  ],
+  "cleanupConfirmed": true,
+  "metadata": {
+    "head": "7674ca53cd839a13f44749de52453111ea192e0d",
+    "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+    "dirty": true,
+    "recordedAt": "2026-11-07T22:59:31.838Z",
+    "platform": "win32",
+    "osRelease": "10.0.19045",
+    "node": "v24.12.0",
+    "cpus": 6,
+    "totalMemoryBytes": 25765265408,
+    "hostBinarySha256": "104a99fc334c43548cbd384c8b170bb09093de4d8883bb5369e7eacaad93fe4d",
+    "inputsSha256": "58cd2f620e5fa11a2971dc723adcc1bd8465aa6b8ec16dd3b79187117c597409"
+  }
+}

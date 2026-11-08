@@ -4,7 +4,7 @@
 - Prepared: 2026-11-08 (verified local environment date)
 - Design baseline: local commit `3eaa78fcb32a0e432519f493603fa63874ac7f82`, based on `origin/main` at `fd28eb89866ac513912ed109716e7120cf60f18c`
 - Scope references: [ADR](../adr/ai-command-center.md), [requirements](ai-command-center-requirements.md), [development design](ai-command-center-development-design.md)
-- Current task: planning and documentation only; no implementation, automation, staffing assignment, release or remote publication is initiated
+- Current execution: the operator authorized phased implementation. The [initial P0 runtime baseline](ai-command-center-p0-baseline.md) and [1 MiB persistence correction](ai-command-center-1mib-validation.md) are implemented; M0 remains open for full workload/platform qualification and contract review.
 
 ## Contents
 
@@ -130,9 +130,9 @@ and the agreed rate for a financial budget.
 
 ## Calendar convention
 
-T0 is the first Monday after named owners, their availability, Windows access and
-authorization to begin P0 are in place. This request asks for a workflow; it does
-not start implementation or set calendar reminders.
+T0 is the first Monday after named owners, their availability and Windows access
+are in place. Calendar dates remain examples. The subsequent authorization to
+begin scoped P0 implementation does not commit staffing, releases or reminders.
 
 For a concrete example only, T0 = **2026-11-09**, the next Monday after the verified
 planning date. If staffing is not ready then, shift every example date by the T0
@@ -354,10 +354,12 @@ alone is not evidence that these lower bounds disappear.
 
 ### Before starting
 
-P names B/F/Q, confirms weekly allocations and calendars, supplies the Windows/RDP
-environment and authorizes P0 implementation. B records the design baseline and
-open contracts; Q records the fixture/evidence format; F records the program/device
-matrix. No implementation has begun as a result of this schedule.
+The proposed B/F/Q staffing allocations and calendars still need named owners.
+The operator has authorized phased implementation. P0 now includes the isolated
+runtime harness, [control contract draft](ai-command-center-control-contracts.md),
+and [Host parity/handoff inventory](ai-command-center-host-parity.md). Resource
+instrumentation and replay-byte retention correction progress under S13 alongside
+the one-hour load. Program/device qualification and the full M0 gate remain open.
 
 ### First two weeks
 
@@ -392,11 +394,18 @@ push, merge, deploy, spend on providers or contact other people.
 ## Planning validation and status
 
 The schedule's role/day arithmetic, phase totals, dependency ordering, dated
-examples, links and AC coverage must be mechanically checked when this document
-is produced. Documentation checks validate the plan artifact, not the runtime
-requirements. All implementation packages are planned, all role assignments are
-unfilled, and every product gate remains NOT RUN.
+examples, links and AC coverage were checked for the planning artifact. The
+[P0 baseline report](ai-command-center-p0-baseline.md) now records executed runtime
+measurements: 12/36 sessions passed the bounded 128-KiB fixture, while 36 sessions
+at 512 KiB exposed Host RPC overload. The subsequent
+[1 MiB correction and validation](ai-command-center-1mib-validation.md) passes
+12/36 sessions, repeated load, extended UTF-8 output and restart reads. These
+close the scoped overload correction, not S01/S02 or M0. Full product gates
+remain unqualified, staffing is unassigned, and proposed dates are not committed.
 
-Completion of the current request means a reviewable schedule with a stated scope,
-role ownership, dates/assumptions, dependencies, acceptance and replanning rules.
-It does not mean the proposed release dates or architecture have been approved.
+P0 follow-up output: S02 identity/admission/goal/receipt semantics and 19 concrete
+race scenarios are documented, with source-grounded capability gaps and S03
+handoff fault cases. Existing AgentHost and RACP suites validate reuse seams;
+they do not imply the proposed command-center APIs or 12/36 quota repositories
+already exist. The one-hour run supplies its own completed/failed evidence,
+separate from this preparation progress.

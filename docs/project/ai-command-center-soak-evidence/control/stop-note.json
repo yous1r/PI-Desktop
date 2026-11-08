@@ -1,0 +1,11 @@
+{
+  "reason": "Operator-directed task: replaced rising-memory candidate with byte-bounded replay candidate; this run was intentionally stopped and is not a one-hour pass.",
+  "stopMechanism": "Test sampler stop-file caused failure and owned-tree fallback cleanup",
+  "originalCleanupConfirmed": false,
+  "postCleanupVerification": {
+    "method": "Get-Process -Id 17544,11064,18184 -ErrorAction SilentlyContinue",
+    "remainingProcesses": [],
+    "verified": true
+  },
+  "note": "Original report remains unchanged; post-check does not rewrite its cleanup failure."
+}

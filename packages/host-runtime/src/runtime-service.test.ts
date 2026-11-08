@@ -13,6 +13,9 @@ class FakeHost implements RuntimeHostLink {
   private turnCounter = 0;
   messages = new Map<string, UiMessage[]>();
   failAppend = false;
+  beforeAppend?: (message: UiMessage) => Promise<void>;
+  beforeCheckpoint?: () => Promise<void>;
+  endOk = true;
   session: Record<string, unknown> = { id: "s1", mode: "agent", permissionMode: "ask", providerId: "p1", modelId: "m1" };
 
   async call<T = unknown>(method: string, params: Record<string, unknown> = {}): Promise<T> {
@@ -26,6 +29,7 @@ class FakeHost implements RuntimeHostLink {
         this.turnCounter += 1;
         return { turnId: `turn-${this.turnCounter}` } as T;
       case "session.appendMessage": {
+        await this.beforeAppend?.(params.message as UiMessage);
         if (this.failAppend) throw Object.assign(new Error("disk full"), { errorCode: "INTERNAL" });
         const list = this.messages.get(String(params.sessionId)) ?? [];
         list.push(params.message as UiMessage);
@@ -33,8 +37,9 @@ class FakeHost implements RuntimeHostLink {
         return {} as T;
       }
       case "session.endTurn":
-        return { ok: true } as T;
+        return { ok: this.endOk } as T;
       case "session.saveInflightMessage":
+        await this.beforeCheckpoint?.();
         return { ok: true } as T;
       case "plans.abort":
         return {} as T;
@@ -376,5 +381,84 @@ describe("RuntimeService prompt lifecycle", () => {
         principal: owner,
       }),
     ).rejects.toMatchObject({ errorCode: "INVALID_ARGUMENT" });
+  });
+});
+
+describe("durable turn completion under persistence pressure", () => {
+  const assistant: UiMessage = { id: "final", role: "assistant", content: "done", createdAt: "2026-09-18T00:00:00.000Z", status: "complete" };
+  function finish(sidecar: FakeSidecar, sessionId = "s1", turnId = "turn-1") {
+    sidecar.notify?.("agent.event", { sessionId, turnId, ts: 1, event: { type: "message_end", message: { ...assistant, id: `${sessionId}-final` } } });
+    sidecar.notify?.("agent.event", { sessionId, turnId, ts: 2, event: { type: "agent_end", messageIds: [`${sessionId}-final`] } });
+  }
+
+  it("waits for checkpoints and final rows across 36 concurrent turns before acknowledging completion", async () => {
+    const { host, sidecar, service, ended, events } = build();
+    const sessions = Array.from({ length: 36 }, (_, i) => `s${i}`);
+    for (const sessionId of sessions) await service.prompt({ sessionId, content: "x".repeat(1024 * 1024), effectivePermissionMode: "ask", principal: owner });
+    const checkpoint = Promise.withResolvers<void>();
+    const write = Promise.withResolvers<void>();
+    host.beforeCheckpoint = () => checkpoint.promise;
+    host.beforeAppend = () => write.promise;
+    sessions.forEach((sessionId, i) => finish(sidecar, sessionId, `turn-${i + 1}`));
+    await settle();
+    expect(ended).toHaveLength(0);
+    expect(host.calls.filter(call => call.method === "session.endTurn")).toHaveLength(0);
+    expect(host.calls.filter(call => call.method === "session.appendMessage")).toHaveLength(36);
+    checkpoint.resolve();
+    await settle();
+    expect(events.some(envelope => envelope.event.type === "agent_end")).toBe(false);
+    expect(ended).toHaveLength(0);
+    write.resolve();
+    await settle();
+    expect(ended).toHaveLength(36);
+    expect(ended.every(info => info.settled && info.reason === "completed")).toBe(true);
+    for (const sessionId of sessions) expect(host.messages.get(sessionId)?.map(row => row.role)).toEqual(["user", "assistant"]);
+    expect(service.pendingWrites()).toBe(0);
+    await service.dispose();
+  });
+
+  it("reports a final append failure instead of durable success, then permits a clean next turn", async () => {
+    const { host, sidecar, service, ended, events } = build();
+    await service.prompt({ sessionId: "s1", content: "hello", effectivePermissionMode: "ask", principal: owner });
+    host.failAppend = true;
+    finish(sidecar);
+    await settle();
+    expect(ended).toEqual([{ sessionId: "s1", turnId: "turn-1", reason: "error", errorCode: "INTERNAL", settled: false }]);
+    expect(host.calls.find(call => call.method === "session.endTurn")?.params.status).toBe("error");
+    expect(events.some(envelope => envelope.event.type === "agent_end")).toBe(false);
+    expect(events.filter(envelope => envelope.event.type === "error")).toHaveLength(1);
+    host.failAppend = false;
+    await service.prompt({ sessionId: "s1", content: "retry", effectivePermissionMode: "ask", principal: owner });
+    finish(sidecar, "s1", "turn-2");
+    await settle();
+    expect(ended[1]).toMatchObject({ turnId: "turn-2", reason: "completed", settled: true });
+    await service.dispose();
+  });
+
+  it("preserves an abort while waiting for the final append and settles only once", async () => {
+    const { host, sidecar, service, ended } = build();
+    await service.prompt({ sessionId: "s1", content: "hello", effectivePermissionMode: "ask", principal: owner });
+    const write = Promise.withResolvers<void>();
+    host.beforeAppend = () => write.promise;
+    sidecar.notify?.("agent.event", { sessionId: "s1", turnId: "turn-1", ts: 1, event: { type: "message_end", message: assistant } });
+    const abort = service.abort("s1", "turn-1");
+    sidecar.notify?.("agent.event", { sessionId: "s1", turnId: "turn-1", ts: 2, event: { type: "agent_end", messageIds: [assistant.id] } });
+    await settle();
+    expect(ended).toHaveLength(0);
+    write.resolve();
+    await abort;
+    expect(ended).toHaveLength(1);
+    expect(ended[0]).toMatchObject({ reason: "aborted", settled: true });
+    await service.dispose();
+  });
+
+  it("does not acknowledge an endTurn response without ok:true", async () => {
+    const { host, sidecar, service, ended } = build();
+    await service.prompt({ sessionId: "s1", content: "hello", effectivePermissionMode: "ask", principal: owner });
+    host.endOk = false;
+    finish(sidecar);
+    await settle();
+    expect(ended[0]).toMatchObject({ settled: false, reason: "error", errorCode: "INTERNAL" });
+    await service.dispose();
   });
 });

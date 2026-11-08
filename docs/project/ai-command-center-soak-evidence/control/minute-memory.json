@@ -1,0 +1,86 @@
+[
+  {
+    "minute": 0,
+    "minBytes": 193818624,
+    "meanBytes": 750653081.6,
+    "maxBytes": 1085661184
+  },
+  {
+    "minute": 1,
+    "minBytes": 863178752,
+    "meanBytes": 969485231.2697096,
+    "maxBytes": 1200500736
+  },
+  {
+    "minute": 2,
+    "minBytes": 1007054848,
+    "meanBytes": 1094934905.037657,
+    "maxBytes": 1253584896
+  },
+  {
+    "minute": 3,
+    "minBytes": 973996032,
+    "meanBytes": 1145357987.5850623,
+    "maxBytes": 1283026944
+  },
+  {
+    "minute": 4,
+    "minBytes": 1072472064,
+    "meanBytes": 1194539753.5062761,
+    "maxBytes": 1364389888
+  },
+  {
+    "minute": 5,
+    "minBytes": 1167618048,
+    "meanBytes": 1287358720,
+    "maxBytes": 1476423680
+  },
+  {
+    "minute": 6,
+    "minBytes": 1193750528,
+    "meanBytes": 1336844253.8666666,
+    "maxBytes": 1510944768
+  },
+  {
+    "minute": 7,
+    "minBytes": 1232220160,
+    "meanBytes": 1373549886.6721992,
+    "maxBytes": 1577197568
+  },
+  {
+    "minute": 8,
+    "minBytes": 1348849664,
+    "meanBytes": 1465635295.866109,
+    "maxBytes": 1662124032
+  },
+  {
+    "minute": 9,
+    "minBytes": 1369137152,
+    "meanBytes": 1480058531.5850623,
+    "maxBytes": 1684971520
+  },
+  {
+    "minute": 10,
+    "minBytes": 1478123520,
+    "meanBytes": 1547606391.4666667,
+    "maxBytes": 1770352640
+  },
+  {
+    "minute": 11,
+    "minBytes": 1545379840,
+    "meanBytes": 1622533398.4937239,
+    "maxBytes": 1811881984
+  },
+  {
+    "minute": 12,
+    "minBytes": 1558921216,
+    "meanBytes": 1692588544,
+    "maxBytes": 1943834624
+  },
+  {
+    "minute": 13,
+    "minBytes": 1731403776,
+    "meanBytes": 1812102726.8923078,
+    "maxBytes": 1889808384
+  }
+]

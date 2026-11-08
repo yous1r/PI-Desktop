@@ -201,6 +201,18 @@ renderer-facing status):
   missing sessions row is restored from the live transcript (or created as a
   stub) before those appends apply; deleting a session drops its outbox
   entries (D318).
+- The headless `RuntimeService` keeps per-session append order and waits for
+  queued final messages and usage before `session.endTurn`. The final reply
+  checkpoint finishes before its transcript append, preventing a late checkpoint
+  from racing finalization. Root terminal events are published from the single
+  claimed finalization, after persistence and settlement; an unconfirmed success
+  becomes an error event instead of an early `agent_end`. A failed append or
+  unacknowledged end is reported with `settled: false`, never successful completion.
+  Previously locked abort reasons remain aborted. A failed row does not discard
+  later rows, and a late old-turn failure cannot poison a new turn. Shutdown
+  drains event writes and already-claimed finalizations before removing listeners.
+  The queue remains in memory; process/power-loss recovery is limited to the
+  acknowledged transcript and in-flight checkpoints, not a durable outbox.
 - Before replacing or activating a session transcript, Electron main fences
   persistence callbacks for that session and drains appends already queued for
   the old transcript. If the rewrite succeeds, events from turns that existed

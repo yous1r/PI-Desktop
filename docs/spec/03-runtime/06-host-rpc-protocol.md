@@ -90,11 +90,25 @@ entry and releases any reservation made before the caller receives its permit. T
 fully admitted reservations, including those awaiting delivery to the caller;
 `queued` counts only requests still waiting for capacity.
 
-Electron's `HostProcess` treats an explicit `HOST_OVERLOADED` response as
-retryable backpressure for renderer-facing calls. It waits 50, 100, 200, and
+The shared `HostProcess` used by Electron and headless hosts treats an explicit
+`HOST_OVERLOADED` response as retryable backpressure. It waits 50, 100, 200, and
 400 ms between at most four retries, then returns the structured error to the
 caller. This retry applies only to an admission rejection; transport failure,
 timeout, and errors from an admitted request are never replayed.
+
+Before sending `session.appendMessage`, `session.recordUsage`,
+`session.saveInflightMessage`, or `session.endTurn`, the shared transport admits
+at most eight writes concurrently. Its FIFO accounts for active plus waiting
+requests, capped at 256 requests and 64 MiB of serialized UTF-8 request bytes.
+Capacity exhaustion rejects before dispatch with `LIMIT_EXCEEDED` and
+`data.scope: "host-write-queue"`; it does not create another retry loop.
+Queue wait consumes the existing per-attempt transport deadline. A queued
+timeout removes the request without sending it. An active timeout retains its
+permit until the peer responds or the transport closes, since a deadline does
+not cancel an admitted Rust operation. Closure rejects all waiting callers.
+Other RPCs, including permission decisions and tool cancellation, bypass this
+write queue. They still obey Rust's unchanged 32-request admission limit; this
+is not a reservation against arbitrary concurrent tool/control traffic.
 
 ### Request
 

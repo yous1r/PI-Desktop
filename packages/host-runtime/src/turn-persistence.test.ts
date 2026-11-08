@@ -62,8 +62,44 @@ describe("TurnPersistence", () => {
       log: (_level, message) => logs.push(message),
     });
     await persistence.append({ sessionId: "s", message: row("dup") });
-    await persistence.append({ sessionId: "s", message: row("bad") });
+    await expect(persistence.append({ sessionId: "s", message: row("bad") })).rejects.toMatchObject({ errorCode: "INVALID_ARGUMENT" });
     expect(calls).toBe(2);
     expect(logs).toEqual(["transcript append failed"]);
+  });
+});
+
+describe("turn persistence failure barriers", () => {
+  it("keeps ordering after a rejected row and does not charge a late old-turn failure to the new turn", async () => {
+    const written: string[] = [];
+    const persistence = new TurnPersistence({
+      getHost: () => ({ async call(_method: string, params: { message: UiMessage }) {
+        if (params.message.id === "bad") throw new Error("disk full");
+        written.push(params.message.id);
+      } }), log: () => undefined,
+    });
+    persistence.beginTurn("s", "t1");
+    const bad = persistence.append({ sessionId: "s", turnId: "t1", message: row("bad") });
+    const good = persistence.append({ sessionId: "s", turnId: "t1", message: row("good") });
+    await expect(bad).rejects.toThrow("disk full");
+    await good;
+    await expect(persistence.flushTurn("s", "t1")).rejects.toThrow("disk full");
+    expect(written).toEqual(["good"]);
+    persistence.beginTurn("s", "t2");
+    await expect(persistence.append({ sessionId: "s", turnId: "t1", message: row("bad") })).rejects.toThrow("disk full");
+    await expect(persistence.flushTurn("s", "t2")).resolves.toBeUndefined();
+  });
+
+  it("bounds unavailable-host retries and reports the failure through the turn barrier", async () => {
+    const delays: number[] = [];
+    const persistence = new TurnPersistence({ getHost: () => null, log: () => undefined,
+      sleep: async ms => { delays.push(ms); } });
+    persistence.beginTurn("s", "t");
+    await expect(persistence.append({ sessionId: "s", turnId: "t", message: row("a") })).rejects.toMatchObject({ errorCode: "HOST_UNAVAILABLE" });
+    await expect(persistence.flushTurn("s", "t")).rejects.toMatchObject({ errorCode: "HOST_UNAVAILABLE" });
+    expect(delays).toHaveLength(14);
+    expect(persistence.size()).toBe(0);
+    persistence.dispose();
+    await expect(persistence.append({ sessionId: "s", message: row("late") })).rejects.toMatchObject({ errorCode: "HOST_UNAVAILABLE" });
+    await persistence.flush();
   });
 });

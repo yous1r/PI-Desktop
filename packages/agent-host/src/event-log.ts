@@ -3,6 +3,11 @@ import { RACP_DEFAULT_LIMITS, isDurableEventKind } from "@pi-desktop/shared";
 
 import { racpError, type RacpError } from "./errors.js";
 import type { Clock, IdSource } from "./ports.js";
+import { ReplayByteBudget } from "./replay-byte-budget.js";
+
+const STREAM_REPLAY_BYTES = 8 * 1024 * 1024;
+const HOST_REPLAY_BYTES = 128 * 1024 * 1024;
+const encoder = new TextEncoder();
 
 /** What a producer hands to the log: everything the Host does not allocate. */
 export type EventDraft = {
@@ -18,7 +23,7 @@ export type EventDraft = {
   occurredAt?: string;
 };
 
-export type Retention = { maxEvents: number; maxAgeMs: number };
+export type Retention = { maxEvents: number; maxAgeMs: number; maxBytes?: number };
 
 export type ReplayDecision =
   | { status: "live" }
@@ -33,15 +38,19 @@ export type ReplayDecision =
 export class EventStream {
   readonly epoch: string;
   private sequence = 0;
-  private readonly durable: Array<{ envelope: RacpEventEnvelope; appendedAt: number }> = [];
+  private readonly durable = new Map<number, { envelope: RacpEventEnvelope; appendedAt: number; bytes: number; release: () => void }>();
+  private retainedBytes = 0;
 
   constructor(
     epoch: string,
     private readonly retention: Retention,
     private readonly clock: Clock,
     private readonly ids: IdSource,
+    private readonly budget = new ReplayByteBudget(HOST_REPLAY_BYTES),
   ) {
     this.epoch = epoch;
+    const limit = retention.maxBytes ?? STREAM_REPLAY_BYTES;
+    if (!Number.isSafeInteger(limit) || limit <= 0) throw new RangeError("Stream replay byte budget must be a positive integer");
   }
 
   get lastSequence(): number {
@@ -54,7 +63,8 @@ export class EventStream {
 
   /** Oldest durable sequence still retained, or `null` when nothing is. */
   get oldestRetained(): number | null {
-    return this.durable.length === 0 ? null : (this.durable[0]!.envelope.sequence ?? null);
+    this.evict(this.clock.now());
+    return this.durable.keys().next().value ?? null;
   }
 
   append(draft: EventDraft): RacpEventEnvelope {
@@ -70,17 +80,33 @@ export class EventStream {
     };
     if (durable) {
       this.sequence += 1;
-      this.durable.push({ envelope, appendedAt: now });
+      const bytes = encoder.encode(JSON.stringify(envelope)).byteLength;
+      const release = this.budget.retain(bytes, () => this.evictOldest());
+      this.durable.set(this.sequence, { envelope, appendedAt: now, bytes, release });
+      this.retainedBytes += bytes;
       this.evict(now);
+      this.budget.trim();
     }
     return envelope;
   }
 
   private evict(now: number): void {
-    while (this.durable.length > this.retention.maxEvents) this.durable.shift();
-    while (this.durable.length > 0 && now - this.durable[0]!.appendedAt > this.retention.maxAgeMs) {
-      this.durable.shift();
+    while (this.durable.size) {
+      const oldest = this.durable.values().next().value!;
+      if (this.durable.size <= this.retention.maxEvents &&
+          this.retainedBytes <= (this.retention.maxBytes ?? STREAM_REPLAY_BYTES) &&
+          now - oldest.appendedAt <= this.retention.maxAgeMs) break;
+      this.evictOldest();
     }
+  }
+
+  private evictOldest(): void {
+    const first = this.durable.entries().next().value;
+    if (!first) return;
+    const [sequence, entry] = first;
+    this.durable.delete(sequence);
+    this.retainedBytes -= entry.bytes;
+    entry.release();
   }
 
   /** Decide how a subscriber that presents `after` catches up (spec §8). */
@@ -95,7 +121,7 @@ export class EventStream {
     if (oldest === null || oldest > after.sequence + 1) return { status: "resync", reason: "evicted" };
     return {
       status: "replay",
-      events: this.durable
+      events: [...this.durable.values()]
         .filter((entry) => (entry.envelope.sequence ?? 0) > after.sequence)
         .map((entry) => entry.envelope),
     };
@@ -149,20 +175,23 @@ export class EventHub {
   private readonly subscriptions = new Map<string, Subscription>();
   private readonly retention: Retention;
   private readonly defaultMaxOutstanding: number;
+  private readonly replayBytes: ReplayByteBudget;
 
   constructor(
-    private readonly deps: { clock: Clock; ids: IdSource; limits?: Partial<RacpLimits> },
+    private readonly deps: { clock: Clock; ids: IdSource; limits?: Partial<RacpLimits>; replayBudget?: { streamBytes: number; totalBytes: number } },
   ) {
     const limits = { ...RACP_DEFAULT_LIMITS, ...deps.limits };
-    this.retention = { maxEvents: limits.replayWindowEvents, maxAgeMs: limits.replayWindowMs };
+    this.retention = { maxEvents: limits.replayWindowEvents, maxAgeMs: limits.replayWindowMs,
+      maxBytes: deps.replayBudget?.streamBytes ?? STREAM_REPLAY_BYTES };
+    this.replayBytes = new ReplayByteBudget(deps.replayBudget?.totalBytes ?? HOST_REPLAY_BYTES);
     this.defaultMaxOutstanding = 1000;
-    this.host = new EventStream(deps.ids.next("ep"), this.retention, deps.clock, deps.ids);
+    this.host = new EventStream(deps.ids.next("ep"), this.retention, deps.clock, deps.ids, this.replayBytes);
   }
 
   stream(sessionId: string): EventStream {
     let stream = this.streams.get(sessionId);
     if (!stream) {
-      stream = new EventStream(this.deps.ids.next("ep"), this.retention, this.deps.clock, this.deps.ids);
+      stream = new EventStream(this.deps.ids.next("ep"), this.retention, this.deps.clock, this.deps.ids, this.replayBytes);
       this.streams.set(sessionId, stream);
     }
     return stream;

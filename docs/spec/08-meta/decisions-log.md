@@ -8111,3 +8111,21 @@ services and resource bridging over the existing SSH/RACP Host connection.
 Native authorization stays in Rust; UI, models, credentials and session storage
 stay on Desktop. [Spec 18](../07-plugins/18-workspace-execution.md) records
 compatibility, limits, no-replay semantics and the remaining release gates.
+
+## 2026-11-08 — Bound Agent Host replay retention by bytes
+
+The command-center fixed-context soak exposed growing coordinator memory while
+Rust Host and sidecar usage stayed comparatively stable. EventHub retained large
+durable event payloads under only the 10,000-event/24-hour window. Add an 8-MiB
+serialized UTF-8 envelope budget per stream and 128 MiB across one EventHub;
+evict oldest prefixes and preserve the existing explicit snapshot/resync path.
+Count and age remain additional limits, and dormant history applies age expiry
+when read. Live delivery and canonical Rust transcript history are unchanged.
+
+The budget is serialized retention accounting, not a total heap or process-memory
+limit. It introduces no new wire fields, data owner, executor or persistence
+schema. `event-log.test.ts` covers byte/count/age/global accounting and oversized
+events; `racp.test.ts` covers byte eviction followed by attach/snapshot/live
+subscription without restarting execution. See RACP spec §8 and
+E2E-RACP-replay-byte-budget. The one-hour measured candidate and its limitations
+are recorded separately; a unit-test pass is not a capacity claim.

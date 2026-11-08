@@ -39,14 +39,14 @@ export type TurnOwnership = {
     sessionId: string,
     status: "completed" | "aborted" | "error",
     errorCode: string | undefined,
-    options: { turnId: string },
+    options: { turnId: string; terminalEvent?: AgentEventEnvelope },
   ): Promise<void>;
 };
 
 export type TurnEventPipelineOptions = {
   getHost: () => { call<T = unknown>(method: string, params?: unknown): Promise<T>; isAvailable?(): boolean } | null;
   ownership: TurnOwnership;
-  /** Fan-out of every live event, after the stale-terminal guard. */
+  /** Fan-out of live events; root terminal events follow durable settlement. */
   emit: (envelope: AgentEventEnvelope) => void;
   log: TurnEventLogger;
   now?: () => number;
@@ -84,6 +84,8 @@ export class TurnEventPipeline {
           sessionId: checkpoint.sessionId,
           ...(checkpoint.turnId ? { turnId: checkpoint.turnId } : {}),
           message: checkpoint.message,
+        }).catch((error: unknown) => {
+          options.log("warn", "inflight checkpoint failed", { sessionId: checkpoint.sessionId, error: String(error) });
         });
       },
       options.checkpointIntervalMs,
@@ -103,8 +105,13 @@ export class TurnEventPipeline {
     return usage;
   }
 
-  resetTurnUsage(sessionId: string): void {
+  beginTurn(sessionId: string, turnId: string): void {
     this.activeTurnUsages.delete(sessionId);
+    this.persistence.beginTurn(sessionId, turnId);
+  }
+
+  flushTurn(sessionId: string, turnId: string): Promise<void> {
+    return this.persistence.flushTurn(sessionId, turnId);
   }
 
   /** Write the session's pending reply checkpoint now; the last text before a crash. */
@@ -170,7 +177,8 @@ export class TurnEventPipeline {
     // A terminal event for a turn that no longer owns its session must not
     // clear the current turn's state. Persistence is a separate pass, so the
     // event is still archived as history.
-    if (!this.options.ownership.isStaleTerminalEvent(envelope)) this.options.emit(envelope);
+    const terminal = event.type === "agent_end" || event.type === "error";
+    if (!terminal && !this.options.ownership.isStaleTerminalEvent(envelope)) this.options.emit(envelope);
     const persisted = this.persist(envelope);
     if (persisted) {
       // Replay the completed tool row through the message_end contract, so a
@@ -194,7 +202,7 @@ export class TurnEventPipeline {
 
     const finish = (status: "completed" | "aborted" | "error", errorCode: string | undefined) =>
       this.options.ownership
-        .finishTurn(sessionId, status, errorCode, { turnId: envelope.turnId ?? "" })
+        .finishTurn(sessionId, status, errorCode, { turnId: envelope.turnId ?? "", terminalEvent: envelope })
         .catch((error: unknown) => {
           this.options.log("warn", "turn finalization failed", { sessionId, error: String(error) });
         });
@@ -296,11 +304,12 @@ export class TurnEventPipeline {
       return;
     }
     if (message.role === "assistant") {
+      let checkpoint: Promise<void> | undefined;
       if (!envelope.parentToolCallId) {
         this.inflightSnapshots.delete(sessionId);
         const finalId = message.id;
         this.checkpointer.observe({ sessionId, turnId: envelope.turnId ?? turnId, message });
-        void this.checkpointer.flush(sessionId).finally(() => this.checkpointer.settleIf(sessionId, finalId));
+        checkpoint = this.checkpointer.flush(sessionId).then(() => this.checkpointer.settleIf(sessionId, finalId));
       }
       // Empty aborted bubbles are not useful transcript rows. Structured
       // provider failures remain durable so their details survive a reload.
@@ -308,7 +317,7 @@ export class TurnEventPipeline {
       const empty = !(message.content || "").trim() && !(message.thinking || "").trim();
       const reservedForSteering = this.steeringReplies.delete(message.id);
       if (failed && empty && !message.error && !reservedForSteering) return;
-      void this.persistence.append({ sessionId, message: subagentTagged(message, envelope), turnId });
+      void this.persistence.append({ sessionId, message: subagentTagged(message, envelope), turnId: envelope.turnId ?? turnId }, checkpoint);
       return;
     }
     if (message.role === "tool") {

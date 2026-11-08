@@ -1,0 +1,145 @@
+{
+  "status": "FAIL",
+  "failures": [
+    "runtime_failure",
+    "incomplete_transcripts",
+    "context_or_durability_not_proven",
+    "concurrency_not_proven",
+    "stream_did_not_finish",
+    "overlap_too_short",
+    "invalid_overlap_timing",
+    "load_not_covered_by_samples",
+    "soak_duration_not_met",
+    "missing_round_evidence"
+  ],
+  "scope": "headless-session-runtime-soak",
+  "fullWorkbenchAcceptance": "NOT_RUN",
+  "memory": {
+    "metric": "Windows Private Bytes",
+    "peakConcurrentBytes": 1943834624,
+    "budgetBytes": 6000000000,
+    "sampleCount": 3185,
+    "loadSampleCount": 0,
+    "maxGapMs": 481,
+    "maxCollectionMs": 184.33600000001024,
+    "samplingTargetMs": 250,
+    "samplingTargetMet": false,
+    "limitation": "Sampled maximum only; process readings within each sample are sequential. No OS allocation trace. Includes test coordinator/provider overhead; excludes outer test driver, sampler, desktop renderer/plugins/native resources.",
+    "targetBytes": 4000000000,
+    "targetMet": true,
+    "distributionBytes": {
+      "count": 3185,
+      "min": 193818624,
+      "mean": 1314930147.8681319,
+      "p50": 1324531712,
+      "p95": 1735319552,
+      "p99": 1889742848,
+      "max": 1943834624
+    },
+    "samplesAboveTarget": 0
+  },
+  "workload": {
+    "sessions": 36,
+    "topology": "independent main sessions",
+    "contextBytes": 1048576,
+    "contextKind": "utf8",
+    "contextTokens": "NOT_MEASURED",
+    "ticks": 100,
+    "intervalMs": 500,
+    "durationSeconds": 3600,
+    "historyPolicy": "verify then clear synthetic history between rounds; same services and processes"
+  },
+  "exclusions": [
+    "native subagents",
+    "RACP/browser transport",
+    "headless launch resolver",
+    "desktop renderer",
+    "native programs",
+    "tools/mixed workload",
+    "real providers",
+    "unbounded history growth",
+    "other workload soak qualification"
+  ],
+  "soak": {
+    "elapsedMs": 0,
+    "completedRounds": 12,
+    "verifiedTurns": 432,
+    "inputBytes": 452984832,
+    "outputBytes": 39951768,
+    "turnsPerMinute": 0,
+    "allStreamOverlapMs": 605624,
+    "roundDurationMs": {
+      "count": 12,
+      "min": 57338.6847,
+      "mean": 61132.22053333332,
+      "p50": 60715.174,
+      "p95": 65133.024199999985,
+      "p99": 65133.024199999985,
+      "max": 65133.024199999985
+    },
+    "settlementLagMs": {
+      "count": 432,
+      "min": 473,
+      "mean": 1750.8425925925926,
+      "p50": 1251,
+      "p95": 4641,
+      "p99": 4644,
+      "max": 4645
+    },
+    "pendingWritesPeak": 36,
+    "eventLoopWindowP99Ms": {
+      "count": 797,
+      "min": 31.211519,
+      "mean": 40.751837915934715,
+      "p50": 35.618815,
+      "p95": 63.995903,
+      "p99": 118.489087,
+      "max": 168.689663
+    },
+    "eventLoopMaxMs": 168.689663,
+    "cpuSeconds": {
+      "coordinator": 36.359375,
+      "host": 201.40625,
+      "sidecar": 39.5625
+    }
+  },
+  "inventory": [
+    {
+      "role": "coordinator",
+      "pid": 17544
+    },
+    {
+      "role": "host",
+      "pid": 11064
+    },
+    {
+      "role": "sidecar",
+      "pid": 18184
+    }
+  ],
+  "outcome": {
+    "error": "Sampler exited early: 0",
+    "cleanupError": "Sampler exited early: 0"
+  },
+  "exits": [
+    {
+      "kind": "exit",
+      "code": 1,
+      "signal": null
+    }
+  ],
+  "cleanupConfirmed": false,
+  "metadata": {
+    "head": "7674ca53cd839a13f44749de52453111ea192e0d",
+    "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+    "dirty": true,
+    "recordedAt": "2026-11-07T23:32:48.539Z",
+    "platform": "win32",
+    "osRelease": "10.0.19045",
+    "node": "v24.12.0",
+    "cpus": 6,
+    "totalMemoryBytes": 25765265408,
+    "hostBinarySha256": "104a99fc334c43548cbd384c8b170bb09093de4d8883bb5369e7eacaad93fe4d",
+    "inputsSha256": "356ba185c1fae118d0bda377f300f8d4c664bc6f28e12da15b373fd4f3448ef3"
+  }
+}

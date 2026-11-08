@@ -1,0 +1,23 @@
+{
+  "exporter": "scripts/e2e-command-center-curve.mjs",
+  "exporterSha256": "51a934ec01e0604eb61567cf6cc292536f920cbfc180a3e05b6e6bb7a1e9c7cf",
+  "csvRowsVerified": 14616,
+  "artifacts": [
+    {
+      "path": "memory.csv",
+      "sha256": "34de1b73e5ff1dafbd2e2cb11c57dcf2e0b4295b67d79dfd5ea4ef72f1591726"
+    },
+    {
+      "path": "memory-curve.svg",
+      "sha256": "243d80d43f4c6c33c49d892462ea58ca5e71c0164d7f4491d2e5cc6f56d30783"
+    },
+    {
+      "path": "curve-metrics.json",
+      "sha256": "1de52b2fa967fee0d243da6c38b006e4921e851ddbb65a94720d39b70f93690a"
+    },
+    {
+      "path": "minute-memory.json",
+      "sha256": "ac47f09d204fa80d20eb4edac7c4ac7c0603575aa248f2e97a2ef237bed70b29"
+    }
+  ]
+}
