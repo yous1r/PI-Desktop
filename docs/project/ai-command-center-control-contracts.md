@@ -123,8 +123,13 @@ For a new goal revision, commit the receipt, desired goal head/history and paren
 notification intent atomically. Do not hold the transaction over runtime/network
 I/O. Record the dispatch attempt before calling the runtime; on uncertain delivery,
 query/reconcile the existing receipt rather than generate a new ID or replay.
-The idempotency retention contract needs a durable tombstone or explicit expiry
-response; silently treating an expired ID as a new mutation is forbidden.
+User decision for the first release: **no automatic deletion** of control
+receipts or transfer journals, including terminal records. Unresolved records
+remain recoverable. Expired hot caches reload the durable identity; they never
+turn an old request into a new mutation. Queries are paginated and hot caches
+bounded independently of on-disk retention. Do not add a cleanup endpoint or
+cascading receipt deletion as part of task/session deletion; any later explicit
+deletion/tombstone contract requires its own compatibility and privacy design.
 
 Current `AgentHost` has an in-memory idempotency cache for turn start. It is a reuse
 reference, not a replacement for this durable control journal. Provider import
@@ -248,10 +253,12 @@ These are required future tests, not claims that the proposed APIs exist.
 4. Add durable goal/receipt/parent-notification journals and runtime consumption
    acknowledgement; then expose child control and monitor projection.
 
-Open product/operating inputs remain native program/device qualification,
-idempotency retention period/tombstone policy, receipt history retention and the
-representative token-counted mixed workload. This document supplies the concrete
-choices and tests; it does not silently promote Proposed architecture to Accepted.
+User decisions now fix first-release receipt/journal retention (no automatic
+deletion) and the minimum Windows target (two CPU cores, 8 GB RAM; current
+development host: six logical processors, about 24 GB). Remaining qualification
+inputs are exact CPU/OS/target access, tokenizer/corpus and tool/plugin fixture
+versions, and native/mobile devices. These decisions remove the retention-policy
+blocker; they do not turn unimplemented contracts into passing product evidence.
 
 ## Source references
 

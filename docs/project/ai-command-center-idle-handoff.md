@@ -139,9 +139,10 @@ Store the transfer journal in a dedicated Rust repository and assign a schema
 version only when the migration is implemented. Preserve existing profiles and
 transcripts. Require one active transfer per profile, transactional revision CAS,
 and unique transfer/request identities. Do not keep a second JavaScript journal.
-Terminal receipts are not automatically purged before the retention policy is
-resolved. Exhausting an eventual storage budget must not silently lose an
-unresolved transfer.
+The user has selected no automatic deletion of terminal or unresolved control
+receipts and transfer journals in the first release. Keep hot caches bounded and
+durable reads paginated. Exhausting a storage budget must not silently lose a
+transfer or allow an old request to execute again.
 
 In handoff-capable mode, persist the active owner epoch and native containment
 registration before releasing the runtime startup barrier. Transfer records

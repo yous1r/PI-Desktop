@@ -20,10 +20,13 @@
    local Rust ownership primitive.
 2. Android/iOS devices, browser versions and self-hosted HTTPS deployment model.
    These block mobile/browser qualification, not backend preparation.
-3. Token-counted mixed main/child/Worker/tool/plugin workload and reference
-   hardware. The synthetic 1-MiB main-only soak cannot replace it.
-4. Terminal receipt retention/tombstone period and deletion policy. Unresolved
-   receipts must remain recoverable; do not assign a purge policy silently.
+3. Minimum hardware is now user-confirmed: two CPU cores and 8 GB RAM. Exact
+   CPU/OS, target-machine access, tokenizer/corpus and tool/plugin versions still
+   need qualification. Current six-thread / 24-GB measurements are comparison
+   evidence; the synthetic 1-MiB main-only soak cannot certify the target.
+4. Receipt policy is resolved: no automatic control-receipt or transfer-journal
+   deletion in the first release. Implement bounded caches and paginated durable
+   reads; a future explicit purge/deletion contract is separate.
 5. Full Host handoff now has a [concrete protocol design](ai-command-center-idle-handoff.md)
    for local identity, durable phases and old-sidecar fencing. Its native binding,
    journal, startup guard and fault cases still require implementation/qualification.
@@ -35,7 +38,7 @@
 |---|---|---|---|
 | 1 | S03a: Rust data-directory ownership | Implemented candidate in this slice | Same-directory and alias contenders fail before recovery; independent directories run; normal/crash exit releases ownership; relocation refuses live destination before mutation; existing history remains readable |
 | 2 | S03b: Exclusive execution handoff | Protocol draft complete; implementation pending | Existing admission gate blocks new work; busy handoff rejects; old sidecar proven stopped/fenced; one successor; crash at every phase leaves recoverable journal; no turn/tool replay |
-| 3 | S02/S04: Finalize versioned metadata contract | Draft complete, implementation pending | Stable task vs concrete execution identity; strict request schema; desired/effective goal CAS; retention/deletion policy resolved; golden producer/consumer fixtures |
+| 3 | S02/S04: Finalize versioned metadata contract | Retention decided; schemas/implementation pending | Stable task vs concrete execution identity; strict request schema; desired/effective goal CAS; durable no-auto-delete receipts; golden producer/consumer fixtures |
 | 4 | S04: Rust repositories and migrations | Pending | Workspaces/membership/reservations/goals/receipts preserve existing data; transactional 12/36 checks; unique release; migration/restart/partial-commit tests; no second transcript store |
 | 5 | S05: Portable authorized control interfaces | Pending | Negotiated operations only; authenticated principal/role; idempotency and lost-reply reconciliation; unsupported capabilities explicit; old clients remain compatible |
 | 6 | S06/S07: Monitoring and four-surface Desktop | Pending | Bounded summary snapshot/subscription; no gaps/stale repaint; existing history/live attach without new execution; overview + three workspaces; draft/focus/reading state preserved |
@@ -220,3 +223,18 @@ why an expiring maintenance lease and ordinary disposal completion cannot prove
 exclusive execution transfer. Four implementation slices have separate evidence
 gates. No new protocol, migration, process adoption or handoff is advertised by
 the current binaries; full M0 prerequisites and later product gates remain open.
+
+## User-confirmed minimum configuration and retention
+
+The current development host has six logical processors and about 24 GB RAM;
+the product must remain stable and responsive on a two-core, 8-GB machine.
+The requirements now make that the minimum qualification target while retaining
+12/36 execution capacity, the 4,000,000,000-byte application budget, and the
+existing input/switch/Stop latency gates. A two-CPU affinity run on this larger
+host is only preflight, not evidence of target RAM/paging behavior. No result
+has yet qualified the complete product on the minimum target.
+
+First-release control receipts and transfer journals are not automatically
+deleted. This supersedes earlier unresolved-retention notes in the historical
+progress sections above. Implementation can proceed without another retention
+decision; later explicit deletion remains a separate data-compatibility feature.

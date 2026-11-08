@@ -65,7 +65,7 @@ following gaps do not prevent planning, but have explicit closure dates.
 |---|---|---|---|
 | Names, skills and weekly availability | Before T0 | Two full-time developers plus half-time QA; roles below | P |
 | Start date, leave and regional holiday calendar | Before T0 | Relative work weeks; example dates only | P with B/F/Q |
-| Reference machine and remote-desktop access | W1 day 2 | Windows 11, eight cores, 32 GB RAM, SSD; freeze actual machine and RDP profile | P supplies; Q records |
+| Reference machine and remote-desktop access | W1 day 2 | User target: two cores, 8 GB RAM, SSD; current six-thread / 24-GB host is development only. Freeze exact target OS/CPU and RDP profile | P supplies; Q records |
 | Agent/context/provider/plugin load | W1 day 3 | Requirements' 36-instance, 32k-token fixture plus larger-context measurement | B with Q; P confirms representative work |
 | At least three native applications and workflows | W2 day 2 | Association first; record versions, elevation and multi-window behavior | P supplies; F owns matrix |
 | Counting rule and command workspace grouping | M0 | All live parent/child/Worker executions; 3 admitted groups | P accepts; B specifies |

@@ -218,11 +218,12 @@ transaction across a provider request, subprocess launch or client network await
 Use foreign keys/unique constraints where compatible with canonical identity and
 explicit cleanup when child executions do not have independent session rows.
 Define task-deletion behavior transactionally: live work must settle or be
-explicitly stopped before membership deletion; goals and receipts follow the
-existing user-controlled history retention policy. Unresolved receipts cannot be
-silently pruned. Hot receipt/projection caches are bounded; durable history stays
-paged on disk. The advertised idempotency retention policy must prevent an expired
-or unknown old request from being silently treated as a new mutation.
+explicitly stopped before membership deletion. First-release control receipts
+and transfer journals have **no automatic deletion**, as confirmed by the user;
+task/session removal must not cascade away their idempotency identity. Existing
+transcript deletion semantics remain separate. Hot receipt/projection caches
+stay bounded and durable queries stay paged. A later explicit receipt-deletion
+contract must preserve authorization, privacy and duplicate-execution safety.
 
 ### Runtime-only state
 
@@ -698,13 +699,13 @@ run; do not turn a successful documentation build into a performance claim.
 
 | Input / decision | Needed by | Proposed default / owner |
 |---|---|---|
-| Machine, OS, CPU/RAM, RDP client and network | P0 capacity fixture | Eight-core Windows 11 reference from requirements; user supplies actual environment |
-| Model/context/tool/plugin workload | P0 budget qualification | Thirty-six 32k-token runtime fixtures; owner records larger-context envelope and provider quotas |
+| Machine, OS, CPU/RAM, RDP client and network | P0 capacity fixture | User target: two CPU cores and 8 GB RAM. Current six-logical-processor / 24-GB host is development only; qualify exact minimum-target OS/CPU and RDP environment |
+| Model/context/tool/plugin workload | P0 budget qualification | Preserve thirty-six 32k-token fixture and add two mains / six native children / four Workers per workspace; pin tokenizer/corpus and fixture versions before execution |
 | Required native programs and privilege levels | P0/P4 | Association first; user nominates at least three programs/workflows before adapter qualification |
 | Meaning of twelve agents and workspace grouping | P0 schema/admission | Count all live main/child/Worker instances; one Host and three enabled groups |
 | Browser/mobile devices, access network and push | P0/P5 | Same-origin self-hosted HTTPS and Web/PWA; no mandatory cloud or background socket |
 | Native macOS/Linux versus mobile schedule | P0 planning | Windows first; remaining order is a product decision, not an assumed confirmed sequence |
-| Dedicated schema and receipt retention | P1 design review | Tables and versioned KV as specified; assign actual migration version at implementation base |
+| Dedicated schema and receipt retention | P1 design review | User confirmed no automatic receipt/journal deletion in first release; tables and versioned KV remain; assign migration version at implementation |
 | Runtime consumption boundary and parent fence | P3 contract review | Defined model/tool scheduling boundary, explicit old-result handling; no implicit Task-resume substitute |
 | Desktop capability parity and Host startup | P0/P1 | Explicit same-machine service mode; inventory credentials, providers, MCP, plugins and GUI dependencies |
 

@@ -122,7 +122,7 @@ The following is a concrete next implementation gate, not a current feature.
 
 | Gate | Available evidence | Still required |
 |---|---|---|
-| Windows execution baseline | Windows 10 x64, six logical CPUs, about 24 GiB, current-source debug Host | Reference hardware/release build qualification |
+| Windows execution baseline | Windows 10 x64, six logical CPUs, about 24 GiB, current-source debug Host | User minimum target: two cores / 8 GB; exact target CPU/OS, release build and full interaction qualification |
 | 36 × 1 MiB text | ASCII and UTF-8 deterministic main-session E2E; one-hour repeated fixture is recorded separately | Token-counted mixed parents/children/Workers, real provider quotas |
 | Full 4-GB application | P0 measures coordinator/Host/sidecar only | Renderer, plugins, native views, startup peaks, <=100-ms qualification and interaction latency |
 | Long lifecycle | One-hour fixed-context loop exercises same service processes and repeated session disposal | Required two-hour/100-cycle mixed UI/resources soak and residual-growth gate |

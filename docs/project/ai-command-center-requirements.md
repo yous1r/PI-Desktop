@@ -343,13 +343,26 @@ All numbers below are initial gate inputs, to be frozen and checked into fixture
 at P0. Any later relaxation must be recorded with a reason and reviewed; it cannot
 be applied after a failed run merely to report success.
 
-- Reference machine: Windows 11, eight CPU cores, 32 GB RAM, SSD, no required
-  discrete GPU; record exact OS, CPU, Electron/Node versions and display settings.
+- User-confirmed minimum target: **two CPU cores and 8 GB RAM**, SSD, no required
+  discrete GPU. The current development machine has six logical processors and
+  approximately 24 GB RAM; it is a comparison host, not minimum-target evidence.
+  Record exact OS/build, CPU model, physical/logical core topology, usable bytes,
+  storage and Electron/Node/display settings. A two-vCPU, 8-GB VM is a documented
+  qualification candidate, not automatically equivalent to every two-core CPU.
+  The same 12/workspace, 36/Host, 4,000,000,000-byte application budget and AC-08
+  interaction gates apply. CPU affinity on the larger machine is preflight only;
+  it does not reproduce 8-GB system paging pressure. The historical 6-GB soak
+  stop threshold is not a product memory allowance.
 - Test 1920-by-1080 and 2560-by-1440, software rendering, four-surface mode and each
   workspace maximized. All runtime processes run on the reference machine.
 - Each workspace has two live main sessions and ten live children, preserving the
   existing ten-child per-session ceiling. Record every admitted execution and
   periodic progress; all thirty-six are active in the sustained streaming phase.
+- Add a representative mixed phase per workspace: two main sessions, six native
+  children (three per main) and four Worker executions, for twelve total. Record
+  exact execution identities and synchronized progress for all 36. This phase
+  complements the existing two-main/ten-child fixture; it does not raise native
+  child limits or count queued work as simultaneous execution.
 - Each execution starts with approximately 32,000 model-input tokens under a fixed
   tokenizer, with ordinary mixed text/code/tool-result fixtures; also measure a
   documented larger-context case to establish the operating envelope.
@@ -373,6 +386,11 @@ be applied after a failed run merely to report success.
 - Test a desktop plus one mobile client with fixture networking, and actual RDP
   disconnect/reconnect. Record RTT/bandwidth; separate local input-to-paint timing
   from network transport latency.
+- On the minimum target, also record system available memory, commit pressure,
+  hard faults, CPU saturation and disk stalls. Report external program/resource
+  costs separately. Passing a process-memory threshold cannot substitute for
+  meeting the interaction gates under OS pressure; no OOM/restart or lost output
+  is accepted as graceful operation.
 
 Use mocks only at external provider boundaries; use real internal admission,
 runtime, IPC/RPC, storage and presentation paths. Fixture capacity does not prove
@@ -509,10 +527,10 @@ or release commitments and need recorded answers before dependent work proceeds.
 | Decision | Proposed starting point | Evidence/decision needed |
 |---|---|---|
 | Agent counting and workspace model | All live parents/children/Workers count; one Host, three admitted workspaces | Confirm operational grouping and compatibility for existing/scheduled sessions |
-| Memory interpretation and workload | Decimal 4 GB, Private Bytes, co-located 36-instance suite above | Actual target hardware, tokenizer/context mix, plugins/pages, measurement tooling and accepted mobile budget |
+| Memory interpretation and workload | User-confirmed two-core / 8-GB minimum; decimal 4-GB application budget and co-located 36-instance suite | Exact CPU/OS/target access, tokenizer/corpus and tool/plugin versions, measurement tooling and accepted mobile budget |
 | Native programs | Association first; optional named embedding | At least three must-have program names/versions, privilege levels and ordinary workflows; no arbitrary-app guarantee |
 | Host parity/deployment | Same-machine independent Host with explicit opt-in | Inventory desktop providers/auth, attachments, MCP, plugins and GUI lifetimes; service startup/shutdown and ownership handoff design |
-| Persistence and child intervention | [Development design](ai-command-center-development-design.md#data-model-and-persistence) proposes Rust-owned dedicated tables and an explicit consumption boundary | Confirm schema/retention and child/parent conflict contracts in P0/P1; assign migration versions at implementation |
+| Persistence and child intervention | Rust-owned dedicated tables and explicit consumption boundary; first-release receipts/journals have no automatic deletion | Finalize schemas and child/parent conflict contracts; assign migration versions at implementation; explicit future receipt deletion is separate |
 | Mobile and network | Android/iOS Web/PWA, reachable self-hosted HTTPS edge | Nominated OS/browser devices, private-network versus secured endpoint, enrollment/revocation and push requirements |
 | Platform acceptance | Windows/RDP first; native macOS/Linux separately | Mac and mobile hardware access, Linux display-server scope; Windows alone cannot prove iOS/native-macOS qualification |
 | Performance feasibility | Measure before sidecar/shell changes | Baseline artifacts and repeatable 36-instance prototype; if budget fails, revise architecture and cost before promising delivery |
