@@ -1309,3 +1309,7 @@ content. The durable transcript is unchanged and completed tools are not
 re-executed. Other malformed context remains subject to strict validation.
 Tool token estimates are optional telemetry: an invalid call identity must not
 prevent the corresponding terminal tool event from being delivered.
+
+### 公共提示前缀与 scratch（#1926）
+
+基础 runtime 段保留 shell、scratch 变量及临时文件规则，具体路径移到项目/记忆上下文之后，Bash 工具描述继续提供路径。改善跨会话系统文本公共前缀，不承诺供应商缓存命中，不更改历史重建。

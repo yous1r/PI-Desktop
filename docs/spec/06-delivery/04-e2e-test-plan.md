@@ -19533,3 +19533,7 @@ recovery, CAS, budget and permission caps; desktop `mode-definitions-user-path`,
 `mode-definitions-renderer` and `mode-runs-main` cover source editing, selection,
 run controls and Main dispatch. Runtime `modes/*` covers stage completion and
 compaction injection.
+
+#### E2E-ISSUE-1926-scratch-prefix
+
+Build two actual runtimes with identical configuration and different scratch directories. Their leading runtime system sections match; each trailing context retains its own path. Check PowerShell/POSIX guidance and custom system prompt behavior. Coverage: runtime.test.ts. No paid provider requests or cache-hit claims.

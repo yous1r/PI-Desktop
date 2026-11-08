@@ -10197,3 +10197,7 @@ compaction injection.
 跳过无关的 MP4 预览；截图不进入原生目录探测，Main 精确校验 scratch 字节。
 `composer-directory-paste.test.mjs` 验证字节不变及原有目录/混合选择流程。
 不修改系统剪贴板内容。
+
+#### E2E-ISSUE-1926-scratch-prefix
+
+创建配置相同但 scratch 不同的真实 runtime，基础提示段相同且尾部各保留自身路径；验证 shell 语法和自定义提示兼容，不调用真实供应商。
