@@ -420,3 +420,16 @@ P0-3 must add durable owner/containment records and restricted startup/recovery;
 P0-4 must integrate idle admission, resource inventory and successor attachment.
 No full Rust suite, minimum-hardware result, other-platform support, complete
 handoff or automatic app opt-in is implied by this slice.
+
+S03b-2 is accepted on this Windows host. Clean candidate `8bea4c100` on base
+`fd28eb89866ac513912ed109716e7120cf60f18c` passes the
+[11-check process acceptance](ai-command-center-p0-evidence/execution-fence-after.json)
+with `dirty:false`, all 19 direct fixtures closed and native descendant exit
+observations confirmed. The same binary passes all eight
+[owner-discovery compatibility checks](ai-command-center-p0-evidence/execution-fence-discovery-compat.json)
+with all 14 fixtures closed. Its SHA-256 is
+`3fe33175711fdcd92f6c5a86c02fe157c584bdfcba485f6962e4d5a1245f5caf`.
+The [old-binary failure](ai-command-center-p0-evidence/execution-fence-before.json)
+retains the missing-method baseline and confirmed cleanup. No source changed
+during either committed-candidate run. Proceed to S03b-3 durable owner/journal
+migration, CAS and guarded bootstrap; the broader product gates remain open.

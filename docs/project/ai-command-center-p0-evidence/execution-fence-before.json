@@ -1,0 +1,12 @@
+{
+  "status": "FAIL",
+  "candidate": "fcafec03afcad3887e08874fe4f998fcf53d4ea3",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": true,
+  "binarySha256": "e26511096476e2374d938188f8527ebee0bc5b2cc55269e59fbbc681024086d9",
+  "scriptSha256": "304adcb3bc989c8946e4fb5cb0e0ca5a8914478caed485aee4dde7507a50aaf4",
+  "checks": [],
+  "cleanupConfirmed": true,
+  "error": "Error: {\"code\":-32601,\"message\":\"method not found: executionFence.prepare\",\"data\":{\"errorCode\":\"NOT_FOUND\"}}\n    at Interface.<anonymous> (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/scripts/e2e-execution-fence.mjs:55:37)\n    at Interface.emit (node:events:508:28)\n    at [_onLine] [as _onLine] (node:internal/readline/interface:465:12)\n    at [_normalWrite] [as _normalWrite] (node:internal/readline/interface:647:22)\n    at Socket.ondata (node:internal/readline/interface:263:23)\n    at Socket.emit (node:events:520:35)\n    at addChunk (node:internal/streams/readable:559:12)\n    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)\n    at Readable.push (node:internal/streams/readable:390:5)\n    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)",
+  "childCount": 1
+}
