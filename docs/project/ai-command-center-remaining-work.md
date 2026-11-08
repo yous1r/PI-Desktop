@@ -662,3 +662,22 @@ only a Rust test fixture changed, and that newly compiled test passed with the
 21 existing owner-handoff tests. Strict all-target Clippy also passes.
 Proceed to H1 coordinator/resource wiring and H2-H4 integration; neither schema
 acceptance nor restricted claim is full Desktop transfer/readiness acceptance.
+
+## H1 coordinator and scheduler checkpoint (integration pending)
+
+The process-local coordinator now binds admission to the original Host and
+sidecar, reconciles ambiguous sidecar replies through status, and requires the
+original Rust journal to authorize cancellation or fencing. It retains closed
+admission after uncertain effects and rejects replaced owners and generations.
+The scheduler accepts the same admission gate and counts pending polls and every
+dispatch until acknowledgement, including dispatches belonging to an older Host.
+The execution-fence state schema uses explicit literals to preserve its inferred
+TypeScript union without changing the wire contract.
+
+The targeted coordinator/fence tests pass 18 cases, scheduler tests pass 13, and
+the explicit coordinator source typecheck passes. These are module-level checks;
+Desktop composition, complete resource inventory, source journal transport and
+real-process coordinator acceptance remain pending. H1 is not accepted, and no
+production transfer entry point or target readiness is enabled by this checkpoint.
+Continue with the shared Desktop admission owner, IPC and AgentHost wiring,
+scheduler integration, plan/restart races and resource-owner inventory.

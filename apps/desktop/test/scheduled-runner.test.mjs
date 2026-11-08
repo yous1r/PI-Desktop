@@ -194,3 +194,44 @@ test("failure of one task does not suppress another due task", async () => {
   assert.deepEqual(executed, ["a", "b"]);
   assert.deepEqual(errors, ["failed"]);
 });
+
+test("handoff admission blocks polling and rechecks a delayed due response", async () => {
+  let closed = true;let polls = 0;const starts = [];
+  let resolve;const pending = new Promise(yes => { resolve = yes; });
+  const host = { call: async () => { polls++;return pending; } };
+  const runner = createScheduledRunner({ getHost: () => host,
+    gate: { isClosed: () => closed }, execute: async id => { starts.push(id); }, report: error => { throw error; } });
+  try {
+    const blocked = runner.tick();assert.equal(polls, 0);await blocked;
+    closed = false;const tick = runner.tick();assert.equal(runner.inFlightCount(), 1);
+    closed = true;resolve({ ids: ["task"] });await tick;
+    assert.deepEqual(starts, []);assert.equal(runner.inFlightCount(), 0);
+  } finally { runner.stop();resolve({ ids: [] }); }
+});
+
+test("handoff busy inventory retains a dispatch until its acknowledged setup ends", async () => {
+  const host = { async call() { return { ids: ["task"] }; } };
+  let release;const pending = new Promise(yes => { release = yes; });
+  const runner = createScheduledRunner({ getHost: () => host, execute: () => pending, report: error => { throw error; } });
+  try {
+    await runner.tick();assert.equal(runner.inFlightCount(), 1);
+    runner.stop();assert.equal(runner.inFlightCount(), 1);
+    release();await new Promise(resolve => setImmediate(resolve));assert.equal(runner.inFlightCount(), 0);
+  } finally { runner.stop();release(); }
+});
+
+test("closed handoff refuses manual scheduled starts before any durable run", async () => {
+  const calls = [];
+  await assert.rejects(executeScheduledTask({ host: { call: async method => { calls.push(method); } },
+    id: "task", automatic: false, runs: new Map(), isCurrent: () => true,
+    gate: { isClosed: () => true }, prompt: async () => { calls.push("prompt"); } }), /HOST_BUSY/);
+  assert.deepEqual(calls, []);
+});
+
+test("handoff closure during scheduled.run finalizes the new run without starting a prompt", async () => {
+  let closed = false;const calls = [];
+  const host = { async call(method) { calls.push(method);closed = true;return { sessionId: "session", runId: "run", prompt: "text" }; } };
+  await assert.rejects(executeScheduledTask({ host, id: "task", automatic: true, runs: new Map(), isCurrent: () => true,
+    gate: { isClosed: () => closed }, prompt: async () => { calls.push("prompt"); } }), /HOST_BUSY/);
+  assert.deepEqual(calls, ["scheduled.run", "scheduled.finishRun"]);
+});

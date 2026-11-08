@@ -10,7 +10,7 @@ export const ExecutionFenceTicketSchema = Type.Object({
 }, { additionalProperties: false });
 export const ExecutionFenceStatusSchema = Type.Object({
   generation: uuid,
-  state: Type.Union(["pending", "running", "stopping", "closed", "failed"].map(value => Type.Literal(value))),
+  state: Type.Union([Type.Literal("pending"), Type.Literal("running"), Type.Literal("stopping"), Type.Literal("closed"), Type.Literal("failed")]),
   activeProcesses: Type.Integer({ minimum: 0, maximum: 0xffff_ffff }),
   rootExited: Type.Boolean(), confirmed: Type.Boolean(),
 }, { additionalProperties: false });
