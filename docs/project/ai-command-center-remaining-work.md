@@ -1135,3 +1135,23 @@ Next: complete external plugin resource owners with voice/remote ownership,
 mandatory nineteen-family aggregation, original Rust status transport and fenced
 Desktop/coordinator composition. H1-H5 and the remaining command-center plan
 continue; no transfer endpoint has been enabled by this checkpoint.
+
+Fixed candidate `27f394700e8f963640319125a71eafb924c82c28`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`, passed all 22 regressions and
+three real-plugin-process paths with a clean worktree before and after. Twenty-five
+focused changed/direct input hashes were unchanged. All four original Node child
+exits were observed; final activity had zero operations/plugins/timers and retained
+unqualified-resource counts of two, one and two. The status remains
+`PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+
+The [candidate report](ai-command-center-p0-evidence/plugin-callbacks-after.json)
+is 6753 bytes, SHA-256
+`eab3d6c35a63354b27a1ef2841281f09f52ac21cf10978b42fcf0b6ff91ef6c6`.
+The [verification archive](ai-command-center-p0-evidence/plugin-callbacks-verification.json)
+is 225751 bytes, SHA-256
+`38364eb1e802f4b86e9d42973f01336ce356942f538bcdab1989911f750ee79e`.
+Raw logs are preserved as exact JSON strings with byte counts and hashes,
+including twenty valid behavior failures, corrected source assertions, fixture
+errors and native cleanup limitations. The candidate input list is focused,
+not a complete dependency/bundle manifest. This callback/MCP/workspace slice is
+accepted within the stated scope; external owners and full H1 composition follow.

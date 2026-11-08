@@ -1,0 +1,194 @@
+{
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "27f394700e8f963640319125a71eafb924c82c28",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-08T19:53:45.444Z",
+  "endedAt": "2026-11-08T19:53:52.121Z",
+  "platform": "win32",
+  "node": "v24.12.0",
+  "nodeSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "inputsUnchanged": true,
+  "inputScope": "Focused changed files and direct lifecycle/transport/test-loader inputs; not a complete bundle or dependency manifest",
+  "inputs": [
+    {
+      "path": "apps/desktop/electron/main/mcp-call-registry.ts",
+      "sha256": "46899f44b87f8169b0169aaded833b16ded20e463fe28817fcd039520f7a662c"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-connections.ts",
+      "sha256": "57fa0b6025873658d6f084b41cdd2a94f918a68242398f79d465c10235fcfe3e"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-host-process.mjs",
+      "sha256": "edd06b421839c11949ba8e3e9a4bffc2f3b9933dad42ac5dc58c24ec6ffdcaef"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-lifecycle.ts",
+      "sha256": "9bdf3767ef6c55322012711dfb41eca174b6ec4b1b07e38a7bd7efc841c5066a"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-loading.ts",
+      "sha256": "e0df958fed9d19314e973cd0e65c232d4a40e5377b496c989379e1163ab44be2"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-mcp-registration.ts",
+      "sha256": "e00442d2a8d0d51c76d2998adee4bac18401cf2a2d37e69488598d424a783ff4"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-process-calls.ts",
+      "sha256": "79cbf2e690a0b8bb91f707481cd39b12392a04beb274c3446349ec2b3fc200d4"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-runtime.ts",
+      "sha256": "82fa0038c5c2728edd7577b0244340177293da18e38201e7b5cfc8a70649d59c"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-tool-invocations.ts",
+      "sha256": "56732cbb5389647c9be597db5dd70c2e05451d2acdde3d3ff5b2b95386a1419e"
+    },
+    {
+      "path": "apps/desktop/electron/main/runtime/handoff-admission.ts",
+      "sha256": "80178a354f57b3bb610cf4c4fe78616148a12668ca530acd3b4d972befbada91"
+    },
+    {
+      "path": "apps/desktop/electron/main/workspace-plugin-instances.ts",
+      "sha256": "cfc7eef408e7c6c1e6636ff442765e115c81408ac7552ce1bfa83f490492dd4b"
+    },
+    {
+      "path": "apps/desktop/test/handoff-plugin-callbacks.test.mjs",
+      "sha256": "6a1e1ae3965148883017d0a1292f385d342c4df939dda9f74f8f50eaf7a2e797"
+    },
+    {
+      "path": "apps/desktop/test/helpers/current-source-import-hooks.mjs",
+      "sha256": "d504d0271768c4dbb3c09507f2569f2b2f4539559b5f455245e244d1637bfe92"
+    },
+    {
+      "path": "apps/desktop/test/helpers/owner-runtime-import-hooks.mjs",
+      "sha256": "2e96147278b1dd13baec3c4149e505f22eb9cc97706f959c567218a94c225ff4"
+    },
+    {
+      "path": "apps/desktop/test/helpers/ts-import-hooks.mjs",
+      "sha256": "3d331b92a60dc7cee10fdf1e1d13b56463643b7d1a858e4cbc1d9010c665d907"
+    },
+    {
+      "path": "apps/desktop/test/plugin-connections-user-path.test.mjs",
+      "sha256": "1a02af05f2e63541bd9a4f71f8a4c3ffbdd69e8ba7ca059bb29e38334c05beec"
+    },
+    {
+      "path": "apps/desktop/test/plugin-egress.test.mjs",
+      "sha256": "514f0d5e8b3d8cd52a1738d4ba485d932d37e3a38e3dd27a7109f639c01e3407"
+    },
+    {
+      "path": "apps/desktop/test/plugin-lifecycle-user-path.e2e.mjs",
+      "sha256": "4b6511e644aeef204af3c51cbd49728670df297ea490c5f68ff9645c8497ce27"
+    },
+    {
+      "path": "apps/desktop/test/plugin-mcp.test.mjs",
+      "sha256": "4e716d09b098520a0b6bf0181c581ee8d037b5d26fa285309305286801c39a4f"
+    },
+    {
+      "path": "packages/agent-host/src/maintenance-admission.ts",
+      "sha256": "0d457688a02b3239852debc5fb2c04381e73588ae53598af6f35082ae2d7fd35"
+    },
+    {
+      "path": "packages/host-runtime/plugin-host-process.mjs",
+      "sha256": "8fc1850455053712e248d91734bf4d4b4c5c665a1ad2093094b2cdc69cb16ac7"
+    },
+    {
+      "path": "packages/host-runtime/src/mcp/client.ts",
+      "sha256": "e47ba01fea2c6540591f67174e3203ca4a4d3aa57ac3b089d0fb4eab6dfb0bda"
+    },
+    {
+      "path": "packages/host-runtime/src/mcp/http-transport.ts",
+      "sha256": "ac62c0fef6740cc192b47c857301e2ef9116aab77e8596bfdbccc5256cac7763"
+    },
+    {
+      "path": "packages/host-runtime/src/mcp/transport.ts",
+      "sha256": "4670e25473d6dfeb9aa7b828509d3c83543a3ab8005767f52a5db50693966c23"
+    },
+    {
+      "path": "packages/host-runtime/src/workspace-plugin-mcp.ts",
+      "sha256": "d2a8b64670930fde9a2e36a4040fd97e3e5d019f2a512e83c93edb48ab7bf3e6"
+    }
+  ],
+  "runs": [
+    {
+      "name": "regressions",
+      "args": [
+        "--test",
+        "--test-timeout=25000",
+        "apps/desktop/test/handoff-plugin-callbacks.test.mjs"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "pass": 22,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "expected": 22,
+      "log": "handoff-plugin-callbacks-candidate-regressions.log",
+      "sha256": "ca5a8a9205b728c6491afe5982e5103f220e0c430e070de130527a1a075c6c5e",
+      "bytes": 1932,
+      "diagnostics": []
+    },
+    {
+      "name": "process",
+      "args": [
+        "--test",
+        "--test-timeout=25000",
+        "apps/desktop/test/plugin-lifecycle-user-path.e2e.mjs"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "pass": 3,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "expected": 3,
+      "log": "handoff-plugin-callbacks-candidate-process.log",
+      "sha256": "410ce566375b5687ac521314eb4719ccc9dbac97ac7f4bd1f6c9fc873ec85942",
+      "bytes": 930,
+      "diagnostics": [
+        {
+          "originalProcesses": 2,
+          "originalExitsObserved": true,
+          "qualifiedNativeFamilyClosure": false,
+          "activity": {
+            "operations": 0,
+            "uncontainedResources": 2,
+            "plugins": 0,
+            "schedules": 0
+          }
+        },
+        {
+          "originalProcesses": 1,
+          "originalExitsObserved": true,
+          "qualifiedNativeFamilyClosure": false,
+          "activity": {
+            "operations": 0,
+            "uncontainedResources": 1,
+            "plugins": 0,
+            "schedules": 0
+          }
+        },
+        {
+          "originalProcesses": 1,
+          "originalExitsObserved": true,
+          "qualifiedNativeFamilyClosure": false,
+          "activity": {
+            "operations": 0,
+            "uncontainedResources": 2,
+            "plugins": 0,
+            "schedules": 0
+          }
+        }
+      ]
+    }
+  ],
+  "originalChildren": 4,
+  "qualifiedNativeFamilyClosure": false,
+  "fullDesktopTransfer": false,
+  "hardwareQualification": false
+}
