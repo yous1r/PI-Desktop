@@ -6,6 +6,7 @@ import { register } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { setImmediate } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 register(new URL("./helpers/current-source-import-hooks.mjs", import.meta.url));
 const { PluginRuntime } = await import("../electron/main/plugin-runtime.ts");
@@ -18,16 +19,18 @@ async function bounded(work) {
     timer = setTimeout(() => reject(new Error("Original plugin process did not close")), 5000);
   })]); } finally { clearTimeout(timer); }
 }
-function fixture(t, delayed = false) {
+function fixture(t, delayed = false, services = {}) {
   const root = mkdtempSync(join(process.env.PI_SCRATCH_DIR ?? tmpdir(), "plugin-native-lifecycle-"));
   const id = "test.native-handoff";
   writeFileSync(join(root, "manifest.json"), JSON.stringify({ schemaVersion: 1, id, name: "Native lifecycle fixture",
-    version: "1.0.0", main: "main.js", permissions: ["background.service"],
+    version: "1.0.0", main: "main.js", permissions: ["background.service", "agent.tool.register", "desktop.control"],
     contributes: { services: [{ id: "worker" }], commands: [{ id: "ping", title: "Ping" }] } }));
   writeFileSync(join(root, "main.js"), `module.exports = {
     async onLoad() {
       pi.services.register({ id: "worker", start: () => pi.ui.showToast("started"), stop: () => pi.ui.showToast("stopped") });
       await pi.commands.register({ id: "ping", title: "Ping", run: () => pi.ui.showToast("command") });
+      await pi.agent.registerTool({ name: "wait", description: "Wait for host work", schema: { type: "object" },
+        execute: () => pi.desktop.invoke({ operation: "session/get", args: ["isolated"] }) });
     },
     onUnload() { return pi.ui.showToast("unloaded"); }
   };\n`);
@@ -56,6 +59,7 @@ function fixture(t, delayed = false) {
       if (delayed) await release.promise;
       return handle;
     },
+    ...services,
   });
   // These absent families describe only this isolated fixture, not the Desktop aggregate.
   const inspect = async () => {
@@ -117,4 +121,24 @@ test("shutdown retains and closes an original real child returned after the budg
   assert.equal(f.records[0].initialized, false);
   assert.equal(f.runtime.getHandoffActivity().operations, 0);
   assert.equal(f.runtime.getHandoffActivity().uncontainedResources, 1);
+});
+
+test("real tool cancellation and original child exit retain unfinished host callbacks", { timeout: 15000 }, async t => {
+  const entered = Promise.withResolvers(), release = Promise.withResolvers();
+  const f = fixture(t, false, { desktopControl: { operations: [{ id: "session/get", risk: "read" }],
+    invoke: async () => { entered.resolve(); await release.promise; return {}; } } });
+  t.after(() => release.resolve());
+  await f.runtime.loadFromPath(f.root);
+  const tool = f.runtime.getTools().find(item => item.name === "wait"); assert.ok(tool);
+  const pending = tool.execute({}, { sessionId: "isolated" });
+  const cancelled = assert.rejects(pending, { code: "PLUGIN_TOOL_ABORTED" });
+  await bounded(entered.promise);
+  f.runtime.cancelSessionTools("isolated"); await cancelled;
+  f.admission.dispose(); await f.runtime.unload(f.id);
+  await bounded(f.records[0].closed.promise);
+  assert.ok(f.runtime.getHandoffActivity().operations > 0);
+  release.resolve(); await setImmediate();
+  assert.equal(f.runtime.getHandoffActivity().operations, 0);
+  assert.ok(f.runtime.getHandoffActivity().uncontainedResources > 0);
+  assert.deepEqual(f.runtime.drainToasts(), ["started", "stopped", "unloaded"]);
 });

@@ -657,10 +657,15 @@ Plugin loading and shutdown share the same admission source. Original load
 identities survive asynchronous spawn and initialization; unload/replacement
 invalidates them, and permanent shutdown seals entry synchronously. Concurrent
 cleanup joins its original promise, which remains counted after the caller's
-shutdown budget expires. Unqualified process-attempt evidence is retained after
-ordinary exit. The [plugin lifecycle contract](../07-plugins/05-plugin-lifecycle.md#idle-handoff-lifecycle-admission)
-defines this subset; callback, MCP and workspace-owner aggregation is still
-required before connecting a complete plugin inventory to the coordinator.
+shutdown budget expires. Original callbacks, workspace setup/context lookup,
+MCP transport work and managed-connection operations also remain counted after
+caller cancellation or owner removal. Ordinary entrypoints and broadcasts close
+with admission; active teardown calls retain their original authorization.
+Unknown child completion and unqualified native/network attempts remain refusal
+evidence after ordinary exit, timeout or late reply. The
+[plugin lifecycle contract](../07-plugins/05-plugin-lifecycle.md#idle-handoff-lifecycle-admission)
+defines this accounting; external-resource ownership and qualified native-family
+closure must still join before connecting a complete inventory to the coordinator.
 
 This composition does not enable a transfer request. Complete owner inventory,
 bounded source journal transport, native/coordinator integration and target

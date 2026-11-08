@@ -20109,5 +20109,33 @@ session data is used.
   backoff and cleanup hook budgets are preserved.
 - **Limits:** Node child-process execution validates the lifecycle boundary, not
   Electron utility-process or native-family closure qualification. No real
-  provider, live Desktop, external Host or user profile is involved. Complete
-  plugin callback/MCP/workspace ownership and full H1-H5 transfer remain open.
+  provider, live Desktop, external Host or user profile is involved. External
+  resource aggregation, native-family qualification and full H1-H5 transfer remain open.
+
+### E2E-HANDOFF-plugin-callbacks
+
+- **Goal:** retain original plugin callbacks, workspace setup, MCP transport and
+  managed-connection work after caller cancellation, retirement or unload.
+- **Automated paths:** `apps/desktop/test/handoff-plugin-callbacks.test.mjs` and
+  `node --test apps/desktop/test/plugin-lifecycle-user-path.e2e.mjs` using the
+  provisioned source dependencies and isolated temporary profiles.
+- **Deterministic faults:** close admission during workspace validation/discovery;
+  cancel a tool while its host callback or HTTP transport is pending; unload
+  during workspace creation/context lookup; replace an installation while a
+  connection configuration operation waits on storage; let an old workspace exit
+  after a new registration has begun; expire a child-call deadline.
+- **Expected:** no new ordinary dispatch after closure, no replacement borrowing,
+  no stale registration deletion, original work retained until settlement, and
+  unknown child completion retained after late replies. Active teardown hooks
+  remain usable. Unfinished retired startups retain the 64-instance limit.
+- **Native path:** load the real isolated plugin runner, execute its tool, pause
+  the original host callback, cancel the session, close admission, unload and
+  observe the original child exit. Activity remains positive until the host
+  callback is released; unqualified-resource evidence remains afterwards.
+- **Compatibility:** exercise real MCP stdio/HTTP, local/remote workspace tools,
+  managed connection save/request/rotation/removal, plugin callbacks and the
+  connection settings UI. The UI fixture uses a visible isolated Electron window
+  because its focus and animation-frame actions require presentation on Windows.
+- **Limits:** Node child exit and successful UI assertions are not native-family
+  closure proof. Existing ConPTY helper diagnostics remain recorded; no live
+  provider, live profile, full transfer or minimum-hardware qualification is claimed.

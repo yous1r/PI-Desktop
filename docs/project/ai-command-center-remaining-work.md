@@ -1082,3 +1082,56 @@ closure qualification, live-profile operation or full transfer is claimed.
 Plugin lifecycle admission is accepted within this scope. Plugin callback,
 MCP/workspace and retired-owner aggregation remains the next H1 implementation
 slice; the broader command-center plan continues.
+
+### H1 plugin callback, MCP and workspace ownership checkpoint
+
+`plugin-process-calls.ts` and `plugin-mcp-registration.ts` extract request and
+MCP registration responsibilities. Ordinary panel/child callbacks, command/tool
+dispatch and event broadcasts respect shared admission. Original installation,
+parent-call and tool authorization are rechecked after workspace awaits; active
+teardown hooks preserve their existing permission scope. An aborted tool caller
+does not erase its continuing host callback. Child error replies remain known
+results, while cancellation, timeout and transport loss retain bounded refusal
+evidence even after late replies.
+
+Workspace creation/context lookup and cleanup retain original promises after
+retirement. Late child handles are stopped before init; an old exit cannot delete
+a new pending registration. Unfinished retired startups retain the existing
+64-instance limit. Managed connection configuration captures the existing
+lifecycle generation across storage queues; original storage/network activity
+survives unload. MCP discovery rechecks settings/handshake/publication/sibling
+boundaries. Optional host-only MCP hooks count actual transport sends and HTTP
+body reads beyond caller cancellation, with default behavior unchanged for
+other embeddings. No Plugin SDK wire or persistence format changes.
+
+Twenty-two new deterministic tests cover these paths. Twenty behavior failures
+were reproduced before their corrections; two additional boundary tests cover
+known-result versus timeout uncertainty and retained instance limits. The initial
+process-call extraction passed 45 compatibility tests before admission changes.
+Final validation covers 387 unique passing regression/compatibility test names,
+plus two shared workspace-MCP tests, three isolated real-plugin-process paths
+and one connection settings UI path. Overlapping groups and candidate reruns
+are not added to that total. Two actual-Git-plugin cases remain skipped because
+`PI_GIT_PLUGIN_PATH` was not provided.
+
+Four original Node children exited across the three process paths. Cancellation
+and original child exit left the paused host callback counted until it settled.
+Native-family closure remains unqualified. Four existing ConPTY helper
+`AttachConsole failed` diagnostics remain visible in workspace compatibility.
+The connection UI fixture needed installed-package resolution and a presented
+window for its focus/animation-frame actions; the prior module-resolution failure
+and hidden-window timeout are retained as fixture/environment failures. Three
+source-location assertions were updated for the MCP extraction. The shared test
+initially used a missing package-local Vitest executable; the provisioned root
+executable then ran both tests successfully without installation.
+
+Full Desktop source types, Biome 281 files, architecture, agent-policy, current
+main ancestry, whitespace and 631 documentation pages pass. The runtime shrank
+from 6967 to 6833 lines. Clean-candidate provenance is recorded after the code
+commit. No Rust/full-repository rerun, live provider/profile operation, utility
+process/native-family qualification or full transfer is claimed.
+
+Next: complete external plugin resource owners with voice/remote ownership,
+mandatory nineteen-family aggregation, original Rust status transport and fenced
+Desktop/coordinator composition. H1-H5 and the remaining command-center plan
+continue; no transfer endpoint has been enabled by this checkpoint.

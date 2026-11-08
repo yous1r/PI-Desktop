@@ -720,37 +720,31 @@ test("a command may not escape the plugin directory", () => {
 });
 
 test("the runtime gates mcp servers on their transport permission", () => {
-  const register = runtimeSrc.slice(
-    runtimeSrc.indexOf("private async registerMcpServers"),
-    runtimeSrc.indexOf("private skipMcpServer"),
-  );
+  const register = readFileSync(new URL("../electron/main/plugin-mcp-registration.ts", import.meta.url), "utf8");
   assert.match(register, /validateMcpServer\(raw\)/);
   assert.match(register, /"mcp\.server\.local"/);
   assert.match(register, /"mcp\.server\.remote"/);
   assert.match(register, /assertUrlAllowed/);
-  assert.match(register, /plugin\.mcp\.redirect/);
+  assert.match(runtimeSrc, /plugin\.mcp\.redirect/);
   assert.match(register, /PERMISSION_DENIED/);
-  assert.match(runtimeSrc, /MAX_MCP_SERVERS_PER_PLUGIN = 8/);
+  assert.match(register, /MAX_MCP_SERVERS_PER_PLUGIN = 8/);
   // Credentials come from the plugin's own settings, never the host env.
-  assert.match(register, /plugin\.getSettings\(\)/);
+  assert.match(runtimeSrc, /settings: owner => this\.hostApi\(owner\)\.plugin\.getSettings\(\)/);
   assert.match(register, /resolveMcpRefs\(/);
   assert.match(register, /CONFIG_MISSING/);
 });
 
 test("discovered mcp tools ride the existing plugin tool path", () => {
-  const register = runtimeSrc.slice(
-    runtimeSrc.indexOf("private async registerMcpServers"),
-    runtimeSrc.indexOf("private skipMcpServer"),
-  );
+  const register = readFileSync(new URL("../electron/main/plugin-mcp-registration.ts", import.meta.url), "utf8");
   assert.match(register, /pluginMcpToolKey\(server\.id, tool\.name\)/);
   assert.match(register, /pluginToolName\(pluginId, name\)/);
-  assert.match(register, /catalog\.set\(fullName/);
+  assert.match(register, /loaded\.workspaceTools \?\? d\.tools\)\.set\(fullName/);
   // Remote code the desktop cannot inspect never auto-approves.
   assert.match(register, /risk: "medium"/);
-  assert.match(register, /this\.mcpCalls\.run\(/);
+  assert.match(register, /d\.calls\.run\(/);
   assert.match(register, /client\.callTool\(tool\.name, toolArgs, signal\)/);
   // A server that fails to answer must not fail the plugin load.
-  assert.match(register, /await client\.connect\(\);\s*\n\s*\} catch \(error\) \{/);
+  assert.match(register, /await client\.connect\(\); \}\s*catch \(error\) \{/);
 });
 
 test("mcp clients are closed when the plugin goes away", () => {

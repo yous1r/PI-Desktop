@@ -267,6 +267,9 @@ export type McpServerClientOptions = {
   fetchImpl?: typeof fetch;
   /** Optional per-request policy, used to re-check plugin redirects. */
   assertUrlAllowed?: (url: string) => void;
+  /** Host-owned admission/resource accounting; absent for existing embeddings. */
+  beforeTransportCreate?: () => void;
+  trackTransportOperation?: (operation: () => Promise<void>, message: JsonRpcMessage) => Promise<void>;
 };
 
 /**
@@ -411,6 +414,14 @@ export class McpServerClient {
   }
 
   private createTransport(timeoutMs: number): McpTransport {
+    this.opts.beforeTransportCreate?.();
+    const transport = this.createOriginalTransport(timeoutMs);
+    const track = this.opts.trackTransportOperation;
+    return track ? { send: (message, timeout, signal) => track(() => transport.send(message, timeout, signal), message),
+      close: () => transport.close() } : transport;
+  }
+
+  private createOriginalTransport(timeoutMs: number): McpTransport {
     const handlers: McpTransportHandlers = {
       onMessage: (message) => this.receive(message),
       onClose: (reason) => {

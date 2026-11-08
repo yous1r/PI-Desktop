@@ -1,3 +1,5 @@
+import { pluginMcpActivity, registerPluginMcpServers } from "./plugin-mcp-registration";
+import { sendPluginProcessCall, type PendingPluginCall } from "./plugin-process-calls";
 import { PluginLifecycle } from "./plugin-lifecycle";
 import { loadPluginFromPath } from "./plugin-loading";
 import { createRequire } from "node:module";
@@ -47,12 +49,10 @@ import {
   parseNetDomains,
   parseSkillFrontmatter,
   PLUGIN_FS_LIST_MAX_ENTRIES,
-  pluginMcpToolKey,
   pluginSkillId,
   pluginThemeId,
   pluginToolName,
   resolveFsAccess,
-  resolveMcpRefs,
   isExternalThemeAssetPath,
   normalizeThemeAssetPath,
   sanitizeThemeCss,
@@ -67,7 +67,6 @@ import {
   WINDOW_BACKGROUND_COLOR_PATTERN,
   resolvePluginLocalizedString,
   validateManifest,
-  validateMcpServer,
   type ClipboardHistoryEntry,
   type PluginActiveSession,
   type PluginCompleteInput,
@@ -785,8 +784,6 @@ const MAX_SKILL_DESCRIPTION_CHARS = 240;
  */
 const THEME_LOCAL_ID_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/;
 const THEME_VARIABLES_SETTINGS_KEY = "__pi_themeVariables";
-/** A plugin may bring at most this many MCP servers. */
-const MAX_MCP_SERVERS_PER_PLUGIN = 8;
 /** A plugin may keep at most this many resident services alive. */
 const MAX_SERVICES_PER_PLUGIN = 4;
 /** A resident service starts inside the hook budget or is marked failed. */
@@ -863,14 +860,6 @@ const MAX_WRITE_LEDGER_ENTRIES = 2000;
 /** Host-owned file inside the plugin's data dir; the plugin API cannot reach it. */
 const WRITE_LEDGER_FILE = "fs-write-ledger.json";
 
-type PendingCall = {
-  teardown: boolean;
-  signal: AbortSignal;
-  owner?: PluginPanelBridgeContext;
-  resolve: (value: unknown) => void;
-  reject: (error: Error) => void;
-  timer: ReturnType<typeof setTimeout>;
-};
 
 export type LoadedPlugin = {
   manifest: PluginManifest;
@@ -895,7 +884,7 @@ export type LoadedPlugin = {
   /** Memory-only grants created by a real panel drop gesture. */
   dropGrants: Map<string, { fullPath: string; requestPath: string }>;
   child?: PluginProcessHandle;
-  pending: Map<string, PendingCall>;
+  pending: Map<string, PendingPluginCall>;
   nextCallId: number;
   disposing: boolean;
 };
@@ -1515,6 +1504,7 @@ export class PluginRuntime {
   private readonly toolInvocations = new PluginToolInvocations();
   private readonly surfaceInvocation = new AsyncLocalStorage<PluginPanelBridgeContext | undefined>();
   private readonly callbackSignal = new AsyncLocalStorage<AbortSignal | undefined>();
+  private readonly callbackAccess = new AsyncLocalStorage<{ loaded: LoadedPlugin; assertCurrent(): void }>();
   private readonly rendererCalls = new RendererCallRelay();
   private completeRate = new Map<string, { windowStart: number; count: number }>();
   /**
@@ -1528,12 +1518,12 @@ export class PluginRuntime {
   private nextBusSubscription = 1;
   private loaded = new Map<string, LoadedPlugin>();
   private readonly workspaceInstances = new WorkspacePluginInstances<LoadedPlugin>(
-    (installation, context) => this.createWorkspaceInstance(installation, context),
-    async instance => {
+    (installation, context) => this.lifecycle.track(() => this.createWorkspaceInstance(installation, context)),
+    instance => this.lifecycle.cleanup(instance, async () => {
       instance.disposing = true;
       this.disposeWorkspaceResources(instance);
       try { await this.disposePlugin(instance); } finally { instance.child?.kill(); }
-    },
+    }),
   );
   private toasts: Array<{ message: string; level?: string }> = [];
   private services: PluginHostServices;
@@ -2173,9 +2163,12 @@ export class PluginRuntime {
     return [...this.loaded.values()];
   }
 
-  /** Lifecycle subset; callback, MCP and workspace owners must join before coordinator wiring. */
+  /** Includes original callbacks/MCP/workspace work; external resources still require owner closure proof. */
   getHandoffActivity() {
-    return { ...this.lifecycle.snapshot(), plugins: this.loaded.size + this.workspaceInstances.values().length,
+    const lifecycle = this.lifecycle.snapshot(), connections = this.connections.getHandoffActivity();
+    return { operations: lifecycle.operations + connections.operations,
+      uncontainedResources: Math.min(Number.MAX_SAFE_INTEGER, lifecycle.uncontainedResources + connections.uncontainedResources),
+      plugins: this.loaded.size + this.workspaceInstances.values().length,
       schedules: [...this.restarts.values()].filter(record => record.timer || record.healthy).length };
   }
 
@@ -2185,6 +2178,12 @@ export class PluginRuntime {
     if (loaded.disposing || installation.disposing || this.loaded.get(loaded.manifest.id) !== installation) {
       throw apiError("PLUGIN_UNLOADED", "Plugin host process is no longer active");
     }
+  }
+
+  private assertPluginAccess(loaded: LoadedPlugin): void {
+    const access = this.callbackAccess.getStore();
+    if (access?.loaded === loaded) access.assertCurrent();
+    else this.assertPluginCurrent(loaded);
   }
 
   drainToasts(): string[] {
@@ -2199,8 +2198,10 @@ export class PluginRuntime {
    * half (spec 07 §5).
    */
   broadcastEvent(event: string, args: unknown[] = [], filter?: (pluginId: string) => boolean): void {
+    if (this.lifecycle.isClosed()) return;
     const recipients = [...this.loaded.values(), ...this.workspaceInstances.values()];
     for (const loaded of recipients) {
+      if (loaded.disposing) continue;
       if (filter && !filter(loaded.manifest.id)) continue;
       if (loaded.workspaceContext && (event === "workspace:changed" || event === "session:activated")) continue;
       try {
@@ -2504,7 +2505,8 @@ export class PluginRuntime {
     payload?: Record<string, unknown>,
     context?: PluginPanelBridgeContext,
   ): Promise<unknown> {
-    return this.toolInvocations.withoutContext(() => this.surfaceInvocation.run(context, () => this.invokePanelWithoutToolContext(pluginId, channel, payload, context)));
+    this.lifecycle.assertAdmission();
+    return this.lifecycle.track(() => this.toolInvocations.withoutContext(() => this.surfaceInvocation.run(context, () => this.invokePanelWithoutToolContext(pluginId, channel, payload, context))));
   }
 
   private async invokePanelWithoutToolContext(
@@ -2718,11 +2720,17 @@ export class PluginRuntime {
   }
 
   async captureWorkspaceContext(pluginId: string, sessionId?: string): Promise<WorkspaceExecutionContext | undefined> {
+    return this.lifecycle.track(() => this.captureCurrentWorkspaceContext(pluginId, sessionId));
+  }
+
+  private async captureCurrentWorkspaceContext(pluginId: string, sessionId?: string): Promise<WorkspaceExecutionContext | undefined> {
     const installation = this.loaded.get(pluginId);
     if (!installation) throw apiError("NOT_FOUND", "Plugin is not loaded");
+    this.assertPluginCurrent(installation);
     const execution = installation.manifest.execution;
     if (execution?.main !== "workspace" && !execution?.workspaceMain) return undefined;
     const context = await this.services.resolveWorkspaceExecution?.({sessionId});
+    this.assertPluginCurrent(installation);
     if (!context) throw apiError("WORKSPACE_REQUIRED", "Open a workspace to run this plugin");
     return context;
   }
@@ -2735,6 +2743,7 @@ export class PluginRuntime {
   }
 
   private async validateWorkspaceInstance(loaded: LoadedPlugin): Promise<void> {
+    this.assertPluginAccess(loaded);
     if (!loaded.workspaceContext || !this.services.resolveWorkspaceExecution) return;
     try {
       await this.services.resolveWorkspaceExecution({context:loaded.workspaceContext});
@@ -2746,27 +2755,40 @@ export class PluginRuntime {
       loaded.child?.kill();
       throw error;
     }
+    this.assertPluginAccess(loaded);
   }
 
   private async workspaceTarget(installation: LoadedPlugin, owner?: PluginPanelBridgeContext, companion = false): Promise<LoadedPlugin> {
+    return this.lifecycle.track(() => this.resolveWorkspaceTarget(installation, owner, companion));
+  }
+
+  private async resolveWorkspaceTarget(installation: LoadedPlugin, owner?: PluginPanelBridgeContext, companion = false): Promise<LoadedPlugin> {
+    this.assertPluginAccess(installation);
     if (installation.workspaceContext) { await this.validateWorkspaceInstance(installation); return installation; }
     if (!this.services.resolveWorkspaceExecution) return installation;
     const execution = installation.manifest.execution;
     if (execution?.main !== "workspace" && !(companion && execution?.workspaceMain)) return installation;
     const context = await this.services.resolveWorkspaceExecution(owner);
     if (!context) throw apiError("WORKSPACE_REQUIRED", "Open a workspace to run this plugin");
-    if (installation.disposing || this.loaded.get(installation.manifest.id) !== installation) throw apiError("PLUGIN_UNLOADED", "Plugin was unloaded");
-    return this.workspaceInstances.get(installation, installation.manifest.id, context);
+    this.assertPluginAccess(installation);
+    const target = await this.workspaceInstances.get(installation, installation.manifest.id, context);
+    this.assertPluginAccess(target);
+    return target;
   }
 
   private async createWorkspaceInstance(installation: LoadedPlugin, context: WorkspaceExecutionContext): Promise<LoadedPlugin> {
     const entry = installation.manifest.execution?.main === "workspace" ? installation.manifest.main : installation.manifest.execution?.workspaceMain;
     if (!entry) throw apiError("PLUGIN_INVALID", "Workspace entry is missing");
+    this.assertPluginCurrent(installation);
+    this.lifecycle.nativeAttempt();
     const child = context.authority.kind === "remote"
       ? await this.services.spawnWorkspaceProcess?.({pluginPath:installation.path,entry,context,permissions:[...installation.permissions]})
       : await (this.services.spawnProcess ?? spawnUtilityProcess)({pluginId:installation.manifest.id,
-          entry:this.services.hostEntry ?? join(getModuleDirectory(import.meta.url), "plugin-host-process.js"),pluginPath:installation.path,cwd:context.roots.find(root=>root.primary)!.path});
+          entry:this.services.hostEntry ?? join(getModuleDirectory(import.meta.url), "plugin-host-process.js"),pluginPath:installation.path,cwd:context.roots.find(root=>root.primary)!.path,
+          assertCurrent: () => this.assertPluginCurrent(installation)});
     if (!child) throw apiError("CAPABILITY_UNAVAILABLE", "Workspace plugin execution is unavailable");
+    try { this.assertPluginCurrent(installation); }
+    catch (error) { child.kill(); throw error; }
     const loaded: LoadedPlugin = {...installation,installation,workspaceContext:context,runtimeId:randomUUID(),child,
       workspaceExecution:undefined,workspaceMcp:undefined,workspaceTools:new Map(),
       pending:new Map(),nextCallId:1,disposing:false,deletes:[],dropGrants:new Map()};
@@ -2802,6 +2824,12 @@ export class PluginRuntime {
     timeoutMs: number,
     signal?: AbortSignal,
   ): Promise<unknown> {
+    return this.lifecycle.track(() => this.sendToCurrentChild(loaded, message, timeoutMs, signal));
+  }
+
+  private async sendToCurrentChild(loaded: LoadedPlugin, message: Record<string, unknown>, timeoutMs: number, signal?: AbortSignal): Promise<unknown> {
+    const teardown = message.t === "call" && (message.method === "lifecycle.unload" || message.method === "service.stop");
+    if (!teardown) this.assertPluginAccess(loaded);
     if (!loaded.workspaceContext && loaded.manifest.execution?.main === "workspace" && this.services.resolveWorkspaceExecution && message.t === "call" && message.method !== "lifecycle.unload") {
       const payload = message.payload as {sessionId?:string} | undefined;
       return this.workspaceTarget(loaded,{sessionId:payload?.sessionId}).then(target=>this.sendToChild(target,message,timeoutMs,signal));
@@ -2810,56 +2838,8 @@ export class PluginRuntime {
       await this.validateWorkspaceInstance(loaded);
       if (loaded.disposing) throw apiError("PLUGIN_GONE", "Workspace plugin process is no longer active");
     }
-    const child = loaded.child;
-    if (!child) {
-      return Promise.reject(apiError("NOT_FOUND", `plugin host process gone: ${loaded.manifest.id}`));
-    }
-    if (signal?.aborted) return Promise.reject(signal.reason);
-    const id = `h${loaded.nextCallId++}`;
-    return new Promise((resolvePromise, rejectPromise) => {
-      const controller = new AbortController();
-      const cancelChild = (error: Error) => {
-        const cancellation = typeof message.invocationId === "string"
-          ? { invocationId: message.invocationId }
-          : { callId: id };
-        try {
-          child.postMessage({ t: "cancel", ...cancellation, reason: error.message });
-        } catch {
-          // The process may already be gone; the host still revokes the call.
-        }
-      };
-      const abort = () => {
-        const error = signal?.reason instanceof Error
-          ? signal.reason
-          : apiError("PLUGIN_TOOL_ABORTED", "Plugin tool execution aborted");
-        loaded.pending.get(id)?.reject(error);
-        cancelChild(error);
-      };
-      const cleanup = () => {
-        clearTimeout(timer);
-        loaded.pending.delete(id);
-        signal?.removeEventListener("abort", abort);
-      };
-      const timer = setTimeout(() => {
-        const error = apiError("TIMEOUT", `plugin ${loaded.manifest.id} did not answer ${String(message.t)}`);
-        loaded.pending.get(id)?.reject(error);
-        cancelChild(error);
-      }, timeoutMs);
-      loaded.pending.set(id, {
-        teardown: message.t === "call" && (message.method === "lifecycle.unload" || message.method === "service.stop"),
-        signal: controller.signal,
-        owner: this.surfaceInvocation.getStore(),
-        resolve: (value) => { cleanup(); resolvePromise(value); },
-        reject: (error) => { controller.abort(error); cleanup(); rejectPromise(error); },
-        timer,
-      });
-      signal?.addEventListener("abort", abort, { once: true });
-      try {
-        child.postMessage({ ...message, id });
-      } catch (error) {
-        loaded.pending.get(id)?.reject(error instanceof Error ? error : new Error(String(error)));
-      }
-    });
+    if (!teardown) this.assertPluginAccess(loaded);
+    return sendPluginProcessCall(loaded, message, timeoutMs, signal, this.surfaceInvocation.getStore(), () => this.lifecycle.nativeAttempt());
   }
 
   private handleChildMessage(loaded: LoadedPlugin, message: any): void {
@@ -2870,7 +2850,7 @@ export class PluginRuntime {
       loaded.pending.delete(message.id);
       clearTimeout(entry.timer);
       if (message.ok) entry.resolve(message.value);
-      else entry.reject(apiError(message.error?.code ?? "UNKNOWN", message.error?.message ?? "plugin call failed"));
+      else entry.reject(apiError(message.error?.code ?? "UNKNOWN", message.error?.message ?? "plugin call failed"), true);
       return;
     }
     if (message.t === "log") {
@@ -2884,21 +2864,34 @@ export class PluginRuntime {
       return;
     }
     if (message.t === "call") {
-      void this.toolInvocations.run(loaded.installation ?? loaded, message.invocationId, async () => {
+      const child = loaded.child;
+      void this.toolInvocations.run(loaded.installation ?? loaded, message.invocationId, () => this.lifecycle.track(async () => {
         const parent = typeof message.parentCallId === "string" ? loaded.pending.get(message.parentCallId) : undefined;
-        if ((loaded.disposing && !parent?.teardown) || this.loaded.get(loaded.manifest.id) !== (loaded.installation ?? loaded)) {
-          throw apiError("PLUGIN_UNLOADED", "Plugin host process is no longer active");
-        }
-        await this.validateWorkspaceInstance(loaded);
-        if (message.parentCallId !== undefined && !parent) throw apiError("PLUGIN_CALL_EXPIRED", "The originating call has ended");
-        if (parent?.owner) await this.services.resolveWorkspaceExecution?.(parent.owner);
-        return this.callbackSignal.run(parent?.signal, () => this.surfaceInvocation.run(parent?.owner, () => this.dispatchHostCall(loaded, String(message.api ?? ""), message.args ?? [])));
-      })
+        const assertCurrent = () => {
+          if (this.loaded.get(loaded.manifest.id) !== (loaded.installation ?? loaded) || (loaded.disposing && !parent?.teardown)) {
+            throw apiError("PLUGIN_UNLOADED", "Plugin host process is no longer active");
+          }
+          if (message.parentCallId !== undefined && (!parent || loaded.pending.get(message.parentCallId) !== parent)) {
+            throw apiError("PLUGIN_CALL_EXPIRED", "The originating call has ended");
+          }
+          parent?.signal.throwIfAborted();
+          this.toolInvocations.current(loaded.installation ?? loaded);
+          if (!parent?.teardown) this.assertPluginCurrent(loaded);
+        };
+        assertCurrent();
+        return this.callbackAccess.run({ loaded, assertCurrent }, async () => {
+          await this.validateWorkspaceInstance(loaded);
+          assertCurrent();
+          if (parent?.owner) await this.services.resolveWorkspaceExecution?.(parent.owner);
+          assertCurrent();
+          return this.callbackSignal.run(parent?.signal, () => this.surfaceInvocation.run(parent?.owner, () => this.dispatchHostCall(loaded, String(message.api ?? ""), message.args ?? [])));
+        });
+      }))
         .then((value) =>
-          loaded.child?.postMessage({ t: "res", id: message.id, ok: true, value: value ?? null }),
+          child?.postMessage({ t: "res", id: message.id, ok: true, value: value ?? null }),
         )
         .catch((error: PluginApiError) =>
-          loaded.child?.postMessage({
+          child?.postMessage({
             t: "res",
             id: message.id,
             ok: false,
@@ -2907,7 +2900,10 @@ export class PluginRuntime {
               message: error?.message ?? String(error),
             },
           }),
-        );
+        ).catch(() => {
+          this.lifecycle.nativeAttempt();
+          this.services.audit?.({ pluginId: loaded.manifest.id, api: "plugin.callback.reply", ok: false, errorCode: "PLUGIN_GONE", ts: Date.now() });
+        });
     }
   }
 
@@ -2975,8 +2971,8 @@ export class PluginRuntime {
           keywords: descriptor.keywords,
           pluginId,
           run: async () => {
-            const installation = this.loaded.get(pluginId);
-            if (!installation) throw apiError("NOT_FOUND", `plugin not loaded: ${pluginId}`);
+            this.assertPluginCurrent(loaded);
+            const installation = loaded.installation ?? loaded;
             const target = await this.workspaceTarget(installation, undefined, Boolean(loaded.installation));
             await this.sendToChild(
               target,
@@ -4211,157 +4207,26 @@ export class PluginRuntime {
    * plugin still loads, and the next tool call retries the handshake.
    */
   private async registerMcpServers(loaded: LoadedPlugin): Promise<void> {
-    const declared = (loaded.manifest.contributes?.mcpServers ?? []).filter(server =>
-      workspaceMcpServer(loaded.manifest, server) === Boolean(loaded.workspaceContext));
-    if (!declared.length) return;
-    const pluginId = loaded.manifest.id;
-    // Credentials come from the plugin's own settings, never from host env.
-    let settings: Record<string, unknown> = {};
-    try {
-      settings = await this.hostApi(loaded).plugin.getSettings();
-    } catch {
-      settings = {};
-    }
-
-    const clients: McpServerClient[] = [];
-    if (!loaded.workspaceContext) this.mcpClients.set(pluginId, clients);
-    for (const raw of declared) {
-      if (loaded.disposing) break;
-      if (declared.indexOf(raw) >= MAX_MCP_SERVERS_PER_PLUGIN) {
-        this.services.audit?.({
-          pluginId,
-          api: "plugin.mcp.skipped",
-          ok: false,
-          errorCode: "LIMIT_EXCEEDED",
-          count: declared.length - clients.length,
-          ts: Date.now(),
-        });
-        break;
-      }
-      const parsed = validateMcpServer(raw);
-      if (!parsed.ok) {
-        this.skipMcpServer(pluginId, String((raw as { id?: unknown })?.id ?? ""), "PLUGIN_INVALID", parsed.error);
-        continue;
-      }
-      const server = parsed.server;
-      const permission =
-        server.transport === "stdio" ? "mcp.server.local" : "mcp.server.remote";
-      if (!loaded.permissions.has(permission)) {
-        this.skipMcpServer(pluginId, server.id, "PERMISSION_DENIED", `missing ${permission}`);
-        continue;
-      }
-      // An http MCP endpoint is an outbound channel like any other, so it
-      // answers to the same egress decision as pi.net.fetch: the allowlist,
-      // plus the install-time net.anyHost grant.
-      if (server.transport === "http") {
-        const url = String(server.url ?? "");
-        if (!isNetUrlAllowedWithGrant(url, this.netEgressGrant(loaded))) {
-          this.skipMcpServer(
-            pluginId,
-            server.id,
-            "PERMISSION_DENIED",
-            `endpoint not in manifest.net.domains: ${url}`,
-          );
-          continue;
-        }
-      }
-      const refs = resolveMcpRefs(
-        server.transport === "stdio" ? server.env : server.headers,
-        settings,
-      );
-      if (!refs.ok) {
-        this.skipMcpServer(pluginId, server.id, "CONFIG_MISSING", refs.error);
-        continue;
-      }
-
-      const client = loaded.workspaceContext ? {
-        connect: () => this.workspaceMcpCall(loaded, "mcp.connect", [server.id, this.mcpSettings(server, settings)]) as Promise<Awaited<ReturnType<McpServerClient["connect"]>>>,
-        callTool: (tool: string, args: unknown, signal?: AbortSignal) => this.workspaceMcpCall(loaded, "mcp.call", [server.id, tool, args], signal),
-      } : new McpServerClient({
-        pluginId,
-        rootPath: loaded.path,
-        server,
-        values: refs.values,
-        audit: this.services.audit,
-        ...this.services.mcp,
-        // Re-check every redirect, not only the manifest's initial endpoint.
-        assertUrlAllowed: (url) => this.assertEgress(loaded, url, "plugin.mcp.redirect"),
-      });
-      if (client instanceof McpServerClient) clients.push(client);
-      let tools: Awaited<ReturnType<McpServerClient["connect"]>> = [];
-      try {
-        tools = await client.connect();
-      } catch (error) {
-        this.skipMcpServer(pluginId, server.id, (error as PluginApiError).code ?? "MCP_CONNECT_FAILED", (error as Error).message);
-        continue;
-      }
-      if (loaded.disposing) break;
-      for (const tool of tools) {
-        const name = pluginMcpToolKey(server.id, tool.name);
-        const fullName = pluginToolName(pluginId, name);
-        const catalog = loaded.workspaceTools ?? this.tools;
-        catalog.set(fullName, {
-          fullName,
-          pluginId,
-          name,
-          description:
-            tool.description ?? `${server.label ?? server.id} tool "${tool.name}" (MCP)`,
-          // Remote code the desktop cannot inspect; never silently auto-approved.
-          risk: "medium",
-          schema: tool.inputSchema,
-          execute: async (toolArgs, ctx) => this.mcpCalls.run(
-            ctx?.sessionId,
-            async (signal) => {
-              const installation = loaded.installation ?? loaded;
-              if (installation.disposing || this.loaded.get(pluginId) !== installation) throw apiError("PLUGIN_UNLOADED", "Plugin was unloaded");
-              if (!loaded.workspaceContext) return client.callTool(tool.name, toolArgs, signal);
-              if (!ctx?.sessionId) throw apiError("WORKSPACE_REQUIRED", "Workspace MCP requires an invoking session");
-              const target = await this.workspaceTarget(installation, {sessionId:ctx.sessionId}, true);
-              if (!target.workspaceTools?.has(fullName)) throw apiError("NOT_FOUND", "Tool is not available in this workspace");
-              return this.workspaceMcpCall(target, "mcp.call", [server.id, tool.name, toolArgs], signal);
-            },
-            ctx?.signal,
-          ),
-        });
-      }
-    }
-
-  }
-
-  /** Transfer only settings referenced by this declaration, never the whole settings store. */
-  private mcpSettings(server: import("@pi-desktop/plugin-sdk").PluginMcpServerContrib, settings: Record<string, unknown>): Record<string, unknown> {
-    const selected: Record<string, unknown> = {};
-    for (const ref of Object.values(server.transport === "stdio" ? server.env ?? {} : server.headers ?? {})) {
-      if (typeof ref === "object" && ref) selected[ref.setting] = settings[ref.setting];
-    }
-    return selected;
+    return registerPluginMcpServers({ lifecycle: this.lifecycle, services: this.services,
+      clients: this.mcpClients, calls: this.mcpCalls, tools: this.tools,
+      assertCurrent: owner => this.assertPluginCurrent(owner), settings: owner => this.hostApi(owner).plugin.getSettings(),
+      grant: owner => this.netEgressGrant(owner), assertEgress: (owner, url) => this.assertEgress(owner, url, "plugin.mcp.redirect"),
+      workspaceTarget: (owner, sessionId) => this.workspaceTarget(owner, { sessionId }, true),
+      workspaceCall: (owner, api, args, signal) => this.workspaceMcpCall(owner, api, args, signal),
+    }, loaded);
   }
 
   private async workspaceMcpCall(loaded: LoadedPlugin, api: string, args: unknown[], signal?: AbortSignal): Promise<unknown> {
     await this.validateWorkspaceInstance(loaded);
+    signal?.throwIfAborted();
     if (!loaded.workspaceContext || loaded.disposing) throw apiError("PLUGIN_GONE", "Workspace MCP instance is unavailable");
     if (loaded.workspaceContext.authority.kind === "remote") return this.sendToChild(loaded, {t:"workspaceApi",api,args}, PLUGIN_TOOL_TIMEOUT_MS, signal);
     loaded.workspaceMcp ??= new WorkspacePluginMcp({manifest:loaded.manifest,permissions:[...loaded.permissions],packagePath:loaded.path,
-      context:loaded.workspaceContext,clientOptions:{...this.services.mcp,audit:this.services.audit}});
+      context:loaded.workspaceContext,clientOptions:{...this.services.mcp,audit:this.services.audit,
+        ...pluginMcpActivity(this.lifecycle, () => this.assertPluginCurrent(loaded))}});
     return loaded.workspaceMcp.call(api,args,signal);
   }
 
-  private skipMcpServer(
-    pluginId: string,
-    serverId: string,
-    errorCode: string,
-    message?: string,
-  ): void {
-    this.services.audit?.({
-      pluginId,
-      api: "plugin.mcp.skipped",
-      ok: false,
-      errorCode,
-      serverId,
-      ...(message ? { message } : {}),
-      ts: Date.now(),
-    });
-  }
 
   /** Declared resident services, capped so one plugin cannot hold many workers. */
   private declaredServices(loaded: LoadedPlugin): PluginServiceContrib[] {
@@ -5176,6 +5041,7 @@ export class PluginRuntime {
   }
 
   private assertPermission(loaded: LoadedPlugin, perm: string): void {
+    this.assertPluginAccess(loaded);
     this.toolInvocations.current(loaded.installation ?? loaded);
     if (!loaded.permissions.has(perm)) {
       this.services.audit?.({

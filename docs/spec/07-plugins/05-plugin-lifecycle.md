@@ -165,15 +165,38 @@ preserving crash reporting. The existing backoff and hook budgets are unchanged.
 
 Shutdown seals new loads and marks loaded children synchronously, then performs
 bounded cleanup. A caller's three-second shutdown budget does not erase original
-cleanup promises still running. `getHandoffActivity()` currently exposes the
-lifecycle subset: unfinished operations, loaded installations/workspace entries,
-supervision timers and a saturating count of unqualified process attempts.
-Ordinary exit, kill, timeout, unload and map clearing do not clear that evidence.
-These counts are neither execution capacity nor native-family closure proof.
+cleanup promises still running. `getHandoffActivity()` includes original lifecycle,
+panel/child callbacks, workspace resolution/creation, MCP transport operations,
+managed-connection storage/network work, loaded entries and supervision timers.
+It also retains a saturating count of unqualified native/network attempts and
+child requests whose completion is unknown. Ordinary exit, kill, timeout,
+unload and map clearing do not clear that evidence. These counts are neither
+execution capacity nor native-family closure proof.
 
-Complete plugin callback/MCP/workspace inventory and qualified native containment
-must still join the Desktop coordinator. This lifecycle work alone does not enable
-ownership transfer or change the Plugin SDK permission/serialization contracts.
+Ordinary panel, command, tool and child API entrypoints reject closed admission.
+Child callbacks recheck their original installation, parent call and tool
+authorization after workspace awaits. An active unload/service-stop request
+continues to authorize its own teardown callbacks while admission is closed.
+Cancelling the caller does not release a still-running host callback. A child
+error response is a known result; timeout, cancellation and transport loss retain
+uncertainty even if a late reply subsequently arrives. Old command handles never
+dispatch through a reloaded installation. Ordinary one-way event broadcasts stop
+when admission closes.
+
+Workspace startup and lookup retain their original operations after retirement.
+A late child is stopped before init, and an old instance exit cannot remove a
+new instance's pending registration. The existing 64-instance limit also counts
+unfinished retired startups. MCP discovery rechecks admission between settings,
+handshake, publication and sibling servers. Optional host-only client hooks track
+the original transport send, including HTTP response-body reading, independently
+of the cancellable JSON-RPC result. Existing embeddings retain their default
+behavior. Cancellation notifications remain available for cleanup. Managed
+connection configuration uses its captured lifecycle generation through queued
+storage operations; configuration cannot borrow a reloaded plugin's grant.
+
+External-resource owner aggregation and qualified native containment must still
+join the Desktop coordinator. This work does not enable ownership transfer or
+change Plugin SDK permissions, message serialization or durable storage formats.
 
 ## 4. Enable / disable semantics
 

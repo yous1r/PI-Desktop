@@ -1,5 +1,11 @@
 # Unreleased changes
 
+- Keep plugin callbacks, workspace startup/context lookup, MCP transport and
+  managed-connection work owned after cancellation or unload. Closed admission
+  refuses ordinary callbacks, tools, commands and broadcasts while preserving
+  active teardown hooks. Old command/configuration/instance references cannot
+  borrow a replacement's authority. Native-family closure and complete Desktop
+  ownership transfer remain under development.
 - Keep plugin loads and cleanup bound to their original lifecycle during idle
   handoff. Late process creation cannot revive an unloaded plugin, concurrent
   cleanup joins, and an old crash restart cannot replace newer service state.

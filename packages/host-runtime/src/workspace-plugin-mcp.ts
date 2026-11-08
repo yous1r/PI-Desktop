@@ -18,7 +18,7 @@ export class WorkspacePluginMcp {
   private sealed = false;
   private readonly options: {
     manifest: PluginManifest; permissions: string[]; packagePath: string; context: WorkspaceExecutionContext;
-    clientOptions?: Pick<McpServerClientOptions, "spawnImpl" | "fetchImpl" | "connectTimeoutMs" | "callTimeoutMs" | "discoveryTimeoutMs" | "audit">;
+    clientOptions?: Pick<McpServerClientOptions, "spawnImpl" | "fetchImpl" | "connectTimeoutMs" | "callTimeoutMs" | "discoveryTimeoutMs" | "audit" | "beforeTransportCreate" | "trackTransportOperation">;
   };
 
   constructor(options: WorkspacePluginMcp["options"]) {

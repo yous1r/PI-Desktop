@@ -283,11 +283,10 @@ test("the panel session filters requests and refuses device permissions", () => 
 });
 
 test("remote MCP endpoints answer to the same allowlist", () => {
-  assert.match(runtimeSrc, /endpoint not in manifest\.net\.domains/);
-  assert.match(
-    runtimeSrc,
-    /if \(server\.transport === "http"\) \{[\s\S]*?isNetUrlAllowedWithGrant\(url, this\.netEgressGrant\(loaded\)\)/,
-  );
+  const register = readFileSync(new URL("../electron/main/plugin-mcp-registration.ts", import.meta.url), "utf8");
+  assert.match(register, /endpoint not in manifest\.net\.domains/);
+  assert.match(register, /server\.transport === "http" && !isNetUrlAllowedWithGrant\(String\(server\.url \?\? ""\), d\.grant\(loaded\)\)/);
+  assert.match(runtimeSrc, /grant: owner => this\.netEgressGrant\(owner\)/);
 });
 
 test("a malformed allowlist fails closed", () => {

@@ -3,9 +3,9 @@ import { spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
-import { repositoryRoot, resolveElectronBinary } from "../../../scripts/e2e/boot.mjs";
+import { repositoryRoot } from "../../../scripts/e2e/boot.mjs";
 
 /*
  * Host-managed plugin connections, driven through the native plugin settings
@@ -19,6 +19,8 @@ import { repositoryRoot, resolveElectronBinary } from "../../../scripts/e2e/boot
  */
 const root = repositoryRoot();
 const { build } = createRequire(join(root, "packages/agent-runtime/package.json"))("esbuild");
+const desktopRequire = createRequire(join(root, "apps/desktop/package.json"));
+const packageDirectory = name => dirname(desktopRequire.resolve(`${name}/package.json`));
 
 const fixture = String.raw`
 import React from "react";
@@ -449,10 +451,10 @@ test(
         alias: {
           "@pi-desktop/i18n": join(root, "packages/i18n/src"),
           "@pi-desktop/shared": join(root, "packages/shared/src"),
-          react: join(root, "apps/desktop/node_modules/react"),
-          "react-dom": join(root, "apps/desktop/node_modules/react-dom"),
-          i18next: join(root, "apps/desktop/node_modules/i18next"),
-          "react-i18next": join(root, "apps/desktop/node_modules/react-i18next"),
+          react: packageDirectory("react"),
+          "react-dom": packageDirectory("react-dom"),
+          i18next: packageDirectory("i18next"),
+          "react-i18next": packageDirectory("react-i18next"),
         },
         nodePaths: [join(root, "apps/desktop/node_modules")],
       });
@@ -466,7 +468,7 @@ const path = require("node:path");
 app.setPath("userData", path.join(__dirname, "profile"));
 app.whenReady().then(async () => {
   session.defaultSession.webRequest.onBeforeRequest({ urls: ["http://*/*", "https://*/*", "ws://*/*", "wss://*/*"] }, (_details, callback) => callback({ cancel: true }));
-  const win = new BrowserWindow({ show: false, width: 900, height: 900,
+  const win = new BrowserWindow({ show: true, width: 900, height: 900,
     webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, backgroundThrottling: false } });
   try {
     await win.loadFile(path.join(__dirname, "index.html"));
@@ -478,7 +480,7 @@ app.whenReady().then(async () => {
 `);
       const env = { ...process.env };
       delete env.ELECTRON_RUN_AS_NODE;
-      const child = spawn(resolveElectronBinary(root).electronBinary, [join(temp, "main.cjs")], {
+      const child = spawn(desktopRequire("electron"), [join(temp, "main.cjs")], {
         env,
         stdio: ["ignore", "pipe", "pipe"],
       });

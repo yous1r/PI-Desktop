@@ -14,7 +14,7 @@ export type PluginConnectionServiceOptions = {
 };
 const secretRef = (id: string) => `secret:plugin-connections:${id}`;
 const publicRecord = ({ token: _token, caPem: _ca, ...record }: PrivateConnection): PluginConnection => structuredClone(record);
-const SAFE_ERROR_CODES = new Set(["INVALID_ARGUMENT", "LIMIT_EXCEEDED", "PERMISSION_DENIED", "NOT_FOUND", "CONNECTION_CHANGED", "PLUGIN_UNLOADED", "STORAGE_INVALID", "STORAGE_UNAVAILABLE", "REDIRECT_DISALLOWED", "CONFLICT", "RESPONSE_TOO_LARGE"]);
+const SAFE_ERROR_CODES = new Set(["HOST_BUSY", "INVALID_ARGUMENT", "LIMIT_EXCEEDED", "PERMISSION_DENIED", "NOT_FOUND", "CONNECTION_CHANGED", "PLUGIN_UNLOADED", "STORAGE_INVALID", "STORAGE_UNAVAILABLE", "REDIRECT_DISALLOWED", "CONFLICT", "RESPONSE_TOO_LARGE"]);
 const safeError = (value: unknown): string | undefined => value instanceof Error && "code" in value &&
   typeof value.code === "string" && SAFE_ERROR_CODES.has(value.code) ? value.code : undefined;
 
@@ -25,15 +25,35 @@ export class PluginConnectionService {
   private readonly active = new Map<string, { pluginId: string; connectionId: string; controller: AbortController }>();
   private readonly generations = new Map<string, number>();
   private readonly cancelled = new Map<string, number>();
+  private storageOperations = 0;
+  private uncontainedResources = 0;
 
   constructor(options: PluginConnectionServiceOptions) { this.options = options; }
 
+  getHandoffActivity(): { operations: number; uncontainedResources: number } {
+    return { operations: this.storageOperations + this.active.size, uncontainedResources: this.uncontainedResources };
+  }
+
+  private capture(pluginId: string): () => void {
+    const generation = this.generations.get(pluginId) ?? 0;
+    const assertCurrent = () => {
+      this.options.assertGranted(pluginId);
+      if (generation !== (this.generations.get(pluginId) ?? 0)) throw connectionError("PLUGIN_UNLOADED", "Plugin lifecycle changed");
+    };
+    assertCurrent();
+    return assertCurrent;
+  }
+
   private async serialized<T>(pluginId: string, action: () => Promise<T>): Promise<T> {
     validatePluginId(pluginId);
+    this.storageOperations++;
     const previous = this.locks.get(pluginId) ?? Promise.resolve();
     const next = previous.catch(() => undefined).then(action);
     this.locks.set(pluginId, next);
-    try { return await next; } finally { if (this.locks.get(pluginId) === next) this.locks.delete(pluginId); }
+    try { return await next; } finally {
+      this.storageOperations--;
+      if (this.locks.get(pluginId) === next) this.locks.delete(pluginId);
+    }
   }
 
   private async load(pluginId: string): Promise<ConnectionFile> {
@@ -60,10 +80,11 @@ export class PluginConnectionService {
   }
 
   async list(pluginId: string): Promise<PluginConnection[]> {
-    this.options.assertGranted(pluginId);
+    const assertCurrent = this.capture(pluginId);
     return this.serialized(pluginId, async () => {
+      assertCurrent();
       const file = await this.load(pluginId);
-      this.options.assertGranted(pluginId);
+      assertCurrent();
       return file.connections.map(publicRecord);
     });
   }
@@ -71,8 +92,9 @@ export class PluginConnectionService {
   /** Native UI only. The plugin API has no configuration or secret operation. */
   async save(input: PluginConnectionInput): Promise<PluginConnection> {
     if (!input || typeof input !== "object") throw connectionError("INVALID_ARGUMENT", "Invalid connection input");
-    this.options.assertGranted(input.pluginId);
+    const assertCurrent = this.capture(input.pluginId);
     return this.serialized(input.pluginId, async () => {
+      assertCurrent();
       const file = await this.load(input.pluginId);
       const before = input.id ? file.connections.find(c => c.id === input.id) : undefined;
       if (input.id && !before) throw connectionError("NOT_FOUND", "Connection not found");
@@ -90,7 +112,7 @@ export class PluginConnectionService {
         revision: (before?.revision ?? 0) + 1, hasCredential: Boolean(token), caConfigured: Boolean(caPem),
         allowHttp: input.allowHttp, routes: validateConnectionRoutes(input.routes), token, caPem,
       };
-      this.options.assertGranted(input.pluginId);
+      assertCurrent();
       this.releaseConnection(input.pluginId, record.id);
       await this.persist(input.pluginId, { version: 1, connections: [...file.connections.filter(c => c.id !== record.id), record] });
       return publicRecord(record);
@@ -98,11 +120,12 @@ export class PluginConnectionService {
   }
 
   async remove(pluginId: string, connectionId: string): Promise<void> {
-    this.options.assertGranted(pluginId);
+    const assertCurrent = this.capture(pluginId);
     return this.serialized(pluginId, async () => {
+      assertCurrent();
       const file = await this.load(pluginId);
       if (!file.connections.some(c => c.id === connectionId)) throw connectionError("NOT_FOUND", "Connection not found");
-      this.options.assertGranted(pluginId);
+      assertCurrent();
       this.releaseConnection(pluginId, connectionId);
       await this.persist(pluginId, { version: 1, connections: file.connections.filter(c => c.id !== connectionId) });
     });
@@ -171,6 +194,7 @@ export class PluginConnectionService {
       if (input.body !== undefined && (typeof input.body !== "string" || Buffer.byteLength(input.body) > CONNECTION_MAX_BYTES)) throw connectionError("LIMIT_EXCEEDED", "Connection request body is too large");
       if (input.method === "GET" && input.body !== undefined) throw connectionError("INVALID_ARGUMENT", "GET cannot have a body");
       if (record.token) headers.authorization = `Bearer ${record.token}`;
+      this.uncontainedResources = Math.min(Number.MAX_SAFE_INTEGER, this.uncontainedResources + 1);
       const response = await (this.options.transport ?? connectionTransport)(url.href, {
         method: input.method, headers, body: input.body, redirect: "manual", signal: controller.signal,
       }, record.caPem);
