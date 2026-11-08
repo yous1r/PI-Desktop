@@ -1,0 +1,85 @@
+{
+  "candidate": "761a63383ffaf858ddb070a1cda015e8d34be549",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "nodeVersion": "v24.12.0",
+  "platform": "win32",
+  "inputs": [
+    {
+      "path": "apps/desktop/electron/main/terminal/workspace-terminal-router.ts",
+      "sha256": "50866c780b1decd387d0daa8c31e6df16c3fe0030feaf7276c7c75fbef331f7c"
+    },
+    {
+      "path": "apps/desktop/electron/main/terminal/workspace-terminal-registry.ts",
+      "sha256": "784f2631be145ece89c666c075bec47fc18bb8a94ecc1cdc20dee3a2d8be5b8f"
+    },
+    {
+      "path": "apps/desktop/electron/main/bootstrap/workspace-terminals.ts",
+      "sha256": "5101c9abd9ac2be45645376ba81fa9801c76f5740f0fd25a4fae9019bfd856d7"
+    },
+    {
+      "path": "apps/desktop/electron/main/ipc/register.ts",
+      "sha256": "17179a82a1246f331ca813995d5d12f7f8b6b2f3ada061027665502f96be5e24"
+    },
+    {
+      "path": "apps/desktop/electron/main/workspace-execution-context.ts",
+      "sha256": "463171bbc7a01ffa6e8fec98250df78e5b9e012d3ef497ffb8d03cbbdf1a2d51"
+    },
+    {
+      "path": "packages/host-runtime/src/workspace-terminal-service.ts",
+      "sha256": "8b24e37b7788a899888a45fc2e6496ec245fe8ab4b4bdeb65e25ffb07eff4e34"
+    },
+    {
+      "path": "packages/host-runtime/src/terminal-shell-registry.ts",
+      "sha256": "ddb9e1cae4d81f3621093ab5624daf35d2eb158f7917684c6a79941b62368370"
+    },
+    {
+      "path": "apps/desktop/test/handoff-workspace-terminal.test.mjs",
+      "sha256": "3870bcbbf79d08ba30f9ab7556f95fd2d7d7c9d7747bc3dc8872197b1f0ce9d8"
+    },
+    {
+      "path": "apps/desktop/test/workspace-terminal-user-path.e2e.mjs",
+      "sha256": "668b6ed0220870308ab33f13d4c0a642adc0867fe9dfdf2005c385de86c8209a"
+    }
+  ],
+  "inputScope": "Focused source identities; not a complete dependency graph or bundled executable manifest",
+  "scope": "Terminal admission and retirement, actual IPC/router/registry/service and two isolated PTYs; not full Desktop transfer or native-family containment qualification",
+  "runs": [
+    {
+      "name": "regressions",
+      "args": [
+        "--test",
+        "--test-timeout=15000",
+        "apps/desktop/test/handoff-workspace-terminal.test.mjs"
+      ],
+      "exitCode": 0,
+      "tests": 19,
+      "passed": true,
+      "logSha256": "01a1827d95f036e3121558e337265fd63f62b7464f9c9cd1bc366cfe289a5ab1",
+      "conptyAttachConsoleFailures": 0,
+      "originalPtyExitObservations": 0
+    },
+    {
+      "name": "process",
+      "args": [
+        "--test",
+        "--test-timeout=25000",
+        "apps/desktop/test/workspace-terminal-user-path.e2e.mjs"
+      ],
+      "exitCode": 0,
+      "tests": 2,
+      "passed": true,
+      "logSha256": "4e2bc716a868572bf45620cb2e2b0d6e19a93aa6b6f63dd4f3588d4384bc0505",
+      "conptyAttachConsoleFailures": 2,
+      "originalPtyExitObservations": 2
+    }
+  ],
+  "behaviorPassed": true,
+  "originalPtyExitsObserved": true,
+  "qualifiedNativeFamilyClosure": false,
+  "nativeHelperCleanupConfirmed": false,
+  "nativeCleanupLimitation": "Provisioned node-pty 1.1.0 ordinary ConPTY cleanup has no original-family closure certificate; helper AttachConsole failures are retained separately. PTY root exit does not clear refusal evidence.",
+  "endedClean": true,
+  "inputsUnchanged": true,
+  "status": "PASS_WITH_NATIVE_CLEANUP_LIMITATION"
+}

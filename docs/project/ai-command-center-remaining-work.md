@@ -871,6 +871,10 @@ coordinator/native/source-status composition, followed by H2-H5 integration.
 
 ### H1 workspace terminal activity checkpoint
 
+Implementation and clean candidate:
+`761a63383ffaf858ddb070a1cda015e8d34be549`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`.
+
 Terminal router entries share Desktop admission, capture original Host and
 remote connection generations, and retain pending binding/create/actions through
 window retirement. Local service admission is checked after directory I/O before
@@ -897,7 +901,28 @@ refusal evidence, not capacity or native-family closure certificates.
   and retains a five-second PID fallback. This is recorded as a native cleanup
   limitation, not a process-family closure pass. No dependency/native cleanup
   policy was changed; unqualified-resource refusal remains required.
-- Desktop source typecheck, Biome (246 files), architecture and diff checks
-  passed. Clean-candidate execution and final documentation checks follow the
-  implementation commit; full H1 resource/coordinator/native composition remains
-  open. No Electron transfer, live provider or hardware qualification ran.
+- Desktop source typecheck, Biome (246 files), architecture, policy sync,
+  main ancestry, diff and documentation checks (631 pages) passed. The headless
+  RACP terminal contract also passed, preserving authorization, detached replay
+  and nonduplicated input.
+- On the clean candidate, all 19 handoff regressions and both real PTY user paths
+  passed. Both original PTY exits were observed, focused source hashes remained
+  unchanged and the worktree stayed clean. Two `AttachConsole failed` diagnostics
+  remain; the result is `PASS_WITH_NATIVE_CLEANUP_LIMITATION`, with native-helper
+  cleanup and qualified process-family closure explicitly unconfirmed.
+
+Evidence: [candidate report and source identities](ai-command-center-p0-evidence/terminal-handoff-after.json),
+[clean regression output](ai-command-center-p0-evidence/terminal-handoff-candidate-regressions.log),
+[clean PTY output and native diagnostics](ai-command-center-p0-evidence/terminal-handoff-candidate-process.log),
+[prior-source failures](ai-command-center-p0-evidence/terminal-handoff-before.log),
+[intermediate replay failure](ai-command-center-p0-evidence/terminal-handoff-concurrent-before.log),
+[Desktop regressions](ai-command-center-p0-evidence/terminal-handoff-regressions.log),
+[shared service tests](ai-command-center-p0-evidence/terminal-handoff-service.log),
+and [RACP contract](ai-command-center-p0-evidence/terminal-handoff-racp.log).
+These source identities are not a complete dependency/bundle manifest. Full H1
+resource/coordinator/native composition and H2-H5 remain open. No Electron
+transfer, live provider, full Rust suite or minimum-hardware qualification ran.
+Next: browser/plugin/voice/remote resource ownership and complete inventory.
+The shared-service and RACP archived logs remove one trailing blank line each
+to satisfy repository whitespace checks; their original scratch logs remain
+unchanged. Candidate logs and report are byte-identical copies.

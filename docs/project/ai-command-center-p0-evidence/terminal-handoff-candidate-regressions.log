@@ -1,0 +1,27 @@
+✔ terminal public entries refuse a closed gate before lookup or initialization (2.7947ms)
+✔ pending binding remains owned through disposal and cannot resurrect a catalog (0.7114ms)
+✔ gate closure during session binding prevents terminal creation (0.428ms)
+✔ late create cleanup stays on the original remote connection after replacement (0.7197ms)
+✔ a retired terminal cannot write through a replacement client (0.6784ms)
+✔ disposal retains a late create and its original cleanup until both settle (0.4008ms)
+✔ delayed write binding cannot dispatch after admission closes (0.439ms)
+✔ delayed resize binding cannot dispatch after admission closes (0.279ms)
+✔ delayed replay binding cannot dispatch after admission closes (0.3449ms)
+✔ delayed buffer binding cannot dispatch after admission closes (0.3704ms)
+✔ window retirement keeps pending ownership and compacts only settled refusal evidence (0.846ms)
+✔ unacknowledged creation retains refusal evidence after window retirement (0.3378ms)
+✔ failed close is observed and cannot turn retired resources into idle (0.5828ms)
+✔ same-object connection restart is never used for late create cleanup (0.4138ms)
+✔ local binding refuses a changed gate before loading PTY (0.5035ms)
+✔ local binding refuses a changed Host object before loading PTY (0.1943ms)
+✔ local binding refuses a changed Host generation before loading PTY (0.224ms)
+✔ workspace binding captures the exact connection across later Host reads (0.4785ms)
+✔ concurrent replay results on the same owner do not close each other (0.369ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3106.9539

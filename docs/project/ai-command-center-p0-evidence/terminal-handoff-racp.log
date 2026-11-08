@@ -1,0 +1,9 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mD:/Packages/PI-Desktop/worktrees/owner-local-control/apps/pi-host[39m
+
+ [32m✓[39m src/workspace-terminal-racp.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 15[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 01:01:15
+[2m   Duration [22m 6.21s[2m (transform 1.77s, setup 0ms, import 6.02s, tests 15ms, environment 0ms)[22m

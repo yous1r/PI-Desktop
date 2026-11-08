@@ -1,0 +1,10 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mD:/Packages/PI-Desktop/worktrees/owner-local-control/packages/host-runtime[39m
+
+ [32m✓[39m src/workspace-terminal-handoff.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m src/workspace-terminal-service.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m10 passed[39m[22m[90m (10)[39m
+[2m   Start at [22m 00:50:34
+[2m   Duration [22m 365ms[2m (transform 104ms, setup 0ms, import 217ms, tests 36ms, environment 0ms)[22m

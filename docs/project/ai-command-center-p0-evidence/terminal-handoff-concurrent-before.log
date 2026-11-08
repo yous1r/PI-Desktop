@@ -1,0 +1,29 @@
+✔ local binding refuses a changed gate before loading PTY (3.0339ms)
+✔ local binding refuses a changed Host object before loading PTY (0.3296ms)
+✔ local binding refuses a changed Host generation before loading PTY (0.4096ms)
+✔ workspace binding captures the exact connection across later Host reads (1.0629ms)
+✖ concurrent replay results on the same owner do not close each other (1.0019ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 4
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3113.5504
+
+✖ failing tests:
+
+test at apps\desktop\test\handoff-workspace-terminal.test.mjs:232:1
+✖ concurrent replay results on the same owner do not close each other (1.0019ms)
+  Error: Terminal changed during the operation
+      at fail (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/electron/main/terminal/workspace-terminal-router.ts:16:47)
+      at WorkspaceTerminalRouter.assertHandle (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/electron/main/terminal/workspace-terminal-router.ts:278:104)
+      at file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/electron/main/terminal/workspace-terminal-router.ts:265:14
+      at async WorkspaceTerminalRouter.run (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/electron/main/terminal/workspace-terminal-router.ts:57:14)
+      at async TestContext.<anonymous> (file:///D:/Packages/PI-Desktop/worktrees/owner-local-control/apps/desktop/test/handoff-workspace-terminal.test.mjs:248:20)
+      at async Test.run (node:internal/test_runner/test:1113:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    errorCode: 'TERMINAL_GONE',
+    code: 'TERMINAL_GONE'
+  }
