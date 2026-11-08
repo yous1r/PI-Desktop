@@ -48,6 +48,7 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
   const activeTurns = new Map([["session", "turn"]]);
   let hostDisposed = false;
   let pluginsDisposed = false;
+  let plansDisposed = false;
   const host = {
     isAvailable: () => !hostDisposed,
     async call(method, params) {
@@ -87,6 +88,7 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
   });
   const state = {
     handoffAdmission: new DesktopHandoffAdmission(),
+    planRuntime: { dispose() { plansDisposed = true; } },
     shutdownComplete: false, shutdownPromise: null, quitting: false,
     quitConfirmed: true, closeBehavior: "quit", tray: null,
     pluginLauncherAccelerator: null, toggleWindowAccelerator: null,
@@ -129,6 +131,7 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
   app.emit("before-quit", { preventDefault() {} });
   await sidecarStopped.promise;
   assert.equal(state.handoffAdmission.isClosed(), true, "confirmed quit closes new admission before disposal");
+  assert.equal(plansDisposed, true, "confirmed quit disposes plan retries before resource teardown");
   assert.equal(hostDisposed, false, "quit must wait for the branch already being saved");
   if (outcome === "unresponsive") {
     await new Promise((resolve) => setImmediate(resolve));
@@ -158,8 +161,10 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
   for (const key of probeKeys) delete process.env[key];
   const confirmations = [];
   let confirmationCount = 0;
+  let plansDisposed = false;
   const state = {
     handoffAdmission: new DesktopHandoffAdmission(),
+    planRuntime: { dispose() { plansDisposed = true; } },
     shutdownComplete: false,
     shutdownPromise: null,
     quitting: false,
@@ -223,6 +228,7 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
   await Promise.resolve();
   assert.equal(state.quitConfirmed, false);
   assert.equal(state.handoffAdmission.isClosed(), false, "cancelled confirmation keeps normal admission");
+  assert.equal(plansDisposed, false, "cancelled confirmation preserves plan runtime");
   assert.equal(requestQuit(), true);
   assert.equal(confirmationCount, 2);
 
@@ -232,13 +238,16 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
   await state.shutdownPromise;
   assert.equal(state.shutdownComplete, true);
   assert.equal(state.handoffAdmission.isClosed(), true);
+  assert.equal(plansDisposed, true);
 });
 
 test("personal todo preparation blocks disposal and permits a cancelled quit to retry", async (t) => {
   app.removeAllListeners();
   const originalQuit = app.quit;
+  let plansDisposed = false;
   const state = {
     handoffAdmission: new DesktopHandoffAdmission(),
+    planRuntime: { dispose() { plansDisposed = true; } },
     shutdownComplete: false, shutdownPromise: null, quitting: false,
     quitConfirmed: true, closeBehavior: "quit", tray: null,
     pluginLauncherAccelerator: null, toggleWindowAccelerator: null,
@@ -283,6 +292,7 @@ test("personal todo preparation blocks disposal and permits a cancelled quit to 
   assert.equal(state.quitConfirmed, false);
   assert.equal(hostDisposed, false);
   assert.equal(state.handoffAdmission.isClosed(), false, "unsaved todos keep the application usable");
+  assert.equal(plansDisposed, false, "unsaved todos preserve plan runtime");
   state.quitConfirmed = true;
   app.quit();
   assert.equal(preparations.length, 2);
@@ -294,4 +304,5 @@ test("personal todo preparation blocks disposal and permits a cancelled quit to 
   assert.equal(hostDisposed, true);
   assert.equal(state.shutdownComplete, true);
   assert.equal(state.handoffAdmission.isClosed(), true);
+  assert.equal(plansDisposed, true);
 });

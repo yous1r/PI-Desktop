@@ -3,10 +3,9 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 
-/** Bundle the current checkout with the provisioned dependency environment. */
-export async function buildSidecarHandoff(root, directory) {
-  const { build } = createRequire(join(root, 'packages/agent-runtime/package.json'))('esbuild');
-  const plugin = { name: 'handoff-candidate-sources', setup(builder) {
+/** Resolve package imports to this checkout and the provisioned Pi toolchain. */
+export function handoffSourcePlugin(root) {
+  return { name: 'handoff-candidate-sources', setup(builder) {
     if (process.env.PI_COMMAND_CENTER_DEPENDENCIES) {
       builder.onResolve({ filter: /^@earendil-works\/pi-(ai|agent-core|coding-agent)(\/|$)/ }, args => {
         if (args.pluginData?.handoffResolved) return;
@@ -14,6 +13,8 @@ export async function buildSidecarHandoff(root, directory) {
           pluginData: { handoffResolved: true } });
       });
     }
+    builder.onResolve({ filter: /\.mjs\?raw$/ }, args => ({ path: resolve(args.resolveDir, args.path.slice(0, -4)), namespace: 'handoff-raw' }));
+    builder.onLoad({ filter: /.*/, namespace: 'handoff-raw' }, async args => ({ contents: await readFile(args.path, 'utf8'), loader: 'text' }));
     builder.onResolve({ filter: /^@pi-desktop\// }, async ({ path: specifier }) => {
       const [, name, ...subpath] = specifier.split('/');
       const packageRoot = join(root, 'packages', name);
@@ -24,6 +25,12 @@ export async function buildSidecarHandoff(root, directory) {
       return { path: resolve(packageRoot, target.replace('./dist/', './src/').replace(/\.js$/, '.ts')) };
     });
   } };
+}
+
+/** Bundle the current checkout with the provisioned dependency environment. */
+export async function buildSidecarHandoff(root, directory) {
+  const { build } = createRequire(join(root, 'packages/agent-runtime/package.json'))('esbuild');
+  const plugin = handoffSourcePlugin(root);
   const common = { absWorkingDir: root, bundle: true, platform: 'node', format: 'esm', plugins: [plugin], metafile: true,
     define: { PI_BUNDLED_NODE: 'true' }, banner: { js: "import {createRequire as __handoffCreateRequire} from 'node:module'; const require=__handoffCreateRequire(import.meta.url);" }, logLevel: 'warning' };
   const sidecar = await build({ ...common, entryPoints: [join(root, 'packages/agent-runtime/src/sidecar.ts')], outfile: join(directory, 'sidecar.mjs') });

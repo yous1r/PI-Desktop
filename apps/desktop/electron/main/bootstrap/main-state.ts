@@ -16,7 +16,7 @@ import type {
   ApplicationAppearanceState,
   ApplicationLifecycleState,
 } from "./app-lifecycle";
-import type { PlanRuntimeState } from "../runtime/plans";
+import type { PlanRuntime, PlanRuntimeState } from "../runtime/plans";
 import type { StartupState } from "./startup";
 import type { ShutdownState } from "./shutdown";
 import type { HostProcess } from "../host-process";
@@ -68,6 +68,7 @@ export class MainProcessState {
 
   readonly handoffAdmission = new DesktopHandoffAdmission();
   scheduledRunner: StartupState["scheduledRunner"] = null;
+  planRuntime: PlanRuntime | null = null;
   host: HostProcess | null = null;
   sidecar: AgentSidecar | null = null;
   mcpControl: McpControlServer | null = null;
@@ -402,6 +403,7 @@ export class MainProcessState {
 
     this.shutdownState = {
       handoffAdmission: this.handoffAdmission,
+      get planRuntime() { return self.planRuntime; },
       get shutdownComplete() {
         return self.shutdownComplete;
       },

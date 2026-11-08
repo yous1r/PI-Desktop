@@ -6,9 +6,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const here = dirname(fileURLToPath(import.meta.url));
-// Node strips the types itself; the hook only supplies the `.ts` extension the
-// bundler-style relative imports omit.
-register(pathToFileURL(join(here, "helpers/ts-import-hooks.mjs")));
+// Load this worktree's runtime and shared packages when dependencies are linked.
+register(pathToFileURL(join(here, "helpers/current-source-import-hooks.mjs")));
 
 // Exercise the real plan runtime, the real turn coordination state and the real
 // Agent Host bridge, without booting Electron or making a provider request.
@@ -20,6 +19,7 @@ const { createAgentHostBridge } = await import(
   "../electron/main/agent-host-bridge.ts"
 );
 const { IPC } = await import("@pi-desktop/shared");
+const { DesktopHandoffAdmission } = await import("../electron/main/runtime/handoff-admission.ts");
 
 function deferred() {
   let resolve;
@@ -108,7 +108,7 @@ function fixture() {
   });
 
   const planRuntime = createPlanRuntime({
-    runtimeState: { host, agentHostBridge: bridge },
+    runtimeState: { host, agentHostBridge: bridge, handoffAdmission: new DesktopHandoffAdmission() },
     planState: { approvedExecutionDrain: null },
     logger: { app() {} },
     sendToRenderer() {},

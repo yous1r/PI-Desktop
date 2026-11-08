@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Keep approved-plan launch and cleanup bound to their original Host and sidecar.
+  Lock waits, retries and unconfirmed cleanup remain visible to idle inspection;
+  interrupted setup cannot start later. Launch resolution rejects stale owner
+  results, and confirmed shutdown cancels plan retries. Complete ownership
+  transfer remains under development.
 - Share Desktop admission across local IPC, AgentHost, scheduled work and runtime
   setup. Confirmed shutdown blocks new starts, and a restart that closes while
   awaiting a child no longer drains plans or announces readiness. Complete idle

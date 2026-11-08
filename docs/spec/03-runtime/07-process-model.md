@@ -572,6 +572,27 @@ draining and restart-ready announcements. Normal Host restart still rebinds the
 sidecar and restores display locale; both child restart kinds still drain plans.
 Boot verifies its original Host after asynchronous work before using later results.
 
-This composition does not enable a transfer request. Desktop plan dispatch,
-complete owner inventory, source journal transport, native closure and target
+Approved-plan direct dispatch, proposal lookup and recovery drain share this
+admission. Dispatch registers before waiting for the session lock. Each claimed
+execution retains its original Host generation, sidecar and bridge through
+launch and cleanup; late replies cannot use replacement owners or overwrite a
+newer active turn. A locally interrupted execution cannot resume when launch
+setup returns. Deferred retries have one owner and are cancelled on disposal.
+
+Launch resolution binds Host reads and checks the same owners around awaited
+catalog, instruction, MCP and plugin initialization. A stale result cannot
+publish MCP records or vendor bindings to a replacement. Already-started setup
+remains counted until its original promise settles; a rejected or cancelled
+promise does not establish native resource closure.
+
+Execution finalization requires a matching durable terminal descriptor. Turn
+cleanup requires an acknowledged `session.endTurn`. Lost claim, begin-turn or
+sidecar-acceptance replies, failed cleanup and pending execution finalization
+remain busy, including after disposal. They are never resolved by borrowing a
+replacement Host or replaying execution. The existing idempotent terminal-write
+retry uses its original Host and frozen outcome. These local bindings do not
+replace Rust ownership or provide native exit proof.
+
+This composition does not enable a transfer request. Complete owner inventory,
+bounded source journal transport, native/coordinator integration and target
 readiness remain separate H1-H5 acceptance work.

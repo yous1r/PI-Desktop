@@ -32,11 +32,12 @@ test("replacement and clearing recompute candidates without removing provider mo
 });
 
 test("runtime rejects an image binding retained by an existing conversation", async () => {
-  register(new URL("./helpers/ts-import-hooks.mjs", import.meta.url));
+  register(new URL("./helpers/current-source-import-hooks.mjs", import.meta.url));
+  const { DesktopHandoffAdmission } = await import("../electron/main/runtime/handoff-admission.ts");
   const { createSessionLaunchRuntime } = await import("../electron/main/runtime/session-launch.ts");
   const shell = { id: "cmd", label: "Command Prompt", dialect: "cmd", available: true, isDefault: true };
   const runtime = createSessionLaunchRuntime({
-    runtimeState: { host: { call: async (method) => {
+    runtimeState: { handoffAdmission: new DesktopHandoffAdmission(), host: { call: async (method) => {
       if (method === "commandShells.list") return { configuredId: null, effective: shell, fallback: false, choices: [shell] };
       if (method === "providers.list") return { providers: [{ ...providers[0], authKind: "none" }] };
       if (method === "providers.getSecret") return {};

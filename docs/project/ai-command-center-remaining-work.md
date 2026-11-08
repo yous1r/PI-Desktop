@@ -701,8 +701,43 @@ It exposed a production-only missing upstream AgentMessage augmentation: an
 explicit type-only import fixes it, with byte-identical JavaScript emission when
 comments are removed. Configured lint covers 227 files and passes.
 
-This is a local implementation checkpoint, not complete H1 or process acceptance.
-Desktop plan admission/finalization/retry ownership, all-resource inventory,
-bounded original-owner journal transport and native/coordinator integration are
-still pending. Default transfer remains unavailable; continue those H1 items
-before joining H2-H5.
+This checkpoint preceded the plan lifecycle slice below. Complete H1 resource
+inventory, bounded original-owner journal transport and native/coordinator
+integration remain pending. Default transfer remains unavailable.
+
+## H1 Desktop plan lifecycle checkpoint
+
+Approved-plan dispatch and finalization now live in one owner-aware module,
+reusing the existing execution maps, session lock and turn finalizer. Admission
+counts lock waits and setup; owned retries stop on disposal. Original Host,
+sidecar and bridge references survive awaits and cleanup. A late begin-turn
+reply is closed on its original Host without publishing a new active turn;
+an execution interrupted during setup cannot resume afterward. Launch resolution
+also guards Host reads and awaited catalog/MCP/plugin setup against replacement.
+
+Lost mutation replies and unconfirmed turn cleanup remain busy after local
+execution completion or disposal. Terminal-write retries retain the original
+Host and first outcome; no claim, turn creation or execution is replayed.
+Application shutdown owns dispatcher disposal after confirmation, while cancelled
+confirmation and unsaved todos preserve it.
+
+Validation: 105 tests pass across 17 focused Desktop files, including 24 plan
+dispatch cases, six launch-owner races and existing user paths. Seven original
+dispatch races, six launch-owner failures and the setup-abort race were observed
+before their corrections. Full Desktop source typecheck and configured Biome
+lint pass. Production Rust is unchanged; no new full Rust suite was run.
+
+`scripts/e2e-desktop-plan-handoff.mjs` passes four development-run checks through
+the real Rust Host, production Desktop plan/launch modules and a deterministic
+contained sidecar. It confirms extension registry isolation, original native
+closure and durable outcomes after reopen. The first development run retained
+three passing checks but failed because the fixture omitted the SubmitPlan
+history message; it also exposed the need for explicit Rust global capability
+directory isolation. Both are corrected in the fixture, and its failed report
+is retained. Clean committed-candidate evidence is recorded separately below.
+
+This completes the plan lifecycle implementation slice, not H1 acceptance.
+Next: inventory all actual resource families, compose the coordinator with
+bounded original-source journal operations, and validate the complete process
+path before joining H2-H5. Loaded or unconfirmed resources must still refuse
+idle transfer; absent counters cannot be filled with zero.

@@ -180,7 +180,7 @@ test("turn ownership and execution queue wake only after durable turn settlement
   assert.match(plansSource, /const finalizationKey = planSubmissionTurnKey\(id, turnId\)/);
   assert.match(plansSource, /turnFinalizations\.get\(finalizationKey\)/);
   assert.match(plansSource, /turnFinalizations\.set\(finalizationKey, finalization\)/);
-  assert.match(finishSource, /await runtimeState\.host\.call<[\s\S]*?\("session\.endTurn"/);
+  assert.match(finishSource, /await host\.call<[\s\S]*?\("session\.endTurn"/);
   assert.ok(
     finishSource.indexOf('"session.endTurn"') <
       finishSource.lastIndexOf("activeTurns.delete"),

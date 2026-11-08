@@ -4,8 +4,9 @@ import { register } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-register(new URL("./helpers/ts-import-hooks.mjs", import.meta.url));
+register(new URL("./helpers/current-source-import-hooks.mjs", import.meta.url));
 const { createSessionLaunchRuntime } = await import("../electron/main/runtime/session-launch.ts");
+const { DesktopHandoffAdmission } = await import("../electron/main/runtime/handoff-admission.ts");
 
 // Issue #542: pi CLI's SYSTEM.md / APPEND_SYSTEM.md must be discovered at
 // launch with pi's precedence (project .pi/ over ~/.pi/agent/) and reach the
@@ -28,7 +29,7 @@ const provider = {
 
 function launchRuntime() {
   return createSessionLaunchRuntime({
-    runtimeState: { host: {
+    runtimeState: { handoffAdmission: new DesktopHandoffAdmission(), host: {
       isAvailable: () => true,
       call: async (method) => {
         if (method === "commandShells.list") return { configuredId: "bash", effective: shell, fallback: false, choices: [shell] };

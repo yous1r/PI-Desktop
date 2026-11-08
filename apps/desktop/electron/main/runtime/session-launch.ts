@@ -44,6 +44,7 @@ import type { RuntimeProvider } from "./provider-catalog";
 import type { LoadedSkillDocument } from "../skill-document";
 import { getActiveRemoteHostsBoot } from "../bootstrap/remote-hosts";
 import { loadRemoteWorkspaceInstructions } from "../remote/remote-workspace-instructions.js";
+import { captureSessionLaunchOwner, type SessionLaunchHost } from "./session-launch-owner";
 
 const ErrorCodes = {
   ...SharedErrorCodes,
@@ -102,15 +103,16 @@ export function createSessionLaunchRuntime({
     ErrorCodes.HOST_UNAVAILABLE;
   async function refreshUserMcp(
     projectPath: string | null | undefined = getWorkspacePath(),
+    host: SessionLaunchHost | null = runtimeState.host,
   ): Promise<McpServerRecord[]> {
     // A dead transport is expected during shutdown and between supervised
     // restarts, and it rejects every call — warning about it would file the
     // routine case under the same log line as a registry that cannot be read.
     // The guard skips the calls that have not started; the catch covers the ones
     // already in flight when the transport closed.
-    if (!runtimeState.host?.isAvailable()) return [];
+    if (!host?.isAvailable()) return [];
     try {
-      const result = await runtimeState.host!.call<{ servers: McpServerRecord[] }>("mcp.active", {
+      const result = await host.call<{ servers: McpServerRecord[] }>("mcp.active", {
         projectPath: projectPath ?? null,
       });
       const servers = result.servers ?? [];
@@ -127,10 +129,11 @@ export function createSessionLaunchRuntime({
   /** The user's own skills, filtered to the ones a session on this project sees. */
   async function activeUserSkills(
     projectPath: string | undefined,
+    host: SessionLaunchHost | null = runtimeState.host,
   ): Promise<UserSkillRecord[]> {
-    if (!runtimeState.host?.isAvailable()) return [];
+    if (!host?.isAvailable()) return [];
     try {
-      const result = await runtimeState.host!.call<{ skills: UserSkillRecord[] }>("skills.active", {
+      const result = await host.call<{ skills: UserSkillRecord[] }>("skills.active", {
         projectPath: projectPath ?? null,
       });
       return result.skills ?? [];
@@ -152,11 +155,12 @@ export function createSessionLaunchRuntime({
    */
   async function activeUserSubagentDocuments(
     projectPath: string | undefined,
+    host: SessionLaunchHost | null = runtimeState.host,
   ): Promise<UserSubagentDocument[]> {
-    if (!runtimeState.host?.isAvailable()) return [];
+    if (!host?.isAvailable()) return [];
     let records: UserSubagentRecord[] = [];
     try {
-      const result = await runtimeState.host!.call<{ subagents: UserSubagentRecord[] }>(
+      const result = await host.call<{ subagents: UserSubagentRecord[] }>(
         "agents.active",
         { projectPath: projectPath ?? null },
       );
@@ -195,10 +199,10 @@ export function createSessionLaunchRuntime({
    * no exclusions: losing a delegate the user kept is worse than offering one
    * they switched off.
    */
-  async function disabledBuiltinSubagents(): Promise<string[]> {
-    if (!runtimeState.host?.isAvailable()) return [];
+  async function disabledBuiltinSubagents(host: SessionLaunchHost | null = runtimeState.host): Promise<string[]> {
+    if (!host?.isAvailable()) return [];
     try {
-      const result = await runtimeState.host!.call<{ disabled: string[] }>(
+      const result = await host.call<{ disabled: string[] }>(
         "agents.disabledBuiltins",
       );
       return result.disabled ?? [];
@@ -213,12 +217,12 @@ export function createSessionLaunchRuntime({
   }
 
   /** Built-in skill activation is host-owned and defaults on. */
-  async function disabledBuiltinSkills(): Promise<string[]> {
-    if (!runtimeState.host?.isAvailable()) {
+  async function disabledBuiltinSkills(host: SessionLaunchHost | null = runtimeState.host): Promise<string[]> {
+    if (!host?.isAvailable()) {
       throw new Error("host unavailable while reading built-in skill activation");
     }
     try {
-      const result = await runtimeState.host!.call<{ disabled: string[] }>(
+      const result = await host.call<{ disabled: string[] }>(
         "skills.disabledBuiltins",
       );
       return result.disabled ?? [];
@@ -284,9 +288,9 @@ export function createSessionLaunchRuntime({
     return { id: skill.id, name: skill.name, body: result.body, location: skill.path };
   }
 
-  async function resolveEffectiveCommandShell(): Promise<CommandShellCatalog> {
-    if (!runtimeState.host) throw new Error("host unavailable");
-    const catalog = await runtimeState.host!.call<CommandShellCatalog>("commandShells.list");
+  async function resolveEffectiveCommandShell(host: SessionLaunchHost | null = runtimeState.host): Promise<CommandShellCatalog> {
+    if (!host) throw new Error("host unavailable");
+    const catalog = await host.call<CommandShellCatalog>("commandShells.list");
     if (!isCommandShellCatalog(catalog)) {
       throw Object.assign(new Error("Host returned an invalid command shell catalog"), {
         errorCode: ErrorCodes.COMMAND_SHELL_INVALID,
@@ -309,10 +313,10 @@ export function createSessionLaunchRuntime({
   async function isolatedWorkspaceRoot(
     sessionId: string,
     session: { worktree?: unknown } | null | undefined,
+    host: SessionLaunchHost,
   ): Promise<string | undefined> {
     if (!session?.worktree) return undefined;
-    if (!runtimeState.host) throw new Error("host unavailable");
-    const result = await runtimeState.host.call<{ path?: string }>("worktree.location", {
+    const result = await host.call<{ path?: string }>("worktree.location", {
       sessionId,
     });
     const root = typeof result.path === "string" ? result.path.trim() : "";
@@ -332,15 +336,16 @@ export function createSessionLaunchRuntime({
       thinkingLevel?: SessionThinkingLevel;
     } = {},
   ) {
-    if (!runtimeState.host) throw new Error("host unavailable");
-    await modelsDevCatalog.ensureLoaded();
+    const owner = captureSessionLaunchOwner(runtimeState);
+    const { host, sidecar } = owner;
+    await owner.wait(() => modelsDevCatalog.ensureLoaded());
     const remoteWorkspace = session.remoteWorkspace as { hostKey: string; path: string } | undefined;
     const remoteBoot = remoteWorkspace ? getActiveRemoteHostsBoot() : null;
     if (remoteWorkspace && !remoteBoot) throw new Error("remote host unavailable");
     const commandShell = remoteWorkspace
-      ? await remoteBoot!.workspaceCommandShell(remoteWorkspace.hostKey)
-      : (await resolveEffectiveCommandShell()).effective!;
-    const providers = await runtimeState.host!.call<{ providers: RuntimeProvider[] }>(
+      ? await owner.wait(() => remoteBoot!.workspaceCommandShell(remoteWorkspace.hostKey))
+      : (await resolveEffectiveCommandShell(host)).effective!;
+    const providers = await host.call<{ providers: RuntimeProvider[] }>(
       "providers.list",
       { includeDisabled: false },
     );
@@ -377,7 +382,7 @@ export function createSessionLaunchRuntime({
     const isVendorAccount = !isExtensionAgent && provider.authKind === OAUTH_AUTH_KIND;
     const secret = isExtensionAgent || isVendorAccount
       ? { value: undefined }
-      : await runtimeState.host!.call<{ value?: string }>("providers.getSecret", {
+      : await host.call<{ value?: string }>("providers.getSecret", {
           id: provider.id,
         });
     if (!secret.value && !isExtensionAgent && !isVendorAccount && provider.authKind !== "none") {
@@ -413,9 +418,7 @@ export function createSessionLaunchRuntime({
     // and wire endpoint. models.dev owns metadata; one account can span multiple
     // wire APIs and gateway catalogs.
     const vendorBinding = isVendorAccount
-      ? await vendorOAuth
-          .bindingFor(provider.id, modelId)
-          .catch(() => undefined)
+      ? await owner.wait(() => vendorOAuth.bindingFor(provider.id, modelId)).catch(() => undefined)
       : undefined;
     if (isVendorAccount && !vendorBinding) {
       throw Object.assign(
@@ -455,22 +458,22 @@ export function createSessionLaunchRuntime({
     // workspaces are never isolated.
     const workspaceRoot = remoteWorkspace
       ? undefined
-      : await isolatedWorkspaceRoot(sessionId, session);
-    let projectInstructions = await loadInstructionChain(
+      : await isolatedWorkspaceRoot(sessionId, session, host);
+    let projectInstructions = await owner.wait(() => loadInstructionChain(
       remoteWorkspace ? undefined : (workspaceRoot ?? projectPath),
-    );
+    ));
     if (remoteWorkspace) {
-      projectInstructions = await loadRemoteWorkspaceInstructions(
+      projectInstructions = await owner.wait(() => loadRemoteWorkspaceInstructions(
         remoteBoot!.workspaceFiles, remoteWorkspace, projectInstructions,
-      );
+      ));
     }
     // pi-compatible SYSTEM.md / APPEND_SYSTEM.md (issue #542): resolved once
     // per launch; a change retires the runtime through the reuse match.
-    const customSystemPrompt = await loadCustomSystemPrompt(localInstructionRoot);
+    const customSystemPrompt = await owner.wait(() => loadCustomSystemPrompt(localInstructionRoot));
     let projectMemory: string | undefined;
     if (projectPath) {
       try {
-        const result = await runtimeState.host!.call<{
+        const result = await host.call<{
           context?: {
             roots?: Array<{ path?: string }>;
             instructions?: string;
@@ -504,7 +507,7 @@ export function createSessionLaunchRuntime({
         const groupMemory = result.context?.memory?.content?.trim();
         if (groupMemory) projectMemory = groupMemory;
         if (!result.context) {
-          const legacy = await runtimeState.host!.call<{
+          const legacy = await host.call<{
             memory?: { content?: string };
           }>("project.memory.get", { path: projectPath });
           const content = legacy.memory?.content?.trim();
@@ -513,7 +516,7 @@ export function createSessionLaunchRuntime({
       } catch {
         // Project context is best effort; it must never prevent a session launch.
         try {
-          const legacy = await runtimeState.host!.call<{
+          const legacy = await host.call<{
             memory?: { content?: string };
           }>("project.memory.get", { path: projectPath });
           const content = legacy.memory?.content?.trim();
@@ -523,14 +526,15 @@ export function createSessionLaunchRuntime({
         }
       }
     }
+    owner.assertCurrent();
     sessionProjects.set(sessionId, projectPath ?? null);
     // Everything below is filtered by activation scope: a plugin, MCP server or
     // skill limited to certain projects must be invisible to a session on any
     // other one — not merely refused when called, since a tool the model can see
     // is a tool it will try.
-    const userSkills = await activeUserSkills(projectPath);
-    await refreshUserMcp(projectPath);
-    const userMcpTools = await userMcp.toolsForProject(projectPath ?? null);
+    const userSkills = await owner.wait(() => activeUserSkills(projectPath, host));
+    await owner.wait(() => refreshUserMcp(projectPath, host));
+    const userMcpTools = await owner.wait(() => userMcp.toolsForProject(projectPath ?? null));
     // Skill catalog (D174): only id/name/description cross to the sidecar; the
     // document body is fetched on demand through the local `Skill` tool. Host
     // skills come first so a plugin's entry reads as a refinement of them, and
@@ -539,7 +543,7 @@ export function createSessionLaunchRuntime({
     // The inline-visualization switch owns the `visualize` skill: with the
     // feature off it is withheld here, which also drops the directory below.
     const disabledSkillIds = effectiveDisabledBuiltinSkills(
-      await disabledBuiltinSkills(),
+      await disabledBuiltinSkills(host),
       settings.inlineVisualizations === true,
     );
     const pluginSkills = [
@@ -568,18 +572,18 @@ export function createSessionLaunchRuntime({
     // pinned model is resolved here because credentials and the models.dev catalog
     // live on this side. The user's own definitions (D202) are scope-filtered like the
     // skills above; a delegate the model can see is one it will try to call.
-    const subagentCatalog = await loadSubagentDefinitions(localInstructionRoot, {
-      userDocuments: await activeUserSubagentDocuments(projectPath),
+    const subagentCatalog = await owner.wait(async () => loadSubagentDefinitions(localInstructionRoot, {
+      userDocuments: await activeUserSubagentDocuments(projectPath, host),
       // A switched-off builtin is dropped from what this prompt may delegate to.
-      disabledBuiltins: await disabledBuiltinSubagents(),
-    });
-    const subagentBindings = await resolveSubagentProviders({
+      disabledBuiltins: await disabledBuiltinSubagents(host),
+    }));
+    const subagentBindings = await owner.wait(() => resolveSubagentProviders({
       definitions: subagentCatalog.definitions,
       providers: providers.providers,
       getSecret: async (id: string) =>
-        (await runtimeState.host!.call<{ value?: string }>("providers.getSecret", { id })).value,
+        (await host.call<{ value?: string }>("providers.getSecret", { id })).value,
       resolveVendorBinding: (pinned, pinnedModelId) =>
-        vendorOAuth.bindingFor(pinned.id, pinnedModelId),
+        owner.wait(() => vendorOAuth.bindingFor(pinned.id, pinnedModelId)),
       resolveModel: async (pinned, pinnedModelId) => {
         const catalogModelConfig = catalogModelConfigFor(modelsDevCatalog, {
           providerId: pinned.id,
@@ -602,7 +606,7 @@ export function createSessionLaunchRuntime({
               capabilities: capabilitiesFromModelConfig(catalogModelConfig),
             };
       },
-    });
+    }));
     // Delegation model catalog: every model binding flagged
     // `availableForSubagents` is pre-resolved so the system prompt can list
     // them and the parent agent can pass them to `Task.model` without an
@@ -629,7 +633,7 @@ export function createSessionLaunchRuntime({
           try {
             apiKey =
               (
-                await runtimeState.host!.call<{ value?: string }>("providers.getSecret", {
+                await host.call<{ value?: string }>("providers.getSecret", {
                   id: row.id,
                 })
               ).value ?? "";
@@ -640,7 +644,7 @@ export function createSessionLaunchRuntime({
         }
         let catalogModelConfig: Parameters<typeof modelConfigWithBinding>[0];
         if (isVendorAccount) {
-          const vb = await vendorOAuth.bindingFor(row.id, binding.id);
+          const vb = await owner.wait(() => vendorOAuth.bindingFor(row.id, binding.id));
           if (!vb) continue;
           catalogModelConfig =
             vb.modelConfig ?? catalogModelConfigFor(modelsDevCatalog, {
@@ -698,7 +702,8 @@ export function createSessionLaunchRuntime({
     // the session's own provider plus any row a pinned subagent resolved to. The
     // sidecar may then ask main for request auth, but only for a row named here,
     // and the set is rewritten on every launch.
-    runtimeState.sidecar?.setVendorAuthBindings(
+    owner.assertCurrent();
+    sidecar?.setVendorAuthBindings(
       sessionId,
       [
         provider.id,
@@ -717,7 +722,7 @@ export function createSessionLaunchRuntime({
     let jevApiKey: string | undefined;
     if (mode === "agent" && settings.jevEnabled === true) {
       try {
-        const saved = await runtimeState.host!.call<{ value?: string | null }>(
+        const saved = await host.call<{ value?: string | null }>(
           "secrets.getForRuntime",
           { secretRef: JEV_API_KEY_SECRET_REF },
         );
@@ -730,6 +735,7 @@ export function createSessionLaunchRuntime({
         });
       }
     }
+    const pluginTools = await owner.wait(() => plugins.getToolsForSession(sessionId, id => pluginActiveInProject(id, projectPath)));
     return {
       providerId: provider.id,
       modelId,
@@ -778,8 +784,7 @@ export function createSessionLaunchRuntime({
           ...(modelConfig ? { modelConfig } : {}),
         },
         pluginTools: [
-          ...(await plugins.getToolsForSession(sessionId, id => pluginActiveInProject(id, projectPath)))
-            .map((tool) => ({
+          ...pluginTools.map((tool) => ({
               name: tool.fullName,
               description: tool.description,
               parameters: tool.schema ?? { type: "object", properties: {} },

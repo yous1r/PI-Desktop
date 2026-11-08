@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
-import { createRequire } from "node:module";
+import { createRequire, register } from "node:module";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 import { repositoryRoot } from "../../../scripts/e2e/boot.mjs";
 import { rawSourcePlugin } from "./helpers/raw-source-plugin.mjs";
+register(new URL("./helpers/current-source-import-hooks.mjs", import.meta.url));
+const { DesktopHandoffAdmission } = await import("../electron/main/runtime/handoff-admission.ts");
 
 const root = repositoryRoot();
 const { build } = createRequire(join(root, "packages/agent-runtime/package.json"))("esbuild");
@@ -71,6 +73,7 @@ test("session launch resolves Jev credentials only for opted-in Agent mode", asy
     };
     const dependencies = {
       runtimeState: {
+        handoffAdmission: new DesktopHandoffAdmission(),
         host,
         sidecar: { setVendorAuthBindings() {} },
         agentHostBridge: null,

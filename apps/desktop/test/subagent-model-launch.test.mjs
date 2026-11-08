@@ -4,8 +4,9 @@ import { register } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { capabilitiesFromModelConfig, modelConfigWithBinding } from "@pi-desktop/agent-runtime";
-register(new URL("./helpers/ts-import-hooks.mjs", import.meta.url));
+register(new URL("./helpers/current-source-import-hooks.mjs", import.meta.url));
+const { capabilitiesFromModelConfig, modelConfigWithBinding } = await import("@pi-desktop/agent-runtime");
+const { DesktopHandoffAdmission } = await import("../electron/main/runtime/handoff-admission.ts");
 const { createSessionLaunchRuntime } = await import("../electron/main/runtime/session-launch.ts");
 
 test("launch resolves definition-only pins without granting Task.model selection (#286)", async (t) => {
@@ -24,7 +25,7 @@ test("launch resolves definition-only pins without granting Task.model selection
   const providers = [provider];
   const shell = { id: "bash", label: "Bash", dialect: "posix", available: true, isDefault: true };
   const runtime = createSessionLaunchRuntime({
-    runtimeState: { host: {
+    runtimeState: { handoffAdmission: new DesktopHandoffAdmission(), host: {
       isAvailable: () => true,
       call: async (method) => {
         if (method === "commandShells.list") return { configuredId: "bash", effective: shell, fallback: false, choices: [shell] };

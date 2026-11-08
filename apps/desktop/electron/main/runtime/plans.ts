@@ -1,5 +1,5 @@
-import { ErrorCodes, IPC, type AgentEventEnvelope, type AppNotification, type MessageUsage, type PlanExecution, type PlanExecutionFinishStatus, type UiMessage } from "@pi-desktop/shared";
-import { executionFromResponse, executionListFromResponse, planExecutionFromUnknown } from "@pi-desktop/host-runtime";
+import { IPC, type AgentEventEnvelope, type AppNotification, type MessageUsage, type PlanExecutionFinishStatus, type UiMessage } from "@pi-desktop/shared";
+import { createApprovedPlanDispatcher } from "./approved-plan-dispatch";
 import type { RuntimeState } from "./context";
 import type {
   SessionCoordination,
@@ -103,6 +103,8 @@ export function createPlanRuntime({
   dispatchApprovedPlan: (rawExecution: unknown) => Promise<void>;
   drainApprovedPlanExecutions: () => Promise<void>;
   dispatchExecutionForProposal: (proposalId: string) => Promise<void>;
+  inFlightCount: () => number;
+  dispose: () => void;
 } {
 // Read the shared turn state once, by the names the finalizer below uses. The
 // instance is owned by the coordination factory; this module only reads it.
@@ -111,7 +113,6 @@ const {
   activeTurnUsages,
   turnFinalizations,
   turnSettlements,
-  waitForTurnSettlement,
   planSubmissionTurnKey,
   shouldCreateTaskNotification,
   isActiveTurn,
@@ -162,6 +163,10 @@ function finishTurn(
   // turn it does not own. Callers still persist the event as history.
   const turnId = String(options?.turnId ?? "").trim();
   if (!id || !turnId) return Promise.resolve();
+  // Freeze the original execution owner before the deferred finalization body.
+  const owner = dispatcher.turnOwner(id, turnId);
+  const host = owner?.host ?? runtimeState.host;
+  const bridge = owner ? owner.bridge : runtimeState.agentHostBridge;
 
   const finalizationKey = planSubmissionTurnKey(id, turnId);
   // A second call joins the first claim. That is what stops a late abort from
@@ -202,9 +207,9 @@ function finishTurn(
 
   const runFinalization = async (): Promise<void> => {
     try {
-      if (runtimeState.host) {
+      if (host) {
         try {
-          const result = await runtimeState.host.call<{
+          const result = await host.call<{
             ok: boolean;
             notification?: AppNotification;
             recovered?: UiMessage;
@@ -218,6 +223,8 @@ function finishTurn(
             // checkpoint instead of waiting for a final row that never comes.
             ...(recoverInflight ? { recoverInflight: true } : {}),
           });
+          if (owner && result?.ok !== true) throw new Error("approved plan turn finalization was not acknowledged");
+          dispatcher.confirmTurnSettlement(id, turnId);
           settledTurnId = turnId;
           if (result.notification) {
             sendToRenderer(IPC.event.notificationChanged, {
@@ -242,8 +249,8 @@ function finishTurn(
         }
       }
 
-      if (runId && runtimeState.host) {
-        await runtimeState.host
+      if (runId && host) {
+        await host
           .call("scheduled.finishRun", { runId, status: reason, errorCode })
           .catch((e) =>
             logger.app("persistence", "warn", "finishRun failed", {
@@ -302,13 +309,13 @@ function finishTurn(
     // was holding. `kick` stays as the belt-and-braces retry for a turn the module
     // never saw.
     if (!isQuitting()) {
-      runtimeState.agentHostBridge?.endTurn(
+      bridge?.endTurn(
         id,
         turnId,
         hostTurnStatus(reason),
         hostTurnError(reason, errorCode),
       );
-      runtimeState.agentHostBridge?.agentHost.kick(id);
+      if (runtimeState.agentHostBridge === bridge) bridge?.agentHost.kick(id);
     }
     if (!isQuitting() && typeof onTurnEnded === "function") {
       void onTurnEnded(id, turnId, {
@@ -324,7 +331,8 @@ function finishTurn(
     }
     // Settlement of the durable turn is the trigger for the collaborators that
     // follow it; a turn with no durable end has nothing to settle.
-    if (!isQuitting() && settledTurnId && typeof onTurnSettled === "function") {
+    if (!isQuitting() && !runtimeState.handoffAdmission.isClosed() && runtimeState.host === host &&
+        settledTurnId && typeof onTurnSettled === "function") {
       void onTurnSettled(id, settledTurnId).catch((error: unknown) => {
         logger.app("persistence", "warn", "session collaboration settlement failed", {
           sessionId: id,
@@ -350,217 +358,18 @@ async function finishApprovedExecution(
   status: PlanExecutionFinishStatus,
   errorCode?: string,
 ): Promise<void> {
-  if (finishedApprovedExecutions.has(executionId)) return;
-  if (inFlightExecutionFinishes.has(executionId)) return;
-  if (!pendingExecutionFinishes.has(executionId)) {
-    pendingExecutionFinishes.set(executionId, { status, errorCode });
-  }
-  inFlightExecutionFinishes.add(executionId);
-  if (!runtimeState.host) {
-    inFlightExecutionFinishes.delete(executionId);
-    return;
-  }
-  try {
-    const pending = pendingExecutionFinishes.get(executionId) ?? {
-      status,
-      errorCode,
-    };
-    await runtimeState.host.call("plans.finishExecution", {
-      executionId,
-      status: pending.status,
-      ...(pending.errorCode ? { errorCode: pending.errorCode } : {}),
-    });
-    finishedApprovedExecutions.add(executionId);
-    startedApprovedExecutions.delete(executionId);
-    pendingExecutionFinishes.delete(executionId);
-    const turn = approvedExecutionTurns.get(executionId);
-    const sessionId = turn?.sessionId ?? claimedExecutionSessions.get(executionId);
-    if (sessionId && approvedExecutionIdsBySession.get(sessionId) === executionId) {
-      approvedExecutionIdsBySession.delete(sessionId);
-    }
-    approvedExecutionTurns.delete(executionId);
-    claimedExecutionSessions.delete(executionId);
-  } catch (error) {
-    logger.app("runtime", "warn", "approved plan execution finalization failed", {
-      data: { executionId, error: String(error) },
-    });
-  } finally {
-    inFlightExecutionFinishes.delete(executionId);
-  }
+  await dispatcher.finishApprovedExecution(executionId, status, errorCode);
 }
 
-async function dispatchApprovedPlan(rawExecution: unknown): Promise<void> {
-  const initial = planExecutionFromUnknown(rawExecution);
-  if (!initial) {
-    logger.app("runtime", "warn", "approved plan execution descriptor was invalid");
-    return;
-  }
-  const releaseSessionOperation = await acquireSessionOperation(initial.sessionId);
-  try {
-  if (
-    initial.state === "running" ||
-    initial.state === "interrupted" ||
-    initial.state === "completed" ||
-    startedApprovedExecutions.has(initial.id) ||
-    finishedApprovedExecutions.has(initial.id) ||
-    dispatchingApprovedExecutions.has(initial.id)
-  ) {
-    return;
-  }
-  if (!runtimeState.host || !runtimeState.sidecar) return;
-  dispatchingApprovedExecutions.add(initial.id);
-  let claimed = false;
-  let turnId: string | undefined;
-  try {
-    const activeTurnId = activeTurns.get(initial.sessionId);
-    if (
-      activeTurnId &&
-      planSubmissionTurnIds.has(
-        planSubmissionTurnKey(initial.sessionId, activeTurnId),
-      )
-    ) {
-      await waitForTurnSettlement(initial.sessionId, activeTurnId);
-    }
-    if (activeTurns.has(initial.sessionId)) {
-      const retry = setTimeout(() => {
-        void dispatchApprovedPlan(initial);
-      }, 250);
-      retry.unref();
-      return;
-    }
-    const claimResponse = await runtimeState.host.call("plans.claimExecution", {
-      executionId: initial.id,
-    });
-    const claimedExecution = executionFromResponse(claimResponse);
-    if (
-      claimedExecution?.state === "interrupted" ||
-      claimedExecution?.state === "completed" ||
-      claimedExecution?.state === "running"
-    ) {
-      // A running descriptor is the host's durable ownership signal. It may
-      // belong to a previous process and must never be replayed here.
-      if (claimedExecution.state !== "running") return;
-    }
-    const execution: PlanExecution = {
-      ...(claimedExecution ?? initial),
-      state: "running",
-    };
-    claimed = true;
-    claimedExecutionSessions.set(execution.id, execution.sessionId);
-
-    const [settings, sessionResult] = await Promise.all([
-      runtimeState.host.call("settings.get"),
-      runtimeState.host.call<{ session?: any }>("session.get", { id: execution.sessionId }),
-    ]);
-    if (!sessionResult.session) {
-      throw Object.assign(new Error("Session not found"), {
-        errorCode: ErrorCodes.NOT_FOUND,
-      });
-    }
-    const launch = await resolveAgentRuntimeLaunch(
-      execution.sessionId,
-      sessionResult.session,
-      settings,
-      { mode: "agent" },
-    );
-    const turn = await runtimeState.host.call<{ turnId: string }>("session.beginTurn", {
-      sessionId: execution.sessionId,
-      providerId: launch.providerId,
-      modelId: launch.modelId,
-    });
-    turnId = String(turn.turnId || "").trim();
-    if (!turnId) throw new Error("execution turn was not created");
-    activeTurns.set(execution.sessionId, turnId);
-    coordination.recordTurnStart(execution.sessionId, turnId);
-    activeTurnUsages.delete(execution.sessionId);
-    approvedExecutionIdsBySession.set(execution.sessionId, execution.id);
-    approvedExecutionTurns.set(execution.id, {
-      sessionId: execution.sessionId,
-      turnId,
-    });
-    startedApprovedExecutions.add(execution.id);
-    const accepted = await runtimeState.sidecar.call<{ accepted: boolean }>(
-      "agent.executeApprovedPlan",
-      {
-        ...launch.sidecarParams,
-        mode: "agent",
-        turnId,
-        execution,
-      },
-    );
-    if (accepted?.accepted !== true) {
-      throw new Error("approved plan execution was not accepted");
-    }
-    logger.app("runtime", "info", "approved plan execution started", {
-      sessionId: execution.sessionId,
-      data: { executionId: execution.id, turnId },
-    });
-  } catch (error: any) {
-    const errorCode =
-      error?.data?.errorCode || error?.errorCode || ErrorCodes.PLAN_EXECUTION_INTERRUPTED;
-    // The identity captured before the awaits is the one this turn owns; the
-    // finalizer refuses it when the session has moved on.
-    if (turnId) {
-      await finishTurn(initial.sessionId, "error", errorCode, { turnId });
-    }
-    if (claimed) {
-      await finishApprovedExecution(initial.id, "interrupted", errorCode);
-    }
-    logger.app("runtime", "warn", "approved plan execution failed to start", {
-      sessionId: initial.sessionId,
-      data: { executionId: initial.id, error: String(error) },
-    });
-  } finally {
-      dispatchingApprovedExecutions.delete(initial.id);
-    }  } finally {
-    releaseSessionOperation();
-  }
-
+  const dispatcher = createApprovedPlanDispatcher({
+    runtimeState, planState, logger, coordination, planSubmissionTurnIds,
+    approvedExecutionIdsBySession, claimedExecutionSessions, approvedExecutionTurns,
+    startedApprovedExecutions, finishedApprovedExecutions, dispatchingApprovedExecutions,
+    pendingExecutionFinishes, inFlightExecutionFinishes, acquireSessionOperation, resolveAgentRuntimeLaunch,
+    isQuitting, finishTurn,
+  });
+  const { turnOwner: _turnOwner, confirmTurnSettlement: _confirmTurnSettlement, ...operations } = dispatcher;
+  return { ...operations, finishTurn, finishApprovedExecution };
 }
 
-async function drainApprovedPlanExecutions(): Promise<void> {
-  if (planState.approvedExecutionDrain) return planState.approvedExecutionDrain;
-  planState.approvedExecutionDrain = (async () => {
-    if (!runtimeState.host || !runtimeState.sidecar) return;
-    for (const [executionId, finish] of pendingExecutionFinishes) {
-      await finishApprovedExecution(executionId, finish.status, finish.errorCode);
-    }
-    const response = await runtimeState.host.call("plans.queuedExecutions");
-    for (const execution of executionListFromResponse(response)) {
-      // Only queued rows are dispatchable. Running/interrupted rows are durable
-      // recovery outcomes and must remain untouched on startup.
-      if (execution.state !== "queued") continue;
-      await dispatchApprovedPlan(execution);
-    }
-  })();
-  try {
-    await planState.approvedExecutionDrain;
-  } finally {
-    planState.approvedExecutionDrain = null;
-  }
-}
-
-async function dispatchExecutionForProposal(proposalId: string): Promise<void> {
-  if (!runtimeState.host) return;
-  try {
-    const response = await runtimeState.host.call("plans.queuedExecutions");
-    const execution = executionListFromResponse(response).find(
-      (candidate) => candidate.proposalId === proposalId,
-    );
-    if (execution?.state === "queued") {
-      await dispatchApprovedPlan(execution);
-    }
-  } catch (error) {
-    logger.app("runtime", "warn", "approved plan lookup after resolution failed", {
-      data: String(error),
-    });
-  }
-}
-  return {
-    finishTurn,
-    finishApprovedExecution,
-    dispatchApprovedPlan,
-    drainApprovedPlanExecutions,
-    dispatchExecutionForProposal,
-  };
-}
+export type PlanRuntime = ReturnType<typeof createPlanRuntime>;

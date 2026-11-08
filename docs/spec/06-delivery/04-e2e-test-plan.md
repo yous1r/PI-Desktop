@@ -19973,3 +19973,30 @@ session data is used.
   composition, not real Desktop ownership transfer or native process closure.
   H1 resource inventory and H2-H5 integration still require process acceptance.
 - **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
+
+### Desktop approved-plan admission and original-owner cleanup (H1 partial)
+
+- **Component entry:** `node --test apps/desktop/test/handoff-plan-dispatch.test.mjs apps/desktop/test/handoff-session-launch.test.mjs`.
+- **Process entry:** `pnpm test:e2e:desktop-plan-handoff`; requires Windows,
+  `PI_SCRATCH_DIR` and `PI_DESKTOP_HOST_BIN`. Optional
+  `PI_COMMAND_CENTER_DEPENDENCIES` reuses the provisioned Pi toolchain.
+- **Steps:** Create and approve a real plan, hold admission, release it, dispatch
+  through the Desktop plan runtime and launch resolver, finalize and reopen.
+  Delay a real `beginTurn` reply until admission closes. Component cases also
+  replace Host/sidecar owners during setup, interrupt a claimed execution, lose
+  mutation replies, fail cleanup, delay parallel reads and dispose queued retries.
+- **Expected:** Lock waiters, setup, retries and unresolved cleanup stay busy.
+  Closed or replaced owners cannot start work; terminal outcomes cannot resume.
+  Cleanup addresses only original objects and exact turns. Invalid or missing
+  acknowledgements cannot clear the inventory. A contained fixture receives
+  exactly one execution; independent reopen retains completed/interrupted
+  outcomes and exact approved artifact bytes. Original child and native Job
+  closure are confirmed. The fixture checks empty extension registries under
+  an explicit `PI_DESKTOP_AGENTS_DIR`, separate from the user's global registry.
+- **Compatibility:** Run queued-turn finalization, shutdown persistence,
+  scheduling, runtime lifecycle and launch tests for custom system prompts,
+  subagent model selection, Fast mode, Jev and isolated workspaces.
+- **Boundary:** The process fixture uses a deterministic sidecar and no loaded
+  MCP/plugin/native services. It qualifies this plan lifecycle, not complete
+  resource inventory, Electron transfer, a successor Host or target readiness.
+- **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).

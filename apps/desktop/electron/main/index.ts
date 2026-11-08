@@ -743,7 +743,7 @@ const {
   drainApprovedPlanExecutions,
   dispatchExecutionForProposal,
 } = planRuntime;
-
+mainState.planRuntime = planRuntime;
 const eventPersistence = createEventPersistence({
   runtimeState,
   steeringReplies,
