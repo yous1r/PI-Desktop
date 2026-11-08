@@ -1,0 +1,16 @@
+{
+  "status": "FAIL",
+  "candidate": "b17e22841467e109cdd03fad93dcce869857df42",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": true,
+  "binarySha256": "99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b",
+  "scriptSha256": "779b162800f8b704144852541e2cacdc37fe0167e48362d747089d0d5c1c331c",
+  "checks": [],
+  "cleanupConfirmed": true,
+  "scope": "Real sidecar private quiescence and native closure; not complete Desktop ownership transfer",
+  "inputs": 3533,
+  "inputsSha256": "62221829a3eac5e0a880e8d38a36cf5d48769f586b2bee683292b41c0b54b42f",
+  "sidecarSha256": "be659636439307ce9c629c11afbb3400b584e6d63b81842fa8697412b6295efe",
+  "error": "Error: agent sidecar exited\n    at ChildProcess.<anonymous> (file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/sidecar-handoff-2ANjL5/agent-sidecar.mjs:13071:27)\n    at ChildProcess.emit (node:events:508:28)\n    at ChildProcess._handle.onexit (node:internal/child_process:294:12)",
+  "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\sidecar-handoff-2ANjL5\\report.json"
+}

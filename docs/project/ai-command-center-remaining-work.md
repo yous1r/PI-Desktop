@@ -560,7 +560,7 @@ The [initial synchronization failure](ai-command-center-p0-evidence/idle-admissi
 is retained unchanged. Report and manifest copies were verified byte-for-byte.
 This closes only the admission foundation; full P0-4 acceptance remains open.
 
-## S03b-4 sidecar quiescence candidate
+## S03b-4 sidecar quiescence acceptance (A0 complete)
 
 The real Node sidecar now provides strict private `sidecar.handoff`
 acquire/status/cancel/seal. Requests bind a transfer, source epoch and revision;
@@ -583,10 +583,27 @@ candidate, with one deterministic local provider request and confirmed cleanup.
 The initial process run failed before scenarios because the test bundle banner
 collided with an esbuild helper; its report records confirmed cleanup. A subsequent
 helper edit failed at syntax parsing before processes started. The corrected
-helper and harness pass syntax checks. Clean committed-candidate evidence is
-still required before closing this prerequisite.
+helper and harness pass syntax checks. The clean committed-candidate run below
+subsequently closes this prerequisite.
 
 Remaining P0-4 work is unchanged: complete coordinator/Host resource admission,
 durable source orchestration, successor readiness and client epoch/snapshot
 reattachment. No full application transfer or platform/capacity acceptance is
 claimed by this sidecar slice.
+
+Clean candidate `0d8e7f6090427bf85989296bf7212f145a2e2f86`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`, passes the
+[five process checks](ai-command-center-p0-evidence/sidecar-handoff-after.json)
+with `dirty: false`, one local fixture provider request and confirmed cleanup.
+The [3,533 build inputs](ai-command-center-p0-evidence/sidecar-handoff-inputs.json)
+have canonical manifest SHA-256
+`afc3ceec8ffaf944e240f6e0964812495d758cb9efb70829273e7fbf8167a517`;
+the real sidecar bundle SHA-256 is
+`885be0509e836a671751c1f5a50d9c04d5abab6fcfe643241a1fddd30ea43520`.
+The native binary remains
+`99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b`;
+Rust/build inputs are unchanged from its accepted P0-3 candidate.
+The [initial startup failure](ai-command-center-p0-evidence/sidecar-handoff-before.json)
+is retained unchanged. All three archived files were verified byte-for-byte.
+A0 is complete; proceed to H0 executable handoff contracts and the H1-H4
+integration lanes. Full P0-4 remains open.

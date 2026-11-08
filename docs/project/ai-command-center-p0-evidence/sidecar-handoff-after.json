@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "candidate": "0d8e7f6090427bf85989296bf7212f145a2e2f86",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "binarySha256": "99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b",
+  "scriptSha256": "779b162800f8b704144852541e2cacdc37fe0167e48362d747089d0d5c1c331c",
+  "checks": [
+    "strict identity-bound acquisition; lost-reply status; held RPC families blocked; explicit cancellation",
+    "runtime initialization and reverse Host requests stay busy before runtime registration",
+    "real runtime and controlled local model stream refuse idle transfer until execution and cleanup end",
+    "sealed source cannot cancel or start a second model request; shutdown plus original-handle and native Job closure confirmed",
+    "initialized native-session service refuses unqualified handoff, even with no running model"
+  ],
+  "cleanupConfirmed": true,
+  "scope": "Real sidecar private quiescence and native closure; not complete Desktop ownership transfer",
+  "inputs": 3533,
+  "inputsSha256": "afc3ceec8ffaf944e240f6e0964812495d758cb9efb70829273e7fbf8167a517",
+  "sidecarSha256": "885be0509e836a671751c1f5a50d9c04d5abab6fcfe643241a1fddd30ea43520",
+  "providerRequests": 1,
+  "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\sidecar-handoff-EqI0DN\\report.json"
+}

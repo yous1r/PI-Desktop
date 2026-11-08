@@ -1,7 +1,7 @@
 # AI command center parallel implementation plan
 
 - Status: Execution decomposition; no new product milestone is accepted by this plan.
-- Source checkpoint: `b17e22841467e109cdd03fad93dcce869857df42` plus the current uncommitted sidecar-quiescence candidate.
+- Source checkpoint: accepted sidecar candidate `0d8e7f6090427bf85989296bf7212f145a2e2f86`; A0 is complete and H0 is next.
 - Basis: [remaining work](ai-command-center-remaining-work.md), [requirements](ai-command-center-requirements.md), [idle handoff](ai-command-center-idle-handoff.md), [control contracts](ai-command-center-control-contracts.md), [Host capability matrix](ai-command-center-host-parity.md).
 - Priority names below follow the active delivery sequence (P0 handoff, P1 control/quota, P2 monitoring/Desktop, P3 native/browser/mobile, P4 qualification), not the older proposal's phase numbering.
 
@@ -9,19 +9,18 @@
 
 Windows owner discovery, native execution fencing, durable restricted recovery
 and the non-expiring coordinator admission foundation are accepted in committed
-slices. Sidecar quiescence is implemented but not yet committed/accepted as a
-clean candidate. Its latest relevant results are 399 runtime/boundary/event
-coalescing tests, 23 consumer/fence/exit tests, 4 shared-contract tests, source
-typecheck, 205-file configured lint and documentation checks. The dirty real
-sidecar candidate passed five process checks with confirmed cleanup and one
-local deterministic provider request. A later retirement-identity guard still
-needs committed-candidate process validation. Historical passing numbers are not
-acceptance for future changes.
+slices. Sidecar quiescence is accepted at clean candidate `0d8e7f609` with
+399 runtime/boundary/event-coalescing tests, 23 consumer/fence/exit tests,
+4 shared-contract tests, source typecheck and 205-file configured lint.
+The [clean process report](ai-command-center-p0-evidence/sidecar-handoff-after.json)
+passes five checks with confirmed cleanup and one local deterministic provider
+request. It includes the final retirement-identity guard. Build inputs and
+retained failure evidence are linked in the remaining-work register. These
+results do not qualify complete application transfer or future changes.
 
-A0 is a hard dependency for parallel code branches that consume this sidecar
-work. Until A0 passes, only read-only exploration, task specification and
-independent fixture/environment preparation may depend on the uncommitted work.
-No worker consumes another worktree's uncommitted source or generated output.
+A0 is complete. H0 may now consume that committed sidecar baseline; C1 and Q0
+remain independent ready work. No worker consumes another worktree's
+uncommitted source or generated output.
 
 ## Fixed scope and constraints
 
