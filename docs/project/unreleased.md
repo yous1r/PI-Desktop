@@ -1,5 +1,8 @@
 # Unreleased changes
 
+- Fix Plan/Goal approval and lazy expiry failing immediately under an overlapping
+  SQLite writer. Both transactions reserve the writer before reading, preserving
+  the existing busy timeout and atomic state/audit updates without replaying RPCs.
 - Keep approved-plan launch and cleanup bound to their original Host and sidecar.
   Lock waits, retries and unconfirmed cleanup remain visible to idle inspection;
   interrupted setup cannot start later. Launch resolution rejects stale owner

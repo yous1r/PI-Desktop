@@ -1,4 +1,5 @@
 use super::*;
+use rusqlite::{Transaction, TransactionBehavior};
 
 pub(crate) fn plan_error(code: &str) -> anyhow::Error {
     anyhow!(code.to_string())
@@ -12,8 +13,10 @@ fn valid_permission_mode(value: &str) -> bool {
 /// them. The state transition and audit record share one transaction so a
 /// timed-out approval can never remain actionable after its error is visible.
 pub fn expire_pending_approvals(db: &Database) -> Result<()> {
+    // Reserve the WAL writer before reading; a deferred read-to-write upgrade
+    // can return SQLITE_BUSY without invoking the configured busy handler.
+    let tx = Transaction::new_unchecked(db.conn(), TransactionBehavior::Immediate)?;
     let now = now_ms();
-    let tx = db.conn().unchecked_transaction()?;
     let expired: Vec<(String, String, String, String)> = {
         let mut stmt = tx.prepare_cached(
             "SELECT request_id, session_id, turn_id, tool_call_id
@@ -409,13 +412,15 @@ impl PlanManager {
                 .ok_or_else(|| plan_error("PLAN_ARTIFACT_NOT_READY"))?;
             verify_artifact(workspace_root, kind, &artifact)?;
         }
-        let now = now_ms();
         let status = match action {
             "approve" => STATUS_APPROVED,
             _ => STATUS_REJECTED,
         };
         let execution_id = (action == "approve").then(|| Uuid::new_v4().to_string());
-        let tx = db.conn().unchecked_transaction()?;
+        // Native registration uses another connection to this database. Acquire
+        // the writer before checking executions so that contention can wait.
+        let tx = Transaction::new_unchecked(db.conn(), TransactionBehavior::Immediate)?;
+        let now = now_ms();
         if action == "approve" {
             let active_execution: bool = tx.query_row(
                 "SELECT EXISTS(

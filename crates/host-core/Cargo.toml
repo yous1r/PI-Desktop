@@ -58,4 +58,6 @@ windows-sys = { version = "0.61.2", features = [
 libc = "0.2"
 
 [dev-dependencies]
+# Test-only statement completion hooks coordinate independent WAL writers.
+rusqlite = { version = "0.40", features = ["trace"] }
 tempfile = "3"

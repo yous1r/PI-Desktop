@@ -43,3 +43,6 @@ pub(crate) use repository::{
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod contention_tests;

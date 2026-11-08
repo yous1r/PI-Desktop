@@ -863,6 +863,14 @@ session in its contract mode — Plan stays Plan and Goal stays Goal — and clo
 the active gate; a later prompt can create a new pending row. The new protocol
 has no request-changes action; compatibility columns remain for older records.
 
+Lazy expiry and approval resolution reserve the SQLite writer with
+`BEGIN IMMEDIATE` before their transactional reads. Native execution registration
+uses a separate Rust-owned connection and can overlap these operations. Reserving
+the writer first lets the existing five-second busy handler wait for that writer,
+instead of failing a deferred read-to-write upgrade immediately. State, execution
+queue and audit updates remain atomic; exhaustion returns an error without partial
+approval or RPC replay.
+
 At startup, before serving RPC, one transaction changes every `pending` row to
 `interrupted` and every `queued` or `running` execution state to `interrupted`.
 The associated running turn is aborted. There is no serialized process-epoch
@@ -1601,7 +1609,9 @@ truncating at a guessed position.
 
 ## 6. Performance notes
 
-- Single writer + WAL: readers never block; no lock contention by design.
+- WAL permits concurrent readers and serializes writers. Rust remains the only
+  database owner, but native registration and ordinary RPC use distinct connections;
+  read-then-write transactions must account for their contention.
 - All timestamps INTEGER Unix ms — smaller rows, integer compares, index-friendly.
 - Hot queries and their indexes:
   - renderer transcript open → one sequential streaming read of the JSONL file

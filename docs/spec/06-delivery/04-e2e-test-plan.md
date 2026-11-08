@@ -8080,6 +8080,15 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   and after approval. Main/Host/sidecar PIDs remained stable; credentials never
   entered CDP or output. The default no-key run remains 5/5 with the live case
   explicitly skipped.
+- **Concurrent writer regression**: `plans::contention_tests` enters the real
+  Plan/Goal approval service with a second WAL writer held before lazy expiry
+  or after expiry commits. A deterministic busy callback releases that writer;
+  approval must preserve its write, switch mode/permission atomically, queue one
+  execution and audit one resolution. Lazy expiry audits once. An unreleased
+  writer must leave approval, execution and session state unchanged. No sleeps,
+  mutation retries or live Desktop instance are required. The isolated
+  `test:e2e:desktop-plan-handoff` suite covers the surrounding Rust RPC, contained
+  sidecar dispatch, settlement and independent reopen path.
 
 #### E2E-CHAT-opaque-floating-decision-and-retry-surfaces: Dock, Plan approval, and retry surfaces occlude transcript text
 
