@@ -2020,3 +2020,19 @@ Window bounds/pin preference live in Main-owned `personal-todo-window.json`.
 Collapsed state is never persisted. Main retains drafts across widget reload;
 only successful Host acknowledgements are labelled saved. See
 [personal todo ADR](../../adr/global-floating-personal-todos.md).
+
+## User-defined mode runs (schema 29)
+
+ADR `mode-definitions` adds one v28-to-v29 migration. It backs up the existing
+database before adding `mode_snapshots`, `mode_runs`, `mode_gate_results` and
+`sessions.mode_snapshot_hash`. Existing sessions and Plan approvals are retained.
+Mode ids remain in `sessions.mode`; `chat` still normalizes to `plan`.
+
+A run references an immutable definition snapshot, its current stage, revision,
+claim, permission origin, budgets, token usage and completed-round count.
+Gate results record the stage, action, outcome and bounded evidence. At most
+one open run exists per session. Restart clears in-flight claims and pauses
+those runs without replaying work. Deleting a session cascades its run records.
+
+Host-started turns evaluate Auto as Accept edits. A run's original snapshot
+remains authoritative even when its source file changes.

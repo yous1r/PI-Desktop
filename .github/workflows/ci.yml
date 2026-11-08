@@ -204,6 +204,11 @@ jobs:
       - name: Build host-core
         run: cargo build -p host-core --locked
 
+      - name: Run staged mode Host/process E2E
+        env:
+          PI_SCRATCH_DIR: ${{ runner.temp }}
+        run: node scripts/e2e-mode-definitions.mjs
+
       - name: Run inline GenUI interaction and isolation E2E
         run: xvfb-run --auto-servernum pnpm test:e2e:gen-ui
 
