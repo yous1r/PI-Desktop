@@ -9,6 +9,7 @@ import {
   stripProxyEnv,
 } from "@pi-desktop/shared";
 import { HostWriteAdmission, TRANSCRIPT_WRITE_METHODS } from "./host-write-admission.js";
+import { diagnoseHostDataDirectoryFailure } from "./host-data-directory.js";
 
 const HOST_DISPOSE_GRACE_MS = 3_000;
 const HOST_FORCE_KILL_GRACE_MS = 1_000;
@@ -82,6 +83,7 @@ export class HostProcess {
   private disposed = false;
   private available = true;
   private closed = false;
+  private handshaken = false;
   private exitNotified = false;
   private exitObserved = false;
   private exitPromise: Promise<void>;
@@ -201,6 +203,8 @@ export class HostProcess {
    * failure from the last stderr lines and return a more specific typed error.
    */
   private unavailableError(message: string): Error & { errorCode: string } {
+    const ownershipFailure = this.handshaken ? null : diagnoseHostDataDirectoryFailure(this.lastStderr);
+    if (ownershipFailure) return ownershipFailure;
     const diagnosed = this.diagnoseFailure?.({ lastStderr: this.lastStderr, message });
     if (diagnosed) return diagnosed;
     return Object.assign(new Error(message), {
@@ -377,6 +381,7 @@ export class HostProcess {
 
   async handshake(): Promise<void> {
     await this.call("app.handshake", { protocolVersion: PROTOCOL_VERSION });
+    this.handshaken = true;
   }
 
   async dispose(): Promise<void> {

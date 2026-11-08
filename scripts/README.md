@@ -53,6 +53,7 @@ The scenarios are specified in
 | Script | Alias | Purpose |
 |---|---|---|
 | `e2e-tool-admission.mjs` | `node scripts/e2e-tool-admission.mjs` | Isolated real-host tool admission: queued Bash burst leaves capacity for another session's Read/Write and recovers all counters |
+| `e2e-host-data-owner.mjs` | `pnpm test:e2e:host-data-owner` | Real HostProcess/Rust contention, directory alias, relocation exclusion, graceful/crash release and simultaneous startup in `PI_SCRATCH_DIR`; requires `PI_DESKTOP_HOST_BIN` |
 | `e2e-smoke.mjs` | `pnpm test:e2e` | Protocol-level E2E against host-core, plus an optional live model |
 | `e2e-plan.mjs` | `pnpm test:e2e:plan` | Plan state, checkpoint artifact, and approval transitions |
 | `e2e-transcript-cache.mjs` | `pnpm test:e2e:transcript-cache` | Isolated Host RPC regression for large transcript cache creation, append plus middle Task rewrite, legacy cache recovery, paging, message navigation, invalid UTF-8 recovery, and process restart |

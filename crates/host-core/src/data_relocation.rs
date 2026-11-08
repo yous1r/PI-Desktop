@@ -288,6 +288,10 @@ pub fn relocate(source: &Path, destination: &Path) -> Result<()> {
     {
         bail!("relocation roots must be disjoint");
     }
+    // The destination must remain offline for the entire rewrite. A copied
+    // lock file is harmless; ownership is the OS lock, never its contents.
+    let _destination_owner =
+        crate::data_directory_owner::DataDirectoryOwner::acquire(&canonical_destination)?;
     let roots = Roots {
         source: source.to_path_buf(),
         // Project repositories strip Windows verbatim prefixes and normalize

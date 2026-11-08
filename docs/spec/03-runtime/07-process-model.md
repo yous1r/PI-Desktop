@@ -180,6 +180,17 @@ Supervision parameters (the transports, restart policy, and turn lifecycle are
 `packages/host-runtime`, ADR 0284; Electron main adapts them and owns the
 renderer-facing status):
 
+- A cooperating Rust Host acquires the OS lock on `<dataDir>/host-core.lock`
+  before AppState/database opening, migration, recovery or startup sweeps. The
+  handle remains held through serving/shutdown. A concurrent startup exits with
+  `HOST_DATA_DIR_IN_USE` before touching existing turns. Shared HostProcess maps
+  the exact native boot marker to that error code only before handshake; ordinary
+  post-handshake exits keep their previous classification. The lock file is
+  neither truncated nor deleted, and process exit releases the OS lock without
+  PID-file cleanup. Offline relocation holds the same lock on its destination.
+  Old binaries that ignore the lock must be stopped first; this does not implement
+  orphan-sidecar fencing or automatic service handoff. See the
+  [ownership ADR](../../adr/host-data-directory-ownership.md).
 - Child exit rejects all in-flight RPCs for that child immediately (no 130s timeout wait).
 - Every RPC carries a finite transport deadline. Bash and desktop-dispatched
   (`plugin_*` / `mcp_*`) tools add the waits host-core can spend before it

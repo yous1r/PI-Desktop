@@ -3,6 +3,9 @@
 - Status: P0/S02 source-grounded inventory and S03 preparation; no service-mode migration or capability rollout is implied.
 - Related: [control contracts](ai-command-center-control-contracts.md), [development design](ai-command-center-development-design.md), [initial runtime evidence](ai-command-center-1mib-validation.md).
 - Source baseline: `fd28eb89866ac513912ed109716e7120cf60f18c` plus the isolated P0 persistence correction. Files and executable tests take precedence over architectural labels.
+- S03a update: [Rust data-directory ownership](../adr/host-data-directory-ownership.md)
+  now guards cooperating Host startup and relocation destinations. Full execution
+  handoff remains pending; see [remaining acceptance gates](ai-command-center-remaining-work.md).
 
 ## Three paths that must remain distinct
 
@@ -52,7 +55,7 @@ claim. The validation column identifies actual coverage or a remaining gate.
 | Browser/CDP/native views | Electron owns WebContentsView and native integration | Not part of plain headless resolver | Use authenticated interactive bridge; unavailable on noninteractive service desktop |
 | Native app association | Proposed command-center bridge | Arbitrary embedding is not guaranteed | Program/privilege/DPI/RDP matrix before native adapter rollout |
 | Browser/mobile control | Server advertises RACP-WS; browser profile is not implemented by merely opening a port | Node WS auth behavior does not map directly to browser WebSocket headers | Same-origin HTTPS/session binding, origin/CSRF/revocation and role tests required |
-| Service owner handoff | pi-host claims its admin channel before host-core starts | Existing admin socket/lock is Unix-oriented; Desktop has separate ownership | Shared cross-platform owner fencing and interrupted handoff tests required |
+| Service owner handoff | Rust now holds a data-directory OS lock before recovery; pi-host also claims its Unix admin channel where supported | The lock covers cooperating binaries, not old sidecars or complete ownership transfer | Execution epoch/fencing, idle handoff and interrupted-transfer tests still required |
 | Resource telemetry | Isolated P0 harness measures owned coordinator/Host/sidecar | No product-wide UI/plugin/native process inventory yet | Retain sampled scope; full AC-07/08/09 needs complete process and interaction evidence |
 
 ## Evidence map

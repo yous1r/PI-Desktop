@@ -15,6 +15,8 @@
 			"packages/shared/src/types/**/*.ts",
 			"packages/host-runtime/src/{host-process,host-write-admission,turn-persistence,turn-events,runtime-service}.ts",
 			"packages/host-runtime/src/{host-write-admission,turn-persistence,turn-events,runtime-service}.test.ts",
+			"packages/host-runtime/src/host-data-directory*.ts",
+			"scripts/e2e-host-data-owner.mjs",
 			"packages/agent-host/src/{event-log,event-log.test,replay-byte-budget}.ts",
 			"packages/racp/src/racp.test.ts",
 			"scripts/check-architecture.mjs",

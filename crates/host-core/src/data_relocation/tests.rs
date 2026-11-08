@@ -539,3 +539,31 @@ fn encoded_tool_images_remain_lossless_in_all_relocated_file_kinds() {
         );
     }
 }
+
+#[test]
+fn refuses_a_live_destination_before_rewriting_metadata() {
+    let root = tempfile::tempdir().unwrap();
+    let source = root.path().join("source");
+    let destination = root.path().join("destination");
+    fs::create_dir(&source).unwrap();
+    fs::create_dir_all(destination.join("plugins")).unwrap();
+    let registry = destination.join("plugins/registry.json");
+    let original = serde_json::to_vec(&json!([{
+        "source": "installed", "path": source.join("plugins/installed/demo")
+    }]))
+    .unwrap();
+    fs::write(&registry, &original).unwrap();
+    let owner = crate::data_directory_owner::DataDirectoryOwner::acquire(&destination).unwrap();
+    let error = relocate(&source, &destination).unwrap_err();
+    assert!(error
+        .to_string()
+        .starts_with(crate::data_directory_owner::IN_USE_MARKER));
+    assert_eq!(fs::read(&registry).unwrap(), original);
+    assert!(!destination.join("pi.sqlite").exists());
+    drop(owner);
+    relocate(&source, &destination).unwrap();
+    assert_eq!(
+        read_json(&registry)[0]["path"],
+        json!(destination.join("plugins/installed/demo"))
+    );
+}

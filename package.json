@@ -23,6 +23,7 @@
     "test:e2e": "node scripts/e2e-smoke.mjs",
     "test:command-center-baseline": "node --test scripts/e2e/command-center/*.test.mjs scripts/e2e-command-center-curve.test.mjs",
     "test:e2e:command-center-baseline": "node scripts/e2e-command-center-baseline.mjs",
+    "test:e2e:host-data-owner": "node scripts/e2e-host-data-owner.mjs",
     "test:e2e:jev": "node --test apps/desktop/test/jev-api-key-check.test.mjs apps/desktop/test/jev-config.test.mjs apps/desktop/test/jev-settings-user-path.test.mjs apps/desktop/test/jev-service-setup-user-path.test.mjs apps/desktop/test/jev-session-launch.test.mjs && node packages/agent-runtime/node_modules/vitest/vitest.mjs run packages/agent-runtime/src/jev-classifier-tool.test.ts packages/agent-runtime/src/runtime.test.ts -t Jev --config packages/agent-runtime/vitest.config.ts",
     "test:e2e:storage": "node scripts/e2e-storage-settings.mjs && node scripts/e2e-storage-migration.mjs && node scripts/e2e-storage-bootstrap.mjs && node scripts/e2e-storage-directory.mjs && node scripts/e2e-storage-files.mjs && node scripts/e2e-storage-backup-lock.mjs",
     "test:e2e:asktool-card": "node scripts/e2e-asktool-card.mjs",

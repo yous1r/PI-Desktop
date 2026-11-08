@@ -1,0 +1,21 @@
+{
+  "status": "FAIL",
+  "checks": [],
+  "candidate": "9a37c82c06a6ef362c9c52af313cb6dd3b64dccb",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "hostBinarySha256": "104a99fc334c43548cbd384c8b170bb09093de4d8883bb5369e7eacaad93fe4d",
+  "transportSha256": "34caef764bee1873a717e24249781ca4c21e7c218fab43b668c05213b31afd1c",
+  "platform": "win32",
+  "error": "AssertionError [ERR_ASSERTION]: Missing expected rejection.\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async file:///D:/Packages/PI-Desktop/worktrees/command-center-host-ownership/scripts/e2e-host-data-owner.mjs:57:3",
+  "exits": [
+    {
+      "code": 0,
+      "signal": null
+    },
+    {
+      "code": 0,
+      "signal": null
+    }
+  ],
+  "cleanupConfirmed": true
+}

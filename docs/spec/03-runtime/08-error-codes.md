@@ -46,6 +46,7 @@ registered; reserved codes in §3.7 remain intentionally absent from
 |---|---|---|
 | `PROTOCOL_MISMATCH` | no | handshake/protocol version mismatch |
 | `HOST_UNAVAILABLE` | yes | Rust host not running/reachable |
+| `HOST_DATA_DIR_IN_USE` | after owner exit | A cooperating Rust Host already owns this data directory; startup/relocation is refused before recovery or mutation. Close the existing owner; never delete the lock file to force takeover. |
 | `HOST_OVERLOADED` | yes | bounded host RPC/tool capacity is full; retry after backpressure |
 | `AGENT_UNAVAILABLE` | yes | pi sidecar not running/reachable |
 | `APP_DEGRADED` | yes | app running with limited capabilities |

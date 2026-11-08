@@ -22,6 +22,7 @@ Each ADR includes:
 |---|---|---|
 | mode-definitions | [User-definable modes as staged workflows](mode-definitions.md) | Implemented candidate |
 | ai-command-center | [A resource-bounded AI command center with independent execution and multiple clients](ai-command-center.md) | Proposed |
+| host-data-directory-ownership | [Hold data-directory ownership before Host recovery](host-data-directory-ownership.md) | Implemented candidate; full handoff pending |
 | user-mcp-private-ca | [User MCP connections retain endpoint-scoped CA trust](user-mcp-private-ca.md) | Implemented candidate |
 | 0340 | [Native workspace plugin execution](0340-workspace-plugin-execution.md) | Implemented candidate |
 | plugin-effective-permissions-query | [Plugin self-query for effective permission metadata](plugin-effective-permissions-query.md) | Accepted |

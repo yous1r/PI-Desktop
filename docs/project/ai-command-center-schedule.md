@@ -5,6 +5,7 @@
 - Design baseline: local commit `3eaa78fcb32a0e432519f493603fa63874ac7f82`, based on `origin/main` at `fd28eb89866ac513912ed109716e7120cf60f18c`
 - Scope references: [ADR](../adr/ai-command-center.md), [requirements](ai-command-center-requirements.md), [development design](ai-command-center-development-design.md)
 - Current execution: the operator authorized phased implementation. The [initial P0 runtime baseline](ai-command-center-p0-baseline.md) and [1 MiB persistence correction](ai-command-center-1mib-validation.md) are implemented; M0 remains open for full workload/platform qualification and contract review.
+- Remaining execution order and per-step acceptance: [implementation backlog](ai-command-center-remaining-work.md). S03a adds a cooperating Rust Host data-directory lock; complete execution handoff, M0/M1 and dependent product gates remain open.
 
 ## Contents
 

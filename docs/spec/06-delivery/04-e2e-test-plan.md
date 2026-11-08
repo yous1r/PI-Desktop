@@ -10703,6 +10703,7 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 | Quality — Command-center P0 runtime baseline (partial evidence for proposed AC-07) | E2E-COMMAND-CENTER-runtime-baseline |
 | Quality — Command-center one-hour fixed-context diagnostic | E2E-COMMAND-CENTER-runtime-soak |
 | C / Quality — Bounded replay and explicit snapshot recovery | E2E-RACP-replay-byte-budget |
+| C / Security / Compatibility — Exclusive Host data-directory startup | E2E-HOST-data-directory-owner |
 | C / E / Security / Quality — Gemini work setup | E2E-LIVE-VOICE-gemini-work-schema |
 | C / Quality — Continue after malformed tool output | E2E-RUNTIME-malformed-tool-call-continue-recovery |
 | B / Security / Quality — Optional provider client certificate requests | E2E-PROVIDER-optional-client-certificate |
@@ -19694,3 +19695,30 @@ session data is used.
 - **Status:** Automated through `packages/agent-host/src/event-log.test.ts` and
   `packages/racp/src/racp.test.ts`; four new byte/age regressions failed before
   the correction, then passed alongside existing AgentHost/RACP tests.
+
+### E2E-HOST-data-directory-owner
+
+- **Preconditions:** Matching current-source Host binary, installed host toolchain,
+  and explicit `PI_SCRATCH_DIR`; no user profile, paid API or running Desktop.
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-host-data-owner.mjs`
+  (`test:e2e:host-data-owner`).
+- **Steps:** Start one Host and a durable running turn. Attempt a second Host
+  using the same directory and a directory alias. Verify the first turn still
+  settles normally. Start another independent directory. Attempt offline
+  relocation into the live directory and compare synthetic metadata. Close the
+  owner, reopen existing history, force-stop that fixture process, reopen again,
+  then race two startup attempts against the same directory.
+- **Expected:** Exactly one same-directory owner; losing handshake reports
+  `HOST_DATA_DIR_IN_USE` before database recovery. Independent directories work.
+  Refused relocation does not modify metadata. Normal/forced exit releases the
+  OS lock without deleting the lock file. Existing history remains readable and
+  every fixture process closes. Exact boot refusal is distinguished from a
+  post-handshake log line in transport tests.
+- **Specs:** [Process model](../03-runtime/07-process-model.md),
+  [ownership ADR](../../adr/host-data-directory-ownership.md).
+- **Acceptance:** S03 ownership foundation only. Does not qualify orphan
+  sidecar fencing, mixed-version concurrency, network filesystems or full
+  Desktop-to-service handoff.
+- **Status:** Automated. The old binary accepted both same-directory handshakes;
+  the protected Windows candidate passes the seven scenarios. Unix link/FIFO
+  guards and other OS behavior require their platform runners.

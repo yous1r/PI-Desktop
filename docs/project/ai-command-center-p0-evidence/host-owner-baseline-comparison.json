@@ -1,0 +1,36 @@
+{
+  "baselineCommit": "9a37c82c06a6ef362c9c52af313cb6dd3b64dccb",
+  "candidateFullSuite": {
+    "passed": 1079,
+    "failed": 20,
+    "ignored": 1
+  },
+  "baselineSelected": {
+    "passed": 0,
+    "failed": 20
+  },
+  "sameFailureNames": true,
+  "failures": [
+    "data_relocation::tests::refuses_colliding_project_capability_keys_without_losing_an_override",
+    "data_relocation::tests::project_capability_overrides_follow_the_moved_project_without_changing_globals",
+    "data_relocation::tests::handles_legacy_schema_without_upgrading_or_creating_missing_tables",
+    "rpc::worktree_rpc::tests::sync_from_project_through_rpc",
+    "rpc::worktree_rpc::tests::isolated_session_user_path_from_create_to_delete",
+    "session_worktrees::delegate::tests::a_conflict_is_kept_for_the_subagent_and_merges_after_resolution",
+    "session_worktrees::delegate::tests::parallel_subagents_merge_back_into_the_session",
+    "session_worktrees::lifecycle::tests::syncing_brings_another_sessions_resolution_into_the_session",
+    "session_worktrees::lifecycle::tests::the_conflict_badge_clears_when_the_conflict_is_resolved",
+    "session_worktrees::lifecycle::tests::uncommitted_project_changes_are_not_carried_over",
+    "session_worktrees::merge::tests::a_tag_named_like_the_owner_branch_is_ignored",
+    "session_worktrees::merge::tests::attribute_driven_conflicts_need_an_explicit_add",
+    "session_worktrees::merge::tests::conflicts_stay_in_the_worktree_and_resolve_on_retry",
+    "session_worktrees::merge::tests::preview_then_merge_lands_session_commits_and_uncommitted_work",
+    "tools::windows_process_tree::tests::children_are_terminated_before_their_parents",
+    "session_worktrees::merge::tests::dirty_project_files_refuse_the_merge_without_changes",
+    "rpc::remote_tools::tests::denied_remote_write_and_cancelled_read_never_run_locally",
+    "rpc::remote_tools::tests::remote_read_dispatch_is_local_approval_then_relay_never_local_runner",
+    "rpc::worktree_rpc::tests::a_path_beyond_260_characters_is_created_and_removed",
+    "background_tasks::windows_tests::stop_terminates_the_command_the_runner_launched"
+  ],
+  "limitation": "These existing baseline failures remain unresolved; full Rust suite is not green."
+}

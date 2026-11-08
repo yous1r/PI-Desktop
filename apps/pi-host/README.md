@@ -4,6 +4,15 @@
 host-core. Only Rust owns SQLite and provider persistence. RACP binds loopback;
 SSH supplies the network boundary. No internal host-core RPC is exposed.
 
+Updated Rust Host binaries hold `host-core.lock` in their data directory before
+opening or recovering the database. A second cooperating owner exits with
+`HOST_DATA_DIR_IN_USE`; close the existing owner before retrying. Never delete
+the lock file to force takeover: process exit releases the OS lock, and a leftover
+file does not mean the directory is occupied. Offline relocation also requires
+an unowned destination. Stop older binaries that do not implement this guard
+before starting the updated build. This guard is not a Desktop/service handoff
+protocol and does not prove an orphan sidecar has stopped.
+
 ## Try the desktop workflow
 
 Use a Desktop and Host bundle built from the same candidate.

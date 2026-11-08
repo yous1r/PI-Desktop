@@ -7,6 +7,7 @@
 - AI command center implementation: [P0 runtime baseline and Host gaps](ai-command-center-p0-baseline.md) · [1 MiB reliability validation](ai-command-center-1mib-validation.md) (bounded writes, durable completion, 12/36-session and restart evidence; full M0 remains open).
 - AI command center P0 preparation: [Control contracts](ai-command-center-control-contracts.md) · [Host capability parity and handoff inventory](ai-command-center-host-parity.md).
 - AI command center long-run evidence: [One-hour soak and follow-up progress](ai-command-center-soak-report.md) (59 rounds, 2,124 verified turns; 1.331 GB sampled peak, explicit coverage limitations).
+- AI command center execution backlog: [Remaining steps and acceptance](ai-command-center-remaining-work.md) (S03 data-directory ownership foundation; full handoff and dependent features remain pending).
 
 - Historical project board (archived; last refreshed 2026-08-11 for the 0.5.x line): [`BOARD.md`](BOARD.md)
 - Documentation/code alignment audit: [2026-07-30 audit](2026-07-30-docs-code-audit.md)

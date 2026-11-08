@@ -4,6 +4,7 @@ mod artifacts;
 mod audit;
 mod background_tasks;
 mod config_sync;
+mod data_directory_owner;
 mod data_relocation;
 mod db;
 mod keyboard;
@@ -48,8 +49,19 @@ use crate::state::AppState;
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
+    // Locals drop in reverse order: Tokio must stop every background/blocking
+    // task before the data-directory ownership handle can be released.
+    let mut data_owner = None;
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    runtime.block_on(run(&mut data_owner))
+}
+
+async fn run(
+    data_owner: &mut Option<data_directory_owner::DataDirectoryOwner>,
+) -> anyhow::Result<()> {
     if data_relocation::run_cli()? {
         return Ok(());
     }
@@ -80,6 +92,11 @@ async fn main() -> anyhow::Result<()> {
         });
 
     std::fs::create_dir_all(&data_dir)?;
+    // Hold through shutdown: a losing startup must not migrate or recover a
+    // database that still belongs to another Desktop/headless Host.
+    *data_owner = Some(data_directory_owner::DataDirectoryOwner::acquire(
+        &data_dir,
+    )?);
     std::fs::create_dir_all(data_dir.join("logs"))?;
     std::fs::create_dir_all(data_dir.join("plugins/installed"))?;
     std::fs::create_dir_all(data_dir.join("plugins/data"))?;
