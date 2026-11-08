@@ -1,0 +1,20 @@
+✔ all MCP work entries refuse a closed application gate before creating clients (2.2094ms)
+✔ OAuth setup stays counted and cannot create a client after gate closure (0.7177ms)
+✔ retired handshake remains busy after invalidation and disposal until its original result (0.843ms)
+✔ cancel and close do not erase an unsettled tool call or prove native closure (0.7869ms)
+✔ status probe survives cache removal in the activity inventory (0.6279ms)
+✔ parallel discovery keeps ownership until every admitted setup settles (0.5636ms)
+✔ connection failure, replacement and record deletion retain unqualified resources (0.4391ms)
+✔ configured but never initialized MCP records do not invent live resources (0.2285ms)
+✔ tool setup cannot dispatch through a client retired during its await (0.3513ms)
+✔ record removal during OAuth cannot resurrect a client (0.2975ms)
+✔ real stdio discovery and call block handoff, and child exit does not erase unqualified ownership (118.4234ms)
+✔ gate closure during a pinned recovery handshake prevents the tool invocation (0.5511ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1192.8294

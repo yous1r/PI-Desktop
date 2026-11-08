@@ -1,0 +1,22 @@
+{
+  "candidate": "91391c342097ba328bbea6ea4b43041db4de3de6",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "nodeVersion": "v24.12.0",
+  "platform": "win32",
+  "args": [
+    "--test",
+    "--test-timeout=15000",
+    "apps/desktop/test/handoff-user-mcp.test.mjs"
+  ],
+  "scope": "User MCP service, shared application gate and one isolated stdio child; not complete Desktop transfer or native-family containment qualification",
+  "exitCode": 0,
+  "tests": 12,
+  "status": "PASS",
+  "fixtureChildCloseObserved": true,
+  "qualifiedNativeFamilyClosure": false,
+  "logSha256": "77e62ecfe0e28c28ec3a0e4395bd8a4d338279d643e21376af97b52dbc3487c6",
+  "testSha256": "3110883421f0f96f79ea50893269ea5bf81bc56dab4ece543d97f8e4075e1364",
+  "implementationSha256": "500e1c908658add0b517dd59adaf68dfbbddab60fa7308c3c8a7db3b8613684f",
+  "endedClean": true
+}

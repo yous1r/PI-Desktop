@@ -825,3 +825,46 @@ or competing writer; deterministic service tests establish the failure mechanism
 while this ready-owner process run establishes compatibility. Full H1 acceptance
 still requires actual resource inventory, coordinator/source transport and native
 integration. No live Desktop/provider or minimum-hardware qualification ran.
+
+### H1 user MCP resource activity checkpoint
+
+Implementation and clean candidate:
+`91391c342097ba328bbea6ea4b43041db4de3de6`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`.
+
+User MCP discovery, connection tests, tool calls and status probes share the
+Desktop gate. Counts survive OAuth/handshake waits, invalidation, cancellation,
+parallel setup failure and disposal until original operations finish. Delayed
+setup checks current records and admission; tool dispatch checks the exact cached
+client identity. A saturated scalar retains unqualified client-construction
+evidence without retaining retired client objects. Ordinary close and timeout
+cannot turn those resources into idle proof. Disabled, never initialized records
+do not invent live resources. Complete Desktop inventory composition is pending.
+
+- A valid closed-gate baseline admitted work, and a separate valid retired-client
+  regression dispatched after invalidation; both are corrected. Initial loader
+  failures are environment errors, not regression evidence. Initial activity
+  tests also confirmed the new inventory API was absent.
+- Final combined regression: 115 passed, zero failed/skipped/cancelled, across
+  ten files. This covers 12 handoff cases, existing local stdio/HTTP MCP behavior,
+  OAuth/certificates, composer discovery, install refresh, cancellation,
+  session-launch binding, Main wiring and confirmed shutdown.
+- Full Desktop source typecheck, Biome (236 files), architecture (Main stays
+  1115 lines), script syntax, policy sync, main ancestry and documentation
+  links (631 pages) passed.
+- Clean-candidate run: all 12 handoff cases passed on Windows/Node 24.12.0,
+  including the actual stdio tool path and shared admission refusal. The
+  original fixture child emitted `close`, its temporary directory was removed,
+  and the worktree remained clean. This observation does not qualify arbitrary
+  MCP process-family closure; refusal evidence deliberately remains.
+
+Evidence: [candidate report](ai-command-center-p0-evidence/user-mcp-handoff-after.json),
+[candidate output](ai-command-center-p0-evidence/user-mcp-handoff-candidate.log),
+[combined regressions](ai-command-center-p0-evidence/user-mcp-handoff-regressions.log),
+and [retired-client failure](ai-command-center-p0-evidence/user-mcp-handoff-retired-before.log).
+No full Electron transfer, live provider, external MCP service, full Rust suite
+or minimum-hardware qualification ran. The older Composer MCP process script
+received the required fixture admission dependency and syntax validation; it
+was not used as acceptance because its separate dist/provider fixture is outside
+this resource-owner slice. Next: remaining actual H1 resource owners and the
+coordinator/native/source-status composition, followed by H2-H5 integration.
