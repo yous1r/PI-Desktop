@@ -1,0 +1,51 @@
+
+running 46 tests
+test execution_fence::windows::tests::ticket_is_strict_and_preserves_native_creation_time ... ok
+test execution_fence::windows::tests::native_job_and_coordinator_have_explicit_live_identity ... ok
+test owner_handoff::tests::journal_duplicate_fingerprint_revision_principal_and_phase_conflicts_do_not_mutate ... ok
+test owner_handoff::tests::journal_missing_generation_and_invalid_records_refuse_without_partial_receipt ... ok
+test owner_handoff::tests::journal_failure_stays_blocked_and_explicit_recovery_rotates_target ... ok
+test owner_handoff::tests::journal_shared_wire_fixture_preserves_native_identity_and_bootstrap_commands ... ok
+test owner_handoff::tests::journal_generic_advance_cannot_claim_without_target_identity ... ok
+test owner_handoff::tests::native_recovery_refuses_live_and_reused_process_identity ... ok
+test owner_handoff::tests::journal_cancel_and_fence_cas_have_one_winner_across_connections ... ok
+test owner_handoff::tests::recovery::native_recovery_confirms_exited_process_with_original_handle_retained ... ok
+test execution_fence::windows::tests::pending_registration_is_not_confirmed_until_cancelled ... ok
+test owner_handoff::tests::recovery::atomic_claim_rollback_retains_source_and_success_registers_target_with_receipt ... ok
+test owner_handoff::tests::journal_pending_root_cannot_bind_after_transfer_or_owner_retirement ... ok
+test owner_handoff::tests::recovery::restricted_failed_native_proof_build_capability_and_identity_checks_leave_journal_unchanged ... ok
+test owner_handoff::tests::journal_user_path_reopens_every_phase_and_returns_original_receipt ... ok
+test owner_handoff::tests::recovery::restricted_recovery_claim_restart_and_rotation_never_recover_turns_or_replay ... ok
+test owner_handoff::tests::recovery::restricted_recovery_requires_prior_target_proof_before_any_retirement ... ok
+test owner_handoff::tests::recovery::two_claimants_have_one_atomic_owner_and_keep_both_request_identities_distinct ... ok
+test owner_handoff::tests::startup_requires_native_proof_even_without_transfer_and_preserves_failure ... ok
+test owner_handoff::tests::startup_refuses_every_unfinished_phase_before_recovery_or_owner_mutation ... ok
+test owner_handoff::tests::startup_rejects_unknown_downgraded_and_corrupted_metadata_without_writes ... ok
+test plans::contention_tests::lazy_expiry_waits_for_writer_and_audits_once ... ok
+test plans::contention_tests::approval_observes_expiry_committed_by_the_competing_writer ... ok
+test plans::contention_tests::approval_waits_for_writer_after_expiry ... ok
+test plans::contention_tests::approval_waits_for_writer_before_expiry ... ok
+test plans::tests::approval_deadline_expires_lazily_and_rejects_late_resolution ... ok
+test plans::tests::approval_switches_session_and_creates_outbox_atomically ... ok
+test plans::contention_tests::unreleased_writer_leaves_approval_and_session_unchanged ... ok
+test plans::tests::claim_and_finish_are_durable_cas_transitions ... ok
+test plans::tests::configure_gate_blocks_changes_while_a_turn_is_running ... ok
+test plans::tests::configure_gate_blocks_pending_and_active_execution_changes ... ok
+test plans::tests::duplicate_resolution_returns_committed_result_and_conflict_is_stale ... ok
+test plans::tests::enter_plan_mode_rejects_a_stale_turn_without_a_mode_write ... ok
+test plans::tests::every_kind_publishes_into_its_own_artifact_directory ... ok
+test plans::tests::enter_plan_mode_uses_the_active_turn_and_tool_identity ... ok
+test plans::tests::entering_goal_mode_writes_the_goal_mode_and_kind ... ok
+test plans::tests::oversized_markdown_is_rejected_before_artifact_creation ... ok
+test plans::tests::goal_contract_round_trips_through_its_own_kind ... ok
+test plans::tests::pending_rows_are_interrupted_during_database_restart ... ok
+test plans::tests::history::plan_history_returns_authoritative_approved_snapshot_without_rewriting_transcript ... ok
+test plans::tests::title_slug_and_filename_are_descriptive_and_local_minute_shaped ... ok
+test plans::tests::history::plan_history_is_page_scoped_survives_reopen_and_retains_superseded_versions ... ok
+test plans::tests::publication_collides_without_overwriting ... ok
+test plans::tests::reject_has_no_side_effects_and_allows_new_turn_submission ... ok
+test plans::tests::submitting_the_other_contract_kind_is_rejected ... ok
+test owner_handoff::tests::journal_registration_is_unique_bounded_and_keeps_prior_generations ... ok
+
+test result: ok. 46 passed; 0 failed; 0 ignored; 0 measured; 1096 filtered out; finished in 0.85s
+

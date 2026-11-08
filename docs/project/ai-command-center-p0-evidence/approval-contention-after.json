@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "candidate": "0e44d092e8d9c5a30e4f680ed863572297cae6f9",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "binarySha256": "2736fc03e23862cbeac334e35aa5bf5c4793dd743a1d2da5df12ceaffd33d036",
+  "scriptSha256": "609bbacd7eee60b0c5c053c3eba29d5de7d788c85cdc9edc30a58592f58d8809",
+  "cleanupConfirmed": true,
+  "scope": "Desktop plan runtime and launch resolver with real Rust RPC and a contained deterministic sidecar; not complete Desktop ownership transfer",
+  "inputs": 3232,
+  "inputsSha256": "19b9af6830506cd7a7b926ad8dea440902c427da1004c26609e1b011bdf9b9aa",
+  "bundleSha256": "42cdf42b2a3864dfd8ecca99fcdb9914f30317e1302dbda5daa6e6790def6400",
+  "checks": [
+    "closed admission leaves the approved durable execution queued and sends no sidecar request",
+    "real Rust claim, production launch resolution, one contained sidecar dispatch and acknowledged turn/execution finalization",
+    "gate closure after durable beginTurn closes the original turn and execution without a second sidecar launch",
+    "independent Host reopen retains completed/interrupted outcomes and exact approved artifact bytes; no execution replay"
+  ],
+  "isolatedExtensionRegistries": true,
+  "nativeRegistrationReady": true,
+  "outcomes": [
+    {
+      "executionId": "e148d0e2-cc15-40b7-ab9d-59f06fb9a9e6",
+      "state": "completed"
+    },
+    {
+      "executionId": "9176742c-f0ed-4b76-9440-64356681cb37",
+      "state": "interrupted"
+    }
+  ],
+  "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\desktop-plan-FLdqbM\\report.json"
+}

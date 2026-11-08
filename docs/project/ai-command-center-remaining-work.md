@@ -784,5 +784,44 @@ architecture check, agent-policy check, main-ancestry check and documentation
 link check (631 pages) passed. The locale check still reports the existing
 Chinese source-notice mismatches for runtime error codes and the E2E plan.
 No live Desktop probe, external provider, new full Rust suite or minimum-hardware
-qualification was run. H1 remains open, including the observed pre-readiness
-SQLite contention investigation and complete resource/native integration.
+qualification was run for this candidate. The subsequent SQLite correction is
+recorded below; complete H1 resource/native integration remains open.
+
+### SQLite approval contention correction
+
+Implementation and clean process candidate:
+`0e44d092e8d9c5a30e4f680ed863572297cae6f9`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`.
+
+Two real WAL connections reproduced immediate `SQLITE_BUSY` in lazy expiry and
+the approval transaction after expiry committed. Both read before upgrading a
+deferred transaction. They now acquire an immediate transaction first, then
+evaluate the current deadline. The existing busy budget, approval CAS, immutable
+artifact validation, permission choice, audit atomicity and duplicate-result
+semantics remain; no mutation retry or timeout increase was added.
+
+- Three valid contention regressions failed on the previous production source.
+  A fourth baseline failure was a fixture assertion that expected `ask` instead
+  of the existing `inherit` default; it is retained but is not product evidence.
+- Final Rust selection: 24 Plan/Goal tests (five new contention cases), plus 22
+  ownership-journal/recovery tests, all passing. The selection is not a full
+  Rust-suite result. Format, strict all-target Clippy, production build, policy
+  sync, main ancestry and the 631-page documentation check passed.
+- Clean `desktop-plan-FLdqbM`: four process checks passed, isolated extension
+  registries and native readiness confirmed, all owned processes confirmed
+  closed. Independent reopen preserved completed/interrupted execution outcomes.
+- Native binary SHA-256:
+  `2736fc03e23862cbeac334e35aa5bf5c4793dd743a1d2da5df12ceaffd33d036`.
+  The 219 Rust/build input hashes were unchanged across build and acceptance.
+  The Node bundle/input manifest matches the prior accepted plan fixture.
+
+Evidence: [verification and hashes](ai-command-center-p0-evidence/approval-contention-verification.json),
+[clean process report](ai-command-center-p0-evidence/approval-contention-after.json),
+[Rust inputs](ai-command-center-p0-evidence/approval-contention-rust-inputs.json),
+[baseline failures](ai-command-center-p0-evidence/approval-contention-before.log),
+and [final regressions](ai-command-center-p0-evidence/approval-contention-tests.log).
+The earlier pre-readiness process failure did not capture the exact failing RPC
+or competing writer; deterministic service tests establish the failure mechanism,
+while this ready-owner process run establishes compatibility. Full H1 acceptance
+still requires actual resource inventory, coordinator/source transport and native
+integration. No live Desktop/provider or minimum-hardware qualification ran.

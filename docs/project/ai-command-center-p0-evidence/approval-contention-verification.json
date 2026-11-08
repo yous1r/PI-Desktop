@@ -1,0 +1,55 @@
+{
+  "candidate": "0e44d092e8d9c5a30e4f680ed863572297cae6f9",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "binarySha256": "2736fc03e23862cbeac334e35aa5bf5c4793dd743a1d2da5df12ceaffd33d036",
+  "baselineProductionCommit": "12c4dcf72e66bfa59119b97d39a71ff0210b757d",
+  "baseline": {
+    "validBusyRegressions": 3,
+    "fixtureAssertionErrors": 1,
+    "note": "The fourth baseline failure expected ask instead of the existing inherit default; it is not a product regression. The fixture now compares the original session state."
+  },
+  "verification": {
+    "plans": 24,
+    "ownerHandoff": 22,
+    "failed": 0,
+    "ignored": 0,
+    "processChecks": 4,
+    "cleanupConfirmed": true,
+    "fmt": "PASS",
+    "strictClippy": "PASS",
+    "productionBuild": "PASS",
+    "docs": "PASS (631 pages)",
+    "policySync": "PASS",
+    "baseAncestry": "PASS"
+  },
+  "scope": "Deterministic competing WAL connections prove both deferred read-to-write failure paths through the real PlanManager. The ready-owner process path confirms compatible dispatch, settlement and reopen. The earlier process failure did not capture the exact competing writer or failing RPC.",
+  "limitations": [
+    "Not full H1 or Desktop ownership-transfer acceptance",
+    "No new full Rust suite, live Desktop/provider, or minimum-hardware run",
+    "The historical locale check has two existing Chinese source-notice mismatches"
+  ],
+  "reusedBundleInputs": "desktop-plan-build-inputs.json",
+  "rustInputsSha256": "6f021fd1fb118650bd6f5db69842045dd70505f56678e2b2950339b37278ee52",
+  "artifacts": [
+    {
+      "name": "approval-contention-after.json",
+      "bytes": 1615,
+      "sha256": "0bddb5acbeec32c7f271cc0dffd824745dd00bcefaf9460350bcc88a1fce320f"
+    },
+    {
+      "name": "approval-contention-rust-inputs.json",
+      "bytes": 39341,
+      "sha256": "8de46da0884e4e722afdd246a4fd462badf73073f405eb40bd357a322f42e7ae"
+    },
+    {
+      "name": "approval-contention-before.log",
+      "bytes": 1882,
+      "sha256": "86368bb3b6bcaed32a994fc97e5a9071885abbbcf6780b09f14c3004e7011a5f"
+    },
+    {
+      "name": "approval-contention-tests.log",
+      "bytes": 4513,
+      "sha256": "0c5ccd1c247b6a22c166f03b84dc08e0696afbe1de3fabd9f194db257aee0ada"
+    }
+  ]
+}

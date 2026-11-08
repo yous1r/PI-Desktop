@@ -1,0 +1,41 @@
+
+running 4 tests
+
+thread 'plans::contention_tests::unreleased_writer_leaves_approval_and_session_unchanged' (15572) panicked at crates\host-core\src\plans\contention_tests.rs:274:9:
+assertion `left == right` failed
+  left: "inherit"
+ right: "ask"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+thread 'plans::contention_tests::approval_waits_for_writer_before_expiry' (4300) panicked at crates\host-core\src\plans\contention_tests.rs:189:33:
+called `Result::unwrap()` on an `Err` value: database is locked
+
+Caused by:
+    Error code 5: database is locked
+
+thread 'plans::contention_tests::lazy_expiry_waits_for_writer_and_audits_once' (10684) panicked at crates\host-core\src\plans\contention_tests.rs:234:20:
+called `Result::unwrap()` on an `Err` value: database is locked
+
+Caused by:
+    Error code 5: database is locked
+
+thread 'plans::contention_tests::approval_waits_for_writer_after_expiry' (16656) panicked at crates\host-core\src\plans\contention_tests.rs:189:33:
+called `Result::unwrap()` on an `Err` value: database is locked
+
+Caused by:
+    Error code 5: database is locked
+test plans::contention_tests::unreleased_writer_leaves_approval_and_session_unchanged ... FAILED
+test plans::contention_tests::lazy_expiry_waits_for_writer_and_audits_once ... FAILED
+test plans::contention_tests::approval_waits_for_writer_before_expiry ... FAILED
+test plans::contention_tests::approval_waits_for_writer_after_expiry ... FAILED
+
+failures:
+
+failures:
+    plans::contention_tests::approval_waits_for_writer_after_expiry
+    plans::contention_tests::approval_waits_for_writer_before_expiry
+    plans::contention_tests::lazy_expiry_waits_for_writer_and_audits_once
+    plans::contention_tests::unreleased_writer_leaves_approval_and_session_unchanged
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 1137 filtered out; finished in 0.08s
+
