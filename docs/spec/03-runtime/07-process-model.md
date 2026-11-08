@@ -687,6 +687,15 @@ single-use authorized retirement path can run through closed admission, with
 current grants, mode restrictions and descendant cancellation preserved. See the
 [owner activity contract](../07-plugins/17-owned-extension-services.md#idle-handoff-and-original-owner-activity).
 
+Trusted-extension workspace process routers also share this admission and capture
+the original local Host and remote connection generations. Pending lookup, start,
+read/write, periodic validation and cleanup remain owned after cancellation and
+logical removal. The 64-handle limit includes retired unfinished work. Sidecar
+disposal, original exit and explicit Host rebind retire the appropriate router or
+handles; retained activity survives router replacement. Session cleanup captures
+its original handles. Remote cleanup ACKs leave native-family uncertainty intact.
+See [workspace process ownership](../07-plugins/18-workspace-execution.md#trusted-extension-process-handoff-ownership).
+
 This composition does not enable a transfer request. Complete owner inventory,
 bounded source journal transport, native/coordinator integration and target
 readiness remain separate H1-H5 acceptance work.

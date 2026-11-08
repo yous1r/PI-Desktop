@@ -175,6 +175,36 @@ session's remote workspace. `target:"local"` and legacy explicit absolute outsid
 helper cwd remain local; `target:"workspace"` forces workspace enforcement. Raw Node
 fs in an Agent extension remains local and is not intercepted.
 
+### Trusted extension process handoff ownership
+
+Desktop routes trusted-extension workspace processes through the application-owned
+handoff admission gate. Ordinary start/read/write/end operations capture the local
+Host object and generation, sidecar, workspace identity, and original remote client
+and connection generation. Resolution checks the original caller after each Host
+RPC and immediately before dispatch or publication. Replacement never replays a
+command or silently adopts another connection. An ordinary Host restart explicitly
+rebinds future starts and retires old handles; a matching Host/generation is a no-op.
+
+The 64-handle limit includes startup, retained original operations and cleanup,
+even after a handle is closed. Concurrent close requests join one original close.
+If a start is still awaiting its remote response, cleanup waits for that response
+before closing the original handle. Startup and cleanup acknowledgements must
+identify the requested process or return `ok: true`, respectively. Cleanup failure
+is reported once and does not erase unqualified native-resource evidence.
+
+Original cancel/close remains available while admission is closed or the local
+owner has retired. Temporary admission closure suspends idle validation and
+refuses new work without closing a valid active process. Disablement, workspace
+rebinding, actual owner invalidation and shutdown still retire it. Session disposal
+captures its original handles, so a late cleanup cannot close a subsequent start.
+
+Desktop sidecar disposal and original process exit both seal the process router.
+Replaced routers remain in the sidecar's activity view until their original work
+settles; settled retired native uncertainty compacts to a saturating scalar.
+Missing or invalid configured activity fails closed. Neither a remote cleanup ACK,
+logical handle removal nor the original sidecar root's exit proves native-family
+closure. This activity surface is one input to the still-incomplete H1 inventory.
+
 ## Files, resources and localhost
 
 SDK reads/writes resolve on the admitted host with credential/protected-root checks,

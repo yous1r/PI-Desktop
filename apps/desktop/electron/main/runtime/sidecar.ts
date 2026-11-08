@@ -375,6 +375,9 @@ export function createSidecarRuntime({
     return boot.workspaceClient(hostKey);
   };
   const extensionProcesses = new ExtensionWorkspaceProcesses({
+    isAdmissionClosed: () => runtimeState.handoffAdmission.isClosed(),
+    getHost: () => runtimeState.host,
+    onCleanupError: () => logger.app("runtime", "warn", "Extension process cleanup could not be confirmed; idle handoff remains unavailable"),
     current: () => runtimeState.sidecar === s,
     client: processClient,
     resolve: createWorkspaceExecutionResolver({getHost:()=>runtimeState.host,currentWorkspacePath:()=>null,
@@ -385,7 +388,7 @@ export function createSidecarRuntime({
       return Boolean(extension && pluginActiveInProject(extension.pluginId,projectPath));
     },
   });
-  s.onExit(() => extensionProcesses.dispose());
+  s.setExtensionWorkspaceProcesses(extensionProcesses);
   // The directory a session's file tools work in: its isolated worktree
   // (ADR 0329), resolved by host-core from its own registry, or its project.
   const sessionFileRoot = async (sessionId: string): Promise<string | null> => {

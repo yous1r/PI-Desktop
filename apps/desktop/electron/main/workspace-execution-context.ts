@@ -31,12 +31,14 @@ export function createWorkspaceExecutionResolver(deps: {
   const samePath = (left: string, right: string) => sameWorkspacePath(left, right, deps.platform);
   // A caller may capture its transport identity while preserving this resolver's
   // workspace revision history. The override is process-local, never wire input.
-  return async (input: WorkspaceInvocationOwner = {}, remoteState = deps.remoteState): Promise<WorkspaceExecutionContext | null> => {
+  return async (input: WorkspaceInvocationOwner = {}, remoteState = deps.remoteState, assertCurrent: () => void = () => {}): Promise<WorkspaceExecutionContext | null> => {
+    assertCurrent();
     const host = deps.getHost();
     if (!host) throw fail("HOST_UNAVAILABLE", "Workspace owner is unavailable");
     if (host !== previousHost) { revisions.clear(); previousHost = host; }
     const pinned = input.context;
     const { groups } = await host.call<{ groups: ProjectGroupRecord[] }>("project.groups.list");
+    assertCurrent();
     if (deps.getHost() !== host) throw fail("HOST_UNAVAILABLE", "Workspace owner was replaced");
     const pinnedGroup = pinned ? groups.find(item => item.id === pinned.projectId) : undefined;
     if (pinned && !pinnedGroup && !pinned.projectId.startsWith("local:")) {
@@ -45,6 +47,7 @@ export function createWorkspaceExecutionResolver(deps: {
     let workspacePath: string | undefined;
     if (input.sessionId) {
       const { session } = await host.call<{ session?: { projectPath?: string } }>("session.get", { id: input.sessionId, messageLimit: 1 });
+      assertCurrent();
       if (!session) throw fail("NOT_FOUND", "The originating session is unavailable");
       workspacePath = session.projectPath;
       if (input.workspacePath && (!workspacePath || !samePath(input.workspacePath, workspacePath))) throw fail("WORKSPACE_CHANGED", "The originating workspace has changed");
@@ -54,6 +57,7 @@ export function createWorkspaceExecutionResolver(deps: {
       workspacePath = deps.currentWorkspacePath() ?? undefined;
       if (input.workspacePath && (!workspacePath || !samePath(input.workspacePath, workspacePath))) throw fail("WORKSPACE_CHANGED", "The selected workspace has changed");
     }
+    assertCurrent();
     if (deps.getHost() !== host) throw fail("HOST_UNAVAILABLE", "Workspace owner was replaced");
     if (!workspacePath) return null;
     const group = groups.find(item => samePath(item.primaryPath, workspacePath!) || item.roots.some(root => samePath(root.path, workspacePath!)));
@@ -66,9 +70,11 @@ export function createWorkspaceExecutionResolver(deps: {
     if (remote) {
       if (!remote.hostKey || !posix.isAbsolute(remote.path) || /[\u0000-\u001f]/.test(remote.path)) throw fail("INVALID_WORKSPACE_CONTEXT", "Remote workspace binding is invalid");
       const state = await remoteState(remote.hostKey);
+      assertCurrent();
       if (deps.getHost() !== host) throw fail("HOST_UNAVAILABLE", "Workspace owner was replaced");
       if (!state.connected) throw fail("HOST_UNAVAILABLE", "Remote workspace is disconnected");
       const current = await host.call<{ groups: ProjectGroupRecord[] }>("project.groups.list");
+      assertCurrent();
       const rebound = current.groups.find(item => item.id === group!.id)?.remote;
       if (deps.getHost() !== host) throw fail("HOST_UNAVAILABLE", "Workspace owner was replaced");
       if (!rebound || rebound.hostKey !== remote.hostKey || rebound.path !== remote.path) {
@@ -76,6 +82,7 @@ export function createWorkspaceExecutionResolver(deps: {
       }
       if (input.sessionId) {
         const latest = await host.call<{ session?: { projectPath?: string } }>("session.get", { id: input.sessionId, messageLimit: 1 });
+        assertCurrent();
         if (deps.getHost() !== host) throw fail("HOST_UNAVAILABLE", "Workspace owner was replaced");
         if (latest.session?.projectPath !== workspacePath) throw fail("WORKSPACE_CHANGED", "The originating session workspace changed");
       } else if (!pinned && deps.currentWorkspacePath() !== workspacePath) {

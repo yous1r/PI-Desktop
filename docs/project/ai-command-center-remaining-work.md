@@ -1432,3 +1432,45 @@ is 368096 bytes, SHA-256
 It preserves fifteen exact raw artifacts and the source manifest. Owner-call
 activity and ordinary Host restart continuation are now accepted together;
 remaining trusted-extension and external-resource integration continues.
+
+### H1 trusted-extension workspace process ownership
+
+The process router now requires the shared admission gate, an original local Host
+binding and an observable cleanup reporter. Start/read/write/end and idle checks
+retain original operations through cancellation, owner invalidation and cleanup.
+Workspace resolution checks the captured caller after every Host await, pins the
+remote client before later queries, and preserves resolver revision history.
+No command or input is replayed on another Host or connection.
+
+The 64-handle bound and duplicate IDs include retired work. Exact close requests
+join before invoking the transport, and a pending startup settles before the
+original close is sent. Cleanup acknowledgement is validated; failure remains
+observable. Temporary holds preserve valid active processes and suspend polling.
+Original cleanup remains available through closure; the saturating native-attempt
+evidence survives successful ACKs, logical removal and ordinary root exit.
+
+`SidecarWorkspaceProcesses` retains replaced routers and compacts only settled
+retired uncertainty. Actual Desktop sidecar disposal/exit seals the router,
+session disposal captures its original handles, and explicit Host rebind retires
+old handles while admitting future starts. This corrects the former exit-listener
+only cleanup, which did not run during deliberate shared-sidecar disposal.
+
+Thirty new focused cases cover the ownership and lifecycle paths. The initial
+twenty-case baseline had nineteen behavioral failures and one missing activity
+API; seven subsequent lifecycle cases first exposed missing interfaces. One
+capacity fixture reply omitted the required process ID and was corrected without
+relaxing the protocol. Baseline teardown produced late assertion rejections after
+expected early failures; final fixtures observe those assertions and all final
+tests finish without unhandled activity. A temporary edit-range mistake was
+corrected before execution and is not a behavioral result.
+
+The related eight-file selection passed 118 tests, with zero failures, cancellations
+or skips. The final 33-case focused selection also passed the enhanced real
+extension command path: closed shared admission refuses before startup, cancelling
+the fixture hold permits literal-argv execution, original output/exit completes,
+and retained native uncertainty still refuses handoff. Six actual sidecar children
+exit with empty stderr; these are not native-family certificates. Full Desktop
+source types and Biome 313 files pass. Clean-candidate acceptance follows the local
+implementation commit; no Rust build/full suite or live Desktop/SSH/provider test
+is required for this slice. Other trusted-extension, MCP/OAuth, voice and remote
+owners, the 19-family H1 composition and H2-H5 remain open.

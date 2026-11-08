@@ -20238,3 +20238,38 @@ session data is used.
   new generation. A matching binding is a no-op; closed admission refuses a new
   binding. Sessions without owner extensions keep their launch. The lifecycle
   suite also verifies sidecar reuse, locale restoration and plan-drain order.
+
+### E2E-HANDOFF-extension-workspace-processes
+
+Use current-source imports, isolated temporary state, deterministic Host/client
+boundaries and the actual Desktop sidecar and extension runtime. No stored SSH
+Host, live provider/profile or paid API is part of this fixture.
+
+1. Hold the shared Desktop handoff admission before running an extension command.
+   Its workspace `pi.exec` fails with `HOST_BUSY` before any process start.
+   Cancel the fixture hold; the same command reaches `WorkspaceProcessService`
+   with literal argv and the exact workspace cwd. An explicit local helper keeps
+   its local cwd. Verify complete output, successful original exits and no retained
+   logical service handles. The recorded native attempt still refuses handoff.
+2. Pause original workspace/Host lookup, remote start or read/write; close admission,
+   replace the local Host/generation, disconnect or replace the remote client.
+   No stale continuation launches, publishes or borrows a replacement. A captured
+   remote connection remains pinned through subsequent Host queries.
+3. Temporary holds skip periodic validation and preserve valid processes, including
+   validation already in flight. Disablement and actual invalidation still close.
+   Original cancel/close is available after admission closure and owner retirement.
+4. Close 64 handles while their original reads remain pending. Duplicate IDs and
+   the 65th start stay refused until settlement. Coalesce concurrent/reentrant
+   cleanup. A late accepted startup is closed after its original response, and
+   malformed acknowledgements or cleanup failure never become silent success.
+5. Dispose or exit the actual original sidecar, replace its process router, dispose
+   a session, and explicitly rebind its Host. Retired work remains visible; a
+   session's saved cleanup cannot close a subsequent start. Matching Host bindings
+   remain usable, and closed admission refuses new rebinding. Invalid activity
+   reports refuse handoff. Confirm original fixture child exits and empty stderr.
+
+Evidence: `handoff-extension-processes.test.mjs` (30 focused cases),
+`extension-workspace-processes.test.mjs` (three compatibility/user paths), and
+related workspace resolver, terminal, owner-extension and restart suites.
+Remote RPC uses a local service fixture; original process exits and cleanup ACKs
+do not certify native-family closure or complete H1/H2-H5 transfer.

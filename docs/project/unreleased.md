@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Bind trusted-extension workspace processes to shared handoff admission and their
+  original Host/connection. Retired operations keep their process slots, concurrent
+  cleanup joins, and delayed startups cannot escape cleanup. Sidecar disposal,
+  session retirement and explicit Host rebind retain unfinished work and native
+  uncertainty. Complete resource inventory and native-family qualification remain open.
 - Restore owner-extension calls after ordinary Host restart through explicit
   sidecar rebinding. Old calls and runtime IDs are revoked while unfinished work
   stays counted; the next idle launch rebuilds only affected owner extensions.

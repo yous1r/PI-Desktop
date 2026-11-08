@@ -1,3 +1,4 @@
+import { SidecarWorkspaceProcesses } from "./agent-sidecar-processes";
 import { PluginExtensionLaunchBindings } from "./plugin-extension-launch-bindings";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -73,6 +74,10 @@ export class AgentSidecar extends RuntimeAgentSidecar {
   private ownerUncertainty = 0;
   private ownerDisposed = false;
   private readonly ownerRetirements = new Map<string, Promise<void>>();
+  private readonly workspaceProcesses = new SidecarWorkspaceProcesses();
+
+  setExtensionWorkspaceProcesses(owner: Parameters<SidecarWorkspaceProcesses["set"]>[0]): void { this.workspaceProcesses.set(owner); }
+  getExtensionWorkspaceProcessActivity() { return this.workspaceProcesses.snapshot(); }
 
   setExtensionOwnerLifecycle(lifecycle: ExtensionOwnerLifecycle): void {
     if (this.ownerLifecycle === lifecycle) return;
@@ -86,6 +91,7 @@ export class AgentSidecar extends RuntimeAgentSidecar {
   override setHost(host: Parameters<RuntimeAgentSidecar["setHost"]>[0]): void {
     if (this.ownerDisposed) return;
     this.ownerLifecycle?.rebindHost(host);
+    this.workspaceProcesses.rebindHost(host);
     super.setHost(host);
   }
 
@@ -107,6 +113,7 @@ export class AgentSidecar extends RuntimeAgentSidecar {
     const lifecycle = this.ownerLifecycle;
     this.ownerDisposed = true;
     this.ownerLifecycle = undefined;
+    this.workspaceProcesses.dispose();
     lifecycle?.dispose();
     this.extensionOwnerLaunches.clear();
     this.getExtensionOwnerActivity();
@@ -146,12 +153,14 @@ export class AgentSidecar extends RuntimeAgentSidecar {
     this.extensionOwnerLaunches.observe(method, params);
     const sessionId = params && typeof params === "object" && "sessionId" in params ? String(params.sessionId) : undefined;
     const sameLaunch = sessionId === undefined ? undefined : this.extensionOwnerLaunches.captureCurrent(sessionId);
+    const retireProcesses = method === "agent.disposeSession" && sessionId !== undefined ? this.workspaceProcesses.captureSession(sessionId) : undefined;
     try {
       return await super.call<T>(method, params, timeoutOverrideMs);
     } catch (error) {
       if (method === "agent.disposeSession" || method === "agent.shutdown") this.ownerUncertainty = Math.min(Number.MAX_SAFE_INTEGER, this.ownerUncertainty + 1);
       throw error;
     } finally {
+      retireProcesses?.();
       if (method === "agent.disposeSession" && sessionId !== undefined && this.ownerLifecycle === lifecycle && sameLaunch?.()) {
         lifecycle?.closeSession(sessionId);
         this.extensionOwnerLaunches.close(sessionId);
