@@ -24,17 +24,17 @@
    hardware. The synthetic 1-MiB main-only soak cannot replace it.
 4. Terminal receipt retention/tombstone period and deletion policy. Unresolved
    receipts must remain recoverable; do not assign a purge policy silently.
-5. Full Host handoff still needs its concrete control transport, durable phase
-   journal and old-sidecar fencing. Current-user background execution and idle
-   handoff are the conservative first slice, not Windows service installation
-   or implicit interruption/replay of active turns.
+5. Full Host handoff now has a [concrete protocol design](ai-command-center-idle-handoff.md)
+   for local identity, durable phases and old-sidecar fencing. Its native binding,
+   journal, startup guard and fault cases still require implementation/qualification.
+   Current-user background execution and idle-only transfer remain the first slice.
 
 ## Ordered work and acceptance
 
 | Priority | Step | Implementation status | Required acceptance before completion |
 |---|---|---|---|
 | 1 | S03a: Rust data-directory ownership | Implemented candidate in this slice | Same-directory and alias contenders fail before recovery; independent directories run; normal/crash exit releases ownership; relocation refuses live destination before mutation; existing history remains readable |
-| 2 | S03b: Exclusive execution handoff | Pending | Existing admission gate blocks new work; busy handoff rejects or drains under explicit policy; old sidecar proven stopped/fenced; one successor; crash at every phase leaves recoverable journal; no turn/tool replay |
+| 2 | S03b: Exclusive execution handoff | Protocol draft complete; implementation pending | Existing admission gate blocks new work; busy handoff rejects; old sidecar proven stopped/fenced; one successor; crash at every phase leaves recoverable journal; no turn/tool replay |
 | 3 | S02/S04: Finalize versioned metadata contract | Draft complete, implementation pending | Stable task vs concrete execution identity; strict request schema; desired/effective goal CAS; retention/deletion policy resolved; golden producer/consumer fixtures |
 | 4 | S04: Rust repositories and migrations | Pending | Workspaces/membership/reservations/goals/receipts preserve existing data; transactional 12/36 checks; unique release; migration/restart/partial-commit tests; no second transcript store |
 | 5 | S05: Portable authorized control interfaces | Pending | Negotiated operations only; authenticated principal/role; idempotency and lost-reply reconciliation; unsupported capabilities explicit; old clients remain compatible |
@@ -210,3 +210,13 @@ Host binary SHA-256:
 `f8b25e417a3f5253f9c5e15aea13a7c82c8ab14027ee4a8a1c967efcee53b887`.
 The two lower V3 overview regions remain intentionally unassigned and
 non-interactive; later UI work must not invent functions for them.
+
+## S03b design checkpoint
+
+The [idle handoff protocol](ai-command-center-idle-handoff.md) now specifies a
+Windows current-user native channel, 16-KiB strict frames, source/target epochs,
+seven durable phases, explicit recovery and fifteen fault scenarios. It records
+why an expiring maintenance lease and ordinary disposal completion cannot prove
+exclusive execution transfer. Four implementation slices have separate evidence
+gates. No new protocol, migration, process adoption or handoff is advertised by
+the current binaries; full M0 prerequisites and later product gates remain open.

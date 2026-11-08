@@ -6,6 +6,9 @@
 - S03a update: [Rust data-directory ownership](../adr/host-data-directory-ownership.md)
   now guards cooperating Host startup and relocation destinations. Full execution
   handoff remains pending; see [remaining acceptance gates](ai-command-center-remaining-work.md).
+- S03b design: [Idle transfer contract](ai-command-center-idle-handoff.md) adds
+  concrete transport, fencing, journal and recovery acceptance; implementation
+  remains pending.
 
 ## Three paths that must remain distinct
 
