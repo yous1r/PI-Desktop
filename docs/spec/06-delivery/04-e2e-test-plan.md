@@ -19640,9 +19640,11 @@ session data is used.
   a provider barrier, checks input/output exactly and waits for durable settlement.
   Release per-session runtimes and clear only verified synthetic history through
   public APIs, then immediately start the next round. Finish the final round in
-  full. Write raw memory, telemetry and round evidence during execution; reopen
-  the last retained round after shutdown; export SVG/CSV using
-  `scripts/e2e-command-center-curve.mjs`.
+  full. Write raw memory, telemetry and round evidence during execution. On the
+  worker's final result, record `measurementEndedAt` and wait for a sample whose
+  entire collection interval follows that receipt before stopping the sampler
+  and disposing owned processes. Reopen the last retained round after shutdown;
+  export SVG/CSV using `scripts/e2e-command-center-curve.mjs`.
 - **Expected:** Every round verifies 36 results, no persistence/error diagnostics,
   no process generation replacement, at least 3600 seconds of repeated workload,
   and confirmed cleanup. Concurrent Private Bytes never exceed the sampled
@@ -19650,6 +19652,14 @@ session data is used.
   Record per-process Private Bytes/working set/CPU/handles/threads, memory
   distribution, sampling gaps, event-loop delay, pending writes, round/settlement
   latency, throughput and full-stream overlap. A short/failed run stays failed.
+  `memory.coverage` records load-start, verification-end and final-outcome
+  coverage, any unsampled verification tail and sampled workload duration. Missing
+  or reversed boundaries, late sampling start, an uncovered verification/final
+  outcome, or sampled duration below the requested soak duration fail new runs.
+  `memory.loadSampleCount` counts the union of every round's stream interval;
+  `memory.coverage.loadSampleCount` includes setup/reset/verification during the
+  whole workload. Startup before ready, process teardown and between-sample peaks
+  remain outside these coverage claims.
 - **Scope:** Fixed context/history policy; same process lifetime, not unbounded
   historical context. Sampling is requested at 250 ms and actual gaps are retained.
   This is the operator's one-hour diagnostic gate, not full-workbench AC-07 or the
@@ -19660,6 +19670,10 @@ session data is used.
   222-ms unsampled final-verification tail remain explicit limitations; the
   strict full-lifecycle sampling gate is not passed. See the
   [soak report and evidence](../../project/ai-command-center-soak-report.md).
+  The later sampling-tail regression corrects future runs and leaves those raw
+  historical artifacts unchanged. Deterministic tests cover the 222-ms failure,
+  sequential collection skew, absent boundaries and multiple-round counts; a
+  short real-host loop validates the new barrier without claiming a new hour.
 
 ### E2E-RACP-replay-byte-budget
 

@@ -1,4 +1,5 @@
 import { assessRun } from './report.mjs';
+import { assessSamplingCoverage } from './sampling-coverage.mjs';
 
 export function distribution(values) {
   const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
@@ -9,8 +10,10 @@ export function distribution(values) {
 
 export function assessSoak({ config, inventory, samples, outcome, rounds, telemetry }) {
   const last = assessRun({ config, inventory, samples, outcome });
-  const failures = new Set(last.failures);
+  const { coverage, failures: coverageFailures } = assessSamplingCoverage(samples, outcome);
+  const failures = new Set([...last.failures, ...coverageFailures]);
   if (!(outcome?.elapsedMs >= config.durationSeconds * 1000)) failures.add('soak_duration_not_met');
+  if (coverage.sampledLoadMs < config.durationSeconds * 1000) failures.add('sampled_soak_duration_not_met');
   if (!rounds.length || outcome?.rounds?.length !== rounds.length) failures.add('missing_round_evidence');
   for (const [index, round] of rounds.entries()) {
     if (round.index !== index + 1) failures.add('round_sequence_invalid');
@@ -27,9 +30,11 @@ export function assessSoak({ config, inventory, samples, outcome, rounds, teleme
   }
   const elapsedMs = outcome?.elapsedMs ?? 0;
   const verified = rounds.reduce((sum, round) => sum + round.verified, 0);
+  const loadSampleCount = samples.filter(sample => rounds.some(round =>
+    sample.timestampMs >= round.fixture?.startedAt && sample.timestampMs <= round.fixture?.endedAt)).length;
   return { ...last, status: failures.size ? 'FAIL' : 'PASS', failures: [...failures],
     scope: 'headless-session-runtime-soak',
-    memory: { ...last.memory, targetBytes: config.targetBytes, targetMet: last.memory.peakConcurrentBytes <= config.targetBytes,
+    memory: { ...last.memory, coverage, loadSampleCount, targetBytes: config.targetBytes, targetMet: last.memory.peakConcurrentBytes <= config.targetBytes,
       distributionBytes: distribution(sums), samplesAboveTarget: sums.filter(bytes => bytes > config.targetBytes).length },
     workload: { ...last.workload, durationSeconds: config.durationSeconds, historyPolicy: 'verify then clear synthetic history between rounds; same services and processes' },
     soak: { elapsedMs, completedRounds: rounds.length, verifiedTurns: verified,

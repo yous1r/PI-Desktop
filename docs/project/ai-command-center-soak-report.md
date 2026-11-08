@@ -5,6 +5,12 @@
 - Scope: 36 independent main sessions, 1,048,576 UTF-8 text bytes/session, same coordinator/Host/sidecar processes across all rounds.
 - User gate: sampled peak <=6,000,000,000 bytes; target <=4,000,000,000 bytes.
 - Full-workbench AC-07 and the two-hour mixed-resource AC-09 remain unqualified.
+- Follow-up: The later harness now waits for a sample collected entirely after
+  final worker-result receipt, rejects incomplete workload coverage and counts
+  stream samples across all rounds. This report and its raw artifacts describe
+  the original run; its 222-ms tail and cadence limits are not retroactively
+  repaired by the code change. A short candidate regression is separate from a
+  new one-hour qualification.
 
 ## Summary
 

@@ -12,7 +12,8 @@ function fixture() {
     unexpectedEvents: 0, outputBytes: 10, pendingWritesPeak: 1, durationMs: 500, settlementLagMs: [10],
     fixture: { requests: 1, contextVerified: 1, maxConcurrent: 1, finished: 1, aborted: 0,
       startedAt: index*400, endedAt: index*400+100, overlapMs: 100 } }));
-  return { config, inventory, samples, rounds, outcome: { ...rounds[1], elapsedMs: 1000, rounds },
+  return { config, inventory, samples, rounds, outcome: { ...rounds[1], elapsedMs: 1000, rounds,
+    loadStartedAt: 100, loadEndedAt: 1100, measurementEndedAt: 1150 },
     telemetry: [{ eventLoopP99Ms: 20, eventLoopMaxMs: 30, pendingWrites: 1 }] };
 }
 test('soak distinguishes hard limit from target and sums all verified turns', () => {
@@ -33,4 +34,40 @@ test('duration/sample options are bounded and percentiles use actual samples', (
   assert.throws(() => parseOptions(['--duration-seconds','3601']));
   assert.throws(() => parseOptions(['--sample-ms','0']));
   assert.deepEqual(distribution([3,1,2]), { count: 3, min: 1, mean: 2, p50: 2, p95: 3, p99: 3, max: 3 });
+});
+
+test('all rounds contribute stream samples, excluding reset and verification time', () => {
+  const report = assessSoak(fixture());
+  assert.equal(report.memory.loadSampleCount, 4);
+  assert.equal(report.memory.coverage.loadSampleCount, 11);
+  assert.equal(report.memory.coverage.finalOutcomeCovered, true);
+  assert.equal(report.memory.coverage.unsampledVerificationTailMs, 0);
+});
+
+test('a sample after the final stream but before verification cannot pass', () => {
+  const e = fixture(); e.samples = e.samples.filter(sample => sample.timestampMs <= 1000);
+  const report = assessSoak(e);
+  assert.equal(report.status, 'FAIL');
+  assert.ok(report.failures.includes('verification_not_covered_by_samples'));
+  assert.equal(report.memory.coverage.unsampledVerificationTailMs, 100);
+});
+
+test('a sample after verification must also follow runtime disposal and outcome receipt', () => {
+  const e = fixture(); e.outcome.measurementEndedAt = 1200;
+  const report = assessSoak(e);
+  assert.equal(report.status, 'FAIL');
+  assert.ok(report.failures.includes('final_outcome_not_covered_by_samples'));
+});
+
+test('missing or invalid load boundaries and a late sampler start cannot pass', () => {
+  for (const mutate of [
+    e => { delete e.outcome.loadStartedAt; },
+    e => { e.outcome.loadEndedAt = NaN; },
+    e => { delete e.outcome.measurementEndedAt; },
+    e => { e.outcome.measurementEndedAt = 1000; },
+    e => { e.outcome.loadStartedAt = 1100; },
+    e => { e.samples = e.samples.slice(2); },
+  ]) {
+    const e = fixture(); mutate(e); assert.equal(assessSoak(e).status, 'FAIL');
+  }
 });

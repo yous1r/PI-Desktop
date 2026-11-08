@@ -12,6 +12,7 @@ import { parseOptions, assessRun } from './e2e/command-center/report.mjs';
 import { buildCandidate } from './e2e/command-center/build.mjs';
 import { observeExit } from './e2e/command-center/lifecycle.mjs';
 import { assessSoak } from './e2e/command-center/soak-report.mjs';
+import { hasPostOutcomeSample } from './e2e/command-center/sampling-coverage.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const options = parseOptions(process.argv.slice(2));
@@ -83,7 +84,7 @@ async function measure(config) {
     if (message.kind === 'round') { rounds.push(message); appendFileSync(join(runDir, 'rounds.ndjson'), JSON.stringify(message) + '\n'); console.log(JSON.stringify({ kind: 'round', index: message.index, verified: message.verified, durationMs: message.durationMs, error: message.error })); return; }
     messages.push(message);
     if (message.kind === 'owned-process') inventory.push({ role: message.role, pid: message.pid });
-    if (message.kind === 'outcome') outcome = message;
+    if (message.kind === 'outcome') outcome = { ...message, measurementEndedAt: Date.now() };
     if (message.kind === 'cleanup-error') fail(new Error(message.message));
     if (message.kind === 'owned-process-exit' && !stopping) fail(new Error(`${message.role} exited before cleanup`));
     if (stopping && ['disposed', 'owned-process-exit'].includes(message.kind)
@@ -166,7 +167,9 @@ async function measure(config) {
     await until(() => samples.length >= 2, 'memory baseline', 15000);
     send('run');
     await until(() => Boolean(outcome), 'runtime completion');
-    await until(() => samples.at(-1)?.timestampMs > (outcome.fixture?.endedAt ?? 0), 'final memory sample', 3000);
+    // The provider can finish before transcript verification and runtime disposal.
+    // Wait for a fresh sample after the worker's final result, while all PIDs live.
+    await until(() => hasPostOutcomeSample(samples.at(-1), outcome), 'final memory sample', 3000);
   } catch (error) {
     outcome = { ...(outcome ?? {}), error: outcome?.error ?? String(error.message ?? error) };
   } finally {
