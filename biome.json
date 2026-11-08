@@ -18,6 +18,7 @@
 			"packages/host-runtime/src/host-data-directory*.ts",
 			"scripts/e2e-host-data-owner.mjs",
 			"scripts/e2e-relocation-capability-keys.mjs",
+			"scripts/e2e-background-task-stop.mjs",
 			"packages/agent-host/src/{event-log,event-log.test,replay-byte-budget}.ts",
 			"packages/racp/src/racp.test.ts",
 			"scripts/check-architecture.mjs",

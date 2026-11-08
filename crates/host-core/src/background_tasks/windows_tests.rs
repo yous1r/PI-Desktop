@@ -8,10 +8,9 @@ use std::time::Duration;
 /// The reported symptom: a stop took the runner shell but left the command
 /// it launched — and that command's own child — running (#1805).
 ///
-/// The production chain is exercised end to end: the host binary starts in
-/// hidden runner mode, reads its config frame, then starts the shell. A test
-/// that spawns the shell directly would not cover the ordering the race
-/// depends on.
+/// The test build starts the resolved shell directly and exercises the real
+/// background-task supervisor and Stop signal. The RPC E2E additionally covers
+/// the production hidden runner and its configuration handshake.
 #[cfg(windows)]
 #[tokio::test]
 async fn stop_terminates_the_command_the_runner_launched() {
@@ -89,11 +88,11 @@ async fn stop_terminates_the_command_the_runner_launched() {
     }
 
     assert!(
-        wait_for_exit(nested_pid),
+        wait_for_exit(nested_pid).await,
         "the command's own child must not survive stopping the task (#1805)"
     );
     assert!(
-        wait_for_exit(command_pid),
+        wait_for_exit(command_pid).await,
         "the launched command must not survive stopping the task (#1805)"
     );
 
@@ -112,13 +111,20 @@ fn read_pid(path: &std::path::Path) -> Option<u32> {
 /// assertions above would otherwise pass for the wrong reason.
 #[cfg(windows)]
 fn process_running(pid: u32) -> bool {
-    use windows_sys::Win32::Foundation::{CloseHandle, STILL_ACTIVE};
+    use windows_sys::Win32::Foundation::{
+        CloseHandle, GetLastError, ERROR_INVALID_PARAMETER, STILL_ACTIVE,
+    };
     use windows_sys::Win32::System::Threading::{
         GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
     };
 
     let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
     if handle.is_null() {
+        assert_eq!(
+            unsafe { GetLastError() },
+            ERROR_INVALID_PARAMETER,
+            "cannot query fixture process"
+        );
         return false;
     }
     let mut exit_code = 0u32;
@@ -126,16 +132,18 @@ fn process_running(pid: u32) -> bool {
     unsafe {
         CloseHandle(handle);
     }
-    queried != 0 && exit_code == STILL_ACTIVE as u32
+    assert_ne!(queried, 0, "cannot read fixture process exit status");
+    exit_code == STILL_ACTIVE as u32
 }
 
 #[cfg(windows)]
-fn wait_for_exit(pid: u32) -> bool {
+async fn wait_for_exit(pid: u32) -> bool {
     for _ in 0..120 {
         if !process_running(pid) {
             return true;
         }
-        std::thread::sleep(Duration::from_millis(50));
+        // Let the single-threaded supervisor consume Stop while waiting.
+        tokio::time::sleep(Duration::from_millis(50)).await;
     }
     false
 }

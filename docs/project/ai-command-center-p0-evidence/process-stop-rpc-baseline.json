@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "startedAt": "2026-11-08T02:40:55.249Z",
+  "platform": "win32",
+  "candidate": "d95386fddf536f6fa7949dd689947d2b3d6acdaf",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": true,
+  "binarySha256": "2b413a296e708113537ad39d4effc49c630c7ebc3feaf9b3eda64b6744fe3e24",
+  "scriptSha256": "dbd0fe85371917fc6504c37967009ef23bc5f0f1541f8aa75558e3d9fe69feb2",
+  "checks": [
+    "real tools.execute starts command and child through hidden runner",
+    "Stop settles to stopped and both command levels exit",
+    "unrelated process remains alive",
+    "repeated Stop is idempotent"
+  ],
+  "cleanupConfirmed": true,
+  "pids": {
+    "host": 10312,
+    "descendants": [
+      8872,
+      3244
+    ],
+    "unrelated": 10360
+  },
+  "finishedAt": "2026-11-08T02:41:26.268Z"
+}

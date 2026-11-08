@@ -139,3 +139,65 @@ records binary SHA-256
 `2b413a296e708113537ad39d4effc49c630c7ebc3feaf9b3eda64b6744fe3e24`.
 An earlier post-commit run had an untracked task-generated `NUL` SSH artifact;
 that report was not used as clean-candidate evidence.
+
+## Windows Stop prerequisite and S03b sequencing
+
+The process-tree ordering test had a duplicate `HashMap` key that discarded two
+descendants; the background Stop test blocked its single-threaded Tokio runtime
+while waiting for the supervisor. Correcting those fixtures makes the two
+original baseline cases pass without a production change. The test build starts
+the shell directly, despite its former hidden-runner comment.
+
+A new real-process fallback regression exposed a separate production defect:
+`ProcessTimes::now()` returned Host creation time, so normal later-born command
+processes were skipped. Before the fix, the focused group is 5 passed / 1 failed
+(target still alive after cleanup); after using Windows wall-clock FILETIME
+before snapshot collection it is 6/6. The background-task group is 8/8. The
+newer-handle guard and unrelated-process preservation remain covered. These
+checks supplement, not replace, real Host RPC / hidden-runner Stop acceptance.
+
+Five names from the original 20-failure baseline have now been addressed in
+focused runs (three relocation cases and two test-fixture defects). The other
+15 remain unqualified; no new full-suite pass count is inferred. An additional
+cmd command containing quoted executable paths failed at startup with literal
+backslash-quote characters. The Stop fixture uses the established relative
+`node tree.mjs root` command; quoted-path execution remains a separate observed
+compatibility defect, not a successful Stop test or a change in this slice.
+
+Source inspection fixes the next S03b order and acceptance:
+
+1. **Local control transport and identity.** `apps/pi-host/src/app.ts` skips its
+   admin channel on Windows, and `admin-socket.ts` only accepts Unix ownership.
+   Add a versioned current-user local channel; reject other identities, stale
+   generations and malformed/oversized requests before any ownership mutation.
+2. **Durable transfer admission.** Reuse existing admission wiring, but do not
+   treat the 120-second auto-reopening `MaintenanceAdmission` lease as a durable
+   handoff. Busy work refuses an idle-only request; after transfer starts, timeout
+   or requester disconnect must not silently resume source execution.
+3. **Rust-owned journal and process fencing.** Persist source/target generations
+   and phases before effects. Prove old sidecar and tool ownership has ended
+   before releasing the data-directory owner. A process snapshot fallback alone
+   does not establish a generation fence or safe orphan takeover.
+4. **Successor recovery and client reattachment.** One successor claims the
+   directory, reconciles the journal, publishes readiness and new epochs, and
+   lets clients attach without replaying model or tool work. Inject failure at
+   each transition, including lost replies and source/successor crashes.
+
+S03b remains unimplemented. Receipt retention/deletion policy is still needed
+before finalizing the dependent S02/S04 contract; native/mobile/reference-load
+inputs continue to block their own qualification, not these local fixes.
+
+Stop evidence retained for review:
+
+- [Fallback failing baseline](ai-command-center-p0-evidence/process-stop-fallback-before.txt)
+  and [async test-only baseline](ai-command-center-p0-evidence/process-stop-async-baseline.txt).
+- [Old-binary RPC baseline](ai-command-center-p0-evidence/process-stop-rpc-baseline.json)
+  passes the ordinary Job Object route; it does not reproduce the fallback defect.
+- [Quoted-cmd limitation](ai-command-center-p0-evidence/process-stop-cmd-limitation.json)
+  fails before command readiness and retains its diagnostic output and cleanup.
+
+The rebuilt candidate passes the same four real RPC Stop checks with confirmed
+cleanup. Host build, formatting, Clippy (four unchanged warnings), script lint,
+documentation check and current-main ancestry check pass. A clean-commit RPC
+report is recorded separately after committing this fix. No full Rust rerun,
+Desktop UI, service installation, live profile or paid provider is involved.

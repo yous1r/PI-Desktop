@@ -1,0 +1,26 @@
+   Compiling host-core v0.22.3 (D:\Packages\PI-Desktop\worktrees\windows-process-stop-watermark\crates\host-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 43.16s
+     Running unittests src\main.rs (D:/Packages/PI-Desktop/target\debug\deps\pi_desktop_host_core-3a6e4e8952c538a2.exe)
+
+running 6 tests
+test tools::windows_process_tree::tests::a_process_created_after_the_snapshot_is_a_recycled_pid ... ok
+test tools::windows_process_tree::tests::unrelated_processes_are_not_in_the_tree ... ok
+test tools::windows_process_tree::tests::children_are_terminated_before_their_parents ... ok
+test tools::windows_process_tree::tests::a_cyclic_snapshot_lists_each_pid_once ... ok
+test tools::windows_process_tree::tests::a_handle_newer_than_the_snapshot_is_not_terminated ... ok
+
+thread 'tools::windows_process_tree::tests::a_live_process_created_after_the_host_is_stopped_but_its_sibling_is_not' (6656) panicked at crates\host-core\src\tools\windows_process_tree.rs:307:9:
+assertion `left == right` failed
+  left: 258
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test tools::windows_process_tree::tests::a_live_process_created_after_the_host_is_stopped_but_its_sibling_is_not ... FAILED
+
+failures:
+
+failures:
+    tools::windows_process_tree::tests::a_live_process_created_after_the_host_is_stopped_but_its_sibling_is_not
+
+test result: FAILED. 5 passed; 1 failed; 0 ignored; 0 measured; 1096 filtered out; finished in 3.04s
+
+error: test failed, to rerun pass `-p host-core --bin pi-desktop-host-core`

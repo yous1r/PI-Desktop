@@ -1,0 +1,23 @@
+{
+  "status": "FAIL",
+  "startedAt": "2026-11-08T02:39:12.332Z",
+  "platform": "win32",
+  "candidate": "d95386fddf536f6fa7949dd689947d2b3d6acdaf",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": true,
+  "binarySha256": "2b413a296e708113537ad39d4effc49c630c7ebc3feaf9b3eda64b6744fe3e24",
+  "scriptSha256": "2b27ca942d0926015d7737e01fcf9507fd9774e10e728754a7fe46cceadb8704",
+  "checks": [],
+  "cleanupConfirmed": true,
+  "error": "AssertionError [ERR_ASSERTION]: root must start\n    at until (file:///D:/Packages/PI-Desktop/worktrees/windows-process-stop-watermark/scripts/e2e-background-task-stop.mjs:68:5)\n    at async file:///D:/Packages/PI-Desktop/worktrees/windows-process-stop-watermark/scripts/e2e-background-task-stop.mjs:102:5",
+  "taskAtFailure": {
+    "exitCode": 1,
+    "id": "4984cd28-e42b-450f-b4a6-2f862e9d9786",
+    "state": "failed",
+    "stderr": "'\\\"D:\\mise_data\\installs\\node\\24.12.0\\node.exe\\\"' is not recognized as an internal or external command,\noperable program or batch file.\n",
+    "stdout": "",
+    "truncated": false
+  },
+  "hostStderr": "\u001b[2m2026-11-08T02:39:43.116018Z\u001b[0m \u001b[32m INFO\u001b[0m \u001b[2mpi_desktop_host_core\u001b[0m\u001b[2m:\u001b[0m host-core starting \u001b[3mpath\u001b[0m\u001b[2m=\u001b[0mC:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\background-stop-4l4qtS\\data\n",
+  "finishedAt": "2026-11-08T02:39:58.169Z"
+}

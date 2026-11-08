@@ -16,6 +16,7 @@ use windows_sys::Win32::Foundation::{
 use windows_sys::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
+use windows_sys::Win32::System::SystemInformation::GetSystemTimePreciseAsFileTime;
 use windows_sys::Win32::System::Threading::{
     GetExitCodeProcess, GetProcessTimes, OpenProcess, TerminateProcess,
     PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
@@ -30,11 +31,10 @@ pub(super) fn terminate_tree(root_pid: u32) -> Result<(), String> {
     if root_pid == 0 {
         return Ok(());
     }
+    // Bound identity checks before collecting PIDs. The Host's own creation
+    // time predates every normal child and must not be used as this watermark.
+    let watermark = ProcessTimes::now();
     let snapshot = Snapshot::capture()?;
-    // A process created after the snapshot cannot be one the snapshot
-    // described, so its creation time is the watermark that makes a recycled
-    // PID distinguishable from the real descendant.
-    let watermark = ProcessTimes::now()?;
 
     let mut errors: Vec<String> = Vec::new();
     for pid in snapshot.descendants_deepest_first(root_pid) {
@@ -223,11 +223,16 @@ impl ProcessTimes {
         })
     }
 
-    /// Creation time of the current process, used as the snapshot watermark.
-    fn now() -> Result<Self, String> {
-        let current = unsafe { windows_sys::Win32::System::Threading::GetCurrentProcess() };
-        Self::of(current)
-            .map_err(|error| format!("GetProcessTimes failed for the current process: {error}"))
+    /// Wall-clock FILETIME at the beginning of snapshot collection.
+    fn now() -> Self {
+        let mut now = FILETIME {
+            dwLowDateTime: 0,
+            dwHighDateTime: 0,
+        };
+        unsafe { GetSystemTimePreciseAsFileTime(&mut now) };
+        Self {
+            created: (u64::from(now.dwHighDateTime) << 32) | u64::from(now.dwLowDateTime),
+        }
     }
 
     fn created_after(&self, watermark: &Self) -> bool {
@@ -246,12 +251,7 @@ mod tests {
 
     #[test]
     fn children_are_terminated_before_their_parents() {
-        let edges = HashMap::from([
-            (10, vec![11]),
-            (11, vec![12]),
-            (12, vec![13]),
-            (11, vec![14]),
-        ]);
+        let edges = HashMap::from([(10, vec![11]), (11, vec![12, 14]), (12, vec![13])]);
         let order = Snapshot { edges }.descendants_deepest_first(10);
         let position = |pid: u32| order.iter().position(|entry| *entry == pid).unwrap();
         assert!(position(13) < position(12));
@@ -262,6 +262,76 @@ mod tests {
             "the runner itself is terminated last"
         );
         assert_eq!(order.len(), 5, "root plus four descendants");
+    }
+
+    struct TestProcess(std::process::Child);
+
+    impl TestProcess {
+        fn start() -> Self {
+            use std::os::windows::process::CommandExt;
+            let child = std::process::Command::new("powershell.exe")
+                .args([
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-Command",
+                    "Start-Sleep -Seconds 120",
+                ])
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .creation_flags(windows_sys::Win32::System::Threading::CREATE_NO_WINDOW)
+                .spawn()
+                .unwrap();
+            Self(child)
+        }
+
+        fn handle(&self) -> HANDLE {
+            use std::os::windows::io::AsRawHandle;
+            self.0.as_raw_handle()
+        }
+    }
+
+    impl Drop for TestProcess {
+        fn drop(&mut self) {
+            // Child owns the original process handle, never a recycled PID.
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+
+    #[test]
+    fn a_live_process_created_after_the_host_is_stopped_but_its_sibling_is_not() {
+        use windows_sys::Win32::Foundation::{WAIT_OBJECT_0, WAIT_TIMEOUT};
+        use windows_sys::Win32::System::Threading::WaitForSingleObject;
+
+        let mut target = TestProcess::start();
+        let mut unrelated = TestProcess::start();
+        assert!(target.0.try_wait().unwrap().is_none());
+        assert!(unrelated.0.try_wait().unwrap().is_none());
+        terminate_tree(target.0.id()).unwrap();
+        assert_eq!(
+            unsafe { WaitForSingleObject(target.handle(), 3_000) },
+            WAIT_OBJECT_0
+        );
+        assert_eq!(
+            unsafe { WaitForSingleObject(unrelated.handle(), 0) },
+            WAIT_TIMEOUT
+        );
+    }
+
+    #[test]
+    fn a_handle_newer_than_the_snapshot_is_not_terminated() {
+        use windows_sys::Win32::Foundation::WAIT_TIMEOUT;
+        use windows_sys::Win32::System::Threading::WaitForSingleObject;
+
+        let target = TestProcess::start();
+        let created = ProcessTimes::of(target.handle()).unwrap();
+        let earlier = ProcessTimes::from_raw(created.created - 1);
+        terminate_member(target.0.id(), &earlier).unwrap();
+        assert_eq!(
+            unsafe { WaitForSingleObject(target.handle(), 0) },
+            WAIT_TIMEOUT
+        );
     }
 
     #[test]

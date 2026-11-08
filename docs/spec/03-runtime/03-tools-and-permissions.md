@@ -547,6 +547,12 @@ Host execution baseline:
 - Background output is drained before a terminal state is published, including
   output queued when the process exits or is stopped. UTF-8 characters split
   across pipe reads remain intact. Shutdown signals do not acquire output locks.
+- Windows snapshot fallback compares process creation times with the wall-clock
+  FILETIME captured before snapshot collection. Host startup time is not that
+  boundary: ordinary commands created later must remain eligible for cleanup.
+  A handle newer than the snapshot boundary is skipped; unrelated trees are not
+  included. This fallback supplements Job Object containment and does not by
+  itself establish cross-owner handoff or orphan-sidecar fencing.
 - **Todo and background tasks share one container** in the Composer, above the
   Plan/Ask decision surfaces and the input. The container has a single header
   carrying the todo progress summary, the running-task count, the tab list, and

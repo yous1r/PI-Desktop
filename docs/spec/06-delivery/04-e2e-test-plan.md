@@ -8412,6 +8412,17 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
   Renderer visibility (grace window, close action, pinned output preview) is
   covered by `apps/desktop/test/background-tasks-bar-visibility.test.mjs` with a
   controlled clock; the multi-second hand-off itself is not timed in Electron.)
+- **Windows Stop regression:** With `PI_SCRATCH_DIR` and `PI_DESKTOP_HOST_BIN`
+  set, run `node scripts/e2e-background-task-stop.mjs`. Use real `tools.execute`,
+  hidden runner and `backgroundTasks.stop` against an isolated profile. Wait for
+  both command levels before Stop; verify terminal `stopped`, both exits, an
+  unrelated fixture still alive, idempotent repeat Stop and confirmed cleanup.
+  The Rust `tools::windows_process_tree::tests` separately bypasses Job Object
+  containment to prove the fallback terminates a process born after the Host,
+  preserves unrelated processes and rejects a handle newer than its boundary.
+  `background_tasks::windows_tests` drives the supervisor with an asynchronous
+  exit wait; it directly spawns the shell in test builds, so it is not evidence
+  of the production hidden-runner handshake.
 
 #### E2E-117: Agent/Plan/Goal UX and locales contain no Chat controls
 
