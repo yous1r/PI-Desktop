@@ -1209,3 +1209,20 @@ extension-owner and remote Host owners; then mandatory nineteen-family inventory
 bounded original-Rust status and fenced Desktop/coordinator composition. These
 are H1 prerequisites; H2-H5 and the rest of the approved command-center plan
 continue without enabling a partial transfer endpoint.
+
+Fixed candidate `beb5dfbaa1871711fbe6c374853d874314a9c9ea`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`, passed all 22 new cases and the
+real-plugin WebSocket path with a clean worktree before and after. Thirty-four
+focused changed/direct input hashes were unchanged. The original Node child and
+loopback peer closed; retained resource uncertainty remained as specified.
+The [candidate report](ai-command-center-p0-evidence/external-resources-after.json)
+is 8935 bytes, SHA-256
+`950925397d140d7b0b8849ff4a7c568f592473eb691357f0aa8712a05a2c7e78`.
+The [verification archive](ai-command-center-p0-evidence/external-resources-verification.json)
+is 107788 bytes, SHA-256
+`2bfc8ad76d31fc470194f942b16faec39a7764274eed94ad51c8adfda95f04a9`.
+Raw logs are retained as exact JSON strings with byte counts and hashes, including
+the ten matching committed-source SSH fixture failures and two corrected local
+implementation regressions. The focused input list is not a complete dependency
+manifest. This socket/workspace-resource slice is accepted within its stated
+scope; remaining external owners and full H1 composition continue.

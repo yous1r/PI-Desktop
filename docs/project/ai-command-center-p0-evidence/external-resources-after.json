@@ -1,0 +1,252 @@
+{
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "taskCandidate": "beb5dfbaa1871711fbe6c374853d874314a9c9ea",
+  "baseMain": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-08T20:34:56.576Z",
+  "finishedAt": "2026-11-08T20:35:03.199Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "unchangedFocusedInputs": true,
+  "inputScope": "Changed files and direct selected runtime/loader inputs; not a complete transitive dependency or bundle manifest",
+  "environment": {
+    "platform": "win32",
+    "architecture": "x64",
+    "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8",
+    "fixture": "Isolated Node plugin process and loopback WebSocket server; no live profile, provider or SSH host"
+  },
+  "inputs": [
+    {
+      "path": "apps/desktop/electron/main/external-resource-activity.ts",
+      "bytes": 1249,
+      "sha256": "2875f0d89c75a31e8d10c790cbb10751f6dfb6fd8ef09698522fff9c0899338f"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-host-process.mjs",
+      "bytes": 107,
+      "sha256": "edd06b421839c11949ba8e3e9a4bffc2f3b9933dad42ac5dc58c24ec6ffdcaef"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-lifecycle.ts",
+      "bytes": 3324,
+      "sha256": "9bdf3767ef6c55322012711dfb41eca174b6ec4b1b07e38a7bd7efc841c5066a"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-loading.ts",
+      "bytes": 5305,
+      "sha256": "e0df958fed9d19314e973cd0e65c232d4a40e5377b496c989379e1163ab44be2"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-process-calls.ts",
+      "bytes": 2778,
+      "sha256": "79cbf2e690a0b8bb91f707481cd39b12392a04beb274c3446349ec2b3fc200d4"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-runtime.ts",
+      "bytes": 280487,
+      "sha256": "adb263e01e4f612cccde8dfe9c1aa80bc2a0805418c737d33b02bcb378edf3ea"
+    },
+    {
+      "path": "apps/desktop/electron/main/plugin-websocket.ts",
+      "bytes": 14196,
+      "sha256": "57183aa468c1da88c317a3c1089974efa933d0d9d260680e92944506d237d612"
+    },
+    {
+      "path": "apps/desktop/electron/main/remote/ssh-transport.ts",
+      "bytes": 20883,
+      "sha256": "295cd4c37ab97673b462df065e0069b0a15100b6ebccc5c89ed6cd2704ae76dd"
+    },
+    {
+      "path": "apps/desktop/electron/main/remote/workspace-ports.ts",
+      "bytes": 8253,
+      "sha256": "5fe78bca4c6c6168116ed5dea63d08bc2644441b181d3b6e4f4ee7fe1e2ca135"
+    },
+    {
+      "path": "apps/desktop/electron/main/remote/workspace-resource-server.ts",
+      "bytes": 4798,
+      "sha256": "9953e4d1d834d38f4faa1326da93f7aeaa40d5d84f44d58858fb3735c94f6a71"
+    },
+    {
+      "path": "apps/desktop/electron/main/remote/workspace-resources.ts",
+      "bytes": 8248,
+      "sha256": "e02ab570c048b3b134d4470d58a9810ceb4466bec0dae35ef1e97d47d7aac1e2"
+    },
+    {
+      "path": "apps/desktop/electron/main/runtime/handoff-admission.ts",
+      "bytes": 1262,
+      "sha256": "80178a354f57b3bb610cf4c4fe78616148a12668ca530acd3b4d972befbada91"
+    },
+    {
+      "path": "apps/desktop/electron/main/services/plugin-services.ts",
+      "bytes": 39629,
+      "sha256": "5df75d6fc3fc6f465835684832473de7d40a57fe4b5928ccb57be4c4164d1b57"
+    },
+    {
+      "path": "apps/desktop/package.json",
+      "bytes": 9235,
+      "sha256": "f60b2df1e130d23ea6fe11679247a5ae290d0e2f06943730cd789878ccf973e8"
+    },
+    {
+      "path": "apps/desktop/test/external-resources-user-path.e2e.mjs",
+      "bytes": 6973,
+      "sha256": "1098e95d4a5454378428954019a4cc2119031fc1d1dc4da048ca23c3fb082051"
+    },
+    {
+      "path": "apps/desktop/test/handoff-external-resources.test.mjs",
+      "bytes": 14540,
+      "sha256": "1cb6e41547550f026541f7bc96d9b8207485a813e7eb3a01cd965e72c1985129"
+    },
+    {
+      "path": "apps/desktop/test/helpers/current-source-import-hooks.mjs",
+      "bytes": 727,
+      "sha256": "d504d0271768c4dbb3c09507f2569f2b2f4539559b5f455245e244d1637bfe92"
+    },
+    {
+      "path": "apps/desktop/test/helpers/owner-runtime-import-hooks.mjs",
+      "bytes": 564,
+      "sha256": "2e96147278b1dd13baec3c4149e505f22eb9cc97706f959c567218a94c225ff4"
+    },
+    {
+      "path": "apps/desktop/test/helpers/ts-import-hooks.mjs",
+      "bytes": 1387,
+      "sha256": "3d331b92a60dc7cee10fdf1e1d13b56463643b7d1a858e4cbc1d9010c665d907"
+    },
+    {
+      "path": "apps/desktop/test/plugin-websocket.test.mjs",
+      "bytes": 21282,
+      "sha256": "5c5963319e785e6a576a7f667bd837a63aa3890ec84e0b2938298592a821560b"
+    },
+    {
+      "path": "apps/desktop/test/workspace-plugin-files-git.test.mjs",
+      "bytes": 15875,
+      "sha256": "8c00b43778797e0870171bcea0522561a0d4e3f25917d72a44a2e42c03118cbc"
+    },
+    {
+      "path": "apps/desktop/test/workspace-ports.test.mjs",
+      "bytes": 2770,
+      "sha256": "426e98a8bdc457359ac55723c26a05ceca466c86f502cb9b3f4e3c8997c09f21"
+    },
+    {
+      "path": "apps/desktop/test/workspace-resources.test.mjs",
+      "bytes": 5523,
+      "sha256": "9b2d3b36f1193da8920c6860c7a2d7a1cba040917bce1939d1a6f08c9144ebd2"
+    },
+    {
+      "path": "biome.json",
+      "bytes": 4139,
+      "sha256": "b4e873899147dc764ef349050ba3c2e64b3b316df93b0480c15f69a7cbcf0fa6"
+    },
+    {
+      "path": "docs/project/ai-command-center-remaining-work.md",
+      "bytes": 79486,
+      "sha256": "bd0b11abf36a874b0c6eaee35dcb03f94c3aa3cb27df0db1a9b57113b79b354b"
+    },
+    {
+      "path": "docs/project/unreleased.md",
+      "bytes": 6341,
+      "sha256": "fc025d6d57d5982b26fb3b0130004dd3deaed8861b4374a64471a511d339014c"
+    },
+    {
+      "path": "docs/spec/03-runtime/07-process-model.md",
+      "bytes": 42507,
+      "sha256": "1ff60a3d06ca71338d9877aa5c25beccaf5ccbcae2b9f2e1b87149256980abc1"
+    },
+    {
+      "path": "docs/spec/06-delivery/04-e2e-test-plan.md",
+      "bytes": 1337365,
+      "sha256": "dd0acc0e52faaff9e5932b4452fb17462c55fd1bf7a25cebe3908007fac9b870"
+    },
+    {
+      "path": "docs/spec/07-plugins/05-plugin-lifecycle.md",
+      "bytes": 14909,
+      "sha256": "543dcfc92afed814d89031b53dda44e7dac4384e733a7cf8302b6069a981e9b2"
+    },
+    {
+      "path": "docs/spec/07-plugins/18-workspace-execution.md",
+      "bytes": 16169,
+      "sha256": "98b0b6f78d98402306fd468ec730ed150c88cd8cc29d8beb60f38e151b366224"
+    },
+    {
+      "path": "package.json",
+      "bytes": 9813,
+      "sha256": "2e11460a2db89f2806309e75686631ea14deac901be222667d5dfb453602b182"
+    },
+    {
+      "path": "packages/agent-host/src/maintenance-admission.ts",
+      "bytes": 5564,
+      "sha256": "0d457688a02b3239852debc5fb2c04381e73588ae53598af6f35082ae2d7fd35"
+    },
+    {
+      "path": "packages/host-runtime/plugin-host-process.mjs",
+      "bytes": 35102,
+      "sha256": "8fc1850455053712e248d91734bf4d4b4c5c665a1ad2093094b2cdc69cb16ac7"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 302104,
+      "sha256": "25df344e44ceeacbfeaf7bb9d2d6c9bac74de6c42fe813c1f2ddc09fd2591741"
+    }
+  ],
+  "regressions": {
+    "command": [
+      "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+      "--test",
+      "--test-timeout=25000",
+      "test/handoff-external-resources.test.mjs"
+    ],
+    "durationMs": 3375.0661,
+    "pass": 22,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "log": {
+      "path": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\handoff-external-candidate-regressions.log",
+      "bytes": 2006,
+      "sha256": "a06ba420c76452f4362ab2eb1e889a1487fc6e29b5e493c7b2f4a8084536e3d2"
+    },
+    "diagnostics": []
+  },
+  "processPath": {
+    "command": [
+      "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+      "--test",
+      "--test-timeout=25000",
+      "test/external-resources-user-path.e2e.mjs"
+    ],
+    "durationMs": 3178.6008,
+    "pass": 1,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "log": {
+      "path": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\handoff-external-candidate-process.log",
+      "bytes": 494,
+      "sha256": "9c8bbab798f084936b1abe818a1027b7cbe116807bceaafda537d7e8b52c6667"
+    },
+    "diagnostics": [
+      {
+        "originalProcesses": 1,
+        "originalExitsObserved": true,
+        "closedLoopbackPeers": 1,
+        "qualifiedNativeFamilyClosure": false,
+        "socketActivity": {
+          "operations": 0,
+          "resources": 0,
+          "uncontainedResources": 1
+        },
+        "activity": {
+          "operations": 0,
+          "uncontainedResources": 2,
+          "plugins": 0,
+          "schedules": 0
+        }
+      }
+    ]
+  },
+  "limits": [
+    "Original Node child and socket closure are not native-family certification",
+    "Electron utility-process and complete Desktop H1 composition remain unqualified",
+    "Ten existing SSH script tests fail identically on committed source under Windows; two actual Git-plugin cases need PI_GIT_PLUGIN_PATH",
+    "No Rust, full-repository or minimum-hardware qualification"
+  ]
+}
