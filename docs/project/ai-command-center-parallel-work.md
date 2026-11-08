@@ -1,7 +1,7 @@
 # AI command center parallel implementation plan
 
 - Status: Execution decomposition; no new product milestone is accepted by this plan.
-- Source checkpoint: accepted sidecar candidate `0d8e7f6090427bf85989296bf7212f145a2e2f86`; A0 is complete and H0 is next.
+- Source checkpoint: accepted H0 candidate `bf5c042b7b997d02ca9572343976aa64e3e55145`; A0/H0 are complete and H1-H4 integration is next.
 - Basis: [remaining work](ai-command-center-remaining-work.md), [requirements](ai-command-center-requirements.md), [idle handoff](ai-command-center-idle-handoff.md), [control contracts](ai-command-center-control-contracts.md), [Host capability matrix](ai-command-center-host-parity.md).
 - Priority names below follow the active delivery sequence (P0 handoff, P1 control/quota, P2 monitoring/Desktop, P3 native/browser/mobile, P4 qualification), not the older proposal's phase numbering.
 
@@ -18,9 +18,9 @@ request. It includes the final retirement-identity guard. Build inputs and
 retained failure evidence are linked in the remaining-work register. These
 results do not qualify complete application transfer or future changes.
 
-A0 is complete. H0 may now consume that committed sidecar baseline; C1 and Q0
-remain independent ready work. No worker consumes another worktree's
-uncommitted source or generated output.
+A0 and H0 are complete. H1-H4 may consume the committed contracts and restricted
+consumer at `bf5c042b7`; C1 and Q0 remain independently ready. No worker consumes
+another worktree's uncommitted source or generated output.
 
 ## Fixed scope and constraints
 
@@ -112,8 +112,8 @@ must survive session/task deletion; no new purge behavior is introduced.
 
 ### Efficient scheduling and stop conditions
 
-- **Immediate capacity:** A0 is accepted. H0 is now the primary lane; independent
-  C1 and Q0 preparation can use other lanes. Do not start all 22 packages at once.
+- **Immediate capacity:** A0/H0 are accepted. H1-H4 integration is now the primary
+  work; independent C1 and Q0 can use free capacity. Do not start all 22 packages.
 - **After H0:** Give H1 and H4 the first available implementation slots because
   their incremental risk is lower; start H2 and H3 in the other two slots with
   contract/native-state tests first. All four converge at H5. Four is a maximum,
@@ -217,9 +217,9 @@ remain mandatory as stated in the work-package table.
 
 ## Execution waves and exclusive write ownership
 
-1. **Now:** A0 is accepted at `0d8e7f609`; the integrator completes H0 contract and
-   consumer acceptance. Independently, C1 can develop against committed source
-   and Q0 can prepare fixtures/environment inventories.
+1. **Now:** A0/H0 are accepted at `bf5c042b7`. Proceed to H1-H4 implementation
+   against the committed contracts. Independently, C1 can develop against
+   committed source and Q0 can prepare fixtures/environment inventories.
 2. **Contract wave:** H0 starts after A0; any remaining C1 work proceeds in parallel.
    The integrator owns shared export barrels, RPC registration and migration
    version allocation. No simultaneous writes to the same file.
@@ -269,7 +269,7 @@ logs and artifacts even when tests otherwise run concurrently.
 | Blocker | Missing item | Blocks | Work that can continue |
 |---|---|---|---|
 | B0 (resolved) | A0 accepted at `0d8e7f609` | None; committed sidecar baseline is available | H0, independent C1 and Q0 |
-| B1 | H0 source/target contracts not yet frozen | H1-H4 implementation and reliable cross-lane integration | H0, C1 and external environment inventory |
+| B1 (resolved) | H0 contracts and consumer accepted at `bf5c042b7` | None at the contract boundary; real source/ready wiring is still required | H1-H4 integration, independent C1 and Q0 |
 | B2 | All application resource owners and gates not yet connected | H5 and enabling transfer in production | H1-H4 development; unsupported families remain explicit refusals |
 | E1 | Exact two-core/8-GB CPU/OS/SSD runner and access | Minimum-target Q1 performance acceptance | Local comparison tests, instrumentation and fixture correctness |
 | E2 | Frozen tokenizer/corpus, tools/plugins/versions and representative provider quotas | Approximately 32k-token mixed-load and provider qualification | Synthetic deterministic fixtures and token-counting tools; no paid-provider calls without authorization |

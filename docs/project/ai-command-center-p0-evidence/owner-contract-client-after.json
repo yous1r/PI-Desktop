@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "candidate": "bf5c042b7b997d02ca9572343976aa64e3e55145",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "dirty": false,
+  "binarySha256": "99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b",
+  "scriptSha256": "ea69d57401cbe25ab694dcce37561aa5e56a7407ccd394f76ea6af2c6765a5a9",
+  "bundleSha256": "40f412678dea2a6671b9b00c928e927b9073a961cb8dd3877985cb360d656417",
+  "inputs": 775,
+  "inputsSha256": "92e16413349ba06daa342b9be8c32a0a05048e2abee1de341b75a8736b92baf5",
+  "checks": [
+    "production client refuses a live directory owner and confirms the original restricted child exit",
+    "response profile mismatch closes the consumer channel without changing journal or turns",
+    "strict production recover/claim preserves FILETIME and durable receipts without ordinary turn recovery",
+    "one restricted owner; independent reopen and explicit rotation preserve history without replay or capability logging"
+  ],
+  "cleanupConfirmed": true,
+  "scope": "Production restricted bootstrap consumer with injected durable fault state; not full handoff readiness",
+  "restrictedProcesses": 5,
+  "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\owner-handoff-client-Hjhoal\\report.json"
+}

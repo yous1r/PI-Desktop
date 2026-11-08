@@ -608,7 +608,7 @@ is retained unchanged. All three archived files were verified byte-for-byte.
 A0 is complete; proceed to H0 executable handoff contracts and the H1-H4
 integration lanes. Full P0-4 remains open.
 
-## H0 executable contracts and restricted consumer candidate
+## H0 executable contracts and restricted consumer acceptance
 
 Shared schemas now bind source intent, durable v28 records, internal original-
 coordinator inventory exchanges and target readiness. They preserve exact u64
@@ -643,5 +643,22 @@ The final host-runtime run passes 235 tests with 3 existing skips across 36
 source test files, using two workers and the unchanged default test deadline.
 The eight focused retry tests are not added again to that count. H0 source and
 readiness schemas remain integration contracts; only the existing restricted
-bootstrap has a live consumer in this slice. Clean-candidate process acceptance
-is the remaining H0 gate.
+bootstrap has a live consumer in this slice. Clean-candidate acceptance below
+closes H0; H1-H5 application integration remains open.
+
+Clean candidate `bf5c042b7b997d02ca9572343976aa64e3e55145`, based on
+`fd28eb89866ac513912ed109716e7120cf60f18c`, passes the
+[restricted client suite](ai-command-center-p0-evidence/owner-contract-client-after.json)
+(four checks, five restricted children) and
+[sidecar compatibility suite](ai-command-center-p0-evidence/owner-contract-sidecar-after.json)
+(five checks, one deterministic local provider request). Both record `dirty: false`
+and confirmed cleanup. The [775 consumer inputs](ai-command-center-p0-evidence/owner-contract-client-inputs.json)
+and [3,827 sidecar inputs](ai-command-center-p0-evidence/owner-contract-sidecar-inputs.json)
+are archived byte-for-byte. Their canonical manifest digests are respectively
+`92e16413349ba06daa342b9be8c32a0a05048e2abee1de341b75a8736b92baf5`
+and `e06f529b3ece65673ff8a4c778b951278fbfb5c3e6e452182eece0febd1e2eb4`.
+The native binary remains `99dc4e4f69b2ba20832df31bd7fbc605f5a07cd5e3132b085fbecaf928c5444b`;
+only a Rust test fixture changed, and that newly compiled test passed with the
+21 existing owner-handoff tests. Strict all-target Clippy also passes.
+Proceed to H1 coordinator/resource wiring and H2-H4 integration; neither schema
+acceptance nor restricted claim is full Desktop transfer/readiness acceptance.
