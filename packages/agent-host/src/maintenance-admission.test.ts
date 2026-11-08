@@ -3,10 +3,12 @@ import { describe, expect, it } from "vitest";
 import { AgentHost } from "./agent-host.js";
 import type { ApprovalPort } from "./approvals.js";
 import type { RuntimePort, SessionPort, SessionSummary } from "./ports.js";
-import { HOST_MAINTENANCE_LEASE_MS, MaintenanceAdmission, type MaintenanceBusyState } from "./maintenance-admission.js";
+import { HOST_MAINTENANCE_LEASE_MS, MaintenanceAdmission, type HandoffBusyState } from "./maintenance-admission.js";
 
-const idle = (): MaintenanceBusyState => ({
+const idle = (): HandoffBusyState => ({
   clients: 0, turns: 0, queuedTurns: 0, plans: 0, tools: 0, processes: 0, terminals: 0, plugins: 0,
+  admissions: 0, finalizations: 0, writes: 0, children: 0, workers: 0, schedules: 0,
+  approvals: 0, inputs: 0, nativeSessions: 0, mcp: 0, uncontainedResources: 0,
 });
 const owner = { subject: "dev_owner", roles: ["owner" as const], pairedDevice: true };
 
@@ -71,8 +73,8 @@ describe("maintenance admission", () => {
 
   it("disposal fences an inspection that resolves late and clears a held lease", async () => {
     const gate = new MaintenanceAdmission();
-    let resolveInspection!: (value: MaintenanceBusyState) => void;
-    const inspection = new Promise<MaintenanceBusyState>(resolve => { resolveInspection = resolve; });
+    let resolveInspection!: (value: HandoffBusyState) => void;
+    const inspection = new Promise<HandoffBusyState>(resolve => { resolveInspection = resolve; });
     const pending = gate.acquire("lease", () => inspection);
     gate.dispose();
     resolveInspection(idle());
@@ -111,6 +113,39 @@ function hostFixture(gate: MaintenanceAdmission | undefined) {
 const turn = (host: AgentHost) => ({ sessionId: "s1", input: { text: "hi" }, context: { requestId: "r1" } }) as never;
 
 describe("agent host maintenance gate", () => {
+  it("blocks the user turn path throughout handoff and admits it only after source cancellation", async () => {
+    const time = clock();
+    const gate = new MaintenanceAdmission(time.now);
+    const { host, prompts } = hostFixture(gate);
+    await host.start();
+    const hold = await gate.acquireHandoff("transfer", async () => {
+      const counts = host.maintenanceBusyCounts();
+      return { ...idle(), turns: counts.turns + counts.admissions, queuedTurns: counts.queuedTurns };
+    });
+    time.advance(HOST_MAINTENANCE_LEASE_MS * 10);
+    await expect(host.startTurn(owner, turn(host))).rejects.toMatchObject({ code: "HOST_BUSY" });
+    await expect(host.enqueueTurn(owner, turn(host))).rejects.toMatchObject({ code: "HOST_BUSY" });
+    expect(prompts).toEqual([]);
+    hold.cancel();
+    await host.startTurn(owner, turn(host));
+    expect(prompts).toEqual(["s1"]);
+    gate.dispose();
+  });
+
+  it("keeps the user turn path closed after fencing begins", async () => {
+    const time = clock();
+    const gate = new MaintenanceAdmission(time.now);
+    const { host, prompts } = hostFixture(gate);
+    await host.start();
+    const hold = await gate.acquireHandoff("transfer", async () => idle());
+    hold.beginFencing();
+    time.advance(24 * 60 * 60 * 1000);
+    expect(() => hold.cancel()).toThrowError(expect.objectContaining({ code: "HOST_BUSY" }));
+    await expect(host.startTurn(owner, turn(host))).rejects.toMatchObject({ code: "HOST_BUSY" });
+    expect(prompts).toEqual([]);
+    gate.dispose();
+  });
+
   it("refuses new turns and queued work once the gate closes", async () => {
     const gate = new MaintenanceAdmission();
     const { host, prompts } = hostFixture(gate);
@@ -150,5 +185,21 @@ describe("agent host maintenance gate", () => {
     host.kick("s1");
     await new Promise((resolve) => setImmediate(resolve));
     expect(prompts).toHaveLength(2);
+  });
+});
+
+describe("agent host handoff inventory", () => {
+  it("reports pending approvals and input even without an active root turn", async () => {
+    const { host } = hostFixture(undefined);
+    await host.start();
+    host.ingest({ sessionId: "s1", turnId: "old-turn", ts: 1, event: {
+      type: "tool_permission_request",
+      request: { requestId: "permission", sessionId: "s1", toolCallId: "tool", toolName: "Bash", argsPreview: {}, risk: "high", reason: "fixture" },
+    } });
+    host.ingest({ sessionId: "s1", turnId: "old-turn", ts: 2, event: {
+      type: "asktool_request",
+      request: { requestId: "input", sessionId: "s1", toolCallId: "ask", questions: [{ question: "Continue?", options: ["yes", "no"] }] },
+    } });
+    expect(host.handoffBusyCounts()).toEqual({ turns: 0, queuedTurns: 0, admissions: 0, approvals: 1, inputs: 1 });
   });
 });

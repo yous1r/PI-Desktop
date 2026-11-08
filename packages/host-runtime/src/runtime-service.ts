@@ -238,6 +238,18 @@ export class RuntimeService implements RuntimePort {
     return this.events.pendingWrites();
   }
 
+  /** Local activity only; zero counts are not native process-closure proof. */
+  handoffBusyCounts(): { turns: number; operations: number; finalizations: number; writes: number; tools: number } {
+    return {
+      turns: this.activeTurns.size,
+      // The map counts sessions with pending operations, including lock waiters.
+      operations: this.sessionOperations.size,
+      finalizations: this.turnFinalizations.size,
+      writes: this.events.pendingWrites(),
+      tools: this.events.activeToolCount(),
+    };
+  }
+
   async dispose(): Promise<void> {
     this.disposed = true;
     for (const detach of this.detachers.splice(0)) detach();

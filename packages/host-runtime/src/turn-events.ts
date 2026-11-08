@@ -150,6 +150,10 @@ export class TurnEventPipeline {
     return this.persistence.size();
   }
 
+  activeToolCount(): number {
+    return this.activeToolCalls.size;
+  }
+
   async dispose(): Promise<void> {
     await this.checkpointer.flushAll();
     this.checkpointer.dispose();

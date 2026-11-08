@@ -507,3 +507,38 @@ qualify the production restricted bootstrap, not complete idle Desktop handoff.
 P0-4 now owns complete admission/resource inventory, production source transitions,
 successor readiness and epoch-aware snapshot reattachment. The two locale baseline
 mismatches, minimum-hardware qualification and P1-P4 remain open.
+
+## S03b-4 admission foundation (full idle handoff remains open)
+
+The existing maintenance gate now offers a non-expiring, identity-bound handoff
+hold while preserving ordinary 120-second maintenance leases. It validates all
+19 resource counts, closes before inspection, and forbids cancellation after
+fencing starts. Stale handles, ordinary release and time passage cannot reopen
+the held gate. AgentHost and RuntimeService expose owner-derived interactive,
+operation, finalization, write and tool counts without a second state store.
+
+Four reproduced plan-admission defects are fixed: waiting on the session lock
+was omitted from inventory; a late lock acquisition could claim after closure;
+failed pre-launch finalization disappeared from busy counts; and disposal did
+not prevent queued claims. A further red regression covers disposal while
+`beginTurn` awaits acknowledgement; the resulting turn is now settled before
+any sidecar launch. Deferred retry timers now have an owner and cleanup.
+Claimed work remains counted through launch/settlement so a busy transfer refuses
+without leaving an abandoned running row.
+
+Validation at this checkpoint: AgentHost 90/90; host-runtime 220 passed with
+3 existing skips; ordinary maintenance compatibility 7 passed with 5 Unix-socket
+tests skipped on Windows. Typecheck and configured 193-file lint pass. The new isolated Windows
+`e2e-owner-idle-admission.mjs` passes 4 checks with confirmed cleanup on a dirty
+candidate. Its first run correctly refused a new hold while asynchronous queue
+inspection remained pending after transcript settlement; the updated harness
+waits for actual owner-reported idle, with a bounded deadline. The failure report
+is retained, not reclassified. The accepted P0-3 Rust binary is reused because
+this slice changes no Rust/build inputs.
+
+The production application is not yet handoff-capable. Remaining P0-4 work:
+wire the gate into all Desktop/headless execution owners; report complete live
+resource inventory and reject uncontained/unknown families; integrate durable
+source prepare/cancel/fencing and successor readiness; reattach clients using
+new owner epochs and authoritative snapshots. Clean-candidate admission evidence
+will be recorded separately. P1-P4 and external acceptance remain pending.

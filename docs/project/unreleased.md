@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Keep ownership-handoff admission closed until explicit source cancellation;
+  once native fencing begins, the local hold cannot reopen. Ordinary maintenance
+  keeps its existing lease. Plan dispatch now counts session-lock waits and
+  pending finalization, refuses late claims after closure, and cleans up retry
+  timers. Complete Desktop-to-background transfer is still under development.
 - Add durable Windows execution-owner registration and guarded recovery in
   schema v28. Unfinished transfers block ordinary startup; explicit private
   claim/recover validates native closure and keeps retained idempotent receipts.

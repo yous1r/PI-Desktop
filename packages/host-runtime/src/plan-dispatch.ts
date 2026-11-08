@@ -33,6 +33,8 @@ export class PlanExecutionDispatcher {
   private readonly pendingFinishes = new Map<string, { status: PlanExecutionFinishStatus; errorCode?: string }>();
   private drain: Promise<void> | null = null;
   private readonly detach: () => void;
+  private readonly retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private disposed = false;
 
   constructor(private readonly options: PlanExecutionDispatcherOptions) {
     this.detach = options.runtime.onTurnEnded((info) => {
@@ -49,6 +51,9 @@ export class PlanExecutionDispatcher {
   }
 
   dispose(): void {
+    this.disposed = true;
+    for (const timer of this.retryTimers.values()) clearTimeout(timer);
+    this.retryTimers.clear();
     this.detach();
   }
 
@@ -57,9 +62,10 @@ export class PlanExecutionDispatcher {
     return this.approvedExecutionIdsBySession.get(sessionId);
   }
 
-  /** Approved executions this process is claiming or running; derived from the existing sets. */
+  /** Work including lock waiters, retry timers and unacknowledged finalization. */
   inFlightCount(): number {
-    return this.dispatching.size + this.started.size + this.inFlightFinishes.size;
+    return new Set([...this.dispatching, ...this.started, ...this.inFlightFinishes,
+      ...this.pendingFinishes.keys(), ...this.retryTimers.keys()]).size + (this.drain ? 1 : 0);
   }
 
   async finishApprovedExecution(
@@ -98,18 +104,20 @@ export class PlanExecutionDispatcher {
   }
 
   async dispatchApprovedPlan(rawExecution: unknown): Promise<void> {
-    if (this.options.gate?.isClosed()) return;
+    if (this.disposed || this.options.gate?.isClosed()) return;
     const initial = planExecutionFromUnknown(rawExecution);
     if (!initial) {
       this.options.log("warn", "approved plan execution descriptor was invalid");
       return;
     }
+    if (initial.state !== "queued" || this.started.has(initial.id) ||
+        this.finished.has(initial.id) || this.dispatching.has(initial.id)) return;
+    // Own the admission before waiting on another session operation.
+    this.dispatching.add(initial.id);
     await this.options.runtime.withSessionOperation(initial.sessionId, async () => {
       if (
-        initial.state !== "queued" ||
-        this.started.has(initial.id) ||
-        this.finished.has(initial.id) ||
-        this.dispatching.has(initial.id)
+        this.disposed || this.options.gate?.isClosed() ||
+        this.started.has(initial.id) || this.finished.has(initial.id)
       ) {
         return;
       }
@@ -118,11 +126,18 @@ export class PlanExecutionDispatcher {
       if (!host || !sidecar) return;
       if (this.options.runtime.activeTurnId(initial.sessionId)) {
         // The submitting turn is still finalizing; look again shortly.
-        const timer = setTimeout(() => void this.dispatchApprovedPlan(initial), 250);
-        timer.unref?.();
+        if (!this.retryTimers.has(initial.id)) {
+          const timer = setTimeout(() => {
+            this.retryTimers.delete(initial.id);
+            void this.dispatchApprovedPlan(initial).catch((error: unknown) => {
+              this.options.log("warn", "approved plan retry failed", { executionId: initial.id, error: String(error) });
+            });
+          }, 250);
+          timer.unref?.();
+          this.retryTimers.set(initial.id, timer);
+        }
         return;
       }
-      this.dispatching.add(initial.id);
       let claimed = false;
       let turnId: string | undefined;
       try {
@@ -144,8 +159,11 @@ export class PlanExecutionDispatcher {
         const launch = await this.options.launch.resolve(execution.sessionId, sessionResult.session, settings ?? {}, {
           mode: "agent",
         });
-        if (this.options.gate?.isClosed()) return;
+        // Already admitted work stays counted until dispatch/finalization ends.
+        // A concurrent idle inspection must refuse; do not strand a claimed row.
+        if (this.disposed) throw Object.assign(new Error("plan dispatcher disposed"), { errorCode: "HOST_UNAVAILABLE" });
         turnId = await this.options.runtime.beginTurn(execution.sessionId, launch.providerId, launch.modelId);
+        if (this.disposed) throw Object.assign(new Error("plan dispatcher disposed"), { errorCode: "HOST_UNAVAILABLE" });
         this.approvedExecutionIdsBySession.set(execution.sessionId, execution.id);
         this.executionTurns.set(execution.id, { sessionId: execution.sessionId, turnId });
         this.started.add(execution.id);
@@ -174,14 +192,13 @@ export class PlanExecutionDispatcher {
           executionId: initial.id,
           error: String(error),
         });
-      } finally {
-        this.dispatching.delete(initial.id);
       }
-    });
+    }).finally(() => this.dispatching.delete(initial.id));
   }
 
   /** Dispatch every queued execution the host restored, once, on boot or after a restart. */
   async drainApprovedPlanExecutions(): Promise<void> {
+    if (this.disposed || this.options.gate?.isClosed()) return;
     if (this.drain) return this.drain;
     this.drain = (async () => {
       const host = this.options.getHost();
@@ -204,6 +221,7 @@ export class PlanExecutionDispatcher {
 
   /** After an approval resolved, run the execution it produced. */
   async dispatchExecutionForProposal(proposalId: string): Promise<void> {
+    if (this.disposed || this.options.gate?.isClosed()) return;
     const host = this.options.getHost();
     if (!host) return;
     try {

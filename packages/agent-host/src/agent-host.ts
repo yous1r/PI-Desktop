@@ -521,6 +521,14 @@ export class AgentHost {
     return { turns, queuedTurns, admissions: this.inFlight };
   }
 
+  /** Interactive requests may outlive a root turn and still prevent handoff. */
+  handoffBusyCounts(): { turns: number; queuedTurns: number; admissions: number; approvals: number; inputs: number } {
+    let inputs = 0;
+    for (const state of this.states.values()) inputs += state.pendingInputs.size;
+    return { ...this.maintenanceBusyCounts(), approvals: this.approvals.list().length, inputs };
+  }
+
+
   private async startTurnAdmitted(
     principal: Principal,
     params: StartTurnParams,

@@ -462,3 +462,46 @@ describe("durable turn completion under persistence pressure", () => {
     await service.dispose();
   });
 });
+
+describe("runtime handoff inventory", () => {
+  it("counts session operations while waiting and clears only after the last operation", async () => {
+    const { service } = build();
+    const blocked = Promise.withResolvers<void>();
+    const first = service.withSessionOperation("s1", () => blocked.promise);
+    const second = service.withSessionOperation("s1", async () => {});
+    expect(service.handoffBusyCounts()).toMatchObject({ turns: 0, operations: 1, finalizations: 0, writes: 0, tools: 0 });
+    blocked.resolve();
+    await Promise.all([first, second]);
+    expect(service.handoffBusyCounts().operations).toBe(0);
+    await service.dispose();
+  });
+
+  it("keeps final writes and settlement busy after the terminal event arrives", async () => {
+    const { host, sidecar, service } = build();
+    await service.prompt({ sessionId: "s1", content: "hello", effectivePermissionMode: "ask", principal: owner });
+    const blocked = Promise.withResolvers<void>();
+    host.beforeAppend = () => blocked.promise;
+    const message: UiMessage = { id: "final", role: "assistant", content: "done", createdAt: "2026-09-18T00:00:00Z", status: "complete" };
+    sidecar.notify?.("agent.event", { sessionId: "s1", turnId: "turn-1", ts: 1, event: { type: "message_end", message } });
+    sidecar.notify?.("agent.event", { sessionId: "s1", turnId: "turn-1", ts: 2, event: { type: "agent_end", messageIds: [message.id] } });
+    await settle();
+    expect(service.handoffBusyCounts()).toMatchObject({ turns: 1, finalizations: 1 });
+    expect(service.handoffBusyCounts().writes).toBeGreaterThan(0);
+    blocked.resolve();
+    await settle();
+    expect(service.handoffBusyCounts()).toEqual({ turns: 0, operations: 0, finalizations: 0, writes: 0, tools: 0 });
+    await service.dispose();
+  });
+
+  it("keeps an outstanding tool visible after its root turn ends", async () => {
+    const { sidecar, service } = build();
+    await service.prompt({ sessionId: "s1", content: "hello", effectivePermissionMode: "ask", principal: owner });
+    sidecar.notify?.("agent.event", { sessionId: "s1", turnId: "turn-1", ts: 1, event: { type: "tool_start", toolCallId: "tool-1", toolName: "Read", args: {} } });
+    await service.finishTurn("s1", "aborted", undefined, { turnId: "turn-1" });
+    expect(service.handoffBusyCounts()).toMatchObject({ turns: 0, tools: 1 });
+    sidecar.notify?.("agent.event", { sessionId: "s1", turnId: "turn-1", ts: 2, event: { type: "tool_end", toolCallId: "tool-1", result: "finished" } });
+    await settle();
+    expect(service.handoffBusyCounts().tools).toBe(0);
+    await service.dispose();
+  });
+});

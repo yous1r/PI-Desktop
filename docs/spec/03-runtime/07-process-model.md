@@ -517,3 +517,36 @@ inventory, source prepare/cancel/fencing, successor readiness and client
 reattachment remain the next integration slice. Default app launch is unchanged.
 The [private transport contract](06-host-rpc-protocol.md#restricted-owner-handoff-bootstrap-windows)
 defines framing and timeout behavior.
+
+## Handoff admission prerequisites
+
+`MaintenanceAdmission` owns both ordinary maintenance and process-local handoff
+admission. Ordinary maintenance retains its 120-second lease. `acquireHandoff`
+closes the same gate synchronously before asynchronous owner inspection and
+requires explicit nonnegative safe-integer counts for every resource family:
+clients, turns, queued turns, plans, tools, processes, terminals, plugins,
+admissions, finalizations, writes, children, Workers, schedules, approvals,
+inputs, native sessions, MCP and uncontained resources. Any activity refuses as
+busy; missing or invalid counts refuse as unavailable. Loaded application-owned
+resources outside qualified containment prevent transfer even when not busy.
+
+A successful handoff hold has no expiry. Its local identity-bound handle can
+cancel only before fencing, after source orchestration confirms durable
+cancellation. `beginFencing` permanently seals that handle before native effects;
+timer expiry, connection loss, a maintenance release or a stale handle cannot
+reopen it. Disposal remains closed. This is local admission authority, not a
+second durable journal or a client-supplied idle proof.
+
+AgentHost reports pending approvals/inputs independently of active turns.
+RuntimeService reports pending session operations, turn finalizations, writes and
+tools from their existing owners. Terminal persistence completion can precede
+AgentHost's asynchronous queue inspection, so coordinators must inspect all
+owners rather than infer idle from one terminal event.
+
+Approved-plan admission is counted before waiting on the session lock and
+rechecked inside it before durable claim. Claimed work stays counted through
+launch and settlement; a concurrent idle request refuses instead of stranding a
+claimed row. Failed finalization and deferred retries remain busy. Disposal
+cancels retry timers and prevents later claims; a claimed execution whose launch
+has not begun is finalized as interrupted. These prerequisites do not yet enable
+Desktop transfer, successor readiness or complete application resource inventory.

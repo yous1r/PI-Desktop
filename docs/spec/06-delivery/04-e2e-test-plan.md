@@ -19868,3 +19868,30 @@ session data is used.
   [process model](../03-runtime/07-process-model.md),
   [private transport](../03-runtime/06-host-rpc-protocol.md),
   [idle handoff](../../project/ai-command-center-idle-handoff.md).
+
+### E2E-HOST-owner-idle-admission
+
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-owner-idle-admission.mjs`
+  with `PI_SCRATCH_DIR` on Windows and provisioned Node/esbuild dependencies.
+- **Steps:** Bundle current AgentHost, maintenance admission, RuntimeService and
+  production transports. Start an isolated real Host and a deterministic sidecar
+  behind its native execution barrier. Acquire a handoff hold, advance the
+  injected clock beyond maintenance expiry, and attempt direct and queued input.
+  Cancel the hold, execute one turn, attempt transfer while it is active, settle
+  its transcript, then wait for all reported owner activity to end. Seal the next
+  hold, verify cancellation/start refusal, close the native family, and reopen the
+  profile through an independent Host.
+- **Expected:** Closed admission starts no prompt and writes no transcript.
+  Cancellation permits one execution; active work refuses transfer. Persistence
+  completion does not bypass pending queue inspection. Fencing prevents reopen,
+  original process exits and empty containment are confirmed, and exact user and
+  assistant messages survive reopen without starting a successor runtime.
+- **Lower-level coverage:** Every required resource count rejects activity,
+  missing values and invalid numbers; ordinary lease expiry remains compatible;
+  late inspections, competing callers, stale handles and disposal remain closed.
+  Plan dispatch counts lock waiters, retries and failed finalization, checks
+  admission before claim, and cancels owned retry timers on disposal.
+- **Boundary:** Resource absences are explicit fixture declarations. This does
+  not prove complete Desktop resource inventory, durable source prepare/cancel,
+  successor readiness, client attachment or minimum-hardware acceptance.
+- **Spec:** [Process model](../03-runtime/07-process-model.md#handoff-admission-prerequisites).
