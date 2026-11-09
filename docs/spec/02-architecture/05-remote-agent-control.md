@@ -212,6 +212,29 @@ bounded unqualified-resource evidence survives registry removal. Full remote
 Host/client/bootstrap accounting and Desktop handoff composition are separate
 acceptance steps.
 
+The remote RACP wrapper binds inbound callbacks to the connection that admitted
+them. Closing or replacing that connection refuses later mutations and cleanup
+against a replacement with `HOST_DISCONNECTED`. Transport creation, reconnect
+backoff and callback completion remain counted after caller cancellation.
+
+The Desktop boot facade additionally owns original startup, per-Host serial
+actions, event refresh, preparation jobs and bootstrap adoption/cleanup. Canceling
+a preparation waiter does not release its job's activity. Temporary pairing and
+upgrade-authentication clients are canceled before shutdown drains their work.
+Concurrent and reentrant closes join a completion installed before cleanup
+callbacks. Cleanup failures settle all siblings, remain observable and retain
+bounded uncertainty even after the live Host is removed. Admission refusal
+remains `HOST_BUSY`; an admitted registry write is not rolled back.
+
+`getHandoffActivity()` includes live and retired clients and the tunnel manager.
+Missing, throwing or invalid owner statistics refuse idle handoff. Settled retired
+wrappers may be compacted while preserving their uncertainty. Actual bootstrap
+transport attempts add uncertainty after input validation; invalid requests alone
+do not invent resources. Ordinary socket closure, a peer response or a bootstrap
+promise settling does not certify the remote/native process family. Full native
+containment, inner SSH installer lifecycle and nineteen-family Desktop handoff
+composition remain separately qualified.
+
 **On-demand preparation.** Explicit remote-project opening, folder browsing and
 remote workspace readiness compare the live Host with this Desktop's exact
 release and required RACP workspace capabilities. Passive startup and inventory

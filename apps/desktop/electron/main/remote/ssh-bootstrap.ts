@@ -63,6 +63,8 @@ export type SshBootstrapDeps = {
   version: string;
   /** Build the SSH transport for one target. Defaults to the system `ssh`. */
   buildTransport?: (target: SshTarget) => SshTransport;
+  /** Called after input validation, before allocating an external transport. */
+  beforeTransport?: () => void;
   /** Read the published `.sha256` text. Defaults to an HTTPS GET. */
   fetchChecksum?: (url: string, signal?: AbortSignal) => Promise<string>;
   /** Production injects Electron fetch after the global proxy has been applied. */
@@ -304,6 +306,7 @@ export function createSshBootstrap(deps: SshBootstrapDeps): SshBootstrap {
         options.onProgress?.(step);
       };
 
+      deps.beforeTransport?.();
       const transport = buildTransport(target);
       const abort = () => transport.dispose();
       signal?.addEventListener("abort", abort, { once: true });

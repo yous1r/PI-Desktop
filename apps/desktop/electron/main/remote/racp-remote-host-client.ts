@@ -34,6 +34,8 @@ export type PairingExchangeOptions = {
   requireWorkspace?: boolean;
   expectedHostId?: string;
   isAdmissionClosed?: () => boolean;
+  /** Optional lifecycle owner for the throwaway pairing connection. */
+  useClient?: (client: RacpRemoteHostClient, exchange: () => Promise<string>) => Promise<string>;
   log?: (level: "info" | "warn", message: string, data?: Record<string, unknown>) => void;
 };
 
@@ -54,7 +56,7 @@ export async function exchangePairingToken(options: PairingExchangeOptions): Pro
     isAdmissionClosed: options.isAdmissionClosed,
     log: options.log,
   });
-  try {
+  const exchange = async () => {
     await pairing.connect();
     const result = (await pairing.client.request("connection/pair", {
       deviceLabel: options.label,
@@ -65,9 +67,10 @@ export async function exchangePairingToken(options: PairingExchangeOptions): Pro
       });
     }
     return result.deviceToken;
-  } finally {
-    await pairing.close().catch(() => undefined);
-  }
+  };
+  if (options.useClient) return options.useClient(pairing, exchange);
+  try { return await exchange(); }
+  finally { await pairing.close().catch(() => undefined); }
 }
 
 export type RacpRemoteHostClientOptions = {

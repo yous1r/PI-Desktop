@@ -20498,3 +20498,28 @@ delivery and deterministic plugin process ports remain fixture boundaries.
   inventory, native-family qualification and complete H1-H5 transfer remain open.
   Voice development is paused by user direction, not treated as complete.
 - **Specs:** [Remote agent control](../02-architecture/05-remote-agent-control.md).
+
+### E2E-HANDOFF-remote-boot-ownership
+
+- **Preconditions:** Current Desktop boot, registry, preparation, RACP and tunnel
+  sources; isolated temporary data directories. Use deterministic SSH fixtures
+  and a real loopback WebSocket RACP server with an in-memory credential store.
+- **Steps:** Hold connect, registry reads, event refresh and forward cleanup;
+  close or cancel while each is pending. Replace a Host, reenter close from a
+  cleanup callback, fail cleanup and its observer, and close during upgrade
+  authentication. Hold admission between SSH readiness and adapter creation.
+  Pair once, refuse token reuse, then cancel another pairing during a peer write.
+- **Expected:** Original work remains counted until completion. Cleanup starts
+  before draining and every sibling settles. Cancellation of a preparation
+  waiter does not hide its original job. Unadopted forwards and temporary clients
+  remain owned; retired callbacks cannot mutate a replacement connection. Missing
+  owner statistics and native uncertainty refuse handoff. Closed admission
+  returns `HOST_BUSY` without revoking an existing live workspace. Already
+  admitted registry/peer writes finish without rollback or replay.
+- **Automation:** `handoff-remote-hosts.test.mjs`,
+  `handoff-remote-pairing-user-path.test.mjs`, `handoff-racp-client.test.mjs`,
+  existing boot, pairing, preparation, realignment, deployment and SSH/RACP suites.
+- **Limits:** The real socket path is loopback-only. No stored Host, production
+  credential or actual SSH server is used. Native-family closure, inner installer
+  lifecycle, nineteen-family inventory and full H1-H5 transfer remain separate.
+- **Specs:** [Remote agent control](../02-architecture/05-remote-agent-control.md).

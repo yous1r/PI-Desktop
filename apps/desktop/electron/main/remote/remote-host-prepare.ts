@@ -17,6 +17,7 @@ type Options = {
   summary(record: RemoteHostRecord): RemoteHostSummary;
   changed(): void;
   now?: () => number;
+  track?<T>(action: () => Promise<T>): Promise<T>;
 };
 type Job = { controller: AbortController; callers: Set<string>; promise: Promise<RemoteHostSummary> };
 const RETRY_AFTER_MS = 10 * 60 * 1000;
@@ -121,7 +122,9 @@ export function createRemoteHostPreparer(options: Options) {
     if (job?.controller.signal.aborted) return Promise.reject(fail("HOST_BUSY"));
     if (!job) {
       const controller = new AbortController();
-      job = { controller, callers: new Set(), promise: Promise.resolve().then(() => run(request, controller.signal)) };
+      job = { controller, callers: new Set(), promise: options.track
+        ? options.track(() => Promise.resolve().then(() => run(request, controller.signal)))
+        : Promise.resolve().then(() => run(request, controller.signal)) };
       jobs.set(request.hostKey, job);
       const owned = job;
       void job.promise.finally(() => { if (jobs.get(request.hostKey) === owned) jobs.delete(request.hostKey); }).catch(() => undefined);

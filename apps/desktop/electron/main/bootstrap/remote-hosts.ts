@@ -26,6 +26,7 @@ import { sshMetadataOf, sshHostRecord, transportOf } from "../remote/remote-host
 import { createRemoteSessionCatalog } from "../remote/remote-session-catalog.js";
 import { syncRemoteProviders } from "../remote/remote-provider-transfer.js";
 import { workspaceExecutionError } from "../remote/remote-workspace-outcome.js";
+import { RemoteBootActivity, type RemoteBootSnapshot } from "../remote/remote-boot-activity.js";
 export { sshMetadataOf, sshHostRecord, transportOf } from "../remote/remote-host-metadata.js";
 export type { RemoteHostSummary };
 
@@ -57,6 +58,7 @@ export interface RemoteHostsBoot {
   readHistory(sessionId: string, limit: number): Promise<RacpItemSummary[]>;
   subscribeSession(sessionId: string, listener: (envelope: RacpEventEnvelope) => void): (() => void) | null;
   closeAll(): Promise<void>;
+  getHandoffActivity(): RemoteBootSnapshot;
   list(): Promise<RemoteHostSummary[]>;
   addHost(record: RemoteHostRecord): Promise<RemoteHostSummary>;
   bootstrapHost(request: RemoteHostBootstrapRequest): Promise<RemoteHostBootstrapResult>;
@@ -120,6 +122,7 @@ function assertWorkspaceCapabilities(adapter: RacpRemoteHostClient): void {
 
 export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHostsBoot {
   const log = options.log ?? (() => undefined);
+  const activity = new RemoteBootActivity(() => log("warn", "Remote cleanup could not be confirmed; idle handoff remains unavailable"));
   const registry = createRemoteHostRegistry({ dataDir: options.dataDir, encryption: options.encryption, log });
   const tunnels = options.tunnels ?? createSshTunnelManager({ log, isAdmissionClosed: options.isAdmissionClosed ?? (() => false) });
   const opened = new Map<string, OpenHost>();
@@ -127,11 +130,15 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
   const openingHosts = new Set<OpenHost>();
   const hostClosings = new WeakMap<OpenHost, Promise<void>>();
   const operations = new Map<string, Promise<unknown>>();
-  const bootstraps = new Map<AbortController, Promise<unknown>>();
+  const bootstraps = new Set<AbortController>();
   let closed = false;
   let opening: Promise<number> | undefined;
   let closing: Promise<void> | undefined;
-  const assertOpen = () => { if (closed) throw unavailable(); };
+  // Shared handoff admission refuses new remote work; live hosts keep their owners.
+  const assertOpen = () => {
+    if (closed) throw unavailable();
+    if (options.isAdmissionClosed?.()) throw Object.assign(new Error("Host admission is closed"), { code: "HOST_BUSY", errorCode: "HOST_BUSY" });
+  };
   const connectedHost = (key: string) => {
     const host = opened.get(key);
     return host?.adapter.state() === "connected" ? host : undefined;
@@ -143,18 +150,20 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
     },
   });
   const changed = () => options.emit(IPC.event.sessionsChanged, { reason: "remote.host.changed" });
-  const refresh = async (key: string) => {
+  const refresh = (key: string) => activity.track(async () => {
+    const original = connectedHost(key);
+    if (closed || options.isAdmissionClosed?.() || !original) return;
     try { await catalog.sessions(key); }
     catch (error) { log("warn", `remote host ${key} session refresh failed`, { error: String(error) }); }
-    if (!closed) changed();
-  };
+    if (!closed && connectedHost(key) === original) changed();
+  });
   function serial<T>(key: string, action: () => Promise<T>): Promise<T> {
     const previous = operations.get(key);
-    const task = (async () => {
+    const task = activity.track(async () => {
       if (previous) await previous.catch(() => undefined);
       assertOpen();
       return action();
-    })();
+    });
     operations.set(key, task);
     void task.finally(() => { if (operations.get(key) === task) operations.delete(key); }).catch(() => undefined);
     return task;
@@ -189,14 +198,27 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
   });
   const bootstrap = createSshBootstrap({
     version: options.clientInfo.version,
-    exchangePairing: ({ url, pairingToken, label, expectedHostId }) => exchangePairingToken({ url, pairingToken, label, expectedHostId, clientInfo: options.clientInfo, requireWorkspace: true, isAdmissionClosed: options.isAdmissionClosed, log }),
+    exchangePairing: ({ url, pairingToken, label, expectedHostId }) => exchangePairingToken({
+      url, pairingToken, label, expectedHostId, clientInfo: options.clientInfo, requireWorkspace: true,
+      isAdmissionClosed: options.isAdmissionClosed, log,
+      useClient: (client, exchange) => activity.useTemporary(client, async () => {
+        assertOpen(); return exchange();
+      }),
+    }),
     verifyConnection: async ({ url, deviceToken, expectedHostId }) => {
       const adapter = createRacpRemoteHostClient({ transport: wsClientTransport({ url, token: deviceToken }),
         expectedHostId, clientInfo: options.clientInfo, reconnect: { enabled: false }, isAdmissionClosed: options.isAdmissionClosed, log });
-      try { await adapter.connect(); assertWorkspaceCapabilities(adapter); }
-      finally { await adapter.close(); }
+      await activity.useTemporary(adapter, async () => {
+        assertOpen(); await adapter.connect(); assertOpen(); assertWorkspaceCapabilities(adapter);
+      });
     },
     log, ...options.sshBootstrap,
+    beforeTransport: () => {
+      assertOpen();
+      options.sshBootstrap?.beforeTransport?.();
+      assertOpen();
+      activity.uncertain();
+    },
   });
 
   const realigner = createRemoteHostRealigner({
@@ -207,15 +229,21 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
   function closeHost(host: OpenHost): Promise<void> {
     const existing = hostClosings.get(host);
     if (existing) return existing;
-    // Closing the adapter cancels connect/RPC waits, including subscription
-    // cleanup. Start both owners before awaiting either one.
-    const task = Promise.all([
-      host.connection.close().catch((error: unknown) => log("warn", "remote connection close failed", { error: String(error) })),
-      host.adapter.close().catch((error: unknown) => log("warn", "remote adapter close failed", { error: String(error) })),
-      tunnels.close(host.hostKey),
-    ]).then(() => undefined);
-    hostClosings.set(host, task);
-    return task;
+    const completion = Promise.withResolvers<void>();
+    hostClosings.set(host, completion.promise);
+    // Publish the completion before external cleanup callbacks can reenter.
+    void activity.cleanup([
+      () => host.connection.close(),
+      () => host.adapter.close(),
+      () => tunnels.close(host.hostKey),
+    ]).then(() => {
+      activity.retire(host.adapter);
+      completion.resolve();
+    }, error => {
+      activity.retire(host.adapter);
+      completion.reject(error);
+    });
+    return completion.promise;
   }
   async function closeLive(key: string): Promise<void> {
     const host = opened.get(key);
@@ -235,8 +263,10 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
     const expected = ssh ? { ...ssh, version: options.clientInfo.version } : undefined;
     const tunnel = expected ? await tunnels.open(record.hostKey, expected, record.sshSecret) : undefined;
     const url = tunnel?.url ?? record.url;
-    if (closed) { await tunnels.close(record.hostKey); throw unavailable(); }
+    try { assertOpen(); }
+    catch (error) { await activity.cleanup([() => tunnels.close(record.hostKey)]); throw error; }
     const adapter = buildAdapter({ ...record, url });
+    activity.own(adapter);
     const connection = createRemoteHostConnection({
       hostKey: record.hostKey, hostLabel: record.label, client: adapter.client, router: options.router,
       emit: (channel, payload) => {
@@ -256,6 +286,7 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       assertOpen();
       assertWorkspaceCapabilities(adapter);
       await tunnel?.completePreparation?.();
+      assertOpen();
       await connection.open();
       assertOpen();
       opened.set(record.hostKey, live);
@@ -275,7 +306,7 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
   async function openHost(record: RemoteHostRecord, signal?: AbortSignal): Promise<void> {
     signal?.throwIfAborted();
     const abort = () => {
-      void Promise.allSettled([closeLive(record.hostKey), tunnels.close(record.hostKey)]);
+      void activity.cleanup([() => closeLive(record.hostKey), () => tunnels.close(record.hostKey)]).catch(() => undefined);
     };
     signal?.addEventListener("abort", abort, { once: true });
     try {
@@ -294,10 +325,11 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
   async function addRecord(record: RemoteHostRecord): Promise<RemoteHostSummary> {
     assertOpen();
     await registry.upsert(record);
+    assertOpen();
     await closeLive(record.hostKey);
     try { await openHost(record); }
     catch (error) {
-      if (closed) throw error;
+      if (closed || (error && typeof error === "object" && "errorCode" in error && error.errorCode === "HOST_BUSY")) throw error;
       log("warn", `remote host ${record.hostKey} paired but failed to open`, { error: String(error) });
     }
     return summaryOf(record);
@@ -305,6 +337,7 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
 
   const preparer = createRemoteHostPreparer({
     version: options.clientInfo.version, registry, summary: summaryOf, changed,
+    track: action => activity.track(action),
     connect: (record, signal) => serial(record.hostKey, async () => {
       signal.throwIfAborted();
       if (connectedHost(record.hostKey)) return;
@@ -320,9 +353,13 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       if (ssh && run.currentVersion) {
         // Authenticate the existing device before replacing an older running Host.
         const { url } = await tunnels.open(record.hostKey, { ...ssh, version: run.currentVersion }, record.sshSecret);
-        const adapter = buildAdapter({ ...record, url });
-        try { await adapter.connect(); }
-        finally { await adapter.close(); await tunnels.close(record.hostKey); }
+        try {
+          assertOpen(); run.signal.throwIfAborted();
+          const adapter = buildAdapter({ ...record, url });
+          await activity.useTemporary(adapter, async () => {
+            assertOpen(); await adapter.connect(); assertOpen();
+          }, run.signal);
+        } finally { await activity.cleanup([() => tunnels.close(record.hostKey)]); }
       }
       run.signal.throwIfAborted();
       const result = await realigner(record, run);
@@ -330,19 +367,20 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
         assertOpen(); run.signal.throwIfAborted();
         await tunnels.adopt(record.hostKey, result.outcome.ssh, result.outcome.forward);
         return result.record;
-      } catch (error) { await result.outcome.forward.close(); throw error; }
+      } catch (error) { await activity.cleanup([() => result.outcome.forward.close()]); throw error; }
     }),
   });
   const ensureReady = preparer.ensureReady;
 
   return {
     registry,
+    getHandoffActivity: () => activity.snapshot(tunnels),
     ensureReady,
     prepareHost: preparer.prepare,
     cancelPreparation: preparer.cancel,
     open() {
       if (opening) return opening;
-      opening = (async () => {
+      opening = activity.track(async () => {
         assertOpen();
         const records = await registry.list();
         assertOpen();
@@ -360,24 +398,31 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
           }
         }
         return successes;
-      })();
+      });
       return opening;
     },
     closeAll() {
       if (closing) return closing;
+      const completion = Promise.withResolvers<void>();
+      closing = completion.promise;
       closed = true;
-      for (const controller of bootstraps.keys()) controller.abort();
-      const preparations = preparer.dispose();
+      for (const controller of bootstraps) controller.abort();
       const hosts = new Set([...opened.values(), ...openingHosts]);
       opened.clear();
-      closing = (async () => {
-        const cleanup = [...hosts].map(closeHost);
-        // Forward creation is itself an operation we must cancel, not await
-        // before disposal. The same fence prevents all late registrations.
-        const disposal = tunnels.dispose();
-        await Promise.allSettled([...cleanup, disposal, preparations, ...operations.values(), ...bootstraps.values()]);
-        await disposal;
-      })();
+      const preparations = preparer.dispose();
+      // Cancel before draining; this aggregate wait must not count itself.
+      const cleanup = activity.cleanup([
+        ...[...hosts].map(host => () => closeHost(host)),
+        () => activity.closeTemporary(),
+        () => tunnels.dispose(),
+      ]);
+      void (async () => {
+        const outcomes = await Promise.allSettled([cleanup, preparations]);
+        await activity.drain();
+        const failures = outcomes.flatMap(outcome => outcome.status === "rejected" ? [outcome.reason] : []);
+        if (failures.length) throw new AggregateError(failures, "Remote host cleanup could not be confirmed");
+        activity.assertCleanup();
+      })().then(completion.resolve, completion.reject);
       return closing;
     },
     async list() { return (await registry.list()).map(summaryOf); },
@@ -479,37 +524,39 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       await serial(key, async () => { await closeLive(key); await tunnels.close(key); });
       return preparer.prepare({ hostKey: key, requestId: `reconnect-${Date.now()}`, retry: true });
     },
-    async bootstrapHost(request) {
-      assertOpen();
-      const controller = new AbortController();
-      const task = bootstrap.bootstrap(request, {
-        signal: controller.signal, allowLegacyMaintenance: request.allowLegacyMaintenance === true,
-      });
-      bootstraps.set(controller, task);
-      const outcome = await task.finally(() => { bootstraps.delete(controller); });
-      let adopted = false;
-      try {
-        return await serial(outcome.hostKey, async () => {
-          await closeLive(outcome.hostKey);
-          assertOpen();
-          await tunnels.adopt(outcome.hostKey, outcome.ssh, outcome.forward);
-          adopted = true;
+    bootstrapHost(request) {
+      return activity.track(async () => {
+        assertOpen();
+        const controller = new AbortController();
+        bootstraps.add(controller);
+        try {
+          const outcome = await bootstrap.bootstrap(request, {
+            signal: controller.signal, allowLegacyMaintenance: request.allowLegacyMaintenance === true,
+          });
+          let adopted = false;
           try {
-            assertOpen();
-            const record = sshHostRecord(outcome);
-            record.metadata = { ...record.metadata, piHostDownloadConsent: true };
-            const host = await addRecord(record);
-            return { host, ssh: outcome.ssh, steps: outcome.steps };
-          } catch (error) {
-            await tunnels.close(outcome.hostKey);
-            throw error;
+            return await serial(outcome.hostKey, async () => {
+              await closeLive(outcome.hostKey);
+              assertOpen();
+              await tunnels.adopt(outcome.hostKey, outcome.ssh, outcome.forward);
+              adopted = true;
+              try {
+                assertOpen();
+                const record = sshHostRecord(outcome);
+                record.metadata = { ...record.metadata, piHostDownloadConsent: true };
+                const host = await addRecord(record);
+                return { host, ssh: outcome.ssh, steps: outcome.steps };
+              } catch (error) {
+                await activity.cleanup([() => tunnels.close(outcome.hostKey)]);
+                throw error;
+              }
+            });
+          } finally {
+            // A rejected queued action still owns its unadopted forward.
+            if (!adopted) await activity.cleanup([() => outcome.forward.close()]);
           }
-        });
-      } finally {
-        // serial can reject before invoking the action; until adopt succeeds
-        // this call, not the tunnel manager, still owns the bootstrap forward.
-        if (!adopted) await outcome.forward.close();
-      }
+        } finally { bootstraps.delete(controller); }
+      });
     },
     removeHost: async (key) => {
       await preparer.forget(key);
