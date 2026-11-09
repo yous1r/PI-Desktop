@@ -12,6 +12,7 @@ import type { PluginRuntime } from "../plugin-runtime";
 import type { SpeechService } from "../services/speech-service";
 import type { WorkspaceTerminalRegistry } from "../terminal/workspace-terminal-registry";
 import type { UserMcpRuntime } from "../user-mcp";
+import type { DesktopBackendOwner } from "./backend-owner";
 import type { createEventPersistence } from "./event-persistence";
 import type { DesktopHandoffAdmission } from "./handoff-admission";
 import type { ModeRunCoordinator } from "./mode-runs";
@@ -24,6 +25,7 @@ export type DesktopHandoffSources = {
   binding: OwnerInspectionBinding & { sidecar: Pick<AgentSidecar, "captureHostBinding" |
     "getExtensionOwnerActivity" | "getExtensionWorkspaceProcessActivity" | "getExtensionServiceActivity"> };
   admission: Pick<DesktopHandoffAdmission, "inFlightCount">;
+  backends: Pick<DesktopBackendOwner<unknown>, "getHandoffActivity" | "retainedSidecars">;
   agentHost: Pick<AgentHost, "handoffBusyCounts">;
   plans: Pick<PlanRuntime, "inFlightCount">;
   modes: ActivityOwner<ModeRunCoordinator>;
@@ -53,7 +55,7 @@ export const DESKTOP_HANDOFF_UNQUALIFIED_SOURCES = Object.freeze([
   "electron-surfaces-and-listeners", "worker-execution-classification", "voice-and-live-voice",
 ] as const);
 
-const sourceKeys = ["admission", "agentHost", "plans", "modes", "coordination", "events", "outbox", "checkpointer",
+const sourceKeys = ["backends", "admission", "agentHost", "plans", "modes", "coordination", "events", "outbox", "checkpointer",
   "scheduler", "scheduledRuns", "activeTurns", "activeTools", "plugins", "remote", "browser", "terminals", "userMcp", "mcpOAuth", "speech"] as const;
 const externalKeys = ["operations", "resources", "uncontainedResources"] as const;
 const writesKeys = ["writes", "uncontainedResources"] as const;
@@ -97,6 +99,29 @@ function size(source: string, map: ReadonlyMap<string, unknown>): number {
   return read(source, () => count(map.size, source));
 }
 
+function retainedSidecars(sources: DesktopHandoffSources, current: DesktopHandoffSources["binding"]["sidecar"]) {
+  return read("backends.sidecars", () => {
+    const value: unknown = sources.backends.retainedSidecars();
+    if (isPromise(value)) {
+      void Promise.prototype.then.call(value, undefined, () => undefined);
+      throw unavailable("backends.sidecars");
+    }
+    if (!Array.isArray(value) || value.length < 1 || value.length > 9 || Reflect.ownKeys(value).length !== value.length + 1) {
+      throw unavailable("backends.sidecars");
+    }
+    const result: DesktopHandoffSources["binding"]["sidecar"][] = [];
+    for (let index = 0; index < value.length; index++) {
+      const property = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!property || !("value" in property) || !property.value || typeof property.value !== "object" || result.includes(property.value)) {
+        throw unavailable("backends.sidecars");
+      }
+      result.push(property.value);
+    }
+    if (!result.includes(current)) throw unavailable("backends.sidecars");
+    return result;
+  });
+}
+
 /** Read original Rust authority, then synchronously sample current Desktop
  * owners. This is a conservative obstruction inventory, never an execution
  * capacity total, an admission hold, or native closure certification.
@@ -136,9 +161,12 @@ export async function inspectDesktopHandoff(current: () => DesktopHandoffSources
     const userMcp = report("userMcp", () => sources.userMcp.getHandoffActivity(), ["mcp", "uncontainedResources"]);
     const oauth = report("mcpOAuth", () => sources.mcpOAuth.getHandoffActivity(), externalKeys);
     const speech = report("speech", () => sources.speech.getHandoffActivity(), externalKeys);
-    const extensions = report("sidecar.extensions", () => binding.sidecar.getExtensionOwnerActivity(), ["operations", "runtimes", "uncontainedResources"]);
-    const processes = report("sidecar.processes", () => binding.sidecar.getExtensionWorkspaceProcessActivity(), ["operations", "processes", "uncontainedResources"]);
-    const services = report("sidecar.services", () => binding.sidecar.getExtensionServiceActivity(), ["operations", "inputs", "uncontainedResources"]);
+    const retained = retainedSidecars(sources, binding.sidecar);
+    const backends = report("backends", () => sources.backends.getHandoffActivity(), ["operations", "retiredSidecars", "uncontainedResources"]);
+    if (backends.retiredSidecars !== retained.length - 1) throw unavailable("backends.sidecars");
+    const extensions = retained.map(sidecar => report("sidecar.extensions", () => sidecar.getExtensionOwnerActivity(), ["operations", "runtimes", "uncontainedResources"]));
+    const processes = retained.map(sidecar => report("sidecar.processes", () => sidecar.getExtensionWorkspaceProcessActivity(), ["operations", "processes", "uncontainedResources"]));
+    const services = retained.map(sidecar => report("sidecar.services", () => sidecar.getExtensionServiceActivity(), ["operations", "inputs", "uncontainedResources"]));
     const admissions = read("admission", () => count(sources.admission.inFlightCount(), "admission"));
     const plans = read("plans", () => count(sources.plans.inFlightCount(), "plans"));
     const schedules = read("scheduler", () => count(sources.scheduler.inFlightCount(), "scheduler"));
@@ -149,12 +177,12 @@ export async function inspectDesktopHandoff(current: () => DesktopHandoffSources
       queuedTurns: sum(agent.queuedTurns, modes.queuedTurns, Number(durable.queuedTurns)),
       plans: sum(plans, Number(durable.plans), Number(durable.modeClaims), Number(durable.modeWaits)),
       tools: sum(size("activeTools", sources.activeTools), Number(runtime.tools)),
-      processes: sum(processes.processes, Number(runtime.backgroundProcesses)),
+      processes: sum(...processes.map(value => value.processes), Number(runtime.backgroundProcesses)),
       terminals: terminals.terminals,
-      plugins: sum(plugins.plugins, extensions.runtimes, Number(runtime.pluginExecutions)),
-      admissions: sum(admissions, agent.admissions, modes.operations, coordination.admissions,
+      plugins: sum(plugins.plugins, ...extensions.map(value => value.runtimes), Number(runtime.pluginExecutions)),
+      admissions: sum(admissions, agent.admissions, modes.operations, coordination.admissions, backends.operations,
         plugins.operations, remote.operations, browser.operations, oauth.operations, speech.operations,
-        extensions.operations, processes.operations, services.operations, activity.requests, activity.backgroundTasks, Number(durable.worktrees)),
+        ...[...extensions, ...processes, ...services].map(value => value.operations), activity.requests, activity.backgroundTasks, Number(durable.worktrees)),
       // Event and coordination finalizations can overlap; both retain work the
       // other cannot see. Their sum is an obligation bound, not turn occupancy.
       finalizations: sum(coordination.finalizations, events.finalizations),
@@ -164,13 +192,18 @@ export async function inspectDesktopHandoff(current: () => DesktopHandoffSources
       children: 0, workers: 0, nativeSessions: 0,
       schedules: sum(schedules, size("scheduledRuns", sources.scheduledRuns), plugins.schedules, Number(durable.scheduledRuns), Number(runtime.configSync)),
       approvals: sum(agent.approvals, Number(durable.approvals), Number(runtime.permissions)),
-      inputs: sum(agent.inputs, services.inputs),
+      inputs: sum(agent.inputs, ...services.map(value => value.inputs)),
       mcp: sum(userMcp.mcp, oauth.resources),
       uncontainedResources: sum(DESKTOP_HANDOFF_UNQUALIFIED_SOURCES.length, Number(activity.uncertain),
         ...[modes, coordination, events, outbox, checkpoint, plugins, remote, browser, terminals, userMcp, oauth, speech,
-          extensions, processes, services].map(value => value.uncontainedResources), browser.pages, speech.resources),
+          backends, ...extensions, ...processes, ...services].map(value => value.uncontainedResources),
+        backends.retiredSidecars, browser.pages, speech.resources),
     };
     if (!Value.Check(OwnerHandoffInventorySchema, result)) throw unavailable("inventory");
+    const liveRetained = retainedSidecars(sources, binding.sidecar);
+    if (liveRetained.length !== retained.length || liveRetained.some((sidecar, index) => sidecar !== retained[index])) {
+      throw failure("HANDOFF_OWNER_CHANGED");
+    }
     return result;
   } finally { assertCurrent(); }
 }

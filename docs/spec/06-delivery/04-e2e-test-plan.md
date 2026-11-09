@@ -20047,13 +20047,22 @@ session data is used.
   throwing source, and changed Host/generation/Sidecar/resource during Rust wait.
   Keep real outbox and checkpoint writes pending after queue removal/disposal;
   inspect retired remote clients and retained process uncertainty.
+  Restart the real backend owner with original extension work still pending;
+  inspect both current and retired Sidecars, then settle the original work.
+  Refuse missing/duplicate/accessor/async lists, inconsistent retirement counts,
+  rejected retired reports and synchronous replacement during sampling.
 - **Expected:** All 19 families are present; no missing-source zero fallback.
   Original writes remain busy through their actual completion. Native and other
   explicit qualification gaps refuse handoff even after known work settles.
   Nested plugin/tunnel sources are not separately added as execution occupancy.
-- **Boundary:** This proves the reader/persistence/gate composition. Full Desktop
-  startup and native closure remain pending; original source identity/transfer
-  transport is covered by the process path above. Voice/LiveVoice remain paused.
+  Backend startup/closing operations remain counted. Retired presence remains
+  an obstruction independently of cleanup uncertainty; current reports are not
+  counted twice. Confirmed retirement disappears only after original work ends.
+- **Boundary:** This proves the reader/backend/persistence/gate composition.
+  Windows fenced startup is covered separately above; production coordinator
+  transport and full resource/native qualification remain pending. Original
+  source identity/transfer queries are covered by the process path above.
+  Voice/LiveVoice remain paused.
 - **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
 
 ### Desktop admission integration prerequisites (H1 partial)

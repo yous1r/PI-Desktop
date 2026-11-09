@@ -25,6 +25,7 @@ export async function verifyDesktopInventory(host, binding, directory) {
   });
   const sources = {
     binding: { ...binding, sidecar }, admission,
+    backends: { retainedSidecars: () => [sidecar], getHandoffActivity: () => ({ operations: 0, retiredSidecars: 0, uncontainedResources: 0 }) },
     agentHost: { handoffBusyCounts: () => ({ turns: 0, queuedTurns: 0, admissions: 0, approvals: 0, inputs: 0 }) },
     plans: { inFlightCount: () => 0 }, modes: reporter({ operations: 0, turns: 0, queuedTurns: 0, uncontainedResources: 0 }),
     coordination: reporter({ admissions: 0, finalizations: 0, writes: 0, uncontainedResources: 0 }),

@@ -2505,3 +2505,28 @@ This accepts the Windows startup/restart composition slice, not complete H1.
 Next is production coordinator binding and retained-backend inventory integration,
 then Rust background admission and remaining required resource/native proofs.
 The fixed qualification gaps, Voice pause and earlier incident limits remain.
+
+### H1 retained backend inventory
+
+The Desktop inventory now requires the actual backend owner and samples every
+retained Sidecar, including original extension work surviving restart. Backend
+startup/closing operations and cleanup uncertainty remain counted. Retired
+presence independently obstructs transfer; current Sidecar reports are included
+once. Strict synchronous list validation rejects missing/duplicate/sparse/accessor
+entries, asynchronous lists, inconsistent retirement counts and changed objects
+during sampling. Retired report failures remain classified refusals.
+
+The initial development run passed 48 cases and failed 12: eleven exposed the
+missing backend inventory behavior; one new real-owner fixture lacked `setHost`.
+The corrected fixture and implementation passed 83 inventory/backend-owner cases,
+including actual backend startup, original retirement and replacement before
+delayed extension work settles. Desktop typecheck completed without diagnostics.
+These development counts overlap later acceptance and are not additional tests.
+
+Production coordinator exchange composition remains next. Current Host stdio has
+no coordinator callback registration; adding a class instance alone would not
+complete that transport. Rust background admission, required native/resource
+proofs, Worker classification and the rest of the approved DAG remain open.
+Voice stays paused and fixed qualification gaps still refuse handoff. The earlier
+default-profile incident and unknown data impact remain unresolved. Exact clean
+candidate acceptance is recorded after the implementation commit.

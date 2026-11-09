@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Include backend startup/closing work and every retained Sidecar in Desktop
+  handoff inventory. Delayed original extension work survives restart; malformed
+  or replaced retained-owner reports refuse inspection. Full handoff remains
+  unavailable pending coordinator transport and resource/native qualification.
 - Start Windows Desktop agents inside the Rust execution fence. Serialize Host
   and Sidecar startup/restart, retain original children through cleanup, and
   require native closure or Rust owner recovery before replacement. Publish only

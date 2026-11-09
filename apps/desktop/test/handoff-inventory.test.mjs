@@ -46,6 +46,7 @@ async function fixture() {
   const original = {
     binding: { host, sidecar, generation, sourceEpoch: randomUUID(), profileId: "a".repeat(64) },
     admission: new DesktopHandoffAdmission(),
+    backends: { retainedSidecars: () => [sidecar], getHandoffActivity: () => ({ operations: 0, retiredSidecars: 0, uncontainedResources: 0 }) },
     agentHost: { handoffBusyCounts: () => ({ turns: 0, queuedTurns: 0, admissions: 0, approvals: 0, inputs: 0 }) },
     plans: { inFlightCount: () => 0 },
     modes: reporter({ operations: 0, turns: 0, queuedTurns: 0, uncontainedResources: 0 }),
@@ -131,7 +132,7 @@ test("Desktop inventory maps original Rust durable and runtime obligations witho
   assert.equal(result.uncontainedResources, f.unqualified.length + 1);
 });
 
-for (const name of ["admission", "agentHost", "plans", "modes", "coordination", "events", "outbox", "checkpointer",
+for (const name of ["backends", "admission", "agentHost", "plans", "modes", "coordination", "events", "outbox", "checkpointer",
   "scheduler", "scheduledRuns", "activeTurns", "activeTools", "plugins", "remote", "browser", "terminals", "userMcp", "mcpOAuth", "speech"]) {
   test(`Desktop inventory refuses the missing ${name} owner`, async () => {
     const f = await fixture(); delete f.original[name];
@@ -169,6 +170,7 @@ for (const [label, replace] of [
   ["native generation", (f) => { f.original.binding.generation = randomUUID(); }],
   ["profile", (f) => { f.original.binding.profileId = "b".repeat(64); }],
   ["resource owner", (f) => { f.original.remote = reporter(external()); }],
+  ["backend owner", (f) => { f.original.backends = { ...f.original.backends }; }],
 ]) {
   test(`Desktop inventory refuses a changed ${label} during original Rust inspection`, async () => {
     const f = await fixture(); f.onInspect(() => { replace(f); });
@@ -264,4 +266,77 @@ test("Desktop inventory retains finalizations and visible browser, terminal, MCP
   assert.equal(result.admissions, 33); assert.equal(result.finalizations, 8);
   assert.equal(result.writes, 10); assert.equal(result.terminals, 9); assert.equal(result.mcp, 22);
   assert.equal(result.uncontainedResources, f.unqualified.length + 7 + 8 + 14);
+});
+
+test("Desktop inventory includes backend setup and retained Sidecar obligations exactly once", async () => {
+  const f = await fixture(), old = { ...f.sidecar };
+  old.getExtensionOwnerActivity = () => ({ operations: 2, runtimes: 3, uncontainedResources: 4 });
+  old.getExtensionWorkspaceProcessActivity = () => ({ operations: 5, processes: 6, uncontainedResources: 7 });
+  old.getExtensionServiceActivity = () => ({ operations: 8, inputs: 9, uncontainedResources: 10 });
+  f.sidecar.getExtensionOwnerActivity = () => ({ operations: 11, runtimes: 12, uncontainedResources: 0 });
+  f.original.backends.retainedSidecars = () => [old, f.sidecar];
+  f.original.backends.getHandoffActivity = () => ({ operations: 13, retiredSidecars: 1, uncontainedResources: 1 });
+  const result = await f.inspect();
+  assert.equal(result.admissions, 2 + 5 + 8 + 11 + 13);
+  assert.equal(result.plugins, 15); assert.equal(result.processes, 6); assert.equal(result.inputs, 9);
+  assert.equal(result.uncontainedResources, f.unqualified.length + 4 + 7 + 10 + 1 + 1);
+});
+
+for (const [label, make] of [
+  ["missing current", () => []], ["duplicate current", f => [f.sidecar, f.sidecar]],
+  ["sparse", () => Array(1)], ["asynchronous", f => Promise.resolve([f.sidecar])],
+  ["rejected", () => Promise.reject(new Error("invalid backend list"))],
+  ["accessor", f => Object.defineProperty([f.sidecar], 0, { get() { throw new Error("must not read"); } })],
+]) {
+  test(`Desktop inventory refuses a ${label} retained Sidecar list`, async () => {
+    const f = await fixture(); f.original.backends.retainedSidecars = () => make(f);
+    await assert.rejects(f.inspect(), code("HANDOFF_INVENTORY_UNAVAILABLE"));
+  });
+}
+
+test("Desktop inventory refuses inconsistent retirement counts and rejected retired reports", async () => {
+  const f = await fixture();
+  f.original.backends.getHandoffActivity = () => ({ operations: 0, retiredSidecars: 1, uncontainedResources: 0 });
+  await assert.rejects(f.inspect(), code("HANDOFF_INVENTORY_UNAVAILABLE"));
+  const old = { ...f.sidecar, getExtensionOwnerActivity: () => Promise.reject(new Error("retired owner failed")) };
+  f.original.backends.retainedSidecars = () => [old, f.sidecar];
+  await assert.rejects(f.inspect(), code("HANDOFF_INVENTORY_UNAVAILABLE"));
+});
+
+test("Desktop inventory refuses retained owner replacement during synchronous report reentry", async () => {
+  const f = await fixture(), old = { ...f.sidecar }; let retained = [old, f.sidecar];
+  f.original.backends.retainedSidecars = () => retained;
+  f.original.backends.getHandoffActivity = () => ({ operations: 0, retiredSidecars: 1, uncontainedResources: 0 });
+  old.getExtensionServiceActivity = () => {
+    retained = [{ ...old }, f.sidecar]; return { operations: 0, inputs: 0, uncontainedResources: 0 };
+  };
+  await assert.rejects(f.inspect(), code("HANDOFF_OWNER_CHANGED"));
+});
+
+test("Desktop inventory follows real backend restart retention until original extension work settles", async () => {
+  const { DesktopBackendOwner } = await import("../electron/main/runtime/backend-owner.ts");
+  const f = await fixture(), state = { host: null, sidecar: null, handoffAdmission: f.original.admission };
+  const created = [];
+  f.host.onExit = () => () => undefined;
+  const owner = new DesktopBackendOwner({ runtimeState: state, fenced: true, isQuitting: () => false,
+    host: { prepare: async () => undefined, create: () => f.host, configure: async () => undefined },
+    sidecar: { create: () => {
+      const exits = new Set();
+      const s = { ...f.sidecar, pending: 0, onExit: fn => { exits.add(fn); return () => exits.delete(fn); },
+        exit: () => { for (const fn of exits) fn({}); state.sidecar = null; },
+        setHost: () => undefined, fenceExecution: async () => true,
+        dispose: async () => undefined, confirmExit: async () => true };
+      s.getExtensionServiceActivity = () => ({ operations: s.pending, inputs: 0, uncontainedResources: 0 });
+      created.push(s); return s;
+    }, configure: async () => undefined } });
+  f.original.backends = owner;
+  await owner.startSidecar(); f.original.binding.sidecar = state.sidecar;
+  assert.equal((await f.inspect()).admissions, 0);
+  const old = created[0]; old.pending = 1; old.exit();
+  await owner.startSidecar(); f.original.binding.sidecar = state.sidecar;
+  const busy = await f.inspect();
+  assert.equal(busy.admissions, 1); assert.equal(busy.uncontainedResources, f.unqualified.length + 1);
+  old.pending = 0;
+  const settled = await f.inspect();
+  assert.equal(settled.admissions, 0); assert.equal(settled.uncontainedResources, f.unqualified.length);
 });

@@ -733,6 +733,15 @@ required; missing, throwing, accessor-based, extra-field, asynchronous or unsafe
 numeric reports and sum overflow refuse inspection. Producer error payloads are
 not copied into diagnostics; the fixed source name identifies the failed read.
 
+The backend owner is required too. Its admitted startup/closing operations and
+cleanup uncertainty remain visible; every retained Sidecar contributes its own
+extension owner, process and service reports exactly once. The current Sidecar
+must occur once in a bounded, synchronous, dense list, with a matching retired
+count. A changed list during sampling refuses the result. Retired presence itself
+obstructs transfer even after native/child exit while extension work is pending.
+Only the backend owner's confirmed cleanup and empty original resource reports
+permit retirement to disappear; no current-only fallback is accepted.
+
 The 19 output families describe conservative outstanding obligations. Plugin
 and remote-boot reports already include their nested resources and retired
 owners; the reader does not add those children again. Event/coordination writes
