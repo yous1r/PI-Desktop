@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Preserve Desktop Sidecar extension/resource tracking when creating a fenced
+  process. Capture original launch parameters before Rust preparation and clean
+  up the original child and native generation after construction/binding failure;
+  missing closure proof remains an error. Default startup is unchanged.
 - Add bounded private original-owner identity and transfer queries over Rust
   stdio. Exact retained owner/journal checks and stale-response refusal support
   Desktop composition without enabling handoff or bypassing qualification gaps.

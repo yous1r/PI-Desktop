@@ -76,6 +76,8 @@
 			"scripts/e2e-owner-inspection.mjs",
 			"scripts/e2e/desktop-handoff-inventory.mjs",
 			"scripts/e2e/owner-query.mjs",
+			"scripts/e2e/desktop-sidecar-factory.mjs",
+			"packages/host-runtime/src/fenced-sidecar-factory.ts",
 			"scripts/e2e-desktop-plan-handoff.mjs",
 			"scripts/e2e-browser-handoff.mjs",
 			"scripts/e2e/browser-handoff.ts",

@@ -7,13 +7,15 @@ export class ExecutionFence {
   private constructor(private readonly host: SidecarHostLink, readonly generation: string) {}
 
   static async prepare(host: SidecarHostLink, binaryPath: string, launch: SidecarLaunch): Promise<{ fence: ExecutionFence; launch: SidecarLaunch }> {
+    const original = { command: launch.command, args: [...launch.args], cwd: launch.cwd,
+      env: { ...(launch.env ?? process.env) } };
     const ticket: unknown = await host.call("executionFence.prepare", {});
     if (!Value.Check(ExecutionFenceTicketSchema, ticket) || ticket.address !== `\\\\.\\pipe\\pi-execution-v1-${ticket.generation}`) {
       throw new Error("EXECUTION_FENCE_INVALID_TICKET");
     }
     return {
       fence: new ExecutionFence(host, ticket.generation),
-      launch: ExecutionFence.launch(binaryPath, launch, ticket),
+      launch: ExecutionFence.launch(binaryPath, original, ticket),
     };
   }
 

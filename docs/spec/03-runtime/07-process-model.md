@@ -477,6 +477,17 @@ Job has zero active processes. A timeout is unconfirmed; ordinary `dispose()` an
 single-child `confirmExit()` are not equivalent proofs. Unknown identities and
 failed registration never fall back to an ordinary sidecar launch.
 
+The Desktop factory retains its concrete Sidecar subclass, including extension
+owner/process/service tracking and the original Host-binding token. The shared
+factory captures Host, executable, stderr handler, command, arguments, working
+directory and environment before the preparation RPC yields. Derived-constructor
+failure after spawn retains the original transport cleanup entry. Construction
+or binding failure starts native Stop and transport disposal independently,
+then requires both native closure and original-child exit. Missing confirmation
+or cleanup errors produce `EXECUTION_FENCE_CLEANUP_UNCONFIRMED` with the original
+failure retained; no replacement Host, fallback launch or replay is selected.
+Successful construction alone does not certify handshake or transfer readiness.
+
 This additive path is available to coordinators; default Desktop/headless launch
 is unchanged. It does not adopt unrelated applications or other process families.
 All-resource idle handoff and readiness remain separate prerequisites. Other

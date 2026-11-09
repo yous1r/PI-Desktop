@@ -22,6 +22,22 @@ describe("execution fence transport", () => {
     expect(JSON.parse(prepared.launch.env?.PI_EXECUTION_TICKET ?? "null")).toEqual(ticket);
     expect(launch.env).toEqual({ TEST_VALUE: "yes" });
   });
+  it("captures inherited environment before the original prepare RPC yields", async () => {
+    const reply = Promise.withResolvers<unknown>();
+    const { host, call } = hostWith(ticket);
+    call.mockReturnValue(reply.promise);
+    const previous = process.env.PI_FENCE_FACTORY_TEST;
+    try {
+      process.env.PI_FENCE_FACTORY_TEST = "original";
+      const preparing = ExecutionFence.prepare(host, "host.exe", { command: "node", args: [] });
+      process.env.PI_FENCE_FACTORY_TEST = "replacement";
+      reply.resolve(ticket);
+      expect((await preparing).launch.env?.PI_FENCE_FACTORY_TEST).toBe("original");
+    } finally {
+      if (previous === undefined) delete process.env.PI_FENCE_FACTORY_TEST;
+      else process.env.PI_FENCE_FACTORY_TEST = previous;
+    }
+  });
   it("rejects malformed, lossy, redirected and unsupported tickets without a fallback", async () => {
     for (const response of [null, { ...ticket, version: 2 }, { ...ticket, pid: 1 },
       { ...ticket, ownerCreatedAt: 134000000000000001 }, { ...ticket, address: "\\\\remote\\pipe\\other" }]) {

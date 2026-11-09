@@ -2360,3 +2360,30 @@ fenced factory/lifecycle composition. Voice remains paused.
   coordinator, background admission, Worker/resource/native coverage remain.
   Voice remains paused. The earlier default-profile incident and unknown impact
   are preserved; this slice used only explicitly isolated scratch profiles.
+
+### H1 fenced Desktop Sidecar factory
+
+The fenced factory now constructs the full Desktop subclass, preserving extension
+owner/process/service tracking and original Host-binding guards. Shared creation
+captures the original Host, executable, stderr callback and launch values before
+Rust preparation yields. An internal construction hook retains original transport
+cleanup even if a derived constructor fails after spawn. Failed construction or
+Host binding starts native Stop and transport disposal independently and requires
+both native closure and original-child exit; errors preserve the initial failure.
+The ordinary constructor, default startup and Rust authority remain unchanged.
+
+The pre-fix factory selection reproduced seven failures (three cases already
+passed). Development validation passed 102 Desktop cases and 24 runtime cases,
+plus seven isolated process checks using the real Desktop subclass and Rust
+generation. The first post-fix run had a test-only Node mock API error (12/13),
+corrected before the broader green selection. Real process coverage includes
+pending RPC activity, completion, native closure and binding/derived-constructor
+failure cleanup. It uses explicit scratch profiles and does not launch Electron.
+The accepted query Host was reused after unchanged Rust inputs and binary hash
+verification; Rust tests and Clippy were not rerun for this TypeScript slice.
+
+Exact clean-candidate acceptance follows separately. H1 startup/restart and
+coordinator composition, Rust background admission, Worker classification and
+remaining native/resource qualification are still pending. Voice remains paused.
+The earlier default-profile startup incident and its unknown data effects remain
+recorded; passing isolated checks do not resolve those unknown effects.

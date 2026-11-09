@@ -68,6 +68,10 @@ function fallbackStderrLogger(text: string): void {
  * the sidecar bundle this build ships.
  */
 export class AgentSidecar extends RuntimeAgentSidecar {
+  static override createFenced(options: Parameters<typeof RuntimeAgentSidecar.createFenced>[0]): Promise<AgentSidecar> {
+    return this.createFencedWith(options, ({ launch, onStderr }) => new AgentSidecar(onStderr, launch));
+  }
+
   readonly extensionOwnerLaunches = new PluginExtensionLaunchBindings();
   private ownerLifecycle?: ExtensionOwnerLifecycle;
   private readonly ownerLifecycles = new Set<ExtensionOwnerLifecycle>();

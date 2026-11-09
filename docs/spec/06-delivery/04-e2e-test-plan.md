@@ -19987,14 +19987,18 @@ session data is used.
 
 - **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-owner-inspection.mjs`
   with `PI_SCRATCH_DIR` and Node `node:sqlite` on Windows.
-- **Steps:** Bundle the production HostProcess, inspection consumer and Desktop
-  inventory reader from current source. Explicitly preserve `PI_DESKTOP_DATA_DIR`
+- **Steps:** Bundle the production HostProcess, Desktop Sidecar subclass,
+  inspection consumer and Desktop inventory reader from current source.
+  Explicitly preserve `PI_DESKTOP_DATA_DIR`
   in the final child environment and verify the scratch database after handshake.
   Query original owner identity before preparing a Sidecar generation. Read a
   terminal transfer fixture through production stdio; inject owner/coordinator,
   profile/principal/revision mismatches in the isolated journal, restore, and
-  verify refusal and record preservation. Register a real contained native
-  runner; inspect startup settlement, then
+  verify refusal and record preservation. Create a real fenced Desktop Sidecar,
+  hold/complete an RPC and inspect extension activity; confirm native closure
+  and original-child exit. Inject binding and derived-constructor failures and
+  verify cleanup on the original Rust generation. Register another real contained
+  native runner; inspect startup settlement, then
   create a session, begin a turn, checkpoint its partial reply, end and recover
   it. Exercise real Desktop outbox/checkpoint disposal and admission refusal
   through the Rust report. Other Desktop resource owners are explicit fixtures.
@@ -20008,6 +20012,10 @@ session data is used.
   Host replacement on success and rejection, timeout/late failure, real SQLite
   read-only approval preservation and missing source refusal, scan/lock budget
   restoration, original background/write lifetime and cancellation uncertainty.
+  `handoff-sidecar-factory.test.mjs` also covers concrete subclass capabilities,
+  original parameters across preparation awaits, lost replies, partial constructor
+  failure, cleanup rejection and unconfirmed original-child exit. Its OS/Rust
+  boundary fixtures do not themselves prove native closure.
 - **Boundary:** Native coverage is only the execution generation. No complete
   Desktop inventory, admission hold, source transfer or readiness is established.
   HOME/USERPROFILE do not isolate Rust's Windows known-folder default profile.

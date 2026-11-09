@@ -1,4 +1,5 @@
-import { ExecutionFence } from "./execution-fence.js";
+import type { ExecutionFence } from "./execution-fence.js";
+import { createFencedSidecar, retainSidecarConstruction, type FencedSidecarOptions } from "./fenced-sidecar-factory.js";
 import { confirmChildExit } from "./process-exit-confirmation.js";
 import { EXTENSION_OWNER_PROXY_METHODS, routeExtensionRequest, type TrustedExtensionSidecarBridge } from "./extension-owner-routing.js";
 export type { TrustedExtensionSidecarBridge } from "./extension-owner-routing.js";
@@ -119,18 +120,12 @@ export type AgentSidecarOptions = {
  */
 export class AgentSidecar {
   /** Start behind Rust's native barrier; never fall back to an unfenced launch. */
-  static async createFenced(options: AgentSidecarOptions & { host: SidecarHostLink; binaryPath: string }): Promise<AgentSidecar> {
-    const prepared = await ExecutionFence.prepare(options.host, options.binaryPath, options.launch);
-    try {
-      const sidecar = new AgentSidecar({ ...options, launch: prepared.launch });
-      sidecar.executionFence = prepared.fence;
-      sidecar.setHost(options.host);
-      return sidecar;
-    } catch (error) {
-      const stopped = await prepared.fence.stop();
-      if (!stopped.confirmed) throw new AggregateError([error], "EXECUTION_FENCE_CLEANUP_UNCONFIRMED");
-      throw error;
-    }
+  static createFenced(options: FencedSidecarOptions): Promise<AgentSidecar> {
+    return this.createFencedWith(options, prepared => new AgentSidecar(prepared));
+  }
+
+  protected static createFencedWith<T extends AgentSidecar>(options: FencedSidecarOptions, construct: (options: AgentSidecarOptions) => T): Promise<T> {
+    return createFencedSidecar(options, construct, (sidecar, fence) => { sidecar.executionFence = fence; });
   }
 
   private executionFence: ExecutionFence | null = null;
@@ -188,6 +183,10 @@ export class AgentSidecar {
       stdio: ["pipe", "pipe", "pipe"],
       env: launch.env ?? process.env,
       ...(launch.cwd ? { cwd: launch.cwd } : {}),
+    });
+    retainSidecarConstruction(launch, {
+      dispose: () => AgentSidecar.prototype.dispose.call(this),
+      confirmExit: timeout => this.confirmExit(timeout),
     });
 
     this.child.stderr.setEncoding("utf8");

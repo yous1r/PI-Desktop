@@ -8,6 +8,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { database, harness, until } from './e2e/owner-handoff-fixture.mjs';
 import { verifyOwnerQueries } from './e2e/owner-query.mjs';
+import { verifyDesktopSidecarFactory } from './e2e/desktop-sidecar-factory.mjs';
 
 assert.equal(process.platform, 'win32');
 assert.ok(process.env.PI_SCRATCH_DIR && process.env.PI_DESKTOP_HOST_BIN);
@@ -21,9 +22,10 @@ const runtimeExports = join(directory, 'runtime-exports.mjs');
 await writeFile(runtimeExports, [
   `export { inspectOwnerHandoff } from ${JSON.stringify(join(root, 'packages/host-runtime/src/owner-handoff-inspection.ts').replaceAll('\\', '/'))};`,
   `export { decodeBinaryStorage, encodeBinaryStorage } from ${JSON.stringify(join(root, 'packages/host-runtime/src/binary-storage.ts').replaceAll('\\', '/'))};`,
+  `export { AgentSidecar } from ${JSON.stringify(join(root, 'packages/host-runtime/src/agent-sidecar.ts').replaceAll('\\', '/'))};`,
 ].join('\n'));
 const built = await build({ absWorkingDir: root, stdin: { resolveDir: root, contents:
-  'export { HostProcess } from "./packages/host-runtime/src/host-process.ts"; export { inspectOwnerHandoff } from "./packages/host-runtime/src/owner-handoff-inspection.ts"; export { queryOwnerHandoffIdentity, readOwnerHandoffTransfer } from "./packages/host-runtime/src/owner-handoff-query.ts"; export { verifyDesktopInventory } from "./scripts/e2e/desktop-handoff-inventory.mjs";' },
+  'export { HostProcess } from "./packages/host-runtime/src/host-process.ts"; export { AgentSidecar as DesktopSidecar } from "./apps/desktop/electron/main/agent-sidecar.ts"; export { inspectOwnerHandoff } from "./packages/host-runtime/src/owner-handoff-inspection.ts"; export { queryOwnerHandoffIdentity, readOwnerHandoffTransfer } from "./packages/host-runtime/src/owner-handoff-query.ts"; export { verifyDesktopInventory } from "./scripts/e2e/desktop-handoff-inventory.mjs";' },
   outfile: bundle, bundle: true, format: 'esm', platform: 'node', metafile: true,
   alias: { '@pi-desktop/shared': join(root, 'packages/shared/src/index.ts'),
     '@pi-desktop/host-runtime': runtimeExports,
@@ -34,7 +36,7 @@ for (const input of Object.keys(built.metafile.inputs).filter(input => input !==
   inputs.push({ path: input.replaceAll('\\', '/'), sha256: hash(await readFile(resolve(root, input))) });
 }
 await writeFile(join(directory, 'build-inputs.json'), JSON.stringify(inputs, null, 2) + '\n');
-const { HostProcess, inspectOwnerHandoff, queryOwnerHandoffIdentity, readOwnerHandoffTransfer, verifyDesktopInventory } = await import(pathToFileURL(bundle));
+const { HostProcess, DesktopSidecar, inspectOwnerHandoff, queryOwnerHandoffIdentity, readOwnerHandoffTransfer, verifyDesktopInventory } = await import(pathToFileURL(bundle));
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const report = { status: 'FAIL', candidate: git('rev-parse', 'HEAD'), base: git('rev-parse', 'origin/main'),
   dirty: git('status', '--porcelain').length > 0, binarySha256: hash(await readFile(binary)),
@@ -62,6 +64,8 @@ try {
   assert.ok((await readFile(join(profile, 'pi.sqlite'))).length > 0, 'Host must create its database in the explicit isolated profile');
   const { identity, owner } = await verifyOwnerQueries(source, profile, queryOwnerHandoffIdentity, readOwnerHandoffTransfer);
   passed('production owner identity and transfer queries bind original journal authority before Sidecar startup and refuse mismatched records');
+  await verifyDesktopSidecarFactory(DesktopSidecar, source, binary, { ...env, PI_DESKTOP_DATA_DIR: profile }, directory);
+  passed('real Desktop Sidecar factory retains subclass tracking and confirms original native cleanup after success, binding failure and derived constructor failure');
   ticket = await source.call('executionFence.prepare', {});
   const runner = h.launch(binary, ['--internal-execution-runner', '--', process.execPath, '-e', 'process.stdin.resume()'], profile,
     { PI_EXECUTION_TICKET: JSON.stringify(ticket) });
