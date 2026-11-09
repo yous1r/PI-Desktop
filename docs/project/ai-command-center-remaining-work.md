@@ -2119,3 +2119,31 @@ nineteen-family Desktop inventory, bounded Rust status and fenced coordinator
 composition. Native-family qualification and H1-H5 remain incomplete, so the
 status remains `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`. Voice remains paused;
 its incomplete inventory cannot be treated as idle.
+
+### H1 persistence inventory prerequisite
+
+Outbox activity now includes recovery, admitted operations and original Host/disk
+writes after queue removal. Streaming checkpoints retain started saves after
+session settlement/replacement/disposal and register them before save callbacks.
+Recovery/write failures retain uncertainty without changing ordinary retry,
+quarantine or best-effort asynchronous save behavior. Counts are conservative
+outstanding obligations, not distinct-message occupancy or native closure proof.
+
+The coordinator captures Host generation in addition to object identity and
+rechecks inspection failures as well as success. Three new contract regressions
+failed before correction; production Host generations are currently immutable,
+so mutable-wrapper cases exercise the coordinator's defensive binding contract.
+The original object-replacement path remains covered. A separate regression
+confirmed an unknown append failure could lose its refusal evidence after queue
+removal; this now remains uncertain. Nine initial persistence tests failed only
+because the reporting API was absent, not as nine independent product defects.
+
+Development validation passed 55/55 persistence/compatibility/quit tests and
+16/16 coordinator tests. The persistence fixture uses real temporary files and
+the actual Desktop gate, with controlled Host/filesystem completion boundaries.
+An earlier 50/51 run failed solely because its child Node did not inherit the
+current-source loader; the inherited-loader rerun passed. Desktop types, Biome,
+architecture, policy, docs and whitespace passed; freshly fetched origin/main
+remains `7e493e8b18d277d8d13f682cf250604ed94fb00d`. Clean-candidate acceptance
+follows. Full inventory composition, bounded Rust status and H1-H5 remain open;
+Voice development remains paused.

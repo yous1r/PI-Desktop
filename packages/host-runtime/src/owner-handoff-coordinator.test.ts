@@ -31,7 +31,8 @@ function build() {
     },
     async executionStatus() { return { generation, state: "running" as const, activeProcesses: 2, rootExited: false, confirmed: false }; },
   };
-  const host: OwnerHandoffBinding["host"] = { generation: "88888888-8888-4888-8888-888888888888", isAvailable: () => true };
+  let hostGeneration = "88888888-8888-4888-8888-888888888888";
+  const host: OwnerHandoffBinding["host"] = { get generation() { return hostGeneration; }, isAvailable: () => true };
   let binding: OwnerHandoffBinding = { sourceEpoch: hold.sourceEpoch, profileId: fixture.response.record.profile, host, sidecar };
   const coordinator = new OwnerHandoffCoordinator({ gate, current: () => binding,
     inspect: () => inventory(),
@@ -46,6 +47,7 @@ function build() {
     fencingJournal: () => { journalPhase = "source_fencing"; },
     replace: () => { binding = { ...binding, host: { ...host, generation: "99999999-9999-4999-8999-999999999999" } }; },
     replaceGeneration: () => { generation = "77777777-7777-4777-8777-777777777777"; },
+    restartHost: () => { hostGeneration = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"; },
   };
 }
 
@@ -146,4 +148,35 @@ it("refuses sealing before Rust has committed fencing intent", async () => {
   const f = build();const result = await f.coordinator.exchange(hold);
   await expect(f.coordinator.exchange(f.request("seal", result.holdId))).rejects.toMatchObject({ errorCode: "HANDOFF_FENCING_UNCONFIRMED" });
   expect(f.sent).not.toContain("seal");f.coordinator.dispose();
+});
+
+it("rejects a restarted Host wrapper while the original inventory is pending", async () => {
+  const f = build(); const pending = deferred<OwnerHandoffInventory>();
+  f.inspect(() => pending.promise);
+  const exchange = f.coordinator.exchange(hold);
+  f.restartHost(); pending.resolve(idle());
+  await expect(exchange).rejects.toMatchObject({ errorCode: "HANDOFF_OWNER_CHANGED" });
+  expect(f.gate.isClosed()).toBe(true); expect(f.sent).toEqual([]);
+  f.coordinator.dispose();
+});
+
+it("keeps admission closed when a restarted owner's inventory rejects", async () => {
+  const f = build(); const entered = deferred<void>(); const resumed = deferred<void>();
+  f.inspect(async () => { entered.resolve(); await resumed.promise; throw new Error("inventory failed"); });
+  const exchange = f.coordinator.exchange(hold);
+  await entered.promise; f.restartHost(); resumed.resolve();
+  await expect(exchange).rejects.toMatchObject({ errorCode: "HANDOFF_OWNER_CHANGED" });
+  expect(f.gate.isClosed()).toBe(true); expect(f.sent).toEqual([]);
+  f.coordinator.dispose();
+});
+
+it("never cancels a held source through a restarted Host wrapper", async () => {
+  const f = build(); const held = await f.coordinator.exchange(hold); f.cancelJournal();
+  const entered = deferred<void>(); const resumed = deferred<void>();
+  f.beforeJournal(async () => { entered.resolve(); await resumed.promise; });
+  const cancelling = f.coordinator.exchange(f.request("cancel", held.holdId));
+  await entered.promise; f.restartHost(); resumed.resolve();
+  await expect(cancelling).rejects.toMatchObject({ errorCode: "HANDOFF_OWNER_CHANGED" });
+  expect(f.gate.isClosed()).toBe(true); expect(f.sent).not.toContain("cancel");
+  f.coordinator.dispose();
 });

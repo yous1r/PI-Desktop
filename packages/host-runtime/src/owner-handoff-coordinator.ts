@@ -30,6 +30,7 @@ export type OwnerHandoffCoordinatorOptions = {
 type Entry = {
   request: OwnerHandoffQuiescenceRequest;
   binding: OwnerHandoffBinding;
+  hostGeneration: OwnerHandoffBinding["host"]["generation"];
   holdId: string;
   client: SidecarHandoffClient;
   local?: HandoffAdmission;
@@ -76,7 +77,8 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
       let entry = this.entry;
       if (request.operation === "hold" && !entry) {
         if (this.options.gate.isClosed()) throw failure("HANDOFF_BUSY");
-        entry = { request, binding: { ...current }, holdId: randomUUID(), attempted: false, sealing: false,
+        entry = { request, binding: { ...current }, hostGeneration: current.host.generation,
+          holdId: randomUUID(), attempted: false, sealing: false,
           client: new SidecarHandoffClient(current.sidecar, { version: 1, transferId: request.transferId,
             sourceEpoch: request.sourceEpoch, revision: request.revision }) };
         this.entry = entry;
@@ -149,7 +151,8 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
     if (this.disposed) throw failure("HANDOFF_UNAVAILABLE");
     const current = this.options.current();
     if (!current || current.sourceEpoch !== entry.binding.sourceEpoch || current.profileId !== entry.binding.profileId ||
-        current.host !== entry.binding.host || current.sidecar !== entry.binding.sidecar || !entry.binding.host.isAvailable()) {
+        current.host !== entry.binding.host || current.sidecar !== entry.binding.sidecar || !entry.binding.host.isAvailable() ||
+        current.host.generation !== entry.hostGeneration) {
       this.options.gate.dispose();
       throw failure("HANDOFF_OWNER_CHANGED");
     }
@@ -164,8 +167,10 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
     entry.generation = status.generation;
   }
   private async inventory(entry: Entry): Promise<OwnerHandoffInventory> {
-    const counts = await this.options.inspect(entry.binding);
     this.assertBinding(entry);
+    let counts: OwnerHandoffInventory;
+    try { counts = await this.options.inspect(entry.binding); }
+    finally { this.assertBinding(entry); }
     if (!Value.Check(OwnerHandoffInventorySchema, counts)) throw failure("HANDOFF_UNAVAILABLE");
     return { ...counts };
   }

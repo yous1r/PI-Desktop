@@ -537,6 +537,11 @@ timer expiry, connection loss, a maintenance release or a stale handle cannot
 reopen it. Disposal remains closed. This is local admission authority, not a
 second durable journal or a client-supplied idle proof.
 
+The coordinator captures the original Host object and generation before its
+first asynchronous inventory read. Inspection success and failure both recheck
+that binding. A changed owner permanently closes local admission; its stale
+inventory or journal response cannot acquire, seal or cancel a hold.
+
 AgentHost reports pending approvals/inputs independently of active turns.
 RuntimeService reports pending session operations, turn finalizations, writes and
 tools from their existing owners. Terminal persistence completion can precede
@@ -614,6 +619,25 @@ coordinator, cancels unstarted timers and drains started operations before
 disposing the Sidecar or Host. `getHandoffActivity()` reports operations, claimed
 turns, queued continuations and uncertainty; it neither replaces the Rust run
 ledger nor proves native-family closure.
+
+Desktop persistence reports outstanding write obligations independently of
+queue length. Outbox recovery, admitted callers, Host appends and disk writes
+remain counted through their original completion, including after a session's
+queue entries are removed. Replacement and strict mutation cover their whole
+operation. These conservative counts are not distinct-message occupancy.
+Failed recovery, disk writes (including best-effort clears) and unclassified
+Host append failures retain process-local uncertainty. Ordinary retry,
+quarantine and error behavior are unchanged; removing an entry or a later
+successful write does not prove an earlier ambiguous operation finished.
+
+Streaming checkpoints register their completion before invoking the save
+callback. Pending trailing snapshots count as unsent work. Original saves remain
+visible after `settle`, session replacement or disposal; only unsent snapshots
+can be removed without waiting for a save. Save failures retain uncertainty while
+preserving
+best-effort asynchronous behavior and observable synchronous errors. These
+reports are prerequisites for complete inventory composition, not native closure
+proof or a new durable ledger.
 
 User-configured MCP uses the same application gate for discovery, connection
 tests, tool calls and status probes. Admitted work remains counted through OAuth,

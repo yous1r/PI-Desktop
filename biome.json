@@ -84,6 +84,8 @@
 			"packages/agent-runtime/src/sidecar-handoff*.ts",
 			"packages/agent-runtime/src/parent-host-proxy*.ts",
 			"packages/host-runtime/src/{host-process,host-write-admission,turn-persistence,turn-events,runtime-service}.ts",
+			"apps/desktop/electron/main/persistence-outbox.ts",
+			"packages/host-runtime/src/inflight-checkpoint.ts",
 			"packages/host-runtime/src/{host-write-admission,turn-persistence,turn-events,runtime-service}.test.ts",
 			"packages/host-runtime/src/host-data-directory*.ts",
 			"packages/host-runtime/src/process-exit-confirmation*.ts",

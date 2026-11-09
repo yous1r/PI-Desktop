@@ -20551,3 +20551,25 @@ delivery and deterministic plugin process ports remain fixture boundaries.
 - **Boundary:** These tests validate Main ownership and real stdio binding
   integration, not a paid model, full nineteen-family handoff or native-family
   closure. Unknown resources continue to refuse transfer.
+
+### Persistence obligations during idle handoff
+
+- **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
+- **Fixtures:** `handoff-persistence.test.mjs` composes the production outbox,
+  streaming checkpointer and Desktop admission gate. Files use isolated temporary
+  directories; controlled filesystem/Host boundaries hold original operations.
+- **Steps:** Hold recovery, append and disk-clear completion. Remove the queue's
+  session, settle a checkpoint, replace its session state and dispose it. Attempt
+  handoff while original writes remain, then release each write. Inject malformed
+  recovery, failed disk clear, lost append reply and rejected/synchronous saves.
+- **Expected:** Removed records do not hide original writes. The gate refuses
+  until both actual writers finish; a successful hold prevents new admission.
+  Failed/ambiguous writes retain uncertainty. Trailing unsent work can be canceled
+  without claiming that an existing save finished. Reentrant callbacks cannot
+  hide or duplicate the original checkpoint write. Ordinary recovery, retry,
+  quarantine, strict mutation and shutdown behavior pass their existing suites.
+- **Coordinator contract:** `owner-handoff-coordinator.test.ts` also changes the
+  original Host generation during successful/failed inspection and cancellation
+  journal waits. Late results cannot acquire/cancel or reopen admission.
+- **Limits:** Other resource families are fixture boundaries; full Desktop
+  composition, Rust status and native-family qualification remain pending.

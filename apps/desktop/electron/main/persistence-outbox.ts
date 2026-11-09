@@ -70,6 +70,9 @@ export class PersistenceOutbox {
     host: HostProcess;
   } | null = null;
   private readonly loaded: Promise<void>;
+  private pendingOperations = 0;
+  private recovering = true;
+  private persistenceUncertain = false;
 
   constructor(dataDir: string, logger: OutboxLogger, options: OutboxOptions = {}) {
     this.path = join(dataDir, "session-message-outbox.json");
@@ -86,7 +89,11 @@ export class PersistenceOutbox {
     });
   }
 
-  async enqueue(
+  enqueue(entry: MessageAppend, getHost: () => HostProcess | null): Promise<void> {
+    return this.trackOperation(() => this.enqueueEntry(entry, getHost));
+  }
+
+  private async enqueueEntry(
     entry: MessageAppend,
     getHost: () => HostProcess | null,
   ): Promise<void> {
@@ -110,7 +117,11 @@ export class PersistenceOutbox {
     void this.flush(getHost);
   }
 
-  async flush(getHost: () => HostProcess | null): Promise<void> {
+  flush(getHost: () => HostProcess | null): Promise<void> {
+    return this.trackOperation(() => this.flushOwned(getHost));
+  }
+
+  private async flushOwned(getHost: () => HostProcess | null): Promise<void> {
     await this.loaded;
     if (this.flushing) return this.flushing;
     this.flushing = this.flushLoop(getHost).finally(() => {
@@ -124,7 +135,11 @@ export class PersistenceOutbox {
    * host-side stub recreate cannot resurrect it (D318). Its quarantined
    * appends go with it: they belong to the same deleted conversation.
    */
-  async dropSession(sessionId: string): Promise<void> {
+  dropSession(sessionId: string): Promise<void> {
+    return this.trackOperation(() => this.dropSessionEntries(sessionId));
+  }
+
+  private async dropSessionEntries(sessionId: string): Promise<void> {
     await this.loaded;
     const next = this.entries.filter((entry) => entry.sessionId !== sessionId);
     const nextDeadLetters = this.deadLetters.filter((entry) => entry.sessionId !== sessionId);
@@ -142,12 +157,14 @@ export class PersistenceOutbox {
    * already in flight when its queued entries were dropped. Drain the current
    * flush first, then remove any entries that could not be written.
    */
-  async prepareSessionReplacement(
+  prepareSessionReplacement(
     sessionId: string,
     getHost: () => HostProcess | null,
   ): Promise<void> {
-    await this.flush(getHost);
-    await this.dropSession(sessionId);
+    return this.trackOperation(async () => {
+      await this.flush(getHost);
+      await this.dropSession(sessionId);
+    });
   }
 
   /** ID-based mutations require every earlier target-session append to be durable. */
@@ -158,6 +175,7 @@ export class PersistenceOutbox {
     // Register before awaiting an existing flush so its in-flight failure cannot
     // discard a target append while this caller waits for a durable acknowledgement.
     this.mutationDrains.set(sessionId, (this.mutationDrains.get(sessionId) ?? 0) + 1);
+    this.pendingOperations++;
     try {
       await this.flush(getHost);
       if (this.entries.some((entry) => entry.sessionId === sessionId)) {
@@ -166,6 +184,7 @@ export class PersistenceOutbox {
         });
       }
     } finally {
+      this.pendingOperations--;
       const remaining = (this.mutationDrains.get(sessionId) ?? 1) - 1;
       if (remaining) this.mutationDrains.set(sessionId, remaining);
       else this.mutationDrains.delete(sessionId);
@@ -174,6 +193,18 @@ export class PersistenceOutbox {
 
   size(): number {
     return this.entries.length;
+  }
+
+  /** Outstanding obligations, not a count of distinct messages or native proof. */
+  getHandoffActivity(): { writes: number; uncontainedResources: number } {
+    return { writes: this.entries.length + this.pendingOperations + Number(this.recovering),
+      uncontainedResources: Number(this.persistenceUncertain) };
+  }
+
+  private async trackOperation(action: () => Promise<void>): Promise<void> {
+    this.pendingOperations++;
+    try { await action(); }
+    finally { this.pendingOperations--; }
   }
 
   private async flushLoop(getHost: () => HostProcess | null): Promise<void> {
@@ -198,6 +229,9 @@ export class PersistenceOutbox {
           turnId: current.turnId,
         });
       } catch (error) {
+        if (!isDuplicateMessageIdError(error) && !isPoisonMessageError(error) && !isForeignKeyError(error)) {
+          this.persistenceUncertain = true;
+        }
         if (this.mutationDrains.has(current.sessionId) && !isDuplicateMessageIdError(error)) {
           this.logger("warn", "session persistence mutation drain paused", {
             key: current.key,
@@ -298,8 +332,13 @@ export class PersistenceOutbox {
   }
 
   private async load(): Promise<void> {
-    await this.loadEntries();
-    await this.loadDeadLetters();
+    try {
+      await this.loadEntries();
+      await this.loadDeadLetters();
+    } catch (error) {
+      this.persistenceUncertain = true;
+      throw error;
+    } finally { this.recovering = false; }
   }
 
   private async loadEntries(): Promise<void> {
@@ -344,6 +383,7 @@ export class PersistenceOutbox {
         try {
           await writeFile(this.path, "[]\n", "utf8");
         } catch (error) {
+          this.persistenceUncertain = true;
           this.logger("warn", "session persistence outbox clear failed", String(error));
         }
         return;
@@ -351,7 +391,7 @@ export class PersistenceOutbox {
       await writeFile(this.tempPath, `${JSON.stringify(this.entries.map(encodeBinaryStorage))}\n`, "utf8");
       await rename(this.tempPath, this.path);
     });
-    this.persistChain = write.catch(() => undefined);
+    this.persistChain = write.catch(() => { this.persistenceUncertain = true; });
     await write;
   }
 
@@ -362,6 +402,7 @@ export class PersistenceOutbox {
         try {
           await writeFile(this.deadLetterPath, "[]\n", "utf8");
         } catch (error) {
+          this.persistenceUncertain = true;
           this.logger("warn", "session persistence outbox dead letter clear failed", String(error));
         }
         return;
@@ -369,7 +410,7 @@ export class PersistenceOutbox {
       await writeFile(this.tempDeadLetterPath, `${JSON.stringify(this.deadLetters.map(encodeBinaryStorage))}\n`, "utf8");
       await rename(this.tempDeadLetterPath, this.deadLetterPath);
     });
-    this.persistChain = write.catch(() => undefined);
+    this.persistChain = write.catch(() => { this.persistenceUncertain = true; });
     await write;
   }
 }

@@ -43,6 +43,8 @@ export class InflightCheckpointer {
   private readonly intervalMs: number;
   private readonly now: () => number;
   private disposed = false;
+  private readonly writes = new Set<Promise<void>>();
+  private persistenceUncertain = false;
 
   constructor(
     save: (checkpoint: InflightCheckpoint) => Promise<unknown>,
@@ -102,6 +104,13 @@ export class InflightCheckpointer {
       .map(([sessionId]) => sessionId);
   }
 
+  /** Retired sessions still own writes until the original save settles. */
+  getHandoffActivity(): { writes: number; uncontainedResources: number } {
+    let pending = 0;
+    for (const state of this.sessions.values()) if (state.pending) pending++;
+    return { writes: pending + this.writes.size, uncontainedResources: Number(this.persistenceUncertain) };
+  }
+
   /** Write every pending snapshot now, ignoring the interval. */
   async flushAll(): Promise<void> {
     const flushes = this.pendingSessions().map((sessionId) =>
@@ -133,15 +142,25 @@ export class InflightCheckpointer {
     const checkpoint = state.pending;
     state.pending = undefined;
     state.lastSavedAt = this.now();
-    const run = this.save(checkpoint)
-      .catch(() => undefined)
-      .then(() => {
-        // The state object may have been replaced by settle + observe.
-        if (this.sessions.get(sessionId) !== state) return;
-        state.inFlight = undefined;
-        if (state.pending) this.observe(state.pending);
-      });
-    state.inFlight = run;
-    return run;
+    const completion = Promise.withResolvers<void>();
+    state.inFlight = completion.promise;
+    this.writes.add(completion.promise);
+    const finish = () => {
+      this.writes.delete(completion.promise);
+      // The state object may have been replaced by settle + observe.
+      if (this.sessions.get(sessionId) !== state) return;
+      state.inFlight = undefined;
+      if (state.pending) this.observe(state.pending);
+    };
+    let saving: Promise<unknown>;
+    try { saving = this.save(checkpoint); }
+    catch (error) {
+      this.persistenceUncertain = true;
+      finish(); completion.resolve();
+      throw error;
+    }
+    void saving.catch(() => { this.persistenceUncertain = true; }).then(finish)
+      .then(completion.resolve, completion.reject);
+    return completion.promise;
   }
 }
