@@ -2530,3 +2530,20 @@ proofs, Worker classification and the rest of the approved DAG remain open.
 Voice stays paused and fixed qualification gaps still refuse handoff. The earlier
 default-profile incident and unknown data impact remain unresolved. Exact clean
 candidate acceptance is recorded after the implementation commit.
+
+#### Retained backend inventory clean-candidate acceptance
+
+Candidate `142db78ce3691256dffd4b648f276d93637e1ecd` against freshly fetched
+`7e493e8b18d277d8d13f682cf250604ed94fb00d` passed 87 unique Desktop cases in
+three files and eight isolated real-process checks across four Hosts, all with
+confirmed cleanup. Types, lint, architecture, policy, 633-page documentation,
+base and whitespace checks exited zero. All 2,862 source inputs stayed unchanged;
+26 artifacts were independently rehashed and the worktree stayed clean.
+The accepted Rust binary was reused after exact source/binary equality checks;
+no Rust tests or Clippy were rerun. See
+[retained backend verification](./ai-command-center-p0-evidence/retained-backend-verification.json).
+
+This accepts retained backend inventory only. Production coordinator transport,
+Rust background admission and required resource/native qualification remain
+next; full H1 is incomplete, Voice is paused, and the earlier profile incident's
+data effects remain unknown.

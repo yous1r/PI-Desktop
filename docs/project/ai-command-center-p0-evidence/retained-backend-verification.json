@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "142db78ce3691256dffd4b648f276d93637e1ecd",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "startedAt": "2026-11-09T23:50:31.442Z",
+  "endedAt": "2026-11-09T23:51:18.635Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "rawReport": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-retained-candidate.json",
+    "bytes": 23460,
+    "sha256": "d20e55a53d0b021fcb10963d575168598b21417921dfa8fe4abfb19d5b21b969"
+  },
+  "sourceInputs": {
+    "count": 2862,
+    "sha256": "6354097d445180c3af7fa9d15a1ae50ddd544a8982185332bd1f3ac7b8cc2145",
+    "manifest": {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-retained-candidate-inputs.json",
+      "bytes": 491090,
+      "sha256": "23f226df00b721c2c61e24e83f2a84abcb99b7488d738230a3729c16efb3700a"
+    },
+    "unchanged": true
+  },
+  "desktop": {
+    "files": 3,
+    "uniquePassed": 87,
+    "tests": 87,
+    "pass": 87,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "selection": ["handoff-inventory", "handoff-backend-owner", "handoff-backend-wiring"]
+  },
+  "native": {
+    "checks": 8,
+    "hostProcesses": 4,
+    "cleanupConfirmed": true,
+    "report": {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-inspection-8GR4hb/report.json",
+      "bytes": 1882,
+      "sha256": "04cce74144a87b9581ccf0b1c75910ddcfd7eaec1796739c0db8288a6cc6adcc"
+    },
+    "bundleSha256": "9232f522e9a9050b1a17381d8fb2291bf38eec8a7b47eb233c3601c02501a8ce",
+    "inputs": 1465,
+    "inputsSha256": "5ce7a114952ff6179ccd0962b29c7925469004702068829266f1c9d07e5373e0",
+    "scriptSha256": "1891d454d36c1912fd3c642ed86d137c8c6fa30c2c2283978feee45e3c4c0880"
+  },
+  "checks": [
+    { "name": "node", "exitCode": 0, "signal": null },
+    { "name": "native", "exitCode": 0, "signal": null },
+    { "name": "types", "exitCode": 0, "signal": null },
+    { "name": "lint", "exitCode": 0, "signal": null },
+    { "name": "architecture", "exitCode": 0, "signal": null },
+    { "name": "policy", "exitCode": 0, "signal": null },
+    { "name": "docs", "exitCode": 0, "signal": null },
+    { "name": "base", "exitCode": 0, "signal": null },
+    { "name": "whitespace", "exitCode": 0, "signal": null }
+  ],
+  "artifactsRehashed": 26,
+  "reusedHost": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-query-candidate-host.exe",
+    "bytes": 34910208,
+    "sha256": "69a4270bb59c7d1b0d7204bb81ecb478d205d972b60ade18567042bc8e4d699d",
+    "acceptedCandidate": "17da5209186823485400b74a9736445f502b2844",
+    "rustInputsUnchanged": true,
+    "rustTestsRerun": false,
+    "clippyRerun": false
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "limitations": [
+    "Retained backend inventory is covered by the real Desktop backend owner with process boundaries replaced, plus isolated native Rust/runner/Node and persistence/gate integration. Production coordinator transport remains pending.",
+    "Native coverage remains execution_generation_only. Rust background admission, Worker classification and fixed missing producers refuse handoff; Voice/LiveVoice remain paused.",
+    "No Rust rebuild/test/Clippy, live Desktop, stored SSH, provider, install or full native/hardware qualification performed in this TypeScript slice.",
+    "Earlier default-profile startup/registration is confirmed; recovery/data impact remains unknown. Current profiles are scratch-isolated; no remediation was performed."
+  ],
+  "independentVerifier": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-retained-verify.mjs",
+    "bytes": 3430,
+    "sha256": "cea839a0adceb3ba1b3de8d662f91d2b976a8896af479f5a5f9fb600921e2fb0"
+  }
+}
