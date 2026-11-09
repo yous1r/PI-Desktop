@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Keep regenerate branch archives and pager updates bound to the Host that
+  received the terminal event. A restart during persistence cannot redirect the
+  archive or publish a stale result. Pending finalization, archive and follow-up
+  callbacks stay visible to idle inspection; ambiguous persistence retains
+  refusal evidence without changing ordinary outbox replay or queue release.
 - Keep mode-run controls and automatic continuations bound to their original
   Host and Sidecar across restart, rebinding and quit. Late claims settle through
   the original Host, duplicate settlement joins, and cancelled startup cannot

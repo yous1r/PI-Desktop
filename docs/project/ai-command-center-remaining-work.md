@@ -2162,3 +2162,25 @@ records scope, baseline classifications and fifteen artifact hashes. Full logs,
 exact Node test names and full manifest remain in session scratch. This accepts
 the persistence inventory prerequisite; full nineteen-family composition, Rust
 status and H1-H5 continue. Native resources remain unqualified and Voice paused.
+
+### H1 terminal persistence prerequisite
+
+Regenerate archive now captures its original Host/generation before finalizer
+callbacks, checks after outbox waits and before publication, and never redirects
+an old terminal event to a replacement Host. Three baseline failures reproduced
+redirected archive or stale pager publication; seven other initial failures only
+identified absent reporting APIs. Ordinary durable-message replay is unchanged.
+
+Event persistence and session coordination now expose original finalizations,
+archive writes, session-operation tails, rewrite leases and asynchronous
+mode/collaboration settlement. Reservations precede callbacks and remain through
+release reentry. Missing Host, logged storage errors, rejected callbacks and
+failed/skipped archives retain uncertainty after local release and later success.
+These are conservative obligations with nested overlap, not execution occupancy
+or native-family proof; no second durable ledger was added.
+
+Development verification passed 101/101 tests across eight files, including 17
+new cases and the real final-message/outbox/finalization/archive user path.
+Desktop types and Biome passed. Clean-candidate acceptance follows. Full H1
+inventory, bounded Rust status, fenced factory composition and H2-H5 remain open;
+Voice development stays paused.

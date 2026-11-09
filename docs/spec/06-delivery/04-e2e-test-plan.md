@@ -20573,3 +20573,24 @@ delivery and deterministic plugin process ports remain fixture boundaries.
   journal waits. Late results cannot acquire/cancel or reopen admission.
 - **Limits:** Other resource families are fixture boundaries; full Desktop
   composition, Rust status and native-family qualification remain pending.
+
+### Terminal persistence ownership during idle handoff
+
+- **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
+- **Fixture:** `handoff-event-persistence.test.mjs` uses real event persistence,
+  session coordination, plan finalization, streaming checkpointer and temporary
+  disk outbox. Controlled Host RPC promises provide the external boundary.
+- **Steps:** Emit the final assistant message and terminal event. Hold the append
+  or archive, replace the Host, then release the original operation. Also replace
+  the Host synchronously inside finalization. Hold mode/collaboration callbacks
+  after local turn removal; inspect during release callback reentry. Hold session
+  locks and transcript rewrite leases. Inject missing Host, storage rejection,
+  synchronous finalizer failure, throwing logger and a skipped archive.
+- **Expected:** The normal path archives the final answer and publishes its pager
+  stamp. Replacement cannot receive an old archive or pager stamp. Original work
+  remains visible until completion; failed/omitted effects remain uncertain after
+  local cleanup and later success. Existing queue release and quit behavior pass
+  their compatibility suites; no execution is replayed or rolled back.
+- **Boundary:** These are Main integration tests with isolated files and Host RPC
+  fixtures. They do not qualify a native process family, full nineteen-family
+  inventory, Rust status transport or complete ownership transfer.

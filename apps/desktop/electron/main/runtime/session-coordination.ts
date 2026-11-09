@@ -1,4 +1,5 @@
 import type { BrowserWindow } from "electron";
+import { PersistenceActivity } from "./persistence-activity";
 import {
   addUsage,
   type AgentEventEnvelope,
@@ -54,6 +55,7 @@ export function createSessionCoordination({
   onTurnStarted,
 }: SessionCoordinationDependencies) {
   const sessionOperationTails = new Map<string, Promise<void>>();
+  const persistenceActivity = new PersistenceActivity();
   const turnSettlements = new Map<string, Set<() => void>>();
   const activeTurnUsages = new Map<string, MessageUsage>();
   /**
@@ -353,7 +355,25 @@ export function createSessionCoordination({
     });
   }
 
+  /** Conservative obligations; session tails include both holders and waiters. */
+  function getHandoffActivity() {
+    const activity = persistenceActivity.snapshot();
+    return {
+      admissions: sessionOperationTails.size,
+      finalizations: turnSettlements.size + activity.finalizations,
+      writes: transcriptRewriteFences.size,
+      uncontainedResources: activity.uncontainedResources,
+    };
+  }
+
+  function trackFinalization(operation: () => Promise<void>): Promise<void> {
+    return persistenceActivity.track("finalizations", operation);
+  }
+
   return {
+    getHandoffActivity,
+    markPersistenceUncertain: () => persistenceActivity.markUncertain(),
+    trackFinalization,
     /** The live turn map itself: turn identity is read and released through it. */
     activeTurns,
     sessionOperationTails,

@@ -639,6 +639,23 @@ best-effort asynchronous behavior and observable synchronous errors. These
 reports are prerequisites for complete inventory composition, not native closure
 proof or a new durable ledger.
 
+Terminal event persistence reserves its finalization/archive operation before
+invoking callbacks and retains it through original completion. Regenerate archive
+captures the Host object and generation before finalization, rechecks them after
+the event-loop yield and outbox waits, writes only through that Host, and checks
+again before publishing its pager stamp. Replacement or missing ownership refuses
+the archive; an already-admitted write is neither rolled back nor replayed. This
+does not change ordinary durable-message outbox replay to a later Host.
+
+Session coordination reports held/waiting session-operation tails, unresolved
+transcript rewrites, settlement waiters and original finalizations, including
+asynchronous mode/collaboration callbacks after the local turn record is removed.
+Logged turn/scheduled-run persistence failures, missing Host, rejected callbacks,
+and failed or skipped archives retain process-local uncertainty after local queue
+release or later success. Event and coordination finalization reports can cover
+the same nested obligation; they are conservative busy evidence, not independent
+execution occupancy. Full inventory consumers must respect that overlap.
+
 User-configured MCP uses the same application gate for discovery, connection
 tests, tool calls and status probes. Admitted work remains counted through OAuth,
 handshake and original operation completion, including after cache replacement,

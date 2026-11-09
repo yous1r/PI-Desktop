@@ -6,6 +6,7 @@ import type { InflightCheckpointer } from "@pi-desktop/host-runtime";
 import type { Logger } from "../logger";
 import type { PersistenceOutbox } from "../persistence-outbox";
 import type { SessionCoordination } from "./session-coordination";
+import { PersistenceActivity } from "./persistence-activity";
 
 export type EventPersistenceDependencies = {
   runtimeState: RuntimeState;
@@ -69,21 +70,11 @@ export function createEventPersistence({
     rollback: () => void;
   };
   flush: () => Promise<void>;
+  getHandoffActivity: () => { writes: number; finalizations: number; uncontainedResources: number };
 } {
   const inflightSnapshots = new Map<string, UiMessage>();
-  const pendingWrites = new Set<Promise<void>>();
-  function trackWrite(write: Promise<void>): void {
-    pendingWrites.add(write);
-    void write.then(
-      () => pendingWrites.delete(write),
-      () => pendingWrites.delete(write),
-    );
-  }
-  async function flush(): Promise<void> {
-    while (pendingWrites.size > 0) {
-      await Promise.allSettled([...pendingWrites]);
-    }
-  }
+  const activity = new PersistenceActivity();
+  const flush = () => activity.flush();
 
   function beginTranscriptRewrite(sessionId: string) {
     const lease = transcriptRewrite.beginTranscriptRewrite(sessionId);
@@ -101,6 +92,7 @@ export function createEventPersistence({
           try {
             persistAgentEvent(envelope);
           } catch (error) {
+            activity.markUncertain();
             logger.app("persistence", "warn", "transcript rewrite event replay failed", {
               sessionId,
               data: String(error),
@@ -217,24 +209,20 @@ function persistAgentEvent(envelope: AgentEventEnvelope): UiMessage | undefined 
     // finalizer below would still settle a turn this event does not own.
     if (isStaleTerminalEvent(envelope)) return;
     completionNoticeTurns.delete(envelope.turnId ?? turnId ?? "");
-    const turnFinalization = finishTurn(
+    void activity.track("finalizations", () => finishTurn(
       envelope.sessionId,
       event.error.code === "TURN_ABORTED" ? "aborted" : "error",
       event.error.code,
       { turnId: envelope.turnId ?? "" },
-    );
-    trackWrite(turnFinalization
-      .then(() =>
-        executionId
-          ? finishApprovedExecution(executionId, "interrupted", event.error.code)
-          : undefined,
-      )
-      .catch((error: unknown) => {
-        logger.app("persistence", "warn", "turn finalization failed", {
-          sessionId: envelope.sessionId,
-          data: String(error),
-        });
-      }));
+    ).then(() => executionId
+      ? finishApprovedExecution(executionId, "interrupted", event.error.code)
+      : undefined,
+    ), (error: unknown) => {
+      logger.app("persistence", "warn", "turn finalization failed", {
+        sessionId: envelope.sessionId,
+        data: String(error),
+      });
+    });
     return;
   }
   if (event.type === "agent_end") {
@@ -242,37 +230,41 @@ function persistAgentEvent(envelope: AgentEventEnvelope): UiMessage | undefined 
     // regenerate branch archive below on its behalf.
     if (isStaleTerminalEvent(envelope)) return;
     completionNoticeTurns.delete(envelope.turnId ?? turnId ?? "");
-    const turnFinalization = finishTurn(envelope.sessionId, "completed", undefined, {
+    // Capture before finalization can invoke a callback or replace the Host.
+    const host = runtimeState.host;
+    const generation = host?.generation;
+    const assertArchiveOwner = () => {
+      if (!host || runtimeState.host !== host || host.generation !== generation) {
+        throw new Error("HOST_DISCONNECTED");
+      }
+      return host;
+    };
+    void activity.track("finalizations", () => finishTurn(envelope.sessionId, "completed", undefined, {
       turnId: envelope.turnId ?? "",
-    });
-    // The finalizer's promise can reject — its body attempts the durable end and
-    // its release handler no longer swallows a throwing body — so the chain is
-    // observed even when no approved execution follows this turn.
-    trackWrite(turnFinalization
-      .then(() =>
-        executionId ? finishApprovedExecution(executionId, "completed") : undefined,
-      )
-      .catch((error: unknown) => {
+    }).then(() => executionId ? finishApprovedExecution(executionId, "completed") : undefined),
+      (error: unknown) => {
         logger.app("persistence", "warn", "turn finalization failed", {
           sessionId: envelope.sessionId,
           data: String(error),
         });
-      }));
+      });
     // Persist the completed branch as the active regenerate revision when the
     // latest user turn carries revision metadata (ChatGPT-style history).
-    trackWrite((async () => {
-      try {
-        if (!runtimeState.host) return;
+    void activity.track("writes", async () => {
+        const archiveHost = assertArchiveOwner();
         // The turn's final assistant message may still be in the outbox. Archive
         // a branch that is missing it and the answer is missing from the restored
         // branch forever, so drain first and skip the archive if the host cannot
         // take the writes right now. The yield lets a message_end enqueued in
         // this same event-loop turn reach the queue before it is measured.
         await new Promise<void>((resolve) => setImmediate(resolve));
+        assertArchiveOwner();
         for (let attempt = 0; attempt < 3 && persistenceOutbox.size() > 0; attempt += 1) {
           await persistenceOutbox.flush(() => runtimeState.host);
+          assertArchiveOwner();
         }
         if (persistenceOutbox.size() > 0) {
+          activity.markUncertain();
           logger.app("persistence", "warn", "skipped regenerate branch archive", {
             sessionId: envelope.sessionId,
             data: { pending: persistenceOutbox.size() },
@@ -282,9 +274,10 @@ function persistAgentEvent(envelope: AgentEventEnvelope): UiMessage | undefined 
         // One host call does the read, the archive and the pager stamp under the
         // RPC lock. The read-modify-write this replaced raced the append above
         // and wrote a stale transcript back over the final message.
-        const saved = await runtimeState.host.call<{
+        const saved = await archiveHost.call<{
           saved?: { root?: UiMessage } | null
         }>("session.saveActiveRevision", { sessionId: envelope.sessionId });
+        assertArchiveOwner();
         const root = saved.saved?.root;
         if (!root) return;
         // This acknowledges a pager stamp on an existing user row. A terminal
@@ -294,13 +287,12 @@ function persistAgentEvent(envelope: AgentEventEnvelope): UiMessage | undefined 
           ts: Date.now(),
           event: { type: "user_message_persisted", optimisticMessageId: root.id, message: root },
         } satisfies AgentEventEnvelope);
-      } catch (error) {
+    }, (error: unknown) => {
         logger.app("persistence", "warn", "save active regenerate branch failed", {
           sessionId: envelope.sessionId,
           data: String(error),
         });
-      }
-    })());
+    });
     return;
   }
   if (event.type === "message_end" && event.message.role === "user" && !envelope.parentToolCallId) {
@@ -444,5 +436,5 @@ function persistAgentEvent(envelope: AgentEventEnvelope): UiMessage | undefined 
     return message;
   }
 }
-  return { subagentTagged, persistAgentEvent, beginTranscriptRewrite, flush };
+  return { subagentTagged, persistAgentEvent, beginTranscriptRewrite, flush, getHandoffActivity: () => activity.snapshot() };
 }

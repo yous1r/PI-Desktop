@@ -244,22 +244,26 @@ function finishTurn(
             } satisfies AgentEventEnvelope);
           }
         } catch (e) {
+          coordination.markPersistenceUncertain();
           logger.app("persistence", "warn", "endTurn failed", {
             sessionId: id,
             data: String(e),
           });
         }
+      } else {
+        coordination.markPersistenceUncertain();
       }
 
       if (runId && host) {
         await host
           .call("scheduled.finishRun", { runId, status: reason, errorCode })
-          .catch((e) =>
+          .catch((e) => {
+            coordination.markPersistenceUncertain();
             logger.app("persistence", "warn", "finishRun failed", {
               sessionId: id,
               data: String(e),
-            }),
-          );
+            });
+          });
       }
     } finally {
       // Do not release local ownership until the durable endTurn request above
@@ -320,11 +324,11 @@ function finishTurn(
       if (runtimeState.agentHostBridge === bridge) bridge?.agentHost.kick(id);
     }
     if (!isQuitting() && typeof onTurnEnded === "function") {
-      void onTurnEnded(id, turnId, {
+      void coordination.trackFinalization(() => onTurnEnded(id, turnId, {
         reason,
         ...(turnUsage ? { usage: turnUsage } : {}),
         ...(errorCode ? { errorCode } : {}),
-      }).catch((error: unknown) => {
+      })).catch((error: unknown) => {
         logger.app("session", "warn", "mode run settlement failed", {
           sessionId: id,
           data: String(error),
@@ -335,7 +339,8 @@ function finishTurn(
     // follow it; a turn with no durable end has nothing to settle.
     if (!isQuitting() && !runtimeState.handoffAdmission.isClosed() && runtimeState.host === host &&
         settledTurnId && typeof onTurnSettled === "function") {
-      void onTurnSettled(id, settledTurnId).catch((error: unknown) => {
+      const completedTurnId = settledTurnId;
+      void coordination.trackFinalization(() => onTurnSettled(id, completedTurnId)).catch((error: unknown) => {
         logger.app("persistence", "warn", "session collaboration settlement failed", {
           sessionId: id,
           data: String(error),
@@ -347,9 +352,9 @@ function finishTurn(
   // the same promise even when this turn had no persistence step to await.
   // `finally` releases the claim after the body settles without swallowing a
   // rejected body: a caller that awaits this promise still sees the failure.
-  const finalization = Promise.resolve()
+  const finalization = coordination.trackFinalization(() => Promise.resolve()
     .then(runFinalization)
-    .finally(releaseFinalization);
+    .finally(releaseFinalization));
   record = finalization;
   turnFinalizations.set(finalizationKey, finalization);
   return finalization;
