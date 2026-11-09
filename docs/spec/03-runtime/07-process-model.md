@@ -673,6 +673,29 @@ limited to the execution generation. Desktop must still compose all 19 families,
 hold admission and obtain actual native closure before transfer. Inspection
 neither fences background schedulers nor establishes that full composition.
 
+The Desktop inventory reader captures exact Host, native generation, Sidecar
+binding token and concrete resource owners before reading Rust. It checks the
+same bindings on success, rejection and before publishing the result, then
+samples synchronous Desktop reports after the Rust await. Every source is
+required; missing, throwing, accessor-based, extra-field, asynchronous or unsafe
+numeric reports and sum overflow refuse inspection. Producer error payloads are
+not copied into diagnostics; the fixed source name identifies the failed read.
+
+The 19 output families describe conservative outstanding obligations. Plugin
+and remote-boot reports already include their nested resources and retired
+owners; the reader does not add those children again. Event/coordination writes
+and finalizations can overlap and remain conservative obstruction bounds, not
+execution occupancy. Sidecar child/native-session counts are merged by
+`OwnerHandoffCoordinator`; independent Worker classification is still uncovered.
+
+This reader is not yet connected to production Desktop startup/transfer. Its
+fixed qualification gaps retain refusal for Rust background admission, native
+resources outside the execution generation, updater, model catalog, vendor
+OAuth, MCP control, personal todos, Electron surfaces/listeners, independent
+Worker classification, and paused Voice/LiveVoice. These gaps cannot be cleared by a caller flag or an empty known
+report. No Voice runtime is initialized by inspection. Full factory/lifecycle
+composition and native closure remain required before enabling handoff.
+
 User-configured MCP uses the same application gate for discovery, connection
 tests, tool calls and status probes. Admitted work remains counted through OAuth,
 handshake and original operation completion, including after cache replacement,

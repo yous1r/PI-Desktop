@@ -19987,13 +19987,15 @@ session data is used.
 
 - **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-owner-inspection.mjs`
   with `PI_SCRATCH_DIR` and Node `node:sqlite` on Windows.
-- **Steps:** Bundle the production HostProcess and inspection consumer from
-  current source. Explicitly preserve `PI_DESKTOP_DATA_DIR` in the final child
-  environment and verify the scratch database after handshake. Register a real
-  contained native runner; inspect startup settlement, then create a session,
-  begin a turn, checkpoint its partial reply, end and recover it. Inject valid
-  but mismatched root metadata only into the isolated journal; restore the
-  fixture, test stale identity/caller inventory and an unfenced Host.
+- **Steps:** Bundle the production HostProcess, inspection consumer and Desktop
+  inventory reader from current source. Explicitly preserve `PI_DESKTOP_DATA_DIR`
+  in the final child environment and verify the scratch database after handshake.
+  Register a real contained native runner; inspect startup settlement, then
+  create a session, begin a turn, checkpoint its partial reply, end and recover
+  it. Exercise real Desktop outbox/checkpoint disposal and admission refusal
+  through the Rust report. Other Desktop resource owners are explicit fixtures.
+  Inject valid but mismatched root metadata only into the isolated journal;
+  restore the fixture, test stale identity/caller inventory and an unfenced Host.
 - **Expected:** Own inspection is not execution activity; live generation is
   not certified closed. Durable turn facts follow the real user path without
   losing the aborted reply. Identity mismatch and missing authority refuse;
@@ -20006,6 +20008,23 @@ session data is used.
   Desktop inventory, admission hold, source transfer or readiness is established.
   HOME/USERPROFILE do not isolate Rust's Windows known-folder default profile.
 - **Spec:** [Running-owner inspection](../03-runtime/06-host-rpc-protocol.md#private-running-owner-inspection-windows).
+
+### Desktop resource inventory composition (H1 partial)
+
+- **Entry:** `apps/desktop/test/handoff-inventory.test.mjs` with the current-source
+  Node loader; process path above through `scripts/e2e/desktop-handoff-inventory.mjs`.
+- **Steps:** Request inventory with each missing owner, invalid report, overflow,
+  throwing source, and changed Host/generation/Sidecar/resource during Rust wait.
+  Keep real outbox and checkpoint writes pending after queue removal/disposal;
+  inspect retired remote clients and retained process uncertainty.
+- **Expected:** All 19 families are present; no missing-source zero fallback.
+  Original writes remain busy through their actual completion. Native and other
+  explicit qualification gaps refuse handoff even after known work settles.
+  Nested plugin/tunnel sources are not separately added as execution occupancy.
+- **Boundary:** This proves the reader/persistence/gate composition. Full Desktop
+  startup, actual source identity/transfer transport and native closure remain
+  pending; Voice/LiveVoice remain paused.
+- **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
 
 ### Desktop admission integration prerequisites (H1 partial)
 

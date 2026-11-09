@@ -16,23 +16,30 @@ const directory = await mkdtemp(join(process.env.PI_SCRATCH_DIR, 'owner-inspecti
 const h = await harness(directory, binary, root);
 const { build } = createRequire(join(root, 'packages/agent-runtime/package.json'))('esbuild');
 const bundle = join(directory, 'consumer.mjs');
+const runtimeExports = join(directory, 'runtime-exports.mjs');
+await writeFile(runtimeExports, [
+  `export { inspectOwnerHandoff } from ${JSON.stringify(join(root, 'packages/host-runtime/src/owner-handoff-inspection.ts').replaceAll('\\', '/'))};`,
+  `export { decodeBinaryStorage, encodeBinaryStorage } from ${JSON.stringify(join(root, 'packages/host-runtime/src/binary-storage.ts').replaceAll('\\', '/'))};`,
+].join('\n'));
 const built = await build({ absWorkingDir: root, stdin: { resolveDir: root, contents:
-  'export { HostProcess } from "./packages/host-runtime/src/host-process.ts"; export { inspectOwnerHandoff } from "./packages/host-runtime/src/owner-handoff-inspection.ts";' },
+  'export { HostProcess } from "./packages/host-runtime/src/host-process.ts"; export { inspectOwnerHandoff } from "./packages/host-runtime/src/owner-handoff-inspection.ts"; export { verifyDesktopInventory } from "./scripts/e2e/desktop-handoff-inventory.mjs";' },
   outfile: bundle, bundle: true, format: 'esm', platform: 'node', metafile: true,
-  alias: { '@pi-desktop/shared': join(root, 'packages/shared/src/index.ts') }, logLevel: 'warning' });
+  alias: { '@pi-desktop/shared': join(root, 'packages/shared/src/index.ts'),
+    '@pi-desktop/host-runtime': runtimeExports,
+    '@pi-desktop/agent-host': join(root, 'packages/agent-host/src/maintenance-admission.ts') }, logLevel: 'warning' });
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const inputs = [];
 for (const input of Object.keys(built.metafile.inputs).filter(input => input !== '<stdin>').sort()) {
   inputs.push({ path: input.replaceAll('\\', '/'), sha256: hash(await readFile(resolve(root, input))) });
 }
 await writeFile(join(directory, 'build-inputs.json'), JSON.stringify(inputs, null, 2) + '\n');
-const { HostProcess, inspectOwnerHandoff } = await import(pathToFileURL(bundle));
+const { HostProcess, inspectOwnerHandoff, verifyDesktopInventory } = await import(pathToFileURL(bundle));
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const report = { status: 'FAIL', candidate: git('rev-parse', 'HEAD'), base: git('rev-parse', 'origin/main'),
   dirty: git('status', '--porcelain').length > 0, binarySha256: hash(await readFile(binary)),
   scriptSha256: hash(await readFile(fileURLToPath(import.meta.url))), bundleSha256: hash(await readFile(bundle)),
   inputs: inputs.length, inputsSha256: hash(JSON.stringify(inputs)), checks: [], cleanupConfirmed: false,
-  scope: 'Production stdio Rust inspection and TypeScript consumer; not complete Desktop inventory or handoff readiness' };
+  scope: 'Production Rust inspection, Desktop inventory, persistence and admission; other Desktop owners are fixtures, not complete startup or handoff readiness' };
 const env = Object.fromEntries(Object.keys(process.env).map(key => [key, undefined]));
 for (const key of ['PATH', 'Path', 'SystemRoot', 'WINDIR', 'windir', 'ComSpec', 'PATHEXT']) env[key] = process.env[key];
 Object.assign(env, { HOME: join(directory, 'home'), USERPROFILE: join(directory, 'home'), TEMP: join(directory, 'temp'),
@@ -86,6 +93,9 @@ try {
   assert.equal(detail.session.messages[0].content, 'retained reply');
   assert.equal(detail.session.messages[0].status, 'aborted');
   passed('real begin/checkpoint/end/recovery path updates read-only obligations and preserves the reply');
+
+  await verifyDesktopInventory(source, binding, join(directory, 'desktop-persistence'));
+  passed('Desktop inventory retains real writes through disposal and rejects handoff after settlement while qualification is incomplete');
 
   const generation = database(profile, db => db.prepare('SELECT record_json FROM execution_generations WHERE id=?').get(ticket.generation).record_json);
   const replaceRoot = root => database(profile, db => db.prepare('UPDATE execution_generations SET record_json=? WHERE id=?')

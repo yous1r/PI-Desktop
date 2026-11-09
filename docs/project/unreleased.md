@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Add the original-owner Desktop inventory reader for all 19 handoff fields.
+  Required resource reports, retained writes and retired owners remain visible;
+  malformed reports, overflow and replaced authority refuse inspection. Fixed
+  qualification gaps preserve refusal while startup/transfer composition,
+  Worker classification and native closure remain incomplete; Voice is paused.
 - Add private read-only Rust owner inspection with original Host/generation
   validation and bounded database reads. Pending requests, startup/setup work
   and transcript commits remain visible through their original completion;

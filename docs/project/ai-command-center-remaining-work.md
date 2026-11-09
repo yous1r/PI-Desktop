@@ -2257,3 +2257,40 @@ incident; its recovery/user-data impact remains unknown. This accepts the Rust
 inspection prerequisite only. Continue actual Desktop 19-family composition,
 original-owner transport and fenced startup/coordinator integration; Voice stays
 paused and incomplete native resources continue to refuse handoff.
+
+### H1 Desktop inventory reader
+
+The original-owner reader now maps concrete Desktop producers and the bounded
+Rust inspection into all 19 required handoff fields. It captures Host object and
+generation, native generation, Sidecar binding token and each resource owner;
+replacement on either success or rejection refuses the sample. Local reports
+are sampled after the Rust await. Missing owners, malformed/extra/accessor
+fields, asynchronous reports, unsafe counts, sum overflow and throwing sources
+refuse with a fixed source diagnostic. Rejected asynchronous reports are observed
+without accepting late evidence or producing an unhandled rejection.
+
+Plugin and remote boot sources already contain nested/retired resources and are
+not expanded again. Event/coordination persistence remains a conservative
+obligation bound, not independent execution occupancy. The coordinator supplies
+Sidecar children/native sessions; separate Worker classification is not yet
+available and is retained as an explicit gap. Other fixed gaps include Rust
+background admission, remaining native families and Desktop producers, and
+paused Voice/LiveVoice. No caller flag clears these gaps. The reader does not
+initialize Voice or enable production handoff.
+
+Development validation passed 110/110 unique Node tests in six files, including
+48 reader cases and real outbox/checkpoint/retired-resource sequences. Types,
+Biome, architecture, agent policy, 633-page docs and whitespace checks passed.
+An isolated process run passed five checks through real Rust inspection and
+Desktop persistence/admission, with both Host exits confirmed. Other Desktop
+owners in that process case are explicit fixtures; full startup is not tested.
+
+The initial 45 cases failed because the reader did not exist. A later actual
+async-report regression failed with unhandledRejection (2/3 selected cases
+passed), then was corrected. Earlier missing dependency-overlay and bundle
+exports failures happened before the intended cases/Host startup and are kept
+as harness failures. Clean-candidate evidence follows separately. The prior
+[default-profile incident](ai-command-center-p0-evidence/rust-inspection-isolation-incident.json)
+still has unknown recovery/data effects; this slice only used explicit scratch
+profiles. Next: trusted original-owner transport, subclass-preserving fenced
+factory/lifecycle and full coordinator composition. H1-H5 remain unfinished.
