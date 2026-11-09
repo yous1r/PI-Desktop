@@ -19545,3 +19545,23 @@ The earlier reservation settles and the next reply gets a new ID. Cover
 provider, overflow, silent and progress recovery in `runtime.test.ts`.
 `e2e-transcript-render.mjs` verifies production event projection and the
 existing one-bubble overflow recovery when no steering is consumed.
+
+### Goal run controls with a live model (opt-in, paid)
+
+Command: `PI_LIVE_BASE_URL=<url> PI_LIVE_MODEL=<model> PI_LIVE_API_KEY=<key>
+PI_DESKTOP_HOST_BIN=<candidate-host> node scripts/e2e-goal-live.mjs` with
+`PI_SCRATCH_DIR` set (`PI_LIVE_SECRETS_DIR` + `PI_LIVE_SECRET_REF` may replace
+the key; only the machine key and that one secret file are copied). It calls a
+paid model API and needs the account owner's authorization. Real pieces: an
+isolated Host, the production runtime loop and Electron main's run coordinator.
+
+1. With `goalBudget { maxTurns: 6 }` set, a Goal run starts with 6 turns, does
+   the work, calls `CompleteStage` with the three-heading artifact, finishes,
+   and the session returns to Agent.
+2. During the first turn, Edit the objective and budget, then Pause: the turn
+   receives the closeout notice and ends within 3 more model requests; the run
+   stays paused and no turn starts. Resume starts an approval turn with the
+   edited objective, which the run meets before it finishes.
+3. During a turn, Remove: the turn is not interrupted, finishes in Agent
+   without `CompleteStage`, no Host-started turn follows, and no open run is
+   left.

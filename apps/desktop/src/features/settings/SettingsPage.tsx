@@ -66,6 +66,7 @@ import { PluginScenicThemesDestination } from "../../components/settings/PluginS
 import { ConfigSyncPage } from "../../components/settings/ConfigSyncPage";
 import { StorageSettingsSection } from "./StorageSettingsSection";
 import { ModesSettingsPage } from "../modes/ModesSettingsPage";
+import { GoalBudgetSettingsRow } from "../modes/GoalBudgetSettingsRow";
 
 type SettingsTab = ReturnType<typeof useAppStore.getState>["settingsTab"];
 
@@ -553,6 +554,7 @@ export function SettingsPage() {
                     role="group"
                   />
                 </SettingsRow>
+                <GoalBudgetSettingsRow settings={settings} saveSettings={saveSettings} />
                 <CommandShellRow settings={settings} saveSettings={saveSettings} />
                 <LinkOpenTargetRow settings={settings} saveSettings={saveSettings} />
                 <ShowThinkingRow settings={settings} saveSettings={saveSettings} />
