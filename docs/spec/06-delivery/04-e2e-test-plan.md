@@ -20523,3 +20523,31 @@ delivery and deterministic plugin process ports remain fixture boundaries.
   credential or actual SSH server is used. Native-family closure, inner installer
   lifecycle, nineteen-family inventory and full H1-H5 transfer remain separate.
 - **Specs:** [Remote agent control](../02-architecture/05-remote-agent-control.md).
+
+### Mode-run ownership across handoff admission and runtime replacement
+
+- **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
+- **Fixtures:** `handoff-mode-runs`, `handoff-mode-services` and
+  `handoff-mode-prompt` Desktop tests use current coordination, catalog, bridge,
+  IPC and finalization wiring. Host RPC is a controlled external boundary; the
+  Sidecar binding cases use an isolated real stdio child. No provider is called.
+- **Steps:** Hold catalog lookup, claim, settlement, continuation session reads,
+  session-lock acquisition or launch preparation. Close admission, replace the
+  runtime, rebind the same Sidecar away and back, or confirm quit. Release the
+  original operation. Repeat Pause/Stop/Remove during a rebind and report the
+  same terminal turn twice. Exercise failed original settlement and throwing
+  cleanup diagnostics. Then run the ordinary continuation and mode controls.
+- **Expected:** New work refuses closed admission; stale setup cannot publish
+  or execute against a replacement. Successful late claims abort-settle through
+  their original Host; settlement failure remains visible. Stop cannot interrupt
+  a later turn. Rebinding invalidates old Sidecar guards before callbacks;
+  identical unchanged binding remains usable. Continuation timers and startup
+  promises remain counted until actual completion. Quit cancels unstarted timers
+  and drains started operations before Host/Sidecar disposal. Startup failure
+  closes its durable turn through the original Host. Ordinary continuation
+  preserves origin identity, permission ceilings and user-first admission and
+  creates no user message. Run `mode-definitions-user-path` for the isolated
+  Electron edit/select/control path, plus shutdown and extension-owner suites.
+- **Boundary:** These tests validate Main ownership and real stdio binding
+  integration, not a paid model, full nineteen-family handoff or native-family
+  closure. Unknown resources continue to refuse transfer.

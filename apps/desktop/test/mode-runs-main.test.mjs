@@ -79,9 +79,8 @@ function fixture({ open = null, claim, settle = { run: null, continue: false }, 
       return undefined;
     },
   };
-  const coordinator = createModeRunCoordinator({
-    getHost: () => host,
-    catalog,
+  const owner = {
+    host,
     startContinuation: async (sessionId, origin, content) => {
       continuations.push({ sessionId, origin, content });
     },
@@ -91,8 +90,10 @@ function fixture({ open = null, claim, settle = { run: null, continue: false }, 
     notifyTurn: async (sessionId, turnId, notice) => {
       notices.push({ sessionId, turnId, ...notice });
     },
-    logger: { app() {} },
-    isQuitting: () => false,
+  };
+  const coordinator = createModeRunCoordinator({
+    getOwner: () => owner, catalog, logger: { app() {} },
+    isQuitting: () => false, isAdmissionClosed: () => false,
   });
   return { coordinator, calls, continuations, aborts, notices };
 }

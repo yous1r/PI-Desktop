@@ -2059,3 +2059,38 @@ settlements in ownership; then finish all nineteen families, bounded Rust
 status and fenced Desktop composition. Voice remains paused and must fail
 closed where its inventory/closure is incomplete. H1-H5 and the later command
 center DAG are not complete.
+
+### Rust integration result follow-up
+
+The full run above subsequently finished: 1,182 passed, one failed, one ignored
+(1,184 total), exit 101 after 2,999.38 seconds. Its sole failure was the old
+provider schema assertion (expected 29, actual 30). The corrected assertion
+already passed in the separate 33-test run. The full executable predates that
+correction and the final rebase; this is combined evidence, not one all-green
+full run on the accepted candidate. The remote-boot artifact index now includes
+the completed log hash. Ordinary Clippy passed; strict warnings remain unaccepted.
+
+### H1 mode-run ownership implementation
+
+The mode coordinator now captures its original Host generation, bridge and
+Sidecar binding before asynchronous work. Operations, claims, settlements and
+scheduled/starting continuations remain visible through their actual completion.
+Duplicate terminal reports join original settlement; stale successful claims
+abort-settle before preparation rejects. Failed settlement retains uncertainty.
+Pause/Stop/Remove cannot affect a rebound Sidecar or a later turn. Binding guards
+expire before rebind callbacks, on Host exit and disposal, including an
+away-and-back rebind; an unchanged binding remains usable.
+
+An internal asynchronous continuation context protects bridge reads and IPC
+startup, retaining original Host/bridge cleanup after invalidation. Regression
+tests reproduced replacement-Host reads, old runtime notices and replacement
+`session.endTurn` writes before their corrections. Actual catalog/coordinator,
+AgentHost bridge, prompt IPC and finalization wiring exercise the ordinary path
+and held lock/launch/begin/claim paths. Quit seals mode admission, cancels only
+unstarted continuations and drains started work before runtime disposal.
+
+Focused validation passed 70/70 after the prompt/finalization fix; Desktop types
+and Biome 388 files passed. Prior 69-test binding and 20-test bridge runs overlap
+and are not additional unique coverage. Clean-candidate acceptance follows the
+implementation commit. This change does not qualify native-family closure or
+complete the nineteen-family H1 inventory. Voice remains paused.

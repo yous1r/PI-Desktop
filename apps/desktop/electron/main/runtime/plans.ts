@@ -1,3 +1,4 @@
+import { modeContinuationSettlementOwner } from "./mode-continuation-owner";
 import { IPC, type AgentEventEnvelope, type AppNotification, type MessageUsage, type PlanExecutionFinishStatus, type UiMessage } from "@pi-desktop/shared";
 import { createApprovedPlanDispatcher } from "./approved-plan-dispatch";
 import type { RuntimeState } from "./context";
@@ -165,8 +166,9 @@ function finishTurn(
   if (!id || !turnId) return Promise.resolve();
   // Freeze the original execution owner before the deferred finalization body.
   const owner = dispatcher.turnOwner(id, turnId);
-  const host = owner?.host ?? runtimeState.host;
-  const bridge = owner ? owner.bridge : runtimeState.agentHostBridge;
+  const continuationOwner = modeContinuationSettlementOwner();
+  const host = owner?.host ?? continuationOwner?.host ?? runtimeState.host;
+  const bridge = owner ? owner.bridge : continuationOwner?.bridge ?? runtimeState.agentHostBridge;
 
   const finalizationKey = planSubmissionTurnKey(id, turnId);
   // A second call joins the first claim. That is what stops a late abort from

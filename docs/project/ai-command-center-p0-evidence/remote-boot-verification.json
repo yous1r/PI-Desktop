@@ -6,6 +6,7 @@
   "artifactStorage": "Exact logs, full input manifest and test-name list remain in this session's scratch directory. This committed index contains hashes and metadata, not copies of those files.",
   "scratch": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569",
   "artifacts": [
+    { "path": "remote-boot-rust-full.log", "bytes": 105375, "sha256": "28cfdf20f0f91ad62d7414026f0788bcda660b40750ab1bace18bcb9d39b4103" },
     { "path": "handoff-remote-boot-candidate.json", "bytes": 21669, "sha256": "be44b3d30b4d4cc4dc33585e09b8686ce545d9d45c5d04fc55acc0c45ae36e9b" },
     { "path": "handoff-remote-boot-candidate.log", "bytes": 45867, "sha256": "0924caa2ab854997716212638c160d161e0feba687e4841111157d720174ca2e" },
     { "path": "handoff-remote-boot-candidate-inputs.json", "bytes": 481907, "sha256": "74fce8fbd386443b67e47b3930c1e3a1888cf187cc12cb99bf37df6b179d8e50" },
@@ -31,6 +32,6 @@
     "targetedRustAndClippy": "Integration worktree before the final upstream release-metadata and test-only rebase. These are supplementary evidence, not a new full-suite acceptance.",
     "priorFailures": "Retained in scratch: original-job cancellation/cleanup regressions, pairing fixture capability failures, missing React and stale shared-dist UI builds, and the Rust shared schema fixture mismatch. The final candidate passed the corrected user paths.",
     "runnerError": "The first corrected Rust command used an obsolete binary suffix and executed zero tests. The actual generated executable was then located; its 33 selected tests passed.",
-    "fullRust": "Still running when this index was written; excluded from acceptance totals."
+    "fullRust": "Running at original archive creation; subsequently completed with 1182 passed, 1 failed and 1 ignored. The only failure is the pre-correction schema-29 assertion; its corrected regression passed in the separate 33-test run. The full run predates the correction and final rebase, remains excluded from final-candidate acceptance totals, and is not an all-green full suite."
   }
 }

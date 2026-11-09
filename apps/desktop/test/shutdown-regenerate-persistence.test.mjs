@@ -42,6 +42,8 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
   const archiveStarted = Promise.withResolvers();
   const releaseArchive = Promise.withResolvers();
   const sidecarStopped = Promise.withResolvers();
+  const modeShutdownStarted = Promise.withResolvers();
+  const releaseModeShutdown = Promise.withResolvers();
   const messages = new Map();
   const archived = [];
   const warnings = [];
@@ -112,9 +114,11 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
     browserHost: { dispose }, pluginViews: { dispose: async () => {} },
     updater: { dispose, isInstallingUpdate: () => false }, logger,
     confirmQuitDialog: async () => true, disposePowerSaveBlockers: dispose,
+    modeRuns: { async dispose() { modeShutdownStarted.resolve(); await releaseModeShutdown.promise; } },
   });
   t.after(async () => {
     releaseArchive.resolve();
+    releaseModeShutdown.resolve();
     await state.shutdownPromise;
     await persistence.flush();
     app.removeAllListeners();
@@ -131,6 +135,10 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
   await archiveStarted.promise;
   if (outcome === "unresponsive") t.mock.timers.enable({ apis: ["setTimeout"] });
   app.emit("before-quit", { preventDefault() {} });
+  await modeShutdownStarted.promise;
+  assert.equal(hostDisposed, false, "mode settlement keeps its original Host alive");
+  assert.equal(pluginsDisposed, false, "mode shutdown precedes resource disposal");
+  releaseModeShutdown.resolve();
   await sidecarStopped.promise;
   assert.equal(state.handoffAdmission.isClosed(), true, "confirmed quit closes new admission before disposal");
   assert.equal(plansDisposed, true, "confirmed quit disposes plan retries before resource teardown");

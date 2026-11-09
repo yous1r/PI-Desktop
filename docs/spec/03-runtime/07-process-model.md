@@ -593,6 +593,28 @@ replacement Host or replaying execution. The existing idempotent terminal-write
 retry uses its original Host and frozen outcome. These local bindings do not
 replace Rust ownership or provide native exit proof.
 
+Staged mode coordination shares admission and retains the original Host
+generation, AgentHost bridge and Sidecar binding across catalog/RPC awaits.
+Pause, Stop and Remove may finish their admitted durable transition, but their
+runtime effects cannot reach a rebound Sidecar or a later turn. A Sidecar binding
+expires before rebind callbacks, on Host exit and disposal; returning to the same
+Host does not revive an old binding. Rebinding the same unchanged Host preserves
+the current binding.
+
+Mode claims remain counted until the original Host acknowledges settlement.
+Concurrent turn-end reports join one settlement. A stale successful claim is
+abort-settled before preparation rejects, including during quit; failed cleanup
+retains the claim and uncertainty. Host-requested continuations remain counted
+from scheduling through startup completion. Internal asynchronous ownership
+checks cover bridge reads, session-lock admission, launch setup and prompt
+dispatch; startup cleanup retains the original Host and bridge. These checks
+carry no serializable authority and preserve user-first queue admission,
+permission ceilings and continuation-origin identity. Shutdown seals the
+coordinator, cancels unstarted timers and drains started operations before
+disposing the Sidecar or Host. `getHandoffActivity()` reports operations, claimed
+turns, queued continuations and uncertainty; it neither replaces the Rust run
+ledger nor proves native-family closure.
+
 User-configured MCP uses the same application gate for discovery, connection
 tests, tool calls and status probes. Admitted work remains counted through OAuth,
 handshake and original operation completion, including after cache replacement,

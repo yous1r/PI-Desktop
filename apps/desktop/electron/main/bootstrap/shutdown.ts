@@ -63,6 +63,7 @@ export type ShutdownDependencies = {
   liveCallService?: Pick<LiveCallService, "endForLifecycle">;
   disposeSystemProxyRelay?: () => Promise<void>;
   preparePersonalTodosQuit?: () => Promise<boolean>;
+  modeRuns?: { dispose(): Promise<void> };
 };
 
 /** Register the last-window and before-quit resource lifecycle handlers. */
@@ -91,6 +92,7 @@ export function registerShutdownHandlers({
   liveCallService,
   disposeSystemProxyRelay,
   preparePersonalTodosQuit,
+  modeRuns,
 }: ShutdownDependencies): void {
   let quitConfirmationPending = false;
   let todoPreparationPending = false;
@@ -185,6 +187,7 @@ export function registerShutdownHandlers({
       state.toggleWindowAccelerator = null;
     }
     state.shutdownPromise = (async () => {
+      const modeShutdown = modeRuns?.dispose();
       await disposeWorkspaceTerminals();
       await liveCallService?.endForLifecycle("app-quit");
       // Close every paired remote host before the local host-core so any
@@ -216,6 +219,7 @@ export function registerShutdownHandlers({
         pluginViews.dispose(),
       ]);
       await pluginSurfacesShutdown;
+      await modeShutdown;
       // Stop event production before draining the terminal writes. A finished
       // turn can already have left activeTurns while its branch archive is
       // still awaiting the host; closing host-core first loses that archive.

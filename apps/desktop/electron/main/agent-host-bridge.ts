@@ -1,3 +1,4 @@
+import { assertModeContinuationOwner } from "./runtime/mode-continuation-owner";
 import {
   AgentHost,
   RacpError,
@@ -99,8 +100,12 @@ export function createAgentHostBridge(options: AgentHostBridgeOptions) {
    */
   const resolvingInputs = new Set<string>();
 
+  const getHost = (): HostLike | null => {
+    assertModeContinuationOwner();
+    return options.getHost();
+  };
   const requireHost = (): HostLike => {
-    const host = options.getHost();
+    const host = getHost();
     if (!host) throw new RacpError("AGENT_UNAVAILABLE", "host is not running", { retriable: true });
     return host;
   };
@@ -109,6 +114,7 @@ export function createAgentHostBridge(options: AgentHostBridgeOptions) {
     async prompt(request: TurnStartRequest) {
       try {
         const summary = await sessions.get(request.sessionId);
+        assertModeContinuationOwner();
         // A per-turn ceiling that would WIDEN the session's stored mode is a
         // real escalation attempt — e.g. a remote viewer whose principal is
         // subject to `remoteMaxPermissionMode: "ask"` should never be able to
@@ -268,8 +274,8 @@ export function createAgentHostBridge(options: AgentHostBridgeOptions) {
 
   // Session reads and the persisted turn queue (schema v15, ADR 0213) go
   // straight to host-core; the same ports serve the headless Host.
-  const sessions = createHostSessionPort(options.getHost);
-  const queueStore = createHostQueueStore(options.getHost);
+  const sessions = createHostSessionPort(getHost);
+  const queueStore = createHostQueueStore(getHost);
 
   const agentHost = new AgentHost({
     runtime,

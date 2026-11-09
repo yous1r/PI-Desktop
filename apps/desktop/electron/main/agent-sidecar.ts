@@ -77,6 +77,16 @@ export class AgentSidecar extends RuntimeAgentSidecar {
   private readonly ownerRetirements = new Map<string, Promise<void>>();
   private readonly workspaceProcesses = new SidecarWorkspaceProcesses();
   private readonly extensionServices = new SidecarExtensionServices();
+  private hostBinding?: { host: Parameters<RuntimeAgentSidecar["setHost"]>[0]; generation: unknown; ready: boolean };
+  private unsubscribeBindingExit?: () => void;
+
+  /** A binding cannot revive after replacement, even when the same Host returns. */
+  captureHostBinding(host: object): () => boolean {
+    const binding = this.hostBinding;
+    return () => !this.ownerDisposed && binding !== undefined && binding.ready &&
+      this.hostBinding === binding && binding.host === host &&
+      binding.generation === ("generation" in host ? host.generation : undefined);
+  }
 
   setExtensionServices(owner: Parameters<SidecarExtensionServices["set"]>[0]): void { this.extensionServices.set(owner); }
   getExtensionServiceActivity() { return this.extensionServices.snapshot(); }
@@ -95,10 +105,22 @@ export class AgentSidecar extends RuntimeAgentSidecar {
 
   override setHost(host: Parameters<RuntimeAgentSidecar["setHost"]>[0]): void {
     if (this.ownerDisposed) return;
+    const generation = "generation" in host ? host.generation : undefined;
+    if (this.hostBinding?.host !== host || this.hostBinding.generation !== generation) {
+      const binding = { host, generation, ready: false };
+      this.hostBinding = binding;
+      this.unsubscribeBindingExit?.();
+      this.unsubscribeBindingExit = host.onExit(() => {
+        if (this.hostBinding === binding) this.hostBinding = undefined;
+      });
+    }
+    const binding = this.hostBinding;
     this.ownerLifecycle?.rebindHost(host);
     this.workspaceProcesses.rebindHost(host);
     this.extensionServices.rebindHost(host);
+    if (this.ownerDisposed || this.hostBinding !== binding) return;
     super.setHost(host);
+    binding.ready = true;
   }
 
   getExtensionOwnerActivity() {
@@ -118,6 +140,9 @@ export class AgentSidecar extends RuntimeAgentSidecar {
   private disposeExtensionOwner(): void {
     const lifecycle = this.ownerLifecycle;
     this.ownerDisposed = true;
+    this.hostBinding = undefined;
+    this.unsubscribeBindingExit?.();
+    this.unsubscribeBindingExit = undefined;
     this.ownerLifecycle = undefined;
     this.workspaceProcesses.dispose();
     this.extensionServices.dispose();

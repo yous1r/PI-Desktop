@@ -11,6 +11,8 @@
 			"apps/desktop/src/features/settings/**/*.ts",
 			"apps/desktop/src/features/settings/**/*.tsx",
 			"apps/desktop/electron/main/runtime/session-launch*.ts",
+			"apps/desktop/electron/main/runtime/{mode-runs,mode-run-lifetime,mode-services,mode-continuation-owner}.ts",
+			"apps/desktop/test/mode-runs-main.test.mjs",
 			"apps/desktop/electron/main/user-mcp.ts",
 			"apps/desktop/electron/main/mcp-oauth*.ts",
 			"apps/desktop/test/mcp-oauth*.test.mjs",

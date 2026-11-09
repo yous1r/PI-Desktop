@@ -2,6 +2,7 @@ import { expandMcpInvocation } from "../composer-mcp";
 import { IPC, ErrorCodes, compactionRecordId, findSkillMentions, isGlobalPermissionMode, isRpcTimeoutError, type AgentEventEnvelope, type AgentPromptRequest, type AgentSteerRequest, type UiMessage, type AgentQueuePushRequest, type AgentStopRequest, type AgentStopSubagentsRequest, type AskToolResolution, type GlobalPermissionMode, type MessageUsage, type PendingInteractiveRequests, type PlanExecutionFinishStatus, type PlanResolutionResult, type PlanResolveRequest, type VoiceOrigin } from "@pi-desktop/shared";
 import type { FinishTurn } from "../runtime/plans";
 import { modeContinuationOrigin, type ModeRunCoordinator, type PreparedModeTurn } from "../runtime/mode-runs";
+import { assertModeContinuationOwner } from "../runtime/mode-continuation-owner";
 import { expandSlashInvocation, visionFromModelConfig, type ComposerTemplate } from "@pi-desktop/agent-runtime";
 import { appendPromptFallbackPaths, durableUserMessageId, preparePromptAttachments, type PreparedPromptAttachment } from "../prompt-attachments";
 import { resolveSessionReferences } from "../session-references";
@@ -192,6 +193,7 @@ export function registerAgentIpc({
     // Set only on an in-process request built by the Agent Host bridge for a
     // Host-started mode run turn; a renderer or plugin request never has it.
     const modeOrigin = modeContinuationOrigin(req);
+    assertModeContinuationOwner();
     if (!sidecar) throw new Error("sidecar unavailable");
     const voiceOrigin = parseVoiceOrigin(req.voiceOrigin);
     if (req.sessionId.startsWith("native-pi:")) {
@@ -217,7 +219,9 @@ export function registerAgentIpc({
     if (!host) throw new Error("host unavailable");
     const releaseSessionOperation = await acquireSessionOperation(req.sessionId);
     try {
+    assertModeContinuationOwner();
     const sessionMessage = await resolveSessionMessageInput(host, req);
+    assertModeContinuationOwner();
     // Install the renderer's prompt-time snapshot before any asynchronous
     // setup. This closes the gap where a fast completion could beat the
     // effect that reports the active chat session. Missing or mismatched
@@ -233,11 +237,14 @@ export function registerAgentIpc({
       // The run was paused, stopped or claimed meanwhile: open no durable turn.
       throw Object.assign(new Error("mode run cannot continue"), { errorCode: "MODE_CONTINUATION_SKIPPED" });
     }
+    assertModeContinuationOwner();
     const settings = await host.call<any>("settings.get");
+    assertModeContinuationOwner();
     const sessionResult = await host.call<{ session?: any }>("session.get", {
       id: req.sessionId,
       messageLimit: 1,
     });
+    assertModeContinuationOwner();
     let session = sessionResult.session;
     if (!session) {
       throw Object.assign(new Error("Session not found"), {
@@ -340,6 +347,7 @@ export function registerAgentIpc({
       session,
       settings,
     );
+    assertModeContinuationOwner();
     sidecar.setProjectInstructionRoot(req.sessionId, launch.workspaceRoot ?? launch.projectPath);
 
     // Open a durable turn row, then persist the user message under it.
@@ -361,6 +369,7 @@ export function registerAgentIpc({
     // the sidecar then executes the run's own definition snapshot.
     let preparedMode: PreparedModeTurn | undefined;
     try {
+      assertModeContinuationOwner();
       preparedMode = await modeRuns.prepareTurn({
         sessionId: req.sessionId,
         turnId: durableTurnId,
@@ -368,6 +377,7 @@ export function registerAgentIpc({
         content: req.content,
         origin: modeOrigin ?? "user",
       });
+      assertModeContinuationOwner();
     } catch (error) {
       await finishTurn(req.sessionId, modeOrigin ? "aborted" : "error", (error as any)?.errorCode, {
         turnId: durableTurnId,
@@ -455,6 +465,7 @@ export function registerAgentIpc({
         // left inline keeps its place in the prompt and in the transcript.
         promptContent,
       );
+      assertModeContinuationOwner();
     } catch (error) {
       await finishTurn(req.sessionId, "error", (error as any)?.errorCode, {
         turnId: durableTurnId,
@@ -565,6 +576,7 @@ export function registerAgentIpc({
     // provenance Main-owned and tied to the durable turn, never the prompt text.
     if (isTrustedCompletionNotice) completionNoticeTurns.add(durableTurnId);
     try {
+      assertModeContinuationOwner();
       result = await sidecar.call<{ accepted: boolean; turnId: string }>(
         "agent.prompt",
         {

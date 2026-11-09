@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Keep mode-run controls and automatic continuations bound to their original
+  Host and Sidecar across restart, rebinding and quit. Late claims settle through
+  the original Host, duplicate settlement joins, and cancelled startup cannot
+  reach a replacement runtime. Pending work and uncertain cleanup remain visible
+  to handoff admission; full Desktop transfer remains under development.
 - Retain paired-Host SSH tunnel creation and cleanup through late completion.
   Shared handoff admission blocks new acquisitions without interrupting live
   tunnels, disposal stays sealed, concurrent cleanup joins and old deployment

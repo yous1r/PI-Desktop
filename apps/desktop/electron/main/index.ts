@@ -708,7 +708,7 @@ const modeServices = createModeServices({
   getSidecar,
   sendToRenderer,
   logger,
-  isQuitting: () => mainState.quitting,
+  isQuitting: () => mainState.quitting, isAdmissionClosed: () => mainState.handoffAdmission.isClosed(),
 });
 
 const planRuntime = createPlanRuntime({
@@ -1116,7 +1116,7 @@ registerShutdownHandlers({
   disposePowerSaveBlockers,
   liveCallService,
   disposeSystemProxyRelay,
-  preparePersonalTodosQuit: personalTodos.prepareQuit,
+  preparePersonalTodosQuit: personalTodos.prepareQuit, modeRuns: modeServices.runs,
 });
 
 registerApplicationActivation({

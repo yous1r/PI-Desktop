@@ -74,7 +74,7 @@
     "rustTargeted": "33/33 passed before the final upstream release-metadata and test-only rebase; includes owner journal, mode migration and provider schema regression.",
     "standardClippy": "Passed before the final upstream release-metadata and test-only rebase with upstream unused mode-policy import/function warnings.",
     "strictClippy": "Failed: upstream unused imports/dead code and a constant assertion introduced during integration. The assertion was corrected; ordinary Clippy passed. Strict zero-warning Clippy is not accepted.",
-    "fullRust": "The pre-release-rebase full suite was still running at archive creation. A schema-29 assertion failure was corrected and its targeted test passed. No full-suite pass is claimed."
+    "fullRust": "The pre-correction, pre-release-rebase suite was still running at archive creation. It subsequently finished: 1182 passed, 1 failed, 1 ignored, 1184 total; exit 101; 2999.38 seconds. The sole failure was the hardcoded schema-29 provider assertion (actual 30), already corrected and passed in the 33-test targeted rerun. This combined evidence is not a single all-green full run of the final candidate."
   },
   "limitations": [
     "Accepts remote boot facade ownership through original preparation, cancellation, replacement, temporary pairing and cleanup. Inner SSH installer native lifecycle remains unqualified.",
