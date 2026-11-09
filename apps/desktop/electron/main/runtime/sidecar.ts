@@ -1,3 +1,4 @@
+import { createTrustedExtensionServices } from "../trusted-extension-services";
 import { createPluginExtensionOwnerBridge } from "../plugin-extension-owner-bridge";
 import { IPC, type AgentEventEnvelope, type UiMessage } from "@pi-desktop/shared";
 import {
@@ -455,59 +456,15 @@ export function createSidecarRuntime({
     plugins, pluginActiveInProject,
   });
   s.setExtensionOwnerLifecycle(ownerBridge);
+  const extensionServices = createTrustedExtensionServices({
+    ui: agentExtensions, getHost: () => runtimeState.host,
+    getQueueBridge: () => runtimeState.agentHostBridge, current: () => runtimeState.sidecar === s,
+    isAdmissionClosed: () => runtimeState.handoffAdmission.isClosed(),
+    broadcastEvent: (event, args) => plugins.broadcastEvent(event, args),
+  });
+  s.setExtensionServices(extensionServices);
   s.setTrustedExtensionBridge({
-    workspaceProcess: params => extensionProcesses.handle(params),
-    ...ownerBridge,
-    publishCommands: (params) =>
-      agentExtensions.publishCommands(
-        String(params.sessionId ?? ""),
-        Array.isArray(params.commands) ? (params.commands as any[]) : [],
-      ),
-    publishDiagnostics: (params) =>
-      agentExtensions.publishDiagnostics(
-        String(params.sessionId ?? ""),
-        Array.isArray(params.diagnostics) ? (params.diagnostics as any[]) : [],
-        Array.isArray(params.reports) ? (params.reports as any[]) : [],
-      ),
-    requestUi: (params) => agentExtensions.requestUi(params as any),
-    configureModel: async (params) => {
-      if (!runtimeState.host) throw new Error("host unavailable");
-      const sessionId = String(params.sessionId ?? "").trim();
-      const result = await runtimeState.host.call<{ session?: {
-        providerId?: string;
-        modelId?: string;
-        thinkingLevel?: string;
-      } | null }>("session.configure", {
-        id: sessionId,
-        mode: String(params.mode ?? "agent"),
-        providerId: String(params.providerId ?? ""),
-        modelId: String(params.modelId ?? ""),
-        thinkingLevel: typeof params.thinkingLevel === "string" ? params.thinkingLevel : undefined,
-      });
-      if (result.session) {
-        plugins.broadcastEvent("session:modelChanged", [{
-          sessionId,
-          modelKey: result.session.providerId && result.session.modelId
-            ? `${result.session.providerId}/${result.session.modelId}`
-            : null,
-          thinkingLevel: result.session.thinkingLevel,
-        }]);
-      }
-      return { ok: Boolean(result.session), session: result.session ?? null };
-    },
-    queuePush: async (params) => {
-      if (!runtimeState.agentHostBridge) throw new Error("agent host unavailable");
-      return runtimeState.agentHostBridge.queue.push({
-        sessionId: String(params.sessionId ?? ""),
-        content: String(params.content ?? ""),
-        ...(typeof params.idempotencyKey === "string" ? { idempotencyKey: params.idempotencyKey } : {}),
-      });
-    },
-    queuePrioritize: async (params) => {
-      if (!runtimeState.agentHostBridge) throw new Error("agent host unavailable");
-      await runtimeState.agentHostBridge.queue.prioritize(String(params.id ?? ""));
-      return { ok: true };
-    },
+    workspaceProcess: params => extensionProcesses.handle(params), ...ownerBridge, ...extensionServices,
   });
   s.setVendorAuthResolver(async ({ providerId }) =>
     vendorOAuth.resolveAuth(providerId),

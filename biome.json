@@ -21,6 +21,8 @@
 			"apps/desktop/electron/main/plugin-{surface-activity,panel-host,view-host,shortcut-registry}.ts",
 			"apps/desktop/electron/main/plugin-extension-{owner-bridge,owner-broker,launch-bindings,dispatch}.ts",
 			"apps/desktop/electron/main/agent-sidecar*.ts",
+			"apps/desktop/electron/main/{agent-extension-ui,trusted-extension-services}.ts",
+			"apps/desktop/test/{agent-extensions,extension-cancellation}.test.mjs",
 			"apps/desktop/electron/main/remote/extension-workspace-processes.ts",
 			"apps/desktop/test/extension-workspace-processes.test.mjs",
 			"apps/desktop/test/plugin-extension-owner-*.test.mjs",

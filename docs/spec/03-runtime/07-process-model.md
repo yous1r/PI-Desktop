@@ -696,6 +696,14 @@ handles; retained activity survives router replacement. Session cleanup captures
 its original handles. Remote cleanup ACKs leave native-family uncertainty intact.
 See [workspace process ownership](../07-plugins/18-workspace-execution.md#trusted-extension-process-handoff-ownership).
 
+Trusted-extension UI, command/diagnostic publication, model configuration and
+queue callbacks also carry an explicit sidecar source and the original Host
+generation. Queued prompt tails and pending original RPCs remain visible after
+caller cancellation, disposal, process exit or replacement. Explicit Host rebind
+retires the old UI source; captured session cleanup cannot clear replacement
+state. Unknown RPC completion retains bounded refusal evidence. See the
+[service ownership contract](../07-plugins/16-trusted-extensions.md#desktop-service-ownership-during-idle-handoff).
+
 This composition does not enable a transfer request. Complete owner inventory,
 bounded source journal transport, native/coordinator integration and target
 readiness remain separate H1-H5 acceptance work.

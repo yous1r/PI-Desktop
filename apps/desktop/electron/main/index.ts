@@ -178,10 +178,10 @@ const dataDir = storage.preferences.roots.data;
 // divergence D236 closes.
 process.env.PI_DESKTOP_DATA_DIR = dataDir;
 
-// Agent extensions (D387/D388, ADR 0214): plugins contribute the modules,
-// the sidecar loads them; this bridge carries commands, diagnostics, and
-// prompts between the two.
+// Trusted sidecar extension publications and renderer prompts (ADR 0214).
 const agentExtensions = new AgentExtensionBridge({
+  isAdmissionClosed: () => mainState.handoffAdmission.isClosed(),
+  onError: error => logger.app("plugin", "error", "Extension UI notification failed", { data: { error: String(error) } }),
   hasRenderer: () =>
     !!mainState.mainWindow &&
     !mainState.mainWindow.isDestroyed() &&

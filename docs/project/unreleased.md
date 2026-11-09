@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Bind trusted-extension prompts, publications, model configuration and queue work
+  to shared Desktop admission and their original sidecar/Host. Retired prompt tails
+  and original RPCs stay counted, stale results cannot broadcast through a new
+  owner, and notification failures cannot strand prompt waiters. Host rebind and
+  Sidecar disposal retain pending work and unknown completion. Full handoff remains pending.
 - Bind trusted-extension workspace processes to shared handoff admission and their
   original Host/connection. Retired operations keep their process slots, concurrent
   cleanup joins, and delayed startups cannot escape cleanup. Sidecar disposal,

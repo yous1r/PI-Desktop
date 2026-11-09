@@ -20273,3 +20273,37 @@ Evidence: `handoff-extension-processes.test.mjs` (30 focused cases),
 related workspace resolver, terminal, owner-extension and restart suites.
 Remote RPC uses a local service fixture; original process exits and cleanup ACKs
 do not certify native-family closure or complete H1/H2-H5 transfer.
+
+### E2E-HANDOFF-trusted-extension-services
+
+Use current-source imports, isolated Node sidecar children and deterministic Host,
+queue and renderer boundaries. Exercise actual Desktop Sidecar `host.proxy`
+routing, the shared admission object, UI bridge and service ownership; do not use
+a live Desktop/profile/provider, native dialog or stored SSH Host.
+
+1. Hold service admission and verify command/UI/model/queue requests fail before
+   dispatch. Cancel the hold, publish commands/diagnostics, persist a model and
+   broadcast its exact result, push/prioritize a queue entry, and round-trip a
+   renderer prompt. An outstanding prompt refuses the service-only idle check.
+2. Close admission or change the source/Host/generation while a prompt waits or
+   a model/queue operation is pending. Queued prompts recheck before publication;
+   responses and stale continuations refuse without replay or persistence rollback.
+3. Cancel queued requests while an earlier prompt remains open. Their original
+   activity and duplicate IDs stay retained until queue settlement. Old-source
+   cancellation and captured cleanup cannot clear replacement same-ID state.
+4. Throw from prompt publication and dismissal observers. Timers, listeners and
+   waiters settle, failures remain observable, and a subsequent prompt can proceed.
+   Synchronous toast/status callbacks remain visible during handoff inspection.
+5. Expire an outer sidecar call with a controlled clock, then dispose or exit the
+   original child while its model RPC remains pending. Original service activity
+   stays positive until settlement; no late model event reaches the replacement.
+   Replace services, dispose a session and explicitly rebind the Host; current and
+   retired activity remain visible. Unknown RPC completion survives ordinary
+   cleanup; known error replies do not invent uncertainty. Invalid activity refuses.
+
+Evidence: `handoff-extension-ui.test.mjs`, `handoff-extension-services.test.mjs`
+and `handoff-extension-services-process.test.mjs` provide 43 focused cases, including
+six original-child process paths. Existing command/runner cancellation and
+owner/process/restart/wiring tests cover compatibility. Original child exits and
+empty stderr are recorded, but the service-only inventory excludes unrelated
+native owners and does not certify full H1 or complete transfer/native-family closure.

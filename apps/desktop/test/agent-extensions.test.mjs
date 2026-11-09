@@ -20,7 +20,9 @@ const { withRegistryOnlyProxy } = await import("../electron/main/npm-registry-pr
 
 function bridge(overrides = {}) {
   const events = { changed: 0, prompts: [], toasts: [], statuses: [] };
-  const b = new AgentExtensionBridge({
+  const broker = new AgentExtensionBridge({
+    isAdmissionClosed: () => false,
+    onError: error => { throw error; },
     hasRenderer: () => true,
     onChanged: () => {
       events.changed += 1;
@@ -31,6 +33,10 @@ function bridge(overrides = {}) {
     promptTimeoutMs: 50,
     ...overrides,
   });
+  const b = { ...broker.bindSource(() => {}),
+    statusForPlugin: ids => broker.statusForPlugin(ids), allCommands: () => broker.allCommands(),
+    commandsForSession: id => broker.commandsForSession(id), respond: (...args) => broker.respond(...args),
+    cancelPrompts: id => broker.cancelPrompts(id), pendingPromptCount: () => broker.pendingPromptCount() };
   return { b, events };
 }
 
@@ -259,7 +265,11 @@ test("ui requests: notify and status pass through; prompts round-trip, queue per
 });
 
 test("cancellation retires only the matching request and drops queued prompts", async () => {
-  const { b, events } = bridge();
+  const shown = Promise.withResolvers();
+  const { b, events } = bridge({ onPrompt: prompt => {
+    events.prompts.push(prompt);
+    if (!prompt.cancelled && prompt.request.title === "fresh") shown.resolve();
+  } });
   const envelope = (requestId, extensionId = "one", request = { kind: "confirm", title: requestId, message: "" }) =>
     ({ sessionId: "session", extensionId, extensionLabel: extensionId, requestId, request });
   const first = b.requestUi(envelope("first"));
@@ -274,7 +284,7 @@ test("cancellation retires only the matching request and drops queued prompts", 
   assert.equal(events.prompts.filter((p) => !p.cancelled).length, 1);
   assert.equal(events.prompts.at(-1).cancelled, true);
   const fresh = b.requestUi(envelope("fresh"));
-  await Promise.resolve();
+  await shown.promise;
   await b.requestUi(envelope(undefined, "one", { kind: "cancel", requestId: "first" }));
   assert.equal(b.respond(events.prompts.at(-1).promptId, true), true);
   assert.deepEqual(await fresh, { kind: "confirm", value: true });

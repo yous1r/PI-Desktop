@@ -477,6 +477,39 @@ Rules:
 - Prompts show the extension label and source path so the user knows who is
   asking.
 
+### Desktop service ownership during idle handoff
+
+The UI bridge requires the shared Desktop admission gate and an explicit source
+binding for each sidecar service owner. Commands, diagnostics, toast/status
+publication, new prompts and renderer responses refuse closed admission. Queued
+prompts recheck their original source before becoming visible. Cancellation stays
+available for the original source/session/extension/request; it cannot clear a
+replacement source's same-ID work. Explicit user abort retains whole-session scope.
+
+Original prompt queue tails and request IDs remain owned until their work settles,
+even when the caller has already received a cancelled response. Prompt publication
+failure removes its timer/listener/waiter. A failed dismissal notification is
+reported and still settles the original waiter. Synchronous publication callbacks
+also contribute activity while they run. The five-minute prompt budget and the
+existing unbounded command/tool lifetimes remain unchanged.
+
+Desktop model and queue callbacks capture the original Host object/generation,
+sidecar source and queue bridge. They recheck ownership after awaits, before model
+broadcast or result publication. Persistence already admitted to Host is neither
+rolled back nor replayed. Unknown completion, including an unacknowledged Host
+timeout or transport failure, retains bounded refusal evidence; known Host error
+replies are completed operations. This evidence is not an execution count or a
+native closure certificate.
+
+The Desktop sidecar retains current and retired service activity through deliberate
+disposal, original process exit, captured session cleanup and explicit Host rebind.
+A matching rebind is a no-op; a replacement binding requires open admission and
+retires the old UI source before future calls. Late cleanup cannot remove newer
+source state. Missing/invalid configured activity refuses handoff. UI envelopes
+are validated at the existing reverse-RPC boundary; no wire field, Host protocol,
+SQLite schema or SDK lifetime changes are introduced. Complete 19-family inventory
+and native/coordinator qualification remain separate prerequisites.
+
 ## 10. Protocol and IPC additions
 
 No host-core RPC method, protocol version, or SQLite schema changes in v1.

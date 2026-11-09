@@ -1494,3 +1494,39 @@ is 432350 bytes, SHA-256
 It retains seventeen exact artifacts, input hashes and 118 unique passing test
 names. This process-owner slice is accepted within its stated limits; remaining
 trusted-extension UI/configuration and other external owners continue.
+
+## H1 trusted-extension UI and Desktop service ownership
+
+The UI/state bridge is separated from extension import generation, preserving its
+existing re-export. The 24-test command/import/UI cancellation baseline passed
+before and after that behavior-preserving extraction. The bridge now requires the
+shared admission gate and explicit sidecar source bindings. Queued prompt tails
+and IDs remain counted after caller cancellation; queued publication and renderer
+responses recheck the original source. Old-source cleanup cannot clear newer
+state. Prompt observer failures are reported without stranding timers or waiters.
+
+`createTrustedExtensionServices` owns the original Host/generation, model and queue
+callbacks, UI source and post-await publication. Admitted persistence is not rolled
+back or replayed. Unknown dispatch completion retains saturating refusal evidence;
+known error replies do not create it. Actual Desktop Sidecar disposal/exit, captured
+session cleanup, replacement and explicit Host rebind retain original activity.
+No command/tool deadline, SDK wire field, Host protocol or database change occurs.
+
+The focused suite has 43 cases (16 UI, 21 service, six process paths). Initial UI
+tests exposed eleven behavioral failures and three missing APIs; the service
+baseline exposed seven dispatch-owner failures, eight missing lifecycle APIs and
+one obsolete callback/UI interface. Two later observer-reentry tests failed before
+activity tracking was added. A first implementation used a nonexistent error-code
+constant and an old test assumed a fixed microtask count; these were corrected,
+with the latter now waiting for actual prompt publication. Temporary edit-range
+mistakes were corrected before execution and are not behavioral results.
+
+The final 12-file compatibility selection passed 160 tests, zero failures,
+cancellations or skips. Six new original Sidecar children exited with empty stderr;
+their actual reverse-RPC paths cover prompts, model/queue work, caller timeout,
+disposal, process exit, service replacement, Host rebind and retained uncertainty.
+Host/queue/renderer edges are deterministic; no actual Rust model write or live
+Desktop is claimed. Full Desktop source types, Biome 321 files, architecture and
+agent-policy checks passed. Clean-candidate acceptance follows the implementation
+commit. Native-family closure, remaining MCP/OAuth/voice/remote owners, complete
+19-family H1 composition and H2-H5 remain open.

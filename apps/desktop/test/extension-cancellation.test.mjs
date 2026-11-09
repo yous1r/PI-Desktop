@@ -28,9 +28,11 @@ test("Main cancellation crosses the real UI bridge and retires only the old comm
   let shown;
   let ready = new Promise((resolve) => { shown = resolve; });
   const broker = new AgentExtensionBridge({
+    isAdmissionClosed: () => false, onError: error => { throw error; },
     hasRenderer: () => true, onChanged() {}, onToast() {}, onStatus() {},
     onPrompt(prompt) { prompts.push(prompt); if (!prompt.cancelled) shown(prompt); },
   });
+  const source = broker.bindSource(() => {});
   const runner = new TrustedExtensionRunner({
     specs: [{ id: entry, entry, label: "Fixture", root, source: "plugin" }],
     bridge: {
@@ -44,7 +46,7 @@ test("Main cancellation crosses the real UI bridge and retires only the old comm
       sendUserMessage: (text) => messages.push(text), waitForIdle: async () => {},
       newSession: async () => ({ cancelled: false }), fork: async () => ({ cancelled: false }),
       requestUi: (extension, request, signal) => requestExtensionUi(
-        (envelope) => broker.requestUi(envelope),
+        (envelope) => source.requestUi(envelope),
         { sessionId: "session", extensionId: extension.id, extensionLabel: extension.label, request }, signal),
       publishCommands() {}, publishDiagnostics() {},
     },
@@ -68,6 +70,7 @@ test("Main cancellation crosses the real UI bridge and retires only the old comm
     assert.equal(broker.pendingPromptCount(), 0);
   } finally {
     broker.cancelPrompts("session");
+    source.dispose();
     await runner.dispose();
     clearTrustedExtensionCache();
     rmSync(root, { recursive: true, force: true });
