@@ -1580,3 +1580,22 @@ passed 123 tests, zero failures/cancellations/skips. Desktop source types, Biome
 322 files, architecture, policy and current-main checks passed. Clean-candidate
 acceptance follows the implementation commit. OAuth ownership is still pending;
 these tests do not establish full H1 or native-family closure.
+
+Clean transport candidate `a98767d1cb9637735263e3bace32d5ca380d271f` on base
+`fd28eb89866ac513912ed109716e7120cf60f18c` passed all 123 tests, zero failures,
+cancellations or skips. Worktree status stayed clean; all 1626 source inputs were
+unchanged, digest
+`236b7fcda70b87392327b8c3b3e89d36fce5a46328afa6daed0bebbc8cf7e6e4`.
+The loopback observation confirms result-before-EOF, original response closure,
+final `mcp: 0`, `uncontainedResources: 1` and `nativeFamilyQualified: false`.
+Result: `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+
+The [transport candidate report](ai-command-center-p0-evidence/mcp-transport-after.json)
+is 2457 bytes, SHA-256
+`daef78186f0bd049cdc0c7add871d87aafb5e850a4176e93f323fddc1121dead`.
+The [transport verification archive](ai-command-center-p0-evidence/mcp-transport-verification.json)
+is 393703 bytes, SHA-256
+`9589649fadba932f149e279a6256653a72ba89a89b8c26211da1d1bb65386f36`.
+It retains thirteen exact artifacts, source hashes and 123 unique passing names.
+Original user-MCP transport ownership is accepted within this scope. OAuth
+ownership, voice/remote owners and the remaining H1-H5 composition continue.

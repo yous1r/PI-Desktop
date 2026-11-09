@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "a98767d1cb9637735263e3bace32d5ca380d271f",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-09T00:53:08.460Z",
+  "endedAt": "2026-11-09T00:53:15.050Z",
+  "command": [
+    "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+    "--import",
+    "file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-mcp-test-loader.mjs",
+    "--test",
+    "--test-reporter=tap",
+    "--test-concurrency=2",
+    "--test-timeout=25000",
+    "test/handoff-user-mcp-transport.test.mjs",
+    "test/handoff-user-mcp.test.mjs",
+    "test/user-mcp.test.mjs",
+    "test/plugin-mcp.test.mjs",
+    "test/mcp-call-registry.test.mjs",
+    "test/mcp-oauth.test.mjs",
+    "test/mcp-oauth-discovery.test.mjs",
+    "test/mcp-oauth-error.test.mjs"
+  ],
+  "tests": {
+    "files": 8,
+    "expected": 123,
+    "newFocusedCases": 8
+  },
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "sourceInputs": {
+    "count": 1626,
+    "sha256": "236b7fcda70b87392327b8c3b3e89d36fce5a46328afa6daed0bebbc8cf7e6e4",
+    "unchanged": true,
+    "manifest": "handoff-mcp-transport-candidate-inputs.json",
+    "scope": "Tracked Desktop/runtime/contract source inputs; not a complete third-party dependency graph."
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "result": {
+    "exitCode": 0,
+    "signal": null
+  },
+  "log": {
+    "path": "handoff-mcp-transport-candidate.log",
+    "bytes": 24692,
+    "sha256": "048e1252ec164bb72e3eeb9874110eaa83a6aa0f5bc8a1f53a24dc876a56c297"
+  },
+  "observations": [
+    {
+      "kind": "user-mcp-transport-path",
+      "resultBeforeStreamEnd": true,
+      "originalResponseClosed": true,
+      "activity": {
+        "mcp": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    }
+  ],
+  "limitations": [
+    "MCP close, HTTP response closure and ordinary child exit do not qualify native-family closure.",
+    "Controlled fetch edges plus actual loopback HTTP/SSE and existing real stdio user paths; OAuth tests use local/deterministic fixtures, not configured accounts.",
+    "OAuth owner binding, complete H1 inventory and H2-H5 transfer remain incomplete.",
+    "No live Desktop/profile/provider, stored SSH Host, paid API or dependency installation."
+  ]
+}
