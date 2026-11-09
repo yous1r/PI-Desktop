@@ -22,7 +22,9 @@ impl Journal {
             conn.execute_batch("PRAGMA synchronous=FULL;")?;
         }
         let version: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-        if version != crate::db::SCHEMA_VERSION && !(readonly && (28..crate::db::SCHEMA_VERSION).contains(&version)) {
+        if version != crate::db::SCHEMA_VERSION
+            && !(readonly && (28..crate::db::SCHEMA_VERSION).contains(&version))
+        {
             bail!("HANDOFF_UNSUPPORTED_SCHEMA");
         }
         crate::db::owner_handoff_migration::validate(&conn)?;

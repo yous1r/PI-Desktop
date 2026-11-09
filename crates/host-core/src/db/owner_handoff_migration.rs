@@ -69,7 +69,10 @@ pub(crate) fn validate(conn: &Connection) -> Result<()> {
 
 pub(crate) fn migrate(conn: &Connection, path: &Path) -> Result<()> {
     let from: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-    anyhow::ensure!(from == 29, "unsupported source schema for ownership: {from}");
+    anyhow::ensure!(
+        from == 29,
+        "unsupported source schema for ownership: {from}"
+    );
     let backup = create_migration_backup(conn, path, from)?;
     let tx = conn.unchecked_transaction()?;
     tx.execute_batch(DDL)?;

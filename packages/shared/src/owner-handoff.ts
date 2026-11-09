@@ -14,7 +14,7 @@ const processIdentity = Type.Object({
   sid: Type.String({ pattern: "^S-1-[^\\u0000]*$", maxLength: 184 }),
   image: Type.String({ minLength: 1, maxLength: 8192, pattern: "^[^\\u0000]+$" }),
 }, { additionalProperties: false });
-export const OwnerHandoffBuildSchema = Type.Object({ sha256: digest, schema: Type.Literal(28), protocol: Type.Literal(1) }, { additionalProperties: false });
+export const OwnerHandoffBuildSchema = Type.Object({ sha256: digest, schema: Type.Literal(30), protocol: Type.Literal(1) }, { additionalProperties: false });
 const phase = Type.Union([
   Type.Literal("prepared"), Type.Literal("source_fencing"), Type.Literal("source_fenced"),
   Type.Literal("release_pending"), Type.Literal("target_claimed"), Type.Literal("ready"), Type.Literal("cancelled"),

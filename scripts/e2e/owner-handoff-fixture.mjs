@@ -33,10 +33,10 @@ export async function harness(directory, binary, root) {
   for (const key of ['PATH', 'Path', 'SystemRoot', 'WINDIR', 'windir', 'ComSpec', 'PATHEXT']) {
     if (process.env[key] !== undefined) env[key] = process.env[key];
   }
-  for (const name of ['home', 'temp', 'appdata']) await mkdir(join(directory, name));
+  for (const name of ['home', 'temp', 'appdata', 'agents']) await mkdir(join(directory, name));
   Object.assign(env, { USERPROFILE: join(directory, 'home'), HOME: join(directory, 'home'),
     TEMP: join(directory, 'temp'), TMP: join(directory, 'temp'), APPDATA: join(directory, 'appdata'),
-    LOCALAPPDATA: join(directory, 'appdata'), RUST_LOG: 'error' });
+    LOCALAPPDATA: join(directory, 'appdata'), PI_DESKTOP_AGENTS_DIR: join(directory, 'agents'), RUST_LOG: 'error' });
   const children = [];
   function launch(command, args, profile, extra = {}) {
     const child = spawn(command, args, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'],

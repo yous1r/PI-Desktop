@@ -25,7 +25,8 @@ describe("owner handoff contracts", () => {
     const r = fixture.response.record;
     for (const record of [{ ...r, targetEpoch: r.sourceEpoch }, { ...r, version: 2 },
       { ...r, revision: Number.MAX_SAFE_INTEGER + 1 }, { ...r, phase: "executing" },
-      { ...r, capability: fixture.bootstrap[1].capability }, { ...r, sourceBuild: { ...r.sourceBuild, schema: 29 } },
+      { ...r, capability: fixture.bootstrap[1].capability },
+      ...[28, 29, 31].map(schema => ({ ...r, sourceBuild: { ...r.sourceBuild, schema } })),
       ...[134115649234567891, "0134115649234567891", "18446744073709551616", "0"].map(createdAt => ({ ...r, requester: { ...r.requester, createdAt } })),
       { ...r, requester: { ...r.requester, image: "文".repeat(3000) } }]) {
       expect(() => parseOwnerHandoffResponse({ version: 1, record })).toThrow("HANDOFF_INVALID_RESPONSE");

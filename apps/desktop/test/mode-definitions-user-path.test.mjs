@@ -315,7 +315,7 @@ test("modes: picker, run controls and the settings editor follow the IPC contrac
       alias: {
         "@pi-desktop/i18n": join(root, "packages/i18n/src"),
         // The contract under test lives in this checkout's shared package.
-        "@pi-desktop/shared": join(root, "packages/shared"),
+        "@pi-desktop/shared": join(root, "packages/shared/src/index.ts"),
         react: join(root, "apps/desktop/node_modules/react"),
         "react-dom": join(root, "apps/desktop/node_modules/react-dom"),
         i18next: join(root, "apps/desktop/node_modules/i18next"),

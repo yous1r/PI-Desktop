@@ -545,3 +545,73 @@ fn journal_shared_wire_fixture_preserves_native_identity_and_bootstrap_commands(
     invalid.target_epoch.clone_from(&invalid.source_epoch);
     assert!(invalid.validate().is_err());
 }
+
+#[test]
+fn legacy_journal_startup_requires_proof_and_does_not_enable_old_writes() {
+    let (directory, journal, owner) = fixture();
+    let path = directory.path().join("pi.sqlite");
+    for version in [28, 29] {
+        journal
+            .conn
+            .pragma_update(None, "user_version", version)
+            .unwrap();
+        let mut denied = ProofProbe {
+            fail: true,
+            ..ProofProbe::default()
+        };
+        assert!(super::startup::inspect(&path, Some(&owner.profile), &mut denied).is_err());
+        assert_eq!(
+            super::startup::inspect(&path, Some(&owner.profile), &mut ProofProbe::default())
+                .unwrap(),
+            vec![owner.epoch.clone()]
+        );
+        assert!(Journal::open(&path, false).is_err());
+        assert_eq!(journal.active_owners().unwrap(), vec![owner.clone()]);
+        let actual: i64 = journal
+            .conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(actual, version);
+    }
+}
+
+#[test]
+fn legacy_unfinished_handoff_still_refuses_normal_startup() {
+    let (directory, mut journal, owner) = fixture();
+    let (record, _) = prepared(&mut journal, &owner);
+    let path = directory.path().join("pi.sqlite");
+    journal
+        .conn
+        .pragma_update(None, "user_version", 28)
+        .unwrap();
+    let mut proof = ProofProbe::default();
+    assert!(super::startup::inspect(&path, Some(&owner.profile), &mut proof).is_err());
+    assert_eq!(proof.owners, 0);
+    assert_eq!(journal.transfer(&record.id).unwrap(), record);
+}
+
+#[test]
+fn upstream_schema_without_owner_tables_can_reach_additive_migration() {
+    let directory = tempfile::tempdir().unwrap();
+    let path = directory.path().join("pi.sqlite");
+    let conn = rusqlite::Connection::open(&path).unwrap();
+    conn.execute_batch(
+        "CREATE TABLE fixture_data(value TEXT); INSERT INTO fixture_data VALUES('kept');",
+    )
+    .unwrap();
+    for version in [27, 28, 29] {
+        conn.pragma_update(None, "user_version", version).unwrap();
+        assert!(
+            super::startup::inspect(&path, None, &mut ProofProbe::default())
+                .unwrap()
+                .is_empty()
+        );
+        let actual: i64 = conn
+            .query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(actual, version);
+    }
+    conn.pragma_update(None, "user_version", crate::db::SCHEMA_VERSION)
+        .unwrap();
+    assert!(super::startup::inspect(&path, None, &mut ProofProbe::default()).is_err());
+}

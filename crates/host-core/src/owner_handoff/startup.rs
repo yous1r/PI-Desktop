@@ -30,7 +30,9 @@ pub(super) fn inspect(
     let present: bool = probe.query_row(
         "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE name IN
          ('execution_owners','execution_generations','owner_handoffs','owner_handoff_receipts'))",
-        [], |row| row.get(0))?;
+        [],
+        |row| row.get(0),
+    )?;
     if version < 28 && present {
         bail!("HANDOFF_SCHEMA_DOWNGRADE");
     }

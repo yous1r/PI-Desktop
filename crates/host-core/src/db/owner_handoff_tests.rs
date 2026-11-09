@@ -31,7 +31,10 @@ fn owner_handoff_v27_upgrade_preserves_profile_and_keeps_backup() {
         .conn()
         .query_row("PRAGMA user_version", [], |row| row.get(0))
         .unwrap();
-    assert_eq!(version, SCHEMA_VERSION, "handoff records need a versioned migration");
+    assert_eq!(
+        version, SCHEMA_VERSION,
+        "handoff records need a versioned migration"
+    );
     assert!(migration_backup_path(&path, 27).is_file());
     assert_eq!(
         db.kv_get("app", "kept").unwrap(),
@@ -131,15 +134,21 @@ fn owner_handoff_v29_upgrade_retains_mode_and_profile_data() {
     let path = directory.path().join("pi.sqlite");
     {
         let db = Database::open(&path).unwrap();
-        db.kv_set("app", "kept", &serde_json::json!("original")).unwrap();
-        db.conn().execute_batch(
-            "DROP TABLE owner_handoff_receipts; DROP TABLE owner_handoffs;
+        db.kv_set("app", "kept", &serde_json::json!("original"))
+            .unwrap();
+        db.conn()
+            .execute_batch(
+                "DROP TABLE owner_handoff_receipts; DROP TABLE owner_handoffs;
              DROP TABLE execution_generations; DROP TABLE execution_owners;
-             PRAGMA user_version=29;"
-        ).unwrap();
+             PRAGMA user_version=29;",
+            )
+            .unwrap();
     }
     let db = Database::open(&path).unwrap();
-    assert_eq!(db.kv_get("app", "kept").unwrap(), Some(serde_json::json!("original")));
+    assert_eq!(
+        db.kv_get("app", "kept").unwrap(),
+        Some(serde_json::json!("original"))
+    );
     assert!(migration_backup_path(&path, 29).is_file());
     assert!(db.conn().prepare("SELECT * FROM mode_runs").is_ok());
     super::owner_handoff_migration::validate(db.conn()).unwrap();
@@ -151,18 +160,25 @@ fn owner_handoff_legacy_v28_upgrade_retains_journal_rows() {
     let path = directory.path().join("pi.sqlite");
     {
         let db = Database::open(&path).unwrap();
-        db.conn().execute_batch(
-            "INSERT INTO execution_owners(epoch,profile,record_json,retired)
+        db.conn()
+            .execute_batch(
+                "INSERT INTO execution_owners(epoch,profile,record_json,retired)
                VALUES('retained-owner','retained-profile','{}',1);
              DROP TABLE mode_gate_results; DROP TABLE mode_runs; DROP TABLE mode_snapshots;
              ALTER TABLE sessions DROP COLUMN mode_snapshot_hash;
-             PRAGMA user_version=28;"
-        ).unwrap();
+             PRAGMA user_version=28;",
+            )
+            .unwrap();
     }
     let db = Database::open(&path).unwrap();
-    let row: String = db.conn().query_row(
-        "SELECT record_json FROM execution_owners WHERE epoch='retained-owner'", [], |r| r.get(0)
-    ).unwrap();
+    let row: String = db
+        .conn()
+        .query_row(
+            "SELECT record_json FROM execution_owners WHERE epoch='retained-owner'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
     assert_eq!(row, "{}");
     assert!(migration_backup_path(&path, 28).is_file());
     assert!(migration_backup_path(&path, 29).is_file());

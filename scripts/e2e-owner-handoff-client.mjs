@@ -34,7 +34,8 @@ const profile = join(directory, 'profile');
 const env = Object.fromEntries(Object.keys(process.env).map(key => [key, undefined]));
 for (const key of ['PATH', 'Path', 'SystemRoot', 'WINDIR', 'windir', 'ComSpec', 'PATHEXT']) env[key] = process.env[key];
 Object.assign(env, { HOME: join(directory, 'home'), USERPROFILE: join(directory, 'home'), TEMP: join(directory, 'temp'),
-  TMP: join(directory, 'temp'), APPDATA: join(directory, 'appdata'), LOCALAPPDATA: join(directory, 'appdata'), RUST_LOG: 'error' });
+  TMP: join(directory, 'temp'), APPDATA: join(directory, 'appdata'), LOCALAPPDATA: join(directory, 'appdata'),
+  PI_DESKTOP_AGENTS_DIR: join(directory, 'agents'), RUST_LOG: 'error' });
 const clients = [];
 let stderr = '';
 function client(profileId, options = {}) {
@@ -60,7 +61,7 @@ try {
   passed('production client refuses a live directory owner and confirms the original restricted child exit');
 
   const capability = randomUUID();
-  const buildIdentity = { sha256: report.binarySha256, schema: 28, protocol: 1 };
+  const buildIdentity = { sha256: report.binarySha256, schema: 30, protocol: 1 };
   let record = { version: 1, id: randomUUID(), profile: owner.profile, sourceEpoch: owner.epoch, targetEpoch: randomUUID(),
     sourceBuild: buildIdentity, targetBuild: buildIdentity, requester: owner.coordinator, capabilityHash: hash(capability),
     revision: 1, phase: 'prepared', recoveryAttempt: 0, lastFailure: null };
