@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "adeabcf4f74c4acc14e9948ce30a709f583ec72c",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-09T03:22:59.265Z",
+  "endedAt": "2026-11-09T03:23:48.858Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "tests": {
+    "desktopFiles": 13,
+    "desktop": 126,
+    "sharedFiles": 1,
+    "shared": 8,
+    "unique": 134,
+    "newFocusedCases": 29,
+    "newRealHttpUserPaths": 1
+  },
+  "runs": [
+    {
+      "result": {
+        "exitCode": 0,
+        "signal": null
+      },
+      "command": [
+        "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+        "--import",
+        "file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-mcp-test-loader.mjs",
+        "--test",
+        "--test-reporter=tap",
+        "--test-concurrency=1",
+        "--test-timeout=25000",
+        "test/handoff-speech.test.mjs",
+        "test/handoff-speech-plugin.test.mjs",
+        "test/handoff-speech-user-path.test.mjs",
+        "test/speech-capability.test.mjs",
+        "test/plugin-speech-adapter.test.mjs",
+        "test/shutdown-regenerate-persistence.test.mjs",
+        "test/handoff-plugin-callbacks.test.mjs",
+        "test/handoff-plugin-lifecycle.test.mjs",
+        "test/workspace-plugin-broker.test.mjs",
+        "test/main-wiring-contract.test.mjs",
+        "test/plugin-services.test.mjs",
+        "test/plugin-extension-owner-process.test.mjs",
+        "test/plugin-tool-invocations.test.mjs"
+      ],
+      "artifact": {
+        "path": "handoff-speech-candidate.log",
+        "bytes": 28423,
+        "sha256": "888b54bdc5e55585d053c66e4615330323fc895c6d6e554160df50307a7c1337"
+      }
+    },
+    {
+      "result": {
+        "exitCode": 0,
+        "signal": null
+      },
+      "command": [
+        "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+        "D:\\Packages\\PI-Desktop\\worktrees\\owner-local-control\\node_modules\\vitest\\vitest.mjs",
+        "run",
+        "--config",
+        "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\execution-fence-vitest.config.mjs",
+        "--root",
+        "D:\\Packages\\PI-Desktop\\worktrees\\owner-local-control\\packages\\agent-runtime",
+        "--maxWorkers=2",
+        "src/speech/adapters.test.ts"
+      ],
+      "artifact": {
+        "path": "handoff-speech-candidate-shared.log",
+        "bytes": 515,
+        "sha256": "4889f4630779dd15b546287277d8cafb3cf1f912eea165310d0ae09fbaca66d6"
+      }
+    }
+  ],
+  "sourceInputs": {
+    "count": 1639,
+    "sha256": "e58cebe8537c69a7946e459def4049b781cdd9f405b85499a96e369c06040350",
+    "unchanged": true,
+    "manifest": "handoff-speech-candidate-inputs.json",
+    "scope": "Tracked Desktop/runtime/contract source; not a complete third-party dependency graph."
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "observations": [
+    {
+      "kind": "speech-user-path",
+      "successfulTranscriptions": 1,
+      "successfulSyntheses": 1,
+      "originalStreamingResponseClosed": true,
+      "cancelledOutputCreated": false,
+      "activity": {
+        "operations": 0,
+        "resources": 0,
+        "uncontainedResources": 3
+      },
+      "nativeFamilyQualified": false
+    }
+  ],
+  "limitations": [
+    "Actual registered Speech IPC, shared admission, adapter HTTP and scratch files use isolated loopback/filesystem fixtures. Host RPC, renderer and deterministic plugin ports are fixture boundaries; existing plugin compatibility tests also fork original children.",
+    "HTTP response close, cancellation, plugin ACK and ordinary child exit do not qualify native-family closure.",
+    "Voice/LiveVoice, remote ownership, complete H1 inventory and fenced Desktop/coordinator integration, and H2-H5 transfer remain incomplete.",
+    "No live Desktop/profile/provider/account, microphone, stored SSH Host, paid API or dependency installation was used."
+  ]
+}

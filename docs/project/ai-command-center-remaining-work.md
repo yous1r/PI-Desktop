@@ -1740,3 +1740,20 @@ dependency install or full transfer was exercised. Clean-commit acceptance is
 recorded separately below. Next: Voice/audio/LiveVoice and remote ownership,
 then complete nineteen-family H1 composition, bounded Rust status and fenced
 Desktop/coordinator integration before H2-H5.
+
+### H1 Speech clean-candidate acceptance
+
+Implementation `adeabcf4f74c4acc14e9948ce30a709f583ec72c` passed 126 Desktop
+tests and eight shared adapter tests on a clean worktree against refreshed base
+`fd28eb89866ac513912ed109716e7120cf60f18c`. All 1,639 tracked source inputs
+remained unchanged (manifest digest
+`e58cebe8537c69a7946e459def4049b781cdd9f405b85499a96e369c06040350`).
+The [candidate report](ai-command-center-p0-evidence/speech-after.json) records
+actual IPC/HTTP/scratch results and the positive uncontained-resource count.
+The [verification archive](ai-command-center-p0-evidence/speech-verification.json)
+preserves 21 exact logs/runner/input artifacts, failure classification and 134
+unique passing test names. Earlier focused runs are overlapping evidence.
+
+Status is `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`. This accepts the Speech
+ownership slice only. Continue Voice/audio/LiveVoice and remote ownership before
+full H1 composition and H2-H5 transfer acceptance.
