@@ -1,95 +1,66 @@
 import { isChineseLanguage, convertChineseOutput } from "./chinese.js";
 import type { ModelManager } from "./model-manager.js";
-import type { TranscribeOptions, TranscriptionStream, ChineseVariant } from "./types.js";
+import { NativeTranscriptionStream } from "./native-transcription-stream.js";
+import type { TranscribeOptions, TranscriptionStream } from "./types.js";
+import { VoiceActivity } from "./voice-activity.js";
 
-/**
- * Wraps transcribe-cpp to provide a simpler transcription API.
- * Handles model lifecycle through ModelManager.
- */
+/** Owns original model uses through native compute and output conversion. */
 export class TranscriptionEngine {
-  constructor(readonly modelManager: ModelManager) {}
+  private readonly activity: VoiceActivity;
+  private readonly streams = new Set<NativeTranscriptionStream>();
+  private readonly abort = new AbortController();
+  private shuttingDown?: Promise<void>;
+  constructor(readonly modelManager: ModelManager) { this.activity = new VoiceActivity(modelManager.onCleanupError); }
 
-  /**
-   * Transcribe a complete PCM audio buffer.
-   * Automatically loads the model if needed.
-   */
-  async transcribe(
-    pcm: Float32Array,
-    options: TranscribeOptions,
-    signal?: AbortSignal,
-  ): Promise<string> {
-    const modelId = this.modelManager.getLoadedModelId();
-    if (!modelId) throw new Error("No model loaded");
+  getHandoffActivity() { return this.activity.snapshot(this.streams.size); }
+  whenIdle(): Promise<void> { return this.activity.whenIdle(); }
 
-    const model = this.modelManager.getLoadedModel() as any;
-    if (!model) throw new Error("Model instance not available");
-
-    signal?.throwIfAborted();
-
-    const result = await model.transcribe(pcm, {
-      language: options.language,
+  async transcribe(pcm: Float32Array, options: TranscribeOptions, signal?: AbortSignal): Promise<string> {
+    this.assertOpen(); signal?.throwIfAborted();
+    const lease = this.modelManager.acquireModel();
+    const original = { ...options };
+    const cancellation = AbortSignal.any([this.abort.signal, lease.signal, ...(signal ? [signal] : [])]);
+    return this.activity.track(async () => {
+      try {
+        lease.assertCurrent(); cancellation.throwIfAborted(); this.activity.nativeAttempt();
+        const result = await lease.model.transcribe(pcm, { language: original.language, signal: cancellation });
+        lease.assertCurrent(); cancellation.throwIfAborted();
+        const text = await postProcess(typeof result === "string" ? result : result.text, original);
+        lease.assertCurrent(); cancellation.throwIfAborted();
+        return text;
+      } finally { lease.release(); }
     });
-
-    signal?.throwIfAborted();
-
-    let text: string = typeof result === "string" ? result : result?.text ?? "";
-    text = text.trim();
-
-    // Post-process Chinese output
-    if (text && options.chineseVariant && isChineseLanguage(options.language)) {
-      text = await postProcessChinese(text, options.chineseVariant);
-    }
-
-    return text;
   }
 
-  /**
-   * Create a streaming transcription session if the loaded model supports it.
-   * Returns null if streaming is not supported.
-   */
+  /** Streaming initialization is async internally; public feed remains synchronous. */
   createStream(options: TranscribeOptions): TranscriptionStream | null {
-    const model = this.modelManager.getLoadedModel() as any;
-    if (!model?.createSession) return null;
-
-    try {
-      const session = model.createSession();
-      if (!session) return null;
-
-      const stream = session.stream({ language: options.language });
-      if (!stream) return null;
-
-      return {
-        feed(chunk: Float32Array): void {
-          stream.feed(chunk);
-        },
-        async finalize(): Promise<string> {
-          let text: string = await stream.finalize();
-          text = text.trim();
-          if (text && options.chineseVariant && isChineseLanguage(options.language)) {
-            text = await postProcessChinese(text, options.chineseVariant);
-          }
-          return text;
-        },
-        cancel(): void {
-          stream.reset?.();
-        },
-      };
-    } catch {
-      return null;
-    }
+    this.assertOpen();
+    if (!this.modelManager.getLoadedModel()) return null;
+    const lease = this.modelManager.acquireModel();
+    const stream = new NativeTranscriptionStream(lease, { ...options }, this.activity, postProcess, () => this.streams.delete(stream));
+    this.streams.add(stream);
+    return stream.initialize() ? stream : null;
   }
 
-  /** Shut down the engine and unload models. */
-  async shutdown(): Promise<void> {
-    this.modelManager.unload();
+  shutdown(): Promise<void> {
+    if (this.shuttingDown) return this.shuttingDown;
+    // Install completion before abort or model-state observers can reenter shutdown.
+    let resolve!: () => void, reject!: (error: unknown) => void;
+    this.shuttingDown = new Promise<void>((yes, no) => { resolve = yes; reject = no; });
+    this.abort.abort();
+    for (const stream of this.streams) stream.cancel();
+    this.modelManager.dispose();
+    void Promise.all([this.whenIdle(), this.modelManager.whenIdle()]).then(() => resolve(), reject);
+    return this.shuttingDown;
   }
+  private assertOpen(): void { if (this.shuttingDown) throw new Error("Transcription engine is shut down"); }
 }
 
-async function postProcessChinese(text: string, variant: ChineseVariant): Promise<string> {
-  try {
-    return await convertChineseOutput(text, variant);
-  } catch {
-    // If conversion fails, return original text
-    return text;
+async function postProcess(value: string, options: TranscribeOptions): Promise<string> {
+  const text = value.trim();
+  if (text && options.chineseVariant && isChineseLanguage(options.language)) {
+    try { return await convertChineseOutput(text, options.chineseVariant); }
+    catch { return text; }
   }
+  return text;
 }

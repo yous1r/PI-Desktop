@@ -180,7 +180,8 @@ test("ordinary stream failure still falls back to the original batch audio and s
   await controller.start(); captures[0].frame(new Int16Array([16384])); settings.languages[0] = "fr";
   const result = await controller.stop();
   assert.equal(result.text, "fixture transcript"); assert.equal(result.language, "en"); assert.equal(cancels, 1);
-  assert.deepEqual(models[0].transcriptions, [{ pcm: [0.5], options: { language: "en" } }]);
+  assert.deepEqual(models[0].transcriptions.map(({ pcm, options }) => ({ pcm, language: options.language })), [{ pcm: [0.5], language: "en" }]);
+  assert.equal(models[0].transcriptions[0].options.signal.aborted, false);
 });
 
 test("concurrent stop calls join the same original transcription", async t => {

@@ -40,7 +40,8 @@ test("Dictation records exact PCM, transcribes, and retains cancelled original n
   const stopped = controller.stop(); original.reads[1].resolve(new Int16Array(0));
   const result = await stopped;
   assert.equal(result.text, "fixture transcript"); assert.equal(result.language, "en");
-  assert.deepEqual(models[0].transcriptions, [{ pcm: [-1, 0, 0.5], options: { language: "en" } }]);
+  assert.deepEqual(models[0].transcriptions.map(({ pcm, options }) => ({ pcm, language: options.language })), [{ pcm: [-1, 0, 0.5], language: "en" }]);
+  assert.equal(models[0].transcriptions[0].options.signal.aborted, false);
   assert.equal(original.releaseCalls, 1); assert.equal(controller.state.phase, "done");
   controller.cancel(); await controller.start();
   const cancelled = recorders[1]; controller.cancel();

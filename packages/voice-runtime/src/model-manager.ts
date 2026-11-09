@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import type { ModelInfo, ModelState } from "./types.js";
 import { findModel, getCatalog } from "./model-catalog.js";
+import { NativeModelOwner } from "./native-model-owner.js";
 
 /**
  * Manages model discovery, download, loading, and unloading.
@@ -13,11 +14,11 @@ import { findModel, getCatalog } from "./model-catalog.js";
  */
 export class ModelManager extends EventEmitter {
   private states = new Map<string, ModelState>();
-  private loadedModelId: string | null = null;
-  private loadedModel: unknown = null; // TranscribeModel instance (lazy typed)
+  private readonly native: NativeModelOwner;
 
-  constructor(private readonly cacheDir: string) {
+  constructor(private readonly cacheDir: string, readonly onCleanupError: (error: Error) => void = error => console.error(error.message)) {
     super();
+    this.native = new NativeModelOwner((id, patch) => this.updateState(id, patch), onCleanupError);
     this.initializeStates();
   }
 
@@ -49,7 +50,7 @@ export class ModelManager extends EventEmitter {
 
   /** Get the currently loaded model ID. */
   getLoadedModelId(): string | null {
-    return this.loadedModelId;
+    return this.native.getId();
   }
 
   /**
@@ -99,7 +100,7 @@ export class ModelManager extends EventEmitter {
 
   /** Delete a downloaded model. */
   async deleteModel(modelId: string): Promise<void> {
-    if (this.loadedModelId === modelId) {
+    if (this.native.getId() === modelId) {
       this.unload();
     }
 
@@ -114,55 +115,29 @@ export class ModelManager extends EventEmitter {
 
   /** Ensure a model is loaded into memory. Lazy-imports transcribe-cpp. */
   async ensureLoaded(modelId: string): Promise<void> {
-    if (this.loadedModelId === modelId && this.loadedModel) return;
-
     const state = this.states.get(modelId);
     if (!state || !state.localPath) {
       throw new Error(`Model ${modelId} is not downloaded`);
     }
 
-    // Unload any previously loaded model
-    this.unload();
-
-    this.updateState(modelId, { status: "loading" });
-
-    try {
-      const transcribeCpp = await import("transcribe-cpp");
-      const model = await transcribeCpp.TranscribeModel.load(state.localPath);
-      this.loadedModel = model;
-      this.loadedModelId = modelId;
-      this.updateState(modelId, { status: "loaded" });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.updateState(modelId, { status: "error", error: `Load failed: ${message}` });
-      throw error;
-    }
+    await this.native.ensureLoaded(modelId, state.localPath);
   }
 
   /** Get the loaded transcribe-cpp model instance. */
   getLoadedModel(): unknown {
-    return this.loadedModel;
+    return this.native.getModel();
   }
 
   /** Unload the currently loaded model to free memory. */
   unload(): void {
-    if (this.loadedModel && typeof (this.loadedModel as any).dispose === "function") {
-      try {
-        (this.loadedModel as any).dispose();
-      } catch {
-        // Best-effort cleanup
-      }
-    }
-    if (this.loadedModelId) {
-      const state = this.states.get(this.loadedModelId);
-      if (state && state.status === "loaded") {
-        this.updateState(this.loadedModelId, { status: "downloaded" });
-      }
-    }
-    this.loadedModel = null;
-    this.loadedModelId = null;
+    this.native.unload();
   }
 
+
+  acquireModel() { return this.native.acquire(); }
+  getHandoffActivity() { return this.native.getHandoffActivity(); }
+  whenIdle(): Promise<void> { return this.native.whenIdle(); }
+  dispose(): void { this.native.dispose(); }
   private updateState(modelId: string, patch: Partial<ModelState>): void {
     const current = this.states.get(modelId);
     if (!current) return;

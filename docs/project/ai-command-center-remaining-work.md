@@ -1824,13 +1824,12 @@ Types, Biome (359 files), architecture, agent policy and whitespace pass. The
 controller stays below its previous line count; no IPC/SDK wire, persistence,
 Rust or V3 UI change is included.
 
-This accepts the controller module only. Native model/stream/download ownership,
-VoiceService coalesced initialization, original lease retention and confirmed
-shutdown remain next. The actual transcribe-cpp 0.2.2 types expose asynchronous
-session streaming/feed/finalize; the existing engine currently assumes synchronous
-stream construction and string finalization. Reproduce that concrete boundary
-in the engine/model step before changing it. No real microphone/provider/model
-download or native-family/full-handoff qualification is claimed here.
+That acceptance covered the controller module only. The following native-runtime
+step reproduces and corrects the transcribe-cpp 0.2.2 mismatch: asynchronous
+stream creation/feed/finalize and structured final text. Cache mutations,
+VoiceService initialization, lease retention and confirmed shutdown remain next.
+No real microphone/provider/model download or native-family/full-handoff
+qualification was claimed by the controller-only candidate.
 
 ### H1 Dictation controller clean-candidate acceptance
 
@@ -1846,3 +1845,39 @@ retains 17 exact artifacts and 86 unique passing test names. Status remains
 `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`. Proceed with native model/stream/download
 lifetime and VoiceService initialization/lease/confirmed-shutdown ownership before
 LiveVoice/remote and the remaining H1-H5 integration.
+
+### H1 Dictation native model and streaming ownership
+
+Native model lifetime now has one owner separate from cache-file management.
+Same-model loads coalesce; replacement loads serialize behind original load/use
+completion. Unload revokes identity before callbacks, late models are disposed,
+and active native computations retain their original model lease. Cleanup failure
+is observable and prevents another model acquisition. Engine shutdown seals new
+work, propagates cancellation and retains the original promises.
+
+The streaming adapter now matches transcribe-cpp 0.2.2: synchronous session creation,
+asynchronous stream/feed/finalize and `stream.text.full`. Feeds copy PCM and are
+ordered with a bounded 8 MiB/256-chunk backlog. Stream failure/overflow preserves
+batch fallback; cancellation cannot publish stale text. Concurrent finalize joins
+once; reset/session disposal follow original compute and retain saturated native
+uncertainty. Batch receives linked cancellation and rechecks identity after output
+conversion. Public AudioCapture and TranscriptionStream shapes are unchanged.
+
+The initial fourteen tests failed: thirteen behavior/API-contract failures and one
+missing activity API. The model-owner extraction preserved twenty existing tests
+before behavior changes. Two later reentry tests reproduced stale model-status
+publication and ignored cancellation during stream cleanup; both are fixed. Two
+new-test assumptions were corrected (linked AbortSignal identity and cancellation
+before native initialization), and two older exact-options assertions now also
+validate the forwarded signal. A missing current-source loader caused one earlier
+compatibility run to fail; the original failure is retained separately.
+
+The final source run passes 87 Desktop tests in eight files and 30 shared tests in
+four files: 117 unique cases, including 24 focused native-runtime cases. Real
+controller start/frame/stop paths prove streaming success and asynchronous stream
+failure with exact-PCM batch fallback using deterministic native boundaries.
+Current-source Desktop/Voice type checking passes. Cache download/delete lifetime,
+VoiceService initialization/admission/lease/confirmed-shutdown, LiveVoice/remote,
+the full nineteen-family inventory and H1-H5 composition remain unfinished.
+Ordinary wrapper disposal is not native-family closure; no real microphone, native
+model, provider, stored SSH Host, live Desktop/profile or dependency download ran.

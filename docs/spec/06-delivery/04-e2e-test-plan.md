@@ -20444,3 +20444,28 @@ delivery and deterministic plugin process ports remain fixture boundaries.
   This does not qualify native model/stream disposal, microphone hardware,
   VoiceService lease/shutdown integration or complete H1 transfer.
 - **Specs:** [Live Voice](../03-runtime/live-voice.md).
+
+### E2E-HANDOFF-dictation-native-runtime
+
+- **Preconditions:** Current ModelManager, TranscriptionEngine and VoiceController;
+  isolated model files and a deterministic transcribe-cpp boundary matching 0.2.2:
+  synchronous session creation, asynchronous stream/feed/finalize, structured
+  updates and a final text getter. No native model or microphone execution.
+- **Steps:** Join duplicate loads; unload or replace a pending load; cancel batch
+  work and unload while compute is pending. Feed PCM before async stream creation,
+  mutate the caller buffer, finalize concurrently and cancel during init/feed/end.
+  Fail initialization, feed and cleanup; overflow the bounded feed queue. Reenter
+  loading/cancellation from state and native-cleanup callbacks. Shut down during
+  loading. Run real controller start/frame/stop through streaming success and
+  asynchronous stream failure followed by batch fallback.
+- **Expected:** Exact original model/session and PCM ownership survive cancellation.
+  Stale load/result/state publication is refused, native batch cancellation is
+  propagated, async feed is ordered, and final text comes from `stream.text.full`.
+  Each cleanup joins once after original compute; errors remain observable and
+  failed model cleanup refuses replacement. Queue failure retains original batch
+  behavior. Ordinary native disposal never clears handoff uncertainty.
+- **Automation:** `handoff-voice-native.test.mjs`, recording/controller user paths,
+  idle-unload compatibility, and voice-runtime PCM/Chinese/controller suites.
+  Native frees, cache download/delete lifetimes, VoiceService leases and complete
+  H1 transfer remain separately qualified.
+- **Specs:** [Live Voice](../03-runtime/live-voice.md).

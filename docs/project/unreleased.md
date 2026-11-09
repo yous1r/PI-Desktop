@@ -1,10 +1,16 @@
 # Unreleased changes
 
+- Correct local Dictation's asynchronous native streaming adapter and retain its
+  original model/session through cancellation and compute completion. Duplicate
+  loads join, stale loads cannot revive an unloaded model, ordered feeds own PCM,
+  and structured finalization returns the native final text. Batch cancellation,
+  fallback and cleanup remain observable; native-family qualification and
+  download/service/microphone-lease integration remain separate work.
 - Bind Dictation preparation, capture and transcription to their original recording.
   Cancelled work stays counted until completion; late frames, results and cleanup
   cannot overwrite a newer recording. Concurrent stops join once, and cancelled
-  streams cannot start batch fallback. Native model and service/lease integration
-  remain separate work.
+  streams cannot start batch fallback. Service/lease integration remains separate
+  work; native runtime ownership is covered by the entry above.
 - Keep local Dictation's original recorder alive until queued native reads finish.
   Concurrent start/stop/cancel share ownership and cleanup; failed release retains
   the capture reservation. Shared admission blocks new capture without

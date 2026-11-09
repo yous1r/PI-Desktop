@@ -213,9 +213,28 @@ recording, and a cancelled stream failure cannot launch batch fallback. Ordinary
 stream failure still falls back with the original PCM and settings. Concurrent
 stops join one transcription. Cleanup and state-notification reentry recheck the
 current transition before publishing, and cleanup failure retains bounded refusal
-evidence. Standalone preparation cannot replace an active recording. Model-native
-lifecycle, VoiceService ownership and shared-microphone lease integration remain
-separate acceptance steps.
+evidence. Standalone preparation cannot replace an active recording.
+
+Native model loading is coalesced for the same model and serialized across
+replacements. Unload revokes the current identity before callbacks; late loads
+dispose their original model and cannot publish readiness. Batch and streaming
+uses retain a lease until original compute and output conversion finish. Retired
+models are disposed only after their leases release; failed disposal remains
+observable and refuses replacement. Engine shutdown seals new compute, cancels
+owned work and waits for original JavaScript completion.
+
+The transcribe-cpp 0.2.2 adapter awaits session streaming, ordered feed and
+finalization, then reads `stream.text.full`. Queued PCM is copied and bounded to
+8 MiB and 256 chunks; stream initialization/feed/backlog failures preserve the
+existing batch fallback with original audio. Concurrent finalize joins once.
+Cancellation suppresses stale text and retains pending native work before reset
+and session disposal. Batch compute receives a signal linked to caller, model
+and engine cancellation; identity and cancellation are rechecked after Chinese
+conversion. Native acquisition attempts remain refusal evidence after ordinary
+reset/dispose because the library can defer frees behind its internal lock.
+
+Cache download/deletion lifetime, VoiceService ownership and shared-microphone
+lease integration remain separate acceptance steps.
 
 Live DTOs and IPC contracts live in `packages/shared`. Pure wire parsing and
 PCM math are exported only from `@pi-desktop/voice-runtime/live`; they do not

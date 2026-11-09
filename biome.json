@@ -14,7 +14,7 @@
 			"apps/desktop/electron/main/user-mcp.ts",
 			"apps/desktop/electron/main/mcp-oauth*.ts",
 			"apps/desktop/test/mcp-oauth*.test.mjs",
-			"packages/voice-runtime/src/voice-controller.ts",
+			"packages/voice-runtime/src/{voice-controller,voice-activity,native-model-owner,native-transcription-stream,model-manager,transcription-engine}.ts",
 			"apps/desktop/electron/main/{audio-backend,voice-service}.ts",
 			"apps/desktop/test/voice-service-idle-unload.test.mjs",
 			"apps/desktop/test/helpers/{audio-backend-hook,pv-recorder-control,pv-recorder-stub,voice-native-model-stub}.mjs",
