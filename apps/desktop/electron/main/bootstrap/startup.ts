@@ -257,6 +257,7 @@ export function registerApplicationStartup(deps: StartupDependencies): void {
       getLocalHost: getHost,
       clientInfo: { name: APP_NAME, version: APP_VERSION },
       sshBootstrap: { fetchArtifact: fetchWithNetworkProxy, artifactCacheDir: join(dataDir, "cache", "pi-host") },
+      isAdmissionClosed: () => state.handoffAdmission.isClosed(),
       log: (level, message, data) =>
         logger.app("runtime", level, message, { data: formatRemoteLogData(data) }),
     });

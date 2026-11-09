@@ -127,7 +127,10 @@ test("open reuses the forward for a host key instead of stacking tunnels", async
   assert.equal(built[0], SSH);
   assert.equal(transports.length, 1);
   assert.equal(transports[0].forwards.length, 1);
-  assert.deepEqual(transports[0].forwards[0], {
+  const { assertCurrent, ...forwardOptions } = transports[0].forwards[0];
+  assert.equal(typeof assertCurrent, "function");
+  assertCurrent();
+  assert.deepEqual(forwardOptions, {
     localPort: first.localPort,
     remoteHost: "127.0.0.1",
     remotePort: 45678,
@@ -233,9 +236,11 @@ test("close during forward creation disposes the late forward instead of caching
   });
   const opening = manager.open("k", SSH);
   await started.promise;
-  await manager.close("k");
+  const closing = manager.close("k");
+  assert.equal(disposed, 1, "cancellation starts synchronously while original work remains owned");
   gate.resolve();
   await assert.rejects(opening, { errorCode: "HOST_DISCONNECTED" });
+  await closing;
   assert.equal(forward.closes, 1);
   assert.equal(disposed, 1);
   await manager.dispose();
@@ -277,9 +282,10 @@ test("supervision precedes reservation and cancellation never forwards a late re
   const opening = manager.open("k", SSH);
   await started.promise;
   assert.equal(reserves, 0);
-  await manager.close("k");
+  const closing = manager.close("k");
   gate.resolve({ code: 0, stderr: "", stdout: `PI_HOST_READY ${JSON.stringify({ hostId: "host-1", host: "::1", port: 45678, version: VERSION })}` });
   await assert.rejects(opening, { errorCode: "HOST_DISCONNECTED" });
+  await closing;
   assert.equal(reserves, 0);
   assert.equal(forwards, 0);
   assert.equal(disposed, 1);
@@ -303,7 +309,9 @@ test("invalid readiness prevents reservation and forwarding; IPv6 readiness uses
       assert.deepEqual(forwarded, []);
     } else {
       await manager.open("k", SSH);
-      assert.deepEqual(forwarded, [{ localPort: 1234, remoteHost: "[::1]", remotePort: 45678 }]);
+      const { assertCurrent, ...forwardOptions } = forwarded[0];
+      assertCurrent();
+      assert.deepEqual(forwardOptions, { localPort: 1234, remoteHost: "[::1]", remotePort: 45678 });
     }
     await manager.dispose();
   }

@@ -8,6 +8,7 @@ export function currentSourceAliases(root) {
     find: new RegExp(`^@pi-desktop/${name}$`), replacement: resolve(root, `packages/${name}/src/index.ts`),
   }));
   aliases.push({ find: /^@pi-desktop\/host-runtime\/mcp\/(.*)$/, replacement: resolve(root, "packages/host-runtime/src/mcp/$1.ts") });
+  aliases.push({ find: /^@pi-desktop\/racp\/test-harness$/, replacement: resolve(root, "packages/racp/src/test-harness.ts") });
   aliases.push({ find: /^@pi-desktop\/voice-runtime\/live$/, replacement: resolve(root, "packages/voice-runtime/src/live/index.ts") });
   const dependencies = process.env.PI_COMMAND_CENTER_DEPENDENCIES;
   if (dependencies) {

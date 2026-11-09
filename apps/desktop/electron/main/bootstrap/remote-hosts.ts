@@ -46,6 +46,7 @@ export type BootRemoteHostsOptions = {
   log?: (level: "info" | "warn" | "error", message: string, data?: unknown) => void;
   tunnels?: SshTunnelManager;
   sshBootstrap?: Partial<SshBootstrapDeps>;
+  isAdmissionClosed?: () => boolean;
 };
 export type RemoteLiveSessionSummary = Pick<RacpSession, "id" | "title" | "mode" | "permissionMode" | "status" | "activeTurnId" | "workspaceLabel"> & {
   source: "remote"; hostKey: string; hostLabel: string;
@@ -120,7 +121,7 @@ function assertWorkspaceCapabilities(adapter: RacpRemoteHostClient): void {
 export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHostsBoot {
   const log = options.log ?? (() => undefined);
   const registry = createRemoteHostRegistry({ dataDir: options.dataDir, encryption: options.encryption, log });
-  const tunnels = options.tunnels ?? createSshTunnelManager({ log });
+  const tunnels = options.tunnels ?? createSshTunnelManager({ log, isAdmissionClosed: options.isAdmissionClosed ?? (() => false) });
   const opened = new Map<string, OpenHost>();
   const actionRequired = new Set<string>();
   const openingHosts = new Set<OpenHost>();

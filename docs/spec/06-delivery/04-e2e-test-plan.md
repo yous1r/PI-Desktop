@@ -20469,3 +20469,32 @@ delivery and deterministic plugin process ports remain fixture boundaries.
   Native frees, cache download/delete lifetimes, VoiceService leases and complete
   H1 transfer remain separately qualified.
 - **Specs:** [Live Voice](../03-runtime/live-voice.md).
+
+### E2E-HANDOFF-ssh-tunnel-ownership
+
+- **Preconditions:** Current Desktop paired-Host boot, tunnel manager and system
+  SSH transport. Inject deterministic external SSH/RACP boundaries for races;
+  use a private local executable and temporary profile for the process path.
+  Windows compiles the fixture using provisioned PowerShell/.NET; POSIX uses
+  the existing Node executable. No stored Host or real SSH server is contacted.
+- **Steps:** Close during readiness, reservation, credential preparation and
+  forward creation. Delay original cleanup, invoke concurrent/reentrant closes,
+  overlap adoption, and dispose while adoption waits. Save deployment callbacks,
+  invoke completion concurrently, and retire or hold admission before completion.
+  Throw from cleanup and its observer. Add a paired fixture Host through actual
+  boot/registry/tunnel/transport wiring, hold admission, then close all resources.
+- **Expected:** Admission closes synchronously; active tunnels survive temporary
+  holds. Original operations stay counted until completion, late forwards close
+  once, newer records survive old cleanup, and disposed managers never reopen.
+  Deployment callbacks stay bound to the original transport and do not replay.
+  Cleanup failures remain observable. In the local process path, the readiness
+  child and original forward exit; counters settle to zero operations/resources
+  with a positive unqualified-resource count. This is not native-family proof.
+- **Automation:** `handoff-ssh-tunnel.test.mjs`,
+  `handoff-ssh-tunnel-user-path.test.mjs`, tunnel/deployment/paired-Host/connection/
+  RACP-client/preparation/realignment compatibility and existing SSH owner-guard
+  regressions. Existing POSIX process-inspection cases remain platform-specific.
+- **Limits:** Broader remote Host/client/bootstrap lifetime, the nineteen-family
+  inventory, native-family qualification and complete H1-H5 transfer remain open.
+  Voice development is paused by user direction, not treated as complete.
+- **Specs:** [Remote agent control](../02-architecture/05-remote-agent-control.md).

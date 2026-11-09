@@ -1897,3 +1897,54 @@ architecture, agent policy, refreshed base, whitespace and 631 documentation pag
 also pass. Status remains `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`; proceed to
 cache download/delete and VoiceService initialization/admission/lease/shutdown
 ownership, then LiveVoice/remote and the remaining H1-H5 composition.
+
+### Priority override: pause Voice and continue non-Voice work
+
+The user explicitly paused further Voice development. The unaccepted downloader
+WIP was preserved outside the worktree in the current session scratch directory;
+all six WIP files were removed/restored only after preservation, returning to
+clean accepted commit `d445574fb4f2ac683cf83fa452a9c3162d548987`. Accepted Voice
+commits remain intact. Download/delete, VoiceService leases/shutdown and LiveVoice
+are deferred, not completed. Continue remote ownership, then the remaining H1-H5,
+control/UI and platform dependency graph. Pausing development does not bypass
+idle inventory or native-resource safety: active/unknown Voice owners must still
+refuse handoff until separately qualified.
+
+### H1 paired-Host SSH tunnel ownership
+
+The tunnel manager now reserves one exact creation/adoption record before
+external callbacks, passes its owner guard through asynchronous credential setup,
+and retains original readiness, reservation, forward and cleanup work. Close
+revokes synchronously, starts original transport disposal before waiting, joins
+concurrent/reentrant cleanup and closes late forwards. Overlapping adoption
+cannot remove newer records; disposed managers permanently refuse acquisition.
+Shared Desktop admission is injected by startup without changing SSH bootstrap
+network/cache configuration. Temporary holds preserve already active tunnels.
+
+Authenticated deployment-completion callbacks capture their original record,
+coalesce concurrent invocation and recheck identity/admission after the original
+command. Retired callbacks cannot invoke a replacement transport. Cleanup failure
+is observable even when its observer throws. Bounded native uncertainty remains
+after ordinary close/dispose and root exit; this is refusal evidence, not capacity
+or a native-family closure certificate.
+
+The eleven initial regressions had ten failures and one pass. The strengthened
+concurrent-close test plus six additional races pass: seventeen focused cases.
+The final source run also passes forty-nine tunnel/boot/connection/RACP-client/
+deployment tests, forty-two pairing/preparation/realignment/supervisor/external-
+resource compatibility tests and one actual local process path: 109 unique
+passing tests, three existing POSIX process-inspection skips on Windows. The
+local path drives paired-Host boot, registry, manager and system transport with
+only external SSH/RACP replaced. Both original child processes exit; activity is
+`{operations:0, resources:0, uncontainedResources:1}`. No real SSH Host, stored
+credential, live Desktop/profile, microphone, provider or dependency installation
+was used.
+
+Earlier failures remain recorded: two old tests waited for close before releasing
+their deliberately paused original work; two exact forward-options assertions
+needed to validate the existing optional owner guard separately. Missing RACP
+test-harness/current Pi dependency aliases were runner failures, and the first
+local-process attempt lacked its temporary profile directory. These do not count
+as additional product regressions or unique coverage. Full remote Host/client/
+bootstrap accounting, nineteen-family inventory and native coordinator composition
+remain next; Voice stays deferred.

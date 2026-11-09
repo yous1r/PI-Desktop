@@ -196,6 +196,22 @@ descriptors without a Host ID remain readable. Disconnect does not kill a Host
 that other clients may use. Readiness is used for offline browse/files/shell
 discovery; tool execution itself never reconnects and replays a failed call.
 
+Desktop SSH tunnels share local handoff admission. Closed admission refuses new
+or cached acquisitions, adoption and authenticated deployment-completion work,
+without interrupting an already admitted live tunnel. Each creation/adoption
+record is installed before external callbacks and remains owned through original
+readiness, port reservation, forward creation and cleanup. Close revokes the exact
+record synchronously, starts disposal before waiting, joins concurrent cleanup,
+and closes a late original forward instead of publishing it. Replacement cleanup
+cannot delete a newer tunnel. Saved deployment callbacks cannot invoke a retired
+transport; concurrent completion requests join the original command and recheck
+authority before publication. Disposing the manager permanently seals admission.
+Cleanup errors are observable even if a log observer throws. Ordinary SSH close,
+transport disposal or root exit is not a native-family closure certificate;
+bounded unqualified-resource evidence survives registry removal. Full remote
+Host/client/bootstrap accounting and Desktop handoff composition are separate
+acceptance steps.
+
 **On-demand preparation.** Explicit remote-project opening, folder browsing and
 remote workspace readiness compare the live Host with this Desktop's exact
 release and required RACP workspace capabilities. Passive startup and inventory

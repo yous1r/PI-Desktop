@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Retain paired-Host SSH tunnel creation and cleanup through late completion.
+  Shared handoff admission blocks new acquisitions without interrupting live
+  tunnels, disposal stays sealed, concurrent cleanup joins and old deployment
+  callbacks cannot use replacement transports. Cleanup errors remain observable;
+  full remote ownership transfer and native-family qualification remain pending.
 - Correct local Dictation's asynchronous native streaming adapter and retain its
   original model/session through cancellation and compute completion. Duplicate
   loads join, stale loads cannot revive an unloaded model, ordered feeds own PCM,
