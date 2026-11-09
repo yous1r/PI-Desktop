@@ -10201,3 +10201,10 @@ compaction injection.
 #### E2E-ISSUE-1926-scratch-prefix
 
 创建配置相同但 scratch 不同的真实 runtime，基础提示段相同且尾部各保留自身路径；验证 shell 语法和自定义提示兼容，不调用真实供应商。
+
+### E2E-STEERING-recovery-reply-order
+
+在早先回复和下一次恢复回复之间送入已消费的 steering，旧片段结束，下一条
+回复使用新 ID。`runtime.test.ts` 覆盖提供商、溢出、空回复及进度恢复。
+`e2e-transcript-render.mjs` 验证生产事件投影，以及无 steering 时原有的
+单气泡溢出恢复行为。
