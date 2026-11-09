@@ -2294,3 +2294,20 @@ as harness failures. Clean-candidate evidence follows separately. The prior
 still has unknown recovery/data effects; this slice only used explicit scratch
 profiles. Next: trusted original-owner transport, subclass-preserving fenced
 factory/lifecycle and full coordinator composition. H1-H5 remain unfinished.
+
+### H1 Desktop inventory reader acceptance
+
+Clean candidate `334d5f9b2d1308c949522805c32e8350b997c8bb` passed 110/110
+unique Node cases, five real process checks and types/lint/architecture/policy/
+docs/base/whitespace gates. Freshly fetched `origin/main` remains
+`7e493e8b18d277d8d13f682cf250604ed94fb00d`. Both temporary Host exits and
+native cleanup were confirmed. The verifier froze 2,831 inputs and rehashed
+29 evidence artifacts; source and worktree stayed unchanged during acceptance.
+
+The independent Host executable was reused only after its hash and unchanged
+Rust/Cargo inputs were verified. No new Rust suite or Clippy result is claimed.
+The [verification record](ai-command-center-p0-evidence/desktop-inventory-verification.json)
+preserves actual failures, fixture boundaries and the prior isolation incident.
+This accepts the inventory-reader slice, not complete H1 or native transfer.
+Continue trusted original-owner identity/journal transport and subclass-safe
+fenced factory/lifecycle composition. Voice remains paused.

@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "334d5f9b2d1308c949522805c32e8350b997c8bb",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "baseFreshlyFetched": true,
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "startedAt": "2026-11-09T19:51:43.837Z",
+  "endedAt": "2026-11-09T19:52:25.416Z",
+  "scope": "Original-owner Desktop inventory reader, strict concrete producer reports, real persistence/admission and bounded Rust inspection; production startup/transfer wiring remains pending.",
+  "sourceInputs": {
+    "count": 2831,
+    "sha256": "bcae421ca25012acac143a837cec6bfb7be1bf9937850ea2a165096b716ada7f",
+    "unchanged": true,
+    "manifest": "h1-inventory-candidate-inputs.json",
+    "manifestBytes": 485923,
+    "manifestSha256": "3ea288f7811d3d2ee6cc6b966c99d77c70c6e93d34d2e0bae36531800217bebb"
+  },
+  "tests": {
+    "node": {
+      "files": 6,
+      "tests": 110,
+      "uniquePassed": 110,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "selection": ["handoff-inventory", "handoff-persistence", "handoff-event-persistence", "handoff-remote-hosts", "handoff-mode-runs", "handoff-admission"],
+      "readerCases": 48,
+      "coverage": "Missing/invalid/throwing/async reports, sum overflow, original Host/generation/Sidecar/resource replacement on success and failure, post-await local sampling, real retained outbox/checkpoint writes and retired-resource uncertainty. Counts are conservative obligations, not execution occupancy."
+    },
+    "process": {
+      "checks": 5,
+      "hostProcesses": 2,
+      "cleanupConfirmed": true,
+      "report": "owner-inspection-cFIYKT/report.json",
+      "reportBytes": 1424,
+      "reportSha256": "7ca56a3dafe870076ed97cb56ab04e6e26e9dd034ef9458d167fa8801df4a061",
+      "bundleSha256": "b2e504cccfb43f545b6e56cc94ffa5eefbe80a7aaaefb8574d7bc80ea76351ea",
+      "bundleInputs": 1451,
+      "bundleInputsSha256": "5268a1abcd7b20810e75eadd6effcfc3112266280936a47cc7f31a4ee1d1facc",
+      "manifestVerified": true,
+      "coverage": "Real Rust stdio/native generation, checkpoint recovery, Desktop inventory/outbox/checkpointer/gate refusal through disposal and settlement, journal root/identity refusal and confirmed original cleanup. Remaining Desktop owners are explicit fixtures."
+    }
+  },
+  "checksPassed": ["types", "lint", "architecture", "policy", "docs", "base", "whitespace"],
+  "docsPages": 633,
+  "reusedHost": {
+    "binary": "h1-rust-inspection-candidate-host.exe",
+    "sha256": "bc290387f2bcdc339b972af44a54f69b3927a89da0fe5f20012346a1019e85db",
+    "sourceCandidate": "d43d0dc3341c7133854fa11572348b3e85ceb12c",
+    "acceptedCandidate": "5c9fd57f72780a9c2ae9e56e2c17f427fb700c9e",
+    "rustInputsUnchanged": true,
+    "rustTestsRerun": false,
+    "clippyRerun": false
+  },
+  "rawEvidence": {
+    "scratchRoot": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569",
+    "runner": "h1-inventory-candidate.mjs",
+    "report": "h1-inventory-candidate.json",
+    "reportBytes": 25982,
+    "reportSha256": "e48caed05d59017676cf6900d472a9cded4a1d934935e1c055a27da3a97fd377",
+    "verifiedArtifacts": 29,
+    "note": "Full report contains exact passing test names, commands and artifact hashes. Development runs overlap clean acceptance and are not additional unique coverage."
+  },
+  "preservedFailures": [
+    { "artifact": "h1-inventory-before.log", "classification": "45 missing implementation cases, not 45 reproduced defects" },
+    { "artifact": "h1-inventory-async-red.log", "classification": "Harness omitted the provisioned dependency-overlay environment; intended cases did not execute" },
+    { "artifact": "h1-inventory-async-before.log", "classification": "Actual unhandledRejection regression: 2 passed, 1 failed; corrected by observing rejected invalid async reports without accepting late evidence" },
+    { "artifact": "h1-inventory-process01.log", "classification": "Bundle resolution failure before Host startup: unrelated missing package dist exports" },
+    { "artifact": "h1-inventory-process02.log", "classification": "Bundle export failure before Host startup: narrow fixture export omitted binary storage helpers" },
+    { "artifact": "h1-inventory-types01.log", "classification": "Two incorrect type import names corrected to the existing exports" }
+  ],
+  "incident": {
+    "record": "rust-inspection-isolation-incident.json",
+    "confirmed": "Earlier test Host opened and registered in the default profile; the temporary Host exited.",
+    "impact": "Recovery/user-data effects remain unknown without a pre-run baseline.",
+    "remediation": "No default-profile rollback, deletion or repair performed.",
+    "currentSlice": "Only explicitly isolated scratch profiles were used; final child env preserves PI_DESKTOP_DATA_DIR. Passing tests do not establish no impact from the earlier incident."
+  },
+  "limitations": [
+    "Full production Desktop startup, original owner identity/transfer transport, fenced lifecycle and coordinator wiring remain pending.",
+    "Fixed gaps retain refusal for Rust background admission, remaining native families/producers, independent Worker classification and paused Voice/LiveVoice.",
+    "No complete source transfer/readiness, native-family, minimum-hardware, mobile, macOS or Linux qualification is claimed.",
+    "No live Desktop, default-profile operation, real provider, stored SSH, dependency installation, full Rust suite or Clippy rerun occurred in this slice.",
+    "Existing architecture/ADR advisory warnings remain; task-panel TodoWrite returned TOOL_TURN_CANCELLED."
+  ]
+}
