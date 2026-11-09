@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Retain user MCP HTTP bodies, SSE streams and cancellation sends after caller
+  completion or cache retirement. Old connections and delayed redirects cannot
+  bypass shared admission or borrow replacement entries. Existing timeouts,
+  transport security and conservative native refusal evidence remain unchanged.
 - Bind trusted-extension prompts, publications, model configuration and queue work
   to shared Desktop admission and their original sidecar/Host. Retired prompt tails
   and original RPCs stay counted, stale results cannot broadcast through a new

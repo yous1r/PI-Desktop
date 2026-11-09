@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import {
@@ -115,14 +116,17 @@ export class UserMcpRuntime {
 
   private async run<T>(operation: () => Promise<T>): Promise<T> {
     this.requireAdmission();
-    this.pendingOperations += 1;
-    try {
+    return this.trackOriginal(async () => {
       const result = await operation();
       this.requireAdmission();
       return result;
-    } finally {
-      this.pendingOperations -= 1;
-    }
+    });
+  }
+
+  private async trackOriginal<T>(operation: () => Promise<T>): Promise<T> {
+    this.pendingOperations += 1;
+    try { return await operation(); }
+    finally { this.pendingOperations -= 1; }
   }
 
   /**
@@ -139,8 +143,8 @@ export class UserMcpRuntime {
     for (const [key, entry] of [...this.entries]) {
       const next = byId.get(entry.record.id);
       if (!next || configurationChanged(entry.record, next)) {
-        entry.client.close();
         this.entries.delete(key);
+        entry.client.close();
         continue;
       }
       entry.record = next;
@@ -363,8 +367,9 @@ export class UserMcpRuntime {
     // Force a fresh handshake so a fixed command is retried rather than
     // reporting the cached failure.
     const key = connectionKey(record, null);
-    this.entries.get(key)?.client.close();
+    const previous = this.entries.get(key);
     this.entries.delete(key);
+    previous?.client.close();
     await this.connect(record, null);
     return this.statusFor(serverId);
   }
@@ -373,8 +378,8 @@ export class UserMcpRuntime {
   invalidate(serverId: string): void {
     for (const [key, entry] of [...this.entries]) {
       if (entry.record.id === serverId) {
-        entry.client.close();
         this.entries.delete(key);
+        entry.client.close();
       }
     }
     this.discoveredTools.delete(serverId);
@@ -384,8 +389,9 @@ export class UserMcpRuntime {
   disposeAll(): void {
     this.disposed = true;
     this.calls.cancelAll();
-    for (const entry of this.entries.values()) entry.client.close();
+    const retiring = [...this.entries.values()];
     this.entries.clear();
+    for (const entry of retiring) entry.client.close();
     this.statusRefreshes.clear();
     this.discoveredTools.clear();
   }
@@ -425,8 +431,8 @@ export class UserMcpRuntime {
     const key = connectionKey(record, projectPath);
     let existing = this.entries.get(key);
     if (existing && record.transport === "http" && existing.oauthToken !== oauthToken) {
-      existing.client.close();
       this.entries.delete(key);
+      existing.client.close();
       existing = undefined;
     }
 
@@ -535,6 +541,14 @@ export class UserMcpRuntime {
     // close/timeout API proves native closure, including after cache removal.
     // Keep a bounded-size count without retaining retired client objects.
     this.uncontainedResources = Math.min(Number.MAX_SAFE_INTEGER, this.uncontainedResources + 1);
+    let entry: Entry | undefined;
+    const cancellation = new AsyncLocalStorage<boolean>();
+    const assertCurrent = () => {
+      this.requireAdmission();
+      if (!entry || this.entries.get(key) !== entry) {
+        throw Object.assign(new Error("mcp connection was retired"), { errorCode: "UNAVAILABLE" });
+      }
+    };
     const client = this.options.createClient({
       // Stdio servers inherit the session workspace as their cwd. HTTP
       // transports do not spawn a child and keep the existing home default.
@@ -557,8 +571,24 @@ export class UserMcpRuntime {
       connectTimeoutMs: customTimeoutMs ?? this.options.connectTimeoutMs,
       callTimeoutMs: customTimeoutMs ? Math.max(customTimeoutMs, this.options.callTimeoutMs ?? 0) : this.options.callTimeoutMs,
       discoveryTimeoutMs: customTimeoutMs ? Math.max(customTimeoutMs, this.options.discoveryTimeoutMs ?? 0) : this.options.discoveryTimeoutMs,
+      beforeTransportCreate: assertCurrent,
+      trackTransportOperation: (operation, message) => this.trackOriginal(() =>
+        cancellation.run(message.method === "notifications/cancelled", async () => {
+          if (!cancellation.getStore()) assertCurrent();
+          return operation();
+        })),
+      // Redirects occur after an awaited response; cancellation stays on the
+      // original transport and never grants permission to create another one.
+      assertUrlAllowed: () => { if (!cancellation.getStore()) assertCurrent(); },
     });
-    const entry: Entry = {
+    try {
+      this.requireAdmission();
+      const current = this.records.find(candidate => candidate.id === record.id);
+      if (!current || configurationChanged(record, current) || this.entries.has(key)) {
+        throw Object.assign(new Error("mcp configuration changed during client creation"), { errorCode: "UNAVAILABLE" });
+      }
+    } catch (error) { client.close(); throw error; }
+    entry = {
       key,
       record,
       client,
@@ -586,8 +616,8 @@ export class UserMcpRuntime {
       )
       .sort((left, right) => left.lastUsedAt - right.lastUsedAt)[0];
     if (!candidate) return false;
-    candidate.client.close();
     this.entries.delete(candidate.key);
+    candidate.client.close();
     return true;
   }
 }

@@ -20307,3 +20307,29 @@ six original-child process paths. Existing command/runner cancellation and
 owner/process/restart/wiring tests cover compatibility. Original child exits and
 empty stderr are recorded, but the service-only inventory excludes unrelated
 native owners and does not certify full H1 or complete transfer/native-family closure.
+
+### E2E-HANDOFF-user-mcp-transport
+
+Use the actual user MCP runtime and shared MCP client with controlled fetch-body
+edges and one real loopback HTTP/SSE server. Existing real stdio and user MCP
+compatibility cases remain applicable; no configured server or OAuth account is used.
+
+1. Return an MCP tool result before its SSE body ends, or cancel a JSON body reader
+   before EOF. Invalidate/dispose the cache. Original sends remain in `mcp` activity
+   until their readers and listener cleanup settle; native-attempt refusal survives.
+2. Close admission while a tool waits. Its cancellation notification still reaches
+   the original transport, and both original body and cancellation work remain
+   counted after the caller rejects. Ordinary redirects after closure or entry
+   retirement cannot reach their destination.
+3. Replace a cached client and attempt to reconnect the saved original. No transport
+   is created or sent. Retire configuration during the client factory; the returned
+   stale client is closed without handshake or publication.
+4. Over real loopback HTTP, discover a tool and receive its exact result while the
+   SSE response remains open. Observe cached-entry plus original-reader activity,
+   invalidate the entry, observe response closure and final zero operations while
+   unqualified-native refusal stays positive.
+
+Evidence: eight `handoff-user-mcp-transport.test.mjs` cases plus existing user MCP,
+plugin MCP, call-registry and OAuth compatibility tests. This accepts original
+transport accounting only; OAuth owner binding, complete H1 inventory and native
+family closure remain separate work.

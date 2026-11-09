@@ -609,6 +609,17 @@ Retired client objects need not be retained for this refusal evidence. Saved but
 never initialized records alone do not imply a live resource. Disposal blocks
 all later work and prevents pending OAuth/handshake work from resurrecting clients.
 
+User MCP also supplies the shared client's original-transport hooks. Each
+ordinary send and transport creation requires the exact current cache entry;
+redirects recheck that entry after the response await. HTTP bodies, SSE readers
+and their listener/controller cleanup remain counted until the original send
+settles, even when the JSON-RPC reply or cancellation has already returned.
+Cancellation notifications use their original transport under closed admission,
+remain counted, and cannot create a replacement connection. Cache entries retire
+before invoking close; a client returned after factory reentry must revalidate
+admission/configuration before publication. Existing transport limits, TLS and
+credential stripping, scopes, timeouts and native-attempt refusal remain unchanged.
+
 Workspace terminal entries require that same gate. Their router captures the
 original Host generation and remote connection object/generation, rechecking
 after binding and action awaits. Local PTY requests also recheck the caller's

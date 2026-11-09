@@ -1557,3 +1557,26 @@ is 566072 bytes, SHA-256
 It retains 23 exact artifacts, source hashes and 160 unique passing test names.
 This service-owner slice is accepted within its limits. User MCP raw transport,
 OAuth, voice and remote owners continue before complete H1 composition.
+
+## H1 user MCP original transport ownership
+
+`UserMcpRuntime` now supplies the shared client's existing transport hooks. The
+exact cache entry guards native transport creation and ordinary sends; redirects
+recheck after awaited responses. Original sends, HTTP/SSE readers and their
+cleanup remain counted independently of JSON-RPC cancellation or early replies.
+An async-local cancellation marker permits only the original cancellation send
+through closed admission, without allowing a new transport. Cache retirement
+precedes close, and factory completion rechecks admission/current configuration.
+Existing scopes, timeouts, TLS/redirect credential handling, cache limits and
+native-attempt refusal remain unchanged. No shared wire or client API is added.
+
+Seven initial tests failed on the old implementation, covering raw JSON/SSE
+retention, cancellation-send accounting, gate/retired-entry redirects, old-client
+reconnect and factory retirement. All passed after the fix. An eighth test uses
+real loopback HTTP/SSE: the tool result arrives before stream EOF, original reader
+activity survives invalidation, and response closure leaves zero logical activity
+with positive unqualified-native evidence. The eight-file compatibility selection
+passed 123 tests, zero failures/cancellations/skips. Desktop source types, Biome
+322 files, architecture, policy and current-main checks passed. Clean-candidate
+acceptance follows the implementation commit. OAuth ownership is still pending;
+these tests do not establish full H1 or native-family closure.
