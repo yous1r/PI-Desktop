@@ -620,6 +620,29 @@ before invoking close; a client returned after factory reentry must revalidate
 admission/configuration before publication. Existing transport limits, TLS and
 credential stripping, scopes, timeouts and native-attempt refusal remain unchanged.
 
+MCP OAuth requires the shared gate and captures the original Host object,
+generation and availability before login or queued secret work. Discovery/DCR,
+HTTP bodies, browser launch, callback exchange, storage and authorized MCP re-test
+recheck that authority across awaits. Disposal seals future admission. Cancellation
+revokes further effects while original setup, body readers, already-admitted secret
+writes, response completion and listener close callbacks remain counted. Late bind
+completion closes its original listener. No admitted secret write is rolled back.
+
+`McpOAuthManager.getHandoffActivity()` exposes operations, listener resources and
+saturating unqualified-resource evidence. Native attempts and unknown Host replies
+remain unqualified after ordinary HTTP/listener closure. Per-secret ordering covers
+refresh, login writes, deletion and both transfer identities; latest settled queue
+tails are removed. Configuration changes retire old login/refresh authority, and
+temporary authorization re-tests clean only their original record. Explicit owner
+refusal cannot degrade into an unauthenticated MCP connection.
+
+Callback consumption prevents replay independently of final settlement, so exchange
+or storage failure, cancellation and the five-minute deadline always settle the
+original waiter. Observer errors remain observable without skipping cleanup. TLS,
+manual redirects, PKCE S256, exact state checks, scope selection, DCR reuse/fallback,
+encrypted Host storage and transient-refresh fallback retain their existing contracts.
+This resource-owner slice does not enable complete Desktop handoff.
+
 Workspace terminal entries require that same gate. Their router captures the
 original Host generation and remote connection object/generation, rechecking
 after binding and action awaits. Local PTY requests also recheck the caller's

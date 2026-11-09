@@ -1599,3 +1599,49 @@ is 393703 bytes, SHA-256
 It retains thirteen exact artifacts, source hashes and 123 unique passing names.
 Original user-MCP transport ownership is accepted within this scope. OAuth
 ownership, voice/remote owners and the remaining H1-H5 composition continue.
+
+## H1 MCP OAuth ownership and cancellation
+
+OAuth protocol helpers, discovery/DCR, token storage, login state and loopback
+lifecycle now have separate responsibility boundaries. Existing exports remain;
+the 43-test OAuth baseline passed after the initial behavior-preserving extraction.
+The manager requires shared admission and an original Host/generation binding.
+Original HTTP bodies, discarded-body cleanup, browser launch, callback writes,
+post-auth tests, pending binds and listener close callbacks remain observable
+after cancellation/disposal. Native attempts and unknown Host completion retain
+saturating refusal evidence. Existing TLS/PKCE/state/scope/DCR/refresh contracts
+are preserved; no SDK wire, Host protocol, persistence schema or V3 UI changes.
+
+Per-secret queues cover refresh, login writes, deletion and transfer; old refresh
+cannot resurrect deleted storage. Admitted writes are neither rolled back nor
+replayed. Exact login/record cleanup preserves newer authorities. Configuration
+updates and five OAuth-related IPC continuations reject stale owners. Authorized
+MCP re-test propagates its original guard, and explicit owner errors cannot become
+anonymous client startup. Callback consumption no longer prevents later exchange,
+storage, timeout or cancellation settlement. Observer errors cannot skip cleanup.
+
+The new focused suite contains 37 deterministic regressions and one actual HTTP
+user path. Initial tests exposed fifteen behavior failures and three missing
+activity APIs. Later tests exposed configuration/IPC continuation, anonymous
+fallback, reentrant login and post-token re-test races. Two compatibility regressions
+(synchronous cancel cleanup and preferred-port fallback) and timeout event
+classification were fixed with their failures retained. An early type command used
+the wrong scratch path; an initial lint selection covered only the test. Neither
+is counted as source validation. Event union typing was corrected before final checks.
+
+The actual path enters registered IPC under shared admission, completes loopback
+OAuth/PKCE, re-tests with the real MCP client and invokes a tool. A second login is
+cancelled during its token body; both original listeners and the original response
+close, prior storage remains unchanged, and final operations/resources are zero
+with unqualified-resource evidence 13. Host encrypted storage and browser/renderer
+edges are fixture boundaries. Full H1/native-family acceptance is not claimed.
+
+Final compatibility and clean-candidate results follow this implementation slice.
+Voice/remote owners, complete 19-family composition, bounded Rust status transport,
+fenced Desktop composition and H2-H5 remain pending.
+
+The final twelve-file selection passed 188 tests with no failures, cancellations
+or skips. Desktop source types, Biome 335 files, architecture, policy, current-main
+ancestry, whitespace and 631 documentation pages passed. The 37 focused cases and
+the real HTTP journey are included in that total, not additional unique coverage.
+Clean-candidate acceptance follows the implementation commit.

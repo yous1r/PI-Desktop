@@ -1,5 +1,11 @@
 # Unreleased changes
 
+- Bind MCP OAuth login, refresh and secret changes to shared Desktop admission and
+  their original Host. Cancelled HTTP bodies, browser setup and listener cleanup
+  stay counted; stale callbacks cannot write through a replacement or revive
+  deleted secrets. Exchange/storage failures now settle consumed callbacks, and
+  temporary authorization tests preserve newer configuration. Full handoff and
+  native-family qualification remain pending.
 - Retain user MCP HTTP bodies, SSE streams and cancellation sends after caller
   completion or cache retirement. Old connections and delayed redirects cannot
   bypass shared admission or borrow replacement entries. Existing timeouts,

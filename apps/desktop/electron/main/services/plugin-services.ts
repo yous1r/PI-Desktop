@@ -561,25 +561,27 @@ export function createPluginServices({
   });
   let userMcp: UserMcpRuntime;
   const mcpOAuth: McpOAuthManager = new McpOAuthManager({
-    call: async (method, params) => {
-      const h = getHost();
-      if (!h) throw new Error("host unavailable");
-      return h.call(method, params);
+    isAdmissionClosed: () => handoffAdmission.isClosed(),
+    captureOwner: () => {
+      const owner = getHost();
+      if (!owner?.isAvailable) throw Object.assign(new Error("Host unavailable"), { code: "HOST_UNAVAILABLE" });
+      const generation = owner.generation;
+      return {
+        assertCurrent: () => {
+          if (getHost() !== owner || owner.generation !== generation || !owner.isAvailable) {
+            throw Object.assign(new Error("OAuth Host changed"), { code: "HOST_UNAVAILABLE" });
+          }
+        },
+        call: (method, params) => owner.call(method, params),
+      };
     },
     emit: (event) => sendToRenderer(IPC.event.mcpOauth, event),
     openExternal: (url) => safeOpenExternal(url),
     log: (level, message, data) => logger.app("plugin", level, message, { data }),
-    onAuthorized: async (serverId, record): Promise<McpServerStatus> => {
-      const existed = userMcp.listRecords().some((item) => item.id === serverId);
-      if (record && !existed) {
-        userMcp.setRecords([...userMcp.listRecords(), record]);
-      }
-      userMcp.invalidate(serverId);
-      const status: McpServerStatus = await userMcp.test(serverId);
-      if (!existed) {
-        userMcp.invalidate(serverId);
-        userMcp.setRecords(userMcp.listRecords().filter((item) => item.id !== serverId));
-      }
+    onAuthorized: async (serverId, record, assertCurrent): Promise<McpServerStatus> => {
+      assertCurrent();
+      const status = await userMcp.testAuthorized(serverId, record, assertCurrent);
+      assertCurrent();
       sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: serverId });
       return status;
     },

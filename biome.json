@@ -12,6 +12,8 @@
 			"apps/desktop/src/features/settings/**/*.tsx",
 			"apps/desktop/electron/main/runtime/session-launch*.ts",
 			"apps/desktop/electron/main/user-mcp.ts",
+			"apps/desktop/electron/main/mcp-oauth*.ts",
+			"apps/desktop/test/mcp-oauth*.test.mjs",
 			"apps/desktop/electron/main/browser*.ts",
 			"apps/desktop/electron/main/services/browser-session-services.ts",
 			"apps/desktop/electron/main/plugin-{lifecycle,loading,process-calls,mcp-registration,connections}.ts",

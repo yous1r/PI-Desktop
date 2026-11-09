@@ -40,6 +40,16 @@ export function registerMcpIpc({
       return fn(...args);
     });
   };
+  const captureHost = () => {
+    const owner = getHost();
+    if (!owner?.isAvailable) throw Object.assign(new Error("Host unavailable"), { code: "HOST_UNAVAILABLE" });
+    const generation = owner.generation;
+    return { owner, assertCurrent: () => {
+      if (getHost() !== owner || owner.generation !== generation || !owner.isAvailable) {
+        throw Object.assign(new Error("OAuth Host changed"), { code: "HOST_UNAVAILABLE" });
+      }
+    } };
+  };
 
   // The market's source aggregator never touches the host process, so it
   // registers outside the host-bound wrapper.
@@ -72,14 +82,18 @@ handle(IPC.invoke.mcpList, async (query: Partial<AgentCapabilityQuery> = {}) => 
   });
 
   handle(IPC.invoke.mcpUpsert, async (server: McpServerInput) => {
-    if (!host) throw new Error("host unavailable");
-    const res = await host.call<{ server: McpServerRecord }>("mcp.upsert", { server });
+    const { owner, assertCurrent } = captureHost();
+    const res = await owner.call<{ server: McpServerRecord }>("mcp.upsert", { server });
+    assertCurrent();
+    oauth?.invalidate(server.id);
     await refreshUserMcp(currentWorkspacePath());
+    assertCurrent();
     sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: res.server?.id });
     if (res.server && res.server.enabled !== false) {
       void userMcp
         .test(res.server.id)
         .then(() => {
+          assertCurrent();
           sendToRenderer(IPC.event.pluginChanged, { reason: "mcp", pluginId: res.server.id });
         })
         .catch(() => {});
@@ -90,9 +104,11 @@ handle(IPC.invoke.mcpList, async (query: Partial<AgentCapabilityQuery> = {}) => 
   handle(
     IPC.invoke.mcpRemove,
     async (payload: { id: string } & Partial<AgentCapabilityQuery>) => {
-      if (!host) throw new Error("host unavailable");
-      const res = await host.call("mcp.remove", payload);
+      const { owner, assertCurrent } = captureHost();
+      const res = await owner.call("mcp.remove", payload);
+      assertCurrent();
       await oauth?.deleteOAuth(payload.id);
+      assertCurrent();
       await refreshUserMcp(currentWorkspacePath());
       sendToRenderer(IPC.event.pluginChanged,{ reason: "mcp", pluginId: payload.id });
       return res;
@@ -102,9 +118,12 @@ handle(IPC.invoke.mcpList, async (query: Partial<AgentCapabilityQuery> = {}) => 
   handle(
     IPC.invoke.mcpSetEnabled,
     async (payload: { id: string; enabled: boolean } & Partial<AgentCapabilityQuery>) => {
-      if (!host) throw new Error("host unavailable");
-      const res = await host.call("mcp.setEnabled", payload);
+      const { owner, assertCurrent } = captureHost();
+      const res = await owner.call("mcp.setEnabled", payload);
+      assertCurrent();
+      oauth?.invalidate(payload.id);
       await refreshUserMcp(currentWorkspacePath());
+      assertCurrent();
       sendToRenderer(IPC.event.pluginChanged,{ reason: "mcp", pluginId: payload.id });
       return res;
     },
@@ -129,10 +148,12 @@ handle(IPC.invoke.mcpList, async (query: Partial<AgentCapabilityQuery> = {}) => 
    * an occupied destination renames it.
    */
   handle(IPC.invoke.mcpTransfer, async (payload: AgentCapabilityMove) => {
-    if (!host) throw new Error("host unavailable");
-    const res = await host.call<{ server: McpServerRecord }>("mcp.transfer", payload);
+    const { owner, assertCurrent } = captureHost();
+    const res = await owner.call<{ server: McpServerRecord }>("mcp.transfer", payload);
+    assertCurrent();
     if (res.server?.id && payload.id && payload.id !== res.server.id) {
       await oauth?.transferOAuth(payload.id, res.server.id);
+      assertCurrent();
     }
     await refreshUserMcp(currentWorkspacePath());
     sendToRenderer(IPC.event.pluginChanged,{ reason: "mcp", pluginId: res.server?.id });
@@ -166,13 +187,14 @@ handle(IPC.invoke.mcpList, async (query: Partial<AgentCapabilityQuery> = {}) => 
   handle(
     IPC.invoke.mcpOauthStart,
     async (payload: { id: string } & Partial<AgentCapabilityQuery>) => {
-      if (!host) throw new Error("host unavailable");
+      const { owner, assertCurrent } = captureHost();
       if (!oauth) throw new Error("OAuth manager unavailable");
       const query = {
         ...(payload.level ? { level: payload.level } : {}),
         ...(payload.projectPath ? { projectPath: payload.projectPath } : {}),
       } satisfies Partial<AgentCapabilityQuery>;
-      const listed = await host.call<{ servers: McpServerRecord[] }>("mcp.list", query);
+      const listed = await owner.call<{ servers: McpServerRecord[] }>("mcp.list", query);
+      assertCurrent();
       const server = listed.servers.find((item) => item.id === payload.id);
       if (!server) throw new Error(`MCP server not found: ${payload.id}`);
       if (server.transport !== "http" || !server.url) {

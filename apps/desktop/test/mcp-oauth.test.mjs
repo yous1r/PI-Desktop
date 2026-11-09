@@ -3,7 +3,7 @@ import test from "node:test";
 import { EventEmitter } from "node:events";
 
 import {
-  McpOAuthManager,
+  McpOAuthManager as OAuthManager,
   escapeHtml,
   parseExpiresIn,
   assertTlsProtectedUrl,
@@ -13,6 +13,12 @@ import {
 } from "../electron/main/mcp-oauth.ts";
 import { UserMcpRuntime } from "../electron/main/user-mcp.ts";
 import { applyUserEndpointPolicyFromAppSettings } from "../electron/main/endpoint-policy.ts";
+
+class McpOAuthManager extends OAuthManager {
+  constructor({ call, ...deps }) {
+    super({ ...deps, isAdmissionClosed: () => false, captureOwner: () => ({ call, assertCurrent() {} }) });
+  }
+}
 
 /** Mirror `settings.networkPolicy` the way the app's settings write does. */
 function setAllowInsecureUserEndpoints(enabled) {
@@ -217,6 +223,7 @@ function createMockServerFactory(options = {}) {
       if (cb) cb();
       return emitter;
     };
+    emitter.closeAllConnections = () => {};
     return emitter;
   };
 
@@ -232,15 +239,18 @@ function createMockServerFactory(options = {}) {
     const headers = {};
     let body = "";
 
-    const res = {
+    const res = Object.assign(new EventEmitter(), {
       writeHead: (status, h) => {
         statusCode = status;
         if (h) Object.assign(headers, h);
       },
       end: (chunk) => {
         if (chunk) body += chunk;
+        res.writableEnded = true;
+        res.emit("finish");
       },
-    };
+      destroy: () => { res.destroyed = true; res.emit("close"); },
+    });
 
     await activeRequestListener(req, res);
     return { statusCode, headers, body };

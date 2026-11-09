@@ -41,6 +41,7 @@ export type UserMcpClientConfig = ConstructorParameters<typeof McpServerClient>[
 export type UserMcpOAuthHandler = {
   getValidAccessToken: (serverId: string) => Promise<string | null>;
   hasOAuth: (serverId: string) => Promise<boolean>;
+  invalidate?: (serverId: string) => void;
 };
 
 export type UserMcpRuntimeOptions = {
@@ -135,8 +136,13 @@ export class UserMcpRuntime {
    * against what the user actually saved.
    */
   setRecords(records: McpServerRecord[]): void {
+    const previous = this.records;
     this.records = records.map((record) => ({ ...record }));
     const byId = new Map(this.records.map((record) => [record.id, record]));
+    for (const old of previous) {
+      const next = byId.get(old.id);
+      if (!next || configurationChanged(old, next)) this.options.oauth?.invalidate?.(old.id);
+    }
     for (const id of this.discoveredTools.keys()) {
       if (!byId.has(id)) this.discoveredTools.delete(id);
     }
@@ -153,6 +159,35 @@ export class UserMcpRuntime {
 
   listRecords(): McpServerRecord[] {
     return this.records.map((record) => ({ ...record }));
+  }
+
+  /** Re-test OAuth authorization without letting temporary cleanup retire a newer record. */
+  async testAuthorized(serverId: string, record: McpServerRecord | undefined, assertCurrent: () => void): Promise<McpServerStatus> {
+    return this.run(async () => {
+      assertCurrent();
+      const existing = this.records.find(item => item.id === serverId);
+      if (existing && record && configurationChanged(existing, record)) {
+        throw Object.assign(new Error("MCP configuration changed during authorization"), { code: "OAUTH_RETIRED" });
+      }
+      if (!existing && record) this.setRecords([...this.records, record]);
+      const original = this.records.find(item => item.id === serverId);
+      try {
+        assertCurrent();
+        this.invalidate(serverId);
+        const status = await this.testActive(serverId, assertCurrent);
+        assertCurrent();
+        if (this.records.find(item => item.id === serverId) !== original) {
+          throw Object.assign(new Error("MCP configuration changed during authorization"), { code: "OAUTH_RETIRED" });
+        }
+        return status;
+      } finally {
+        if (!existing && original && this.records.includes(original)) {
+          this.invalidate(serverId);
+          this.records = this.records.filter(item => item !== original);
+          this.discoveredTools.delete(serverId);
+        }
+      }
+    });
   }
 
   /** Per-server connection state for the Extensions page. */
@@ -353,7 +388,8 @@ export class UserMcpRuntime {
     return this.run(() => this.testActive(serverId));
   }
 
-  private async testActive(serverId: string): Promise<McpServerStatus> {
+  private async testActive(serverId: string, assertCurrent?: () => void): Promise<McpServerStatus> {
+    assertCurrent?.();
     const record = this.records.find((entry) => entry.id === serverId);
     if (!record) {
       return {
@@ -370,7 +406,8 @@ export class UserMcpRuntime {
     const previous = this.entries.get(key);
     this.entries.delete(key);
     previous?.client.close();
-    await this.connect(record, null);
+    await this.connect(record, null, false, assertCurrent);
+    assertCurrent?.();
     return this.statusFor(serverId);
   }
 
@@ -415,16 +452,20 @@ export class UserMcpRuntime {
     record: McpServerRecord,
     projectPath: string | null | undefined = null,
     pin = false,
+    assertCurrent?: () => void,
   ): Promise<{ tools: McpTool[]; entry?: Entry }> {
     let oauthToken: string | null = null;
     if (record.transport === "http" && this.options.oauth) {
       try {
         oauthToken = await this.options.oauth.getValidAccessToken(record.id);
-      } catch {
+      } catch (error) {
+        const detail = error && typeof error === "object" ? error as { code?: unknown; errorCode?: unknown } : {};
+        if (["HOST_BUSY", "HOST_UNAVAILABLE", "OAUTH_RETIRED"].includes(String(detail.errorCode ?? detail.code))) throw error;
         oauthToken = null;
       }
     }
     this.requireAdmission();
+    assertCurrent?.();
     const current = this.records.find((candidate) => candidate.id === record.id);
     if (!current || configurationChanged(record, current)) return { tools: [] };
 
@@ -466,13 +507,13 @@ export class UserMcpRuntime {
     const entry = existing ?? this.createEntry(record, oauthToken, key, projectPath);
     if (pin) entry.activeCalls += 1;
     entry.lastUsedAt = Date.now();
-    entry.connecting = this.handshake(record, entry).finally(() => {
+    entry.connecting = this.handshake(record, entry, assertCurrent).finally(() => {
       entry.connecting = undefined;
     });
     return { tools: await entry.connecting, entry };
   }
 
-  private async handshake(record: McpServerRecord, entry: Entry): Promise<McpTool[]> {
+  private async handshake(record: McpServerRecord, entry: Entry, assertCurrent?: () => void): Promise<McpTool[]> {
     entry.status = {
       ...entry.status,
       state: "connecting",
@@ -480,6 +521,7 @@ export class UserMcpRuntime {
     };
     try {
       const tools = await entry.client.connect();
+      assertCurrent?.();
       if (this.disposed || this.options.isAdmissionClosed()) {
         entry.client.close();
         this.requireAdmission();

@@ -20333,3 +20333,34 @@ Evidence: eight `handoff-user-mcp-transport.test.mjs` cases plus existing user M
 plugin MCP, call-registry and OAuth compatibility tests. This accepts original
 transport accounting only; OAuth owner binding, complete H1 inventory and native
 family closure remain separate work.
+
+### E2E-HANDOFF-mcp-oauth
+
+Use actual registered MCP IPC handlers, shared Desktop admission, OAuth manager,
+user MCP runtime/client and isolated loopback HTTP endpoints. Host secret storage,
+browser launch and renderer delivery are explicit fixture boundaries. No account,
+configured MCP endpoint, live Desktop profile or paid API is used.
+
+1. Hold empty admission and request login: no HTTP/listener/browser effect starts.
+   Cancel the hold, authorize with DCR, PKCE and exact state, persist the fixture
+   token, re-test MCP and invoke its tool. Observe successful result and original
+   listener closure. Existing discovery/port/scope/refresh tests remain applicable.
+2. Pause a later token response before EOF and cancel via registered IPC. Observe
+   original HTTP response and listener closure, unchanged prior secret, no second
+   success event and eventual zero logical activity. Unqualified-native evidence
+   stays positive and refuses handoff.
+3. Delay discovery/body cleanup, stored-token reads, callback exchange/write,
+   browser launch, authorized re-test and listener bind/close. Cancellation,
+   disposal, configuration replacement and Host generation changes prevent later
+   effects without dropping original activity or rolling back admitted writes.
+4. Queue refreshes with deletion/transfer, then replace the Host. No request borrows
+   a replacement; late refresh cannot resurrect a deleted secret. Reentrant login
+   preserves the newest authority. Temporary re-test cleanup preserves replacements.
+5. Fail a consumed callback's exchange/storage or advance the controlled five-minute
+   clock. The original waiter settles once; callback replay remains rejected;
+   timeout reports an error and observer failure cannot skip cleanup.
+
+Evidence: 37 focused `handoff-mcp-oauth.test.mjs` cases and one real HTTP
+`handoff-mcp-oauth-user-path.test.mjs` journey, plus existing OAuth and MCP suites.
+Actual listener/response closure is not native-family qualification. Full H1
+inventory, fenced Desktop composition and H2-H5 transfer remain separate work.

@@ -88,14 +88,15 @@ async function authorize(t, options = {}) {
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
   origin = `http://127.0.0.1:${server.address().port}`;
   const manager = new McpOAuthManager({
-    call: async (method, params) => {
+    isAdmissionClosed: () => false,
+    captureOwner: () => ({ assertCurrent() {}, call: async (method, params) => {
       if (method === "secrets.getForRuntime") return { value: secrets.get(params.secretRef) ?? null };
       if (method === "secrets.set") {
         secrets.set(params.secretRef, params.value);
         return { ok: true };
       }
       throw new Error(`Unexpected host method: ${method}`);
-    },
+    } }),
     openExternal: async url => { opened.resolve(url); },
     emit: event => {
       if (event.kind === "error") opened.reject(new Error(event.message));
