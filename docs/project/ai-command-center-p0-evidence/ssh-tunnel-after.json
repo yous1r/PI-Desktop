@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "52447f377accc9c971e51e653726f8f62dcc356b",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-09T08:41:06.435Z",
+  "endedAt": "2026-11-09T08:41:28.583Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "tests": {
+    "files": 12,
+    "total": 112,
+    "passed": 109,
+    "uniquePassed": 109,
+    "skipped": 3,
+    "focused": 17,
+    "realProcessPaths": 1
+  },
+  "run": {
+    "command": [
+      "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+      "--import",
+      "file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-mcp-test-loader.mjs",
+      "--test",
+      "--test-reporter=tap",
+      "--test-concurrency=1",
+      "--test-timeout=50000",
+      "test/handoff-ssh-tunnel.test.mjs",
+      "test/handoff-ssh-tunnel-user-path.test.mjs",
+      "test/remote-host-ssh-tunnel.test.mjs",
+      "test/remote-host-deployment-confirm.test.mjs",
+      "test/boot-remote-hosts.test.mjs",
+      "test/remote-host-connection.test.mjs",
+      "test/racp-remote-host-client.test.mjs",
+      "test/pairing-boot-add-remove.test.mjs",
+      "test/remote-host-realign.test.mjs",
+      "test/remote-host-prepare.test.mjs",
+      "test/remote-host-supervisor.test.mjs",
+      "test/handoff-external-resources.test.mjs"
+    ],
+    "exitCode": 0,
+    "signal": null,
+    "artifact": {
+      "path": "handoff-ssh-tunnel-candidate.log",
+      "bytes": 24375,
+      "sha256": "228e4390ee1a467697fe01fe0a53e1c7c4f644b666860b960b00b67ddc401013"
+    }
+  },
+  "sourceInputs": {
+    "count": 1684,
+    "sha256": "104f84653ba1d2df9002806c85ba285569cc020bc9e6d50825c908dcd2a7a977",
+    "unchanged": true,
+    "manifest": "handoff-ssh-tunnel-candidate-inputs.json",
+    "scope": "Tracked Desktop/runtime/contract sources including the C# SSH fixture; not the complete third-party dependency graph."
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "observations": [
+    {
+      "kind": "ssh-tunnel-user-path",
+      "originalExecExited": true,
+      "originalForwardExited": true,
+      "realSshHostContacted": false,
+      "nativeFamilyQualified": false,
+      "activity": {
+        "operations": 0,
+        "resources": 0,
+        "uncontainedResources": 1
+      }
+    }
+  ],
+  "skippedTests": [
+    "stopped installed Host starts at a fresh port, then running reuse preserves PID and credentials # SKIP Requires POSIX process inspection (ps -o command)",
+    "legacy installed bundle can use system Node without installing # SKIP Requires POSIX process inspection (ps -o command)",
+    "unrelated live PID is neither killed nor mistaken for an installed Host # SKIP Requires POSIX process inspection (ps -o command)"
+  ],
+  "limitations": [
+    "Only paired-Host SSH tunnel ownership is accepted. Full remote Host/client/bootstrap ownership, nineteen-family accounting and H1-H5 transfer are incomplete.",
+    "The process user path uses actual paired-Host boot, registry, manager and system SSH transport with private local executable and deterministic external RACP; no real SSH server or stored Host is contacted.",
+    "Original root process exits and wrapper close do not certify native-family closure. Bounded unqualified-resource evidence remains positive.",
+    "Three existing POSIX process-inspection cases are skipped on Windows. Voice development is paused by explicit user direction; accepted Voice commits remain intact and incomplete Voice work must not bypass fail-closed handoff inventory.",
+    "No live Desktop/profile, actual provider/account, microphone, model, dependency installation, push, PR or remote merge was used."
+  ]
+}

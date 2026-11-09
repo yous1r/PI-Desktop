@@ -1948,3 +1948,24 @@ local-process attempt lacked its temporary profile directory. These do not count
 as additional product regressions or unique coverage. Full remote Host/client/
 bootstrap accounting, nineteen-family inventory and native coordinator composition
 remain next; Voice stays deferred.
+
+### H1 SSH tunnel clean-candidate acceptance
+
+Implementation `52447f377accc9c971e51e653726f8f62dcc356b` passed 109 unique
+tests in twelve files, with three existing POSIX process-inspection skips on
+Windows, on a clean worktree against refreshed base
+`fd28eb89866ac513912ed109716e7120cf60f18c`. All 1,684 tracked source inputs,
+including the private C# process fixture, remained unchanged (manifest digest
+`104f84653ba1d2df9002806c85ba285569cc020bc9e6d50825c908dcd2a7a977`).
+The [tunnel report](ai-command-center-p0-evidence/ssh-tunnel-after.json) binds
+the result to the tested commit; the
+[verification archive](ai-command-center-p0-evidence/ssh-tunnel-verification.json)
+retains 24 exact artifacts, unique test names and platform skips. Source types,
+Biome (371 files), architecture, policy, refreshed base and 631 documentation
+pages pass. Status is `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+
+A subsequent unaccepted Host-boot exploration was preserved outside the worktree
+and restored before this clean candidate. Its fixture errors are not product
+failure evidence or accepted tests. Continue exact remote client/bootstrap/Host
+ownership and H1 composition from this clean result. Voice remains paused;
+no inventory or native-closure requirement is waived.
