@@ -89,14 +89,14 @@ try {
 
   const generation = database(profile, db => db.prepare('SELECT record_json FROM execution_generations WHERE id=?').get(ticket.generation).record_json);
   const replaceRoot = root => database(profile, db => db.prepare('UPDATE execution_generations SET record_json=? WHERE id=?')
-    .run(JSON.stringify({ ...JSON.parse(generation), root }), ticket.generation));
+    .run(JSON.stringify({ ...JSON.parse(generation), root }), ticket.generation), false);
   try {
     for (const root of [null, owner.host]) {
       replaceRoot(root);
       await assert.rejects(inspectOwnerHandoff(current), error => error.errorCode === 'HANDOFF_UNAVAILABLE');
     }
   } finally {
-    database(profile, db => db.prepare('UPDATE execution_generations SET record_json=? WHERE id=?').run(generation, ticket.generation));
+    database(profile, db => db.prepare('UPDATE execution_generations SET record_json=? WHERE id=?').run(generation, ticket.generation), false);
   }
   assert.equal((await inspectOwnerHandoff(current)).native.state, 'running');
   passed('missing or mismatched journal roots refuse the original live native generation');
