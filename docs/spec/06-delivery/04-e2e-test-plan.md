@@ -20423,3 +20423,24 @@ delivery and deterministic plugin process ports remain fixture boundaries.
    HTTP close, abort, plugin ACK and ordinary child exit do not qualify native
    families. This does not accept Voice/LiveVoice, remote owners, full H1/H2-H5
    transfer, real providers/microphones or minimum-hardware performance.
+
+### E2E-HANDOFF-dictation-controller
+
+- **Preconditions:** Current VoiceController, ModelManager and TranscriptionEngine;
+  deterministic native model and capture boundaries, isolated model file. Selected
+  stream branches substitute the engine's public TranscriptionStream contract;
+  the representative capture user path uses actual internal wiring.
+- **Steps:** Cancel during prepare, capture startup, stop and batch/stream
+  transcription. Start a replacement before old completion; deliver old frames,
+  errors and results. Reenter cancellation and start from state/cleanup callbacks;
+  throw from cleanup and notification observers. Join concurrent stop requests.
+- **Expected:** Original promises remain counted; cancelled preparation cannot
+  create capture; late startup is cleaned on its original capture. Old callbacks
+  cannot alter the new recording, and cancellation cannot invoke batch fallback.
+  Ordinary stream failure preserves exact original PCM/settings. Cleanup failures
+  remain observable, notification failure settles, and disposed state stays closed.
+- **Automation:** `handoff-voice-controller.test.mjs`,
+  `handoff-audio-user-path.test.mjs`, and voice-runtime controller/PCM suites.
+  This does not qualify native model/stream disposal, microphone hardware,
+  VoiceService lease/shutdown integration or complete H1 transfer.
+- **Specs:** [Live Voice](../03-runtime/live-voice.md).

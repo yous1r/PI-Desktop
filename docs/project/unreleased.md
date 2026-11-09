@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Bind Dictation preparation, capture and transcription to their original recording.
+  Cancelled work stays counted until completion; late frames, results and cleanup
+  cannot overwrite a newer recording. Concurrent stops join once, and cancelled
+  streams cannot start batch fallback. Native model and service/lease integration
+  remain separate work.
 - Keep local Dictation's original recorder alive until queued native reads finish.
   Concurrent start/stop/cancel share ownership and cleanup; failed release retains
   the capture reservation. Shared admission blocks new capture without

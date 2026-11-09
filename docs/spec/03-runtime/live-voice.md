@@ -203,8 +203,19 @@ queued native read, and release that handle only after the read returns. Reentra
 or concurrent cleanup joins once; late frames cannot reach a later recording.
 Failed release retains the device reservation and reports cleanup uncertainty.
 Original activity remains observable after UI cancellation; ordinary native release
-does not certify execution-family closure for idle handoff. Controller/model and
-shared-microphone lease integration are separate acceptance steps.
+does not certify execution-family closure for idle handoff.
+
+The local VoiceController binds model preparation, capture, stream, PCM frames,
+settings and cancellation to one original recording. Cancel/dispose revoke later
+effects immediately while original preparation/start/stop/transcription promises
+remain counted until completion. Old callbacks/errors cannot overwrite a newer
+recording, and a cancelled stream failure cannot launch batch fallback. Ordinary
+stream failure still falls back with the original PCM and settings. Concurrent
+stops join one transcription. Cleanup and state-notification reentry recheck the
+current transition before publishing, and cleanup failure retains bounded refusal
+evidence. Standalone preparation cannot replace an active recording. Model-native
+lifecycle, VoiceService ownership and shared-microphone lease integration remain
+separate acceptance steps.
 
 Live DTOs and IPC contracts live in `packages/shared`. Pure wire parsing and
 PCM math are exported only from `@pi-desktop/voice-runtime/live`; they do not

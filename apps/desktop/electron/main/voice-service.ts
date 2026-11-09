@@ -50,7 +50,7 @@ export class VoiceService {
   constructor(
     private readonly modelCacheDir: string,
     private readonly getWindow: () => BrowserWindow | null,
-    options: VoiceServiceOptions,
+    private readonly options: VoiceServiceOptions,
     private readonly acquireMicrophoneLease: (token: string) => () => void = () => () => undefined,
   ) {
     this.captureFactory = new PvRecorderBackend(() => this.disposed || options.isAdmissionClosed(), options.onCleanupError);
@@ -91,6 +91,7 @@ export class VoiceService {
       this.engine,
       this.captureFactory,
       () => this.settings,
+      this.options.onCleanupError,
     );
 
     // Forward state changes to renderer

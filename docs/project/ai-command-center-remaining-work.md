@@ -1800,3 +1800,34 @@ The [verification archive](ai-command-center-p0-evidence/audio-capture-verificat
 preserves 17 exact artifacts and 44 unique passing test names. Status is
 `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`; remaining controller/model/service/lease,
 LiveVoice/remote and H1-H5 work is unchanged.
+
+### H1 Dictation controller ownership
+
+Each recording now owns its model preparation, capture, stream, PCM/settings and
+abort signal. Original promises stay counted after cancellation/disposal; stale
+frames, startup errors, results and cleanup cannot mutate a later recording.
+Cancel reaches a capture still starting and cleans late acceptance on that saved
+capture again. Concurrent stop joins one transcription. Cancelled stream failure
+cannot start fallback, while ordinary fallback uses original PCM/settings.
+Cleanup exceptions retain saturated uncertainty and report through Desktop's
+existing logger; state-observer exceptions do not strand operation completion.
+
+Initial thirteen cases produced ten behavioral failures and two missing activity
+API failures (one compatibility case passed). Two added reentry cases exposed
+duplicate cancellation publication and stale done publication during cleanup;
+both are fixed through revocation and transition identity checks. The final source
+run passes 63 Desktop tests in seven files plus 23 shared controller/PCM tests:
+86 unique cases including nineteen focused controller cases and the real internal
+controller/engine/model/backend user path with native boundaries substituted.
+Selected stream tests substitute only the engine's public stream contract.
+Types, Biome (359 files), architecture, agent policy and whitespace pass. The
+controller stays below its previous line count; no IPC/SDK wire, persistence,
+Rust or V3 UI change is included.
+
+This accepts the controller module only. Native model/stream/download ownership,
+VoiceService coalesced initialization, original lease retention and confirmed
+shutdown remain next. The actual transcribe-cpp 0.2.2 types expose asynchronous
+session streaming/feed/finalize; the existing engine currently assumes synchronous
+stream construction and string finalization. Reproduce that concrete boundary
+in the engine/model step before changing it. No real microphone/provider/model
+download or native-family/full-handoff qualification is claimed here.
