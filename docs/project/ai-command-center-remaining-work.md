@@ -1757,3 +1757,32 @@ unique passing test names. Earlier focused runs are overlapping evidence.
 Status is `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`. This accepts the Speech
 ownership slice only. Continue Voice/audio/LiveVoice and remote ownership before
 full H1 composition and H2-H5 transfer acceptance.
+
+### H1 Dictation capture ownership
+
+PvRecorder queues native reads through a timer while release deletes the handle.
+The previous cancel path released that handle before the original queued read
+returned. Capture now reserves one original recording before lazy import, joins
+concurrent/reentrant stop and cancel, waits for the original read before release,
+and suppresses cancelled frames. Another capture cannot bypass pending cleanup
+or a failed release. Shared Desktop admission is required; temporary holds preserve
+admitted recording. Backend disposal seals acquisition and retains original work.
+Native attempts remain saturated refusal evidence after ordinary cleanup.
+
+The first 15 cases produced nine behavioral failures and four missing-API failures
+on the old implementation (two passed). Follow-up tests caught an introduced
+temporary-hold interruption and a throwing cleanup observer that stranded
+completion; a replacement-capture test also reproduced premature reacquisition.
+All are fixed. The final source run passes 44 unique tests in six files, including
+20 focused capture cases, the real controller/engine/model-manager/backend user
+path with native boundaries substituted, seven idle-unload cases and existing
+download/plugin-audio/wiring compatibility. Types include current Voice sources;
+architecture, agent policy and whitespace pass. No real microphone, model download,
+provider/account or live Desktop was used.
+
+The user path verifies exact PCM and transcript, two original releases and final
+`{operations:0,resources:0,uncontainedResources:2}`; idle handoff still refuses.
+This is capture-module acceptance only. Controller/model/download ownership,
+VoiceService initialization, confirmed shutdown and microphone lease retention
+remain next, followed by LiveVoice/remote owners and full H1 composition. Clean
+candidate acceptance is recorded separately.

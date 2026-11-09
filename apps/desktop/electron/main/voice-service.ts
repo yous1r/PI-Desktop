@@ -9,13 +9,17 @@ import { app, BrowserWindow } from "electron";
 import { randomUUID } from "node:crypto";
 import { PvRecorderBackend, checkMicrophonePermission, requestMicrophonePermission } from "./audio-backend";
 import type {
-  AudioCaptureFactory,
   AudioInputDevice,
   ModelState,
   VoiceResult,
   VoiceSettings,
   VoiceState,
 } from "@pi-desktop/voice-runtime";
+
+export interface VoiceServiceOptions {
+  isAdmissionClosed: () => boolean;
+  onCleanupError: (error: Error) => void;
+}
 
 // Lazy-loaded runtime classes
 type VoiceControllerT = import("@pi-desktop/voice-runtime").VoiceController;
@@ -37,7 +41,7 @@ export class VoiceService {
   private controller: VoiceControllerT | null = null;
   private engine: TranscriptionEngineT | null = null;
   private modelManager: ModelManagerT | null = null;
-  private captureFactory: AudioCaptureFactory;
+  private captureFactory: PvRecorderBackend;
   private settings: VoiceSettings;
   private disposed = false;
   private releaseMicrophoneLease: (() => void) | null = null;
@@ -46,9 +50,10 @@ export class VoiceService {
   constructor(
     private readonly modelCacheDir: string,
     private readonly getWindow: () => BrowserWindow | null,
+    options: VoiceServiceOptions,
     private readonly acquireMicrophoneLease: (token: string) => () => void = () => () => undefined,
   ) {
-    this.captureFactory = new PvRecorderBackend();
+    this.captureFactory = new PvRecorderBackend(() => this.disposed || options.isAdmissionClosed(), options.onCleanupError);
     // Will be overridden from app settings
     this.settings = {
       enabled: false,
@@ -221,6 +226,7 @@ export class VoiceService {
     if (this.disposed) return;
     this.disposed = true;
     this.cancelModelIdleUnload();
+    this.captureFactory.dispose();
     this.controller?.dispose();
     this.releaseCurrentMicrophoneLease();
     this.engine?.shutdown();
@@ -251,9 +257,10 @@ export class VoiceService {
 export function createVoiceService(
   modelCacheDir: string,
   getWindow: () => BrowserWindow | null,
+  options: VoiceServiceOptions,
   acquireMicrophoneLease?: (token: string) => () => void,
 ): VoiceService {
-  const service = new VoiceService(modelCacheDir, getWindow, acquireMicrophoneLease);
+  const service = new VoiceService(modelCacheDir, getWindow, options, acquireMicrophoneLease);
   app.once("before-quit", () => service.dispose());
   return service;
 }

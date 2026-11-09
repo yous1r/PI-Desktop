@@ -855,7 +855,7 @@ const microphoneLeases = new MicrophoneLeaseRegistry(() => {
 });
 const voiceService = createVoiceService(
   dataDir + "/voice-models",
-  getMainWindow,
+  getMainWindow, { isAdmissionClosed: () => mainState.handoffAdmission.isClosed(), onCleanupError: error => logger.app("lifecycle", "warn", error.message) },
   (token) => microphoneLeases.acquire("dictation", token),
 );
 voiceServiceReference = voiceService;

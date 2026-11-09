@@ -277,6 +277,26 @@
   returns memory to the OS and that the existing lazy-load path reloads it.
 - **Specs:** [Live Voice](../03-runtime/live-voice.md).
 
+### E2E-HANDOFF-dictation-capture
+
+- **Preconditions:** Current-source VoiceController, TranscriptionEngine,
+  ModelManager, PvRecorderBackend and shared admission; isolated model file and
+  deterministic native model/recorder boundaries. No microphone or model download.
+- **Steps:** Hold admission and refuse enumeration, cancel the hold, record known
+  PCM, stop and transcribe. Start again, cancel with a native read pending, release
+  that read and inspect cleanup/activity. Cover import cancellation, concurrent
+  start/stop, reentrant native callbacks, failed cleanup and attempted replacement.
+- **Expected:** Exact PCM/transcript; one release per original recorder after its
+  queued read returns; no cancelled frame publication or replacement acquisition
+  during original cleanup. Temporary holds preserve admitted recording. Cleanup
+  failures remain observable and ordinary release leaves positive native-family
+  refusal evidence. Ten-minute model-idle behavior remains unchanged.
+- **Coverage:** `handoff-audio-capture.test.mjs`,
+  `handoff-audio-user-path.test.mjs`, `voice-service-idle-unload.test.mjs`.
+  These exercise real internal wiring at the controller public interface. Native
+  microphone/model execution, full Voice ownership and H1 transfer remain pending.
+- **Specs:** [Live Voice](../03-runtime/live-voice.md).
+
 ### E2E-LIVE-VOICE-gemini-work-schema
 
 - **Preconditions:** Production Gemini adapter with a deterministic transport

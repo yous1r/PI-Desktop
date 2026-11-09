@@ -1,53 +1,28 @@
-/**
- * PvRecorder-based audio capture backend.
- * Implements AudioCaptureFactory from @pi-desktop/voice-runtime.
- *
- * Also serves as the real backend for the pi.audio plugin capture APIs,
- * replacing the previous UNSUPPORTED stubs.
- */
-
+/** PvRecorder capture for local Dictation. Native reads retain their original handle. */
 import { systemPreferences } from "electron";
-import type {
-  AudioCapture,
-  AudioCaptureFactory,
-  AudioInputDevice,
-} from "@pi-desktop/voice-runtime";
-import {
-  CAPTURE_SAMPLE_RATE,
-  FRAME_LENGTH,
-  convertFrames,
-} from "@pi-desktop/voice-runtime";
+import type { AudioCapture, AudioCaptureFactory, AudioInputDevice } from "@pi-desktop/voice-runtime";
+import { CAPTURE_SAMPLE_RATE, FRAME_LENGTH, convertFrames } from "@pi-desktop/voice-runtime";
+import { ExternalResourceActivity } from "./external-resource-activity";
 
-/** Lazily loaded PvRecorder module. */
-let PvRecorderModule: typeof import("@picovoice/pvrecorder-node") | null = null;
-
-async function loadPvRecorder() {
-  if (!PvRecorderModule) {
-    PvRecorderModule = await import("@picovoice/pvrecorder-node");
+type RecorderModule = typeof import("@picovoice/pvrecorder-node");
+type Recorder = InstanceType<RecorderModule["PvRecorder"]>;
+let recorderModule: Promise<RecorderModule> | undefined;
+function loadPvRecorder(): Promise<RecorderModule> {
+  if (!recorderModule) {
+    const loading = import("@picovoice/pvrecorder-node");
+    recorderModule = loading;
+    void loading.catch(() => { if (recorderModule === loading) recorderModule = undefined; });
   }
-  return PvRecorderModule;
+  return recorderModule;
 }
 
-// ---------------------------------------------------------------------------
-// macOS Microphone Permission
-// ---------------------------------------------------------------------------
-
-export async function checkMicrophonePermission(): Promise<
-  "granted" | "denied" | "undetermined"
-> {
+export async function checkMicrophonePermission(): Promise<"granted" | "denied" | "undetermined"> {
   if (process.platform !== "darwin") return "granted";
-
-  const status = systemPreferences.getMediaAccessStatus("microphone");
-  switch (status) {
-    case "granted":
-      return "granted";
+  switch (systemPreferences.getMediaAccessStatus("microphone")) {
+    case "granted": return "granted";
     case "denied":
-    case "restricted":
-      return "denied";
-    case "not-determined":
-      return "undetermined";
-    default:
-      return "undetermined";
+    case "restricted": return "denied";
+    default: return "undetermined";
   }
 }
 
@@ -56,149 +31,235 @@ export async function requestMicrophonePermission(): Promise<boolean> {
   return systemPreferences.askForMediaAccess("microphone");
 }
 
-// ---------------------------------------------------------------------------
-// PvRecorderCapture — single recording session
-// ---------------------------------------------------------------------------
+function deferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+
+interface Recording {
+  recorder?: Recorder;
+  starting: Promise<void>;
+  reading?: Promise<void>;
+  closing?: Promise<void>;
+  output?: Promise<Float32Array>;
+  finished: ReturnType<typeof deferred<void>>;
+  stopping: boolean;
+  stopIssued: boolean;
+  frames: Int16Array[];
+  readError?: unknown;
+  stopError?: unknown;
+}
 
 class PvRecorderCapture implements AudioCapture {
-  private recorder: InstanceType<
-    (typeof import("@picovoice/pvrecorder-node"))["PvRecorder"]
-  > | null = null;
-  private frameCallback: ((frame: Int16Array) => void) | null = null;
-  private frames: Int16Array[] = [];
-  private readLoop: Promise<void> | undefined;
-  private stopping = false;
-  private readError: Error | undefined;
+  private current: Recording | undefined;
+  private frameCallback: ((frame: Int16Array) => void) | undefined;
 
-  constructor(private readonly deviceIndex: number) {}
+  constructor(private readonly deviceIndex: number, private readonly backend: PvRecorderBackend) {}
 
-  get isActive(): boolean {
-    return this.recorder !== null && !this.stopping;
-  }
-
-  onFrame(cb: (frame: Int16Array) => void): void {
-    this.frameCallback = cb;
-  }
+  get isActive(): boolean { return !!this.current?.recorder && !this.current.stopping; }
+  onFrame(callback: (frame: Int16Array) => void): void { this.frameCallback = callback; }
+  whenIdle(): Promise<void> { return this.current?.finished.promise ?? Promise.resolve(); }
 
   async start(): Promise<void> {
-    if (this.recorder) throw new Error("Capture already active");
-
-    const { PvRecorder } = await loadPvRecorder();
-    const recorder = new PvRecorder(FRAME_LENGTH, this.deviceIndex);
-
+    this.backend.assertOpen();
+    if (this.current) throw new Error("Capture already active");
+    const starting = deferred<void>();
+    const slot: Recording = {
+      starting: starting.promise, finished: deferred<void>(), stopping: false, stopIssued: false, frames: [],
+    };
+    // Install ownership before import, native callbacks or cancellation can reenter.
+    this.backend.retain(this);
+    this.current = slot;
+    void slot.finished.promise.catch(() => undefined);
+    void this.backend.track(() => this.open(slot)).then(starting.resolve, starting.reject);
     try {
-      if (recorder.sampleRate !== CAPTURE_SAMPLE_RATE) {
-        throw new Error(
-          `PvRecorder reported ${recorder.sampleRate} Hz; expected ${CAPTURE_SAMPLE_RATE} Hz`,
-        );
-      }
-
-      this.frames = [];
-      this.stopping = false;
-      this.readError = undefined;
-      recorder.start();
-      this.recorder = recorder;
-      this.readLoop = this.readFrames(recorder);
+      await slot.starting;
+      this.assertCurrent(slot);
     } catch (error) {
-      recorder.release();
+      await this.close(slot).catch(() => undefined); // close reports cleanup uncertainty separately
       throw error;
     }
   }
 
-  async stop(): Promise<Float32Array> {
-    const recorder = this.recorder;
-    if (!recorder) throw new Error("Capture not active");
-
-    this.stopping = true;
-    let stopError: Error | undefined;
-
-    try {
-      if (recorder.isRecording) recorder.stop();
-    } catch (error) {
-      stopError = error instanceof Error ? error : new Error(String(error));
+  private assertCurrent(slot: Recording): void {
+    this.backend.assertOpen();
+    if (this.current !== slot || slot.stopping) {
+      throw Object.assign(new Error("Audio capture cancelled"), { name: "AbortError" });
     }
+  }
 
-    try {
-      await this.readLoop;
-    } finally {
-      recorder.release();
-      this.recorder = null;
-      this.readLoop = undefined;
+  private async open(slot: Recording): Promise<void> {
+    this.backend.nativeAttempt();
+    const { PvRecorder } = await loadPvRecorder();
+    this.assertCurrent(slot);
+    const recorder = new PvRecorder(FRAME_LENGTH, this.deviceIndex);
+    slot.recorder = recorder;
+    this.assertCurrent(slot);
+    if (recorder.sampleRate !== CAPTURE_SAMPLE_RATE) {
+      throw new Error(`PvRecorder reported ${recorder.sampleRate} Hz; expected ${CAPTURE_SAMPLE_RATE} Hz`);
     }
+    recorder.start();
+    this.assertCurrent(slot);
+    slot.reading = this.backend.track(() => this.readFrames(slot, recorder));
+  }
 
-    if (stopError) throw stopError;
-    if (this.readError) throw this.readError;
-
-    return convertFrames(this.frames);
+  stop(): Promise<Float32Array> {
+    const slot = this.current;
+    if (!slot) return Promise.reject(new Error("Capture not active"));
+    if (slot.output) return slot.output;
+    const output = deferred<Float32Array>();
+    slot.output = output.promise;
+    void this.close(slot).then(() => {
+      if (slot.readError !== undefined) throw slot.readError;
+      return convertFrames(slot.frames);
+    }).then(output.resolve, output.reject);
+    return output.promise;
   }
 
   cancel(): void {
-    this.stopping = true;
-    try {
-      if (this.recorder?.isRecording) this.recorder.stop();
-    } catch {
-      // Best-effort
-    }
-    try {
-      this.recorder?.release();
-    } catch {
-      // Best-effort
-    }
-    this.recorder = null;
-    this.frames = [];
+    const slot = this.current;
+    if (slot) void this.close(slot).catch(() => undefined);
   }
 
-  private async readFrames(
-    recorder: InstanceType<
-      (typeof import("@picovoice/pvrecorder-node"))["PvRecorder"]
-    >,
-  ): Promise<void> {
+  private stopOriginal(slot: Recording): void {
+    if (!slot.recorder || slot.stopIssued) return;
     try {
-      while (!this.stopping && recorder.isRecording) {
-        const frame: Int16Array = await recorder.read();
-        if (this.stopping) continue;
-        this.frames.push(frame);
-        try {
-          this.frameCallback?.(frame);
-        } catch {
-          // Frame callback errors must not fail the recording
-        }
+      if (slot.recorder.isRecording) {
+        slot.stopIssued = true;
+        slot.recorder.stop();
+      }
+    } catch (error) { slot.stopError ??= error instanceof Error ? error : new Error(String(error)); }
+  }
+
+  private close(slot: Recording): Promise<void> {
+    if (slot.closing) return slot.closing;
+    const closing = deferred<void>();
+    slot.closing = closing.promise;
+    slot.stopping = true;
+    // Native stop must begin synchronously, with the shared completion installed.
+    this.stopOriginal(slot);
+    void this.backend.track(async () => {
+      await slot.starting.catch(() => undefined);
+      this.stopOriginal(slot);
+      await slot.reading;
+      // PvRecorder.read queues a native handle read. Never delete that handle
+      // until the original read has returned, even when the caller cancelled.
+      try {
+        slot.recorder?.release();
+      } catch {
+        throw new Error("Audio capture cleanup could not be confirmed; idle handoff remains unavailable");
+      }
+      if (this.current === slot) this.current = undefined;
+      this.backend.release(this);
+      if (slot.stopError !== undefined) {
+        throw new Error("Audio capture cleanup could not be confirmed; idle handoff remains unavailable");
+      }
+    }).then(() => {
+      closing.resolve();
+      slot.finished.resolve();
+    }, (error: Error) => {
+      this.backend.reportCleanupError(error);
+      closing.reject(error);
+      slot.finished.reject(error);
+    });
+    return closing.promise;
+  }
+
+  private async readFrames(slot: Recording, recorder: Recorder): Promise<void> {
+    try {
+      while (!slot.stopping && recorder.isRecording) {
+        const frame = await recorder.read();
+        if (slot.stopping || this.current !== slot) break;
+        slot.frames.push(frame);
+        try { this.frameCallback?.(frame); } catch { /* Observer errors do not fail capture. */ }
       }
     } catch (error) {
-      if (!this.stopping) {
-        this.readError =
-          error instanceof Error ? error : new Error(String(error));
-      }
+      if (!slot.stopping) slot.readError = error instanceof Error ? error : new Error(String(error));
     }
   }
 }
 
-// ---------------------------------------------------------------------------
-// PvRecorderBackend — AudioCaptureFactory implementation
-// ---------------------------------------------------------------------------
-
 export class PvRecorderBackend implements AudioCaptureFactory {
-  async getDevices(): Promise<AudioInputDevice[]> {
-    const { PvRecorder } = await loadPvRecorder();
-    const names: string[] = PvRecorder.getAvailableDevices();
+  private readonly activity: ExternalResourceActivity;
+  private readonly captures = new Set<PvRecorderCapture>();
+  private readonly pending = new Set<Promise<unknown>>();
 
-    return names.map((label, index) => ({
-      deviceId: String(index),
-      label,
-      isDefault: index === 0,
-    }));
+  constructor(isAdmissionClosed: () => boolean, private readonly onCleanupError: (error: Error) => void) {
+    this.activity = new ExternalResourceActivity(isAdmissionClosed);
+  }
+
+  assertOpen(): void { this.activity.assertOpen(); }
+  nativeAttempt(): void { this.activity.nativeAttempt(); }
+  retain(capture: PvRecorderCapture): void {
+    if (this.captures.size > 0) throw new Error("Capture already active or cleanup is pending");
+    this.captures.add(capture);
+  }
+  release(capture: PvRecorderCapture): void { this.captures.delete(capture); }
+  reportCleanupError(error: Error): void {
+    try { this.onCleanupError(error); }
+    catch { console.error("Audio capture cleanup notification failed; idle handoff remains unavailable"); }
+  }
+  getHandoffActivity() { return this.activity.snapshot(this.captures.size); }
+
+  track<T>(operation: () => Promise<T>): Promise<T> {
+    const completion = deferred<T>();
+    this.pending.add(completion.promise);
+    void this.activity.track(operation).then((value) => {
+      this.pending.delete(completion.promise);
+      completion.resolve(value);
+    }, (error: unknown) => {
+      this.pending.delete(completion.promise);
+      completion.reject(error);
+    });
+    return completion.promise;
+  }
+
+  async whenIdle(): Promise<void> {
+    await Promise.all([...this.captures].map((capture) => capture.whenIdle()));
+    await Promise.all([...this.pending]);
+  }
+
+  dispose(): void {
+    this.activity.seal();
+    for (const capture of this.captures) capture.cancel();
+  }
+
+  async getDevices(): Promise<AudioInputDevice[]> {
+    this.assertOpen();
+    return this.track(async () => {
+      this.nativeAttempt();
+      const { PvRecorder } = await loadPvRecorder();
+      this.assertOpen();
+      const names = PvRecorder.getAvailableDevices();
+      this.assertOpen();
+      return names.map((label, index) => ({ deviceId: String(index), label, isDefault: index === 0 }));
+    });
   }
 
   create(deviceId: string | null): AudioCapture {
-    const index = deviceId !== null ? parseInt(deviceId, 10) : -1;
-    return new PvRecorderCapture(isNaN(index) ? -1 : index);
+    this.assertOpen();
+    const index = deviceId !== null ? Number.parseInt(deviceId, 10) : -1;
+    return new PvRecorderCapture(Number.isNaN(index) ? -1 : index, this);
   }
 
   async checkPermission(): Promise<"granted" | "denied" | "undetermined"> {
-    return checkMicrophonePermission();
+    this.assertOpen();
+    return this.track(async () => {
+      const result = await checkMicrophonePermission();
+      this.assertOpen();
+      return result;
+    });
   }
 
   async requestPermission(): Promise<boolean> {
-    return requestMicrophonePermission();
+    this.assertOpen();
+    return this.track(async () => {
+      this.nativeAttempt();
+      const result = await requestMicrophonePermission();
+      this.assertOpen();
+      return result;
+    });
   }
 }

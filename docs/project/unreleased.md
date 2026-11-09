@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Keep local Dictation's original recorder alive until queued native reads finish.
+  Concurrent start/stop/cancel share ownership and cleanup; failed release retains
+  the capture reservation. Shared admission blocks new capture without
+  interrupting an admitted recording. Full Voice/handoff integration remains open.
 - Bind Desktop Speech to shared admission, its original Host and plugin adapter.
   Retired callbacks cannot borrow replacement authority; original HTTP bodies,
   response cleanup and scratch writes remain counted through disposal. Confirmed

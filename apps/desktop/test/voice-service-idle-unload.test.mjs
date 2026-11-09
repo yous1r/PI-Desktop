@@ -42,7 +42,7 @@ function fakeClock(t) {
 
 async function startedService(t) {
   const clock = fakeClock(t);
-  const service = new VoiceService("unused-model-cache-dir", () => null);
+  const service = new VoiceService("unused-model-cache-dir", () => null, { isAdmissionClosed: () => false, onCleanupError: error => { throw error; } });
   await service.start();
   const controller = StubVoiceController.last;
   assert.ok(controller, "stub controller was constructed");

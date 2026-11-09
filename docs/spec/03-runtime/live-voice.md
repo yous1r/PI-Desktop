@@ -195,6 +195,17 @@ from its on-disk cache. This changes idle memory use and the first-recording
 latency after a long idle period, but does not alter Dictation settings or the
 downloaded model files.
 
+Local Dictation capture reserves its original recorder before lazy native import.
+Concurrent starts, replacement captures and new enumeration are subject to shared
+Desktop admission. A temporary hold preserves already-admitted recording and its
+original stop. Cancel/dispose stop the original device synchronously, retain any
+queued native read, and release that handle only after the read returns. Reentrant
+or concurrent cleanup joins once; late frames cannot reach a later recording.
+Failed release retains the device reservation and reports cleanup uncertainty.
+Original activity remains observable after UI cancellation; ordinary native release
+does not certify execution-family closure for idle handoff. Controller/model and
+shared-microphone lease integration are separate acceptance steps.
+
 Live DTOs and IPC contracts live in `packages/shared`. Pure wire parsing and
 PCM math are exported only from `@pi-desktop/voice-runtime/live`; they do not
 enter the old local transcription runtime. Electron Main remains an
