@@ -180,6 +180,7 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
         return wsClientTransport({ url, token: record.deviceToken })();
       },
       expectedHostId: ssh?.hostId,
+      isAdmissionClosed: options.isAdmissionClosed,
       onStateChange: () => { if (!closed) changed(); },
       clientInfo: options.clientInfo,
       reconnect: { enabled: true, baseDelayMs: 500, maxDelayMs: 15_000, maxAttempts: 10 },
@@ -188,10 +189,10 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
   });
   const bootstrap = createSshBootstrap({
     version: options.clientInfo.version,
-    exchangePairing: ({ url, pairingToken, label, expectedHostId }) => exchangePairingToken({ url, pairingToken, label, expectedHostId, clientInfo: options.clientInfo, requireWorkspace: true, log }),
+    exchangePairing: ({ url, pairingToken, label, expectedHostId }) => exchangePairingToken({ url, pairingToken, label, expectedHostId, clientInfo: options.clientInfo, requireWorkspace: true, isAdmissionClosed: options.isAdmissionClosed, log }),
     verifyConnection: async ({ url, deviceToken, expectedHostId }) => {
       const adapter = createRacpRemoteHostClient({ transport: wsClientTransport({ url, token: deviceToken }),
-        expectedHostId, clientInfo: options.clientInfo, reconnect: { enabled: false }, log });
+        expectedHostId, clientInfo: options.clientInfo, reconnect: { enabled: false }, isAdmissionClosed: options.isAdmissionClosed, log });
       try { await adapter.connect(); assertWorkspaceCapabilities(adapter); }
       finally { await adapter.close(); }
     },
