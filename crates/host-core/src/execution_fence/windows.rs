@@ -58,6 +58,9 @@ pub struct Lease {
 impl Lease {
     pub fn status(&self) -> Result<Status> {
         let progress = lock(&self.progress)?;
+        self.status_locked(&progress)
+    }
+    fn status_locked(&self, progress: &Progress) -> Result<Status> {
         let active = self.job.active()?;
         let root_exited = progress
             .root
@@ -138,6 +141,33 @@ impl Registry {
     }
     pub fn epoch(&self) -> &str {
         &self.owner.epoch
+    }
+    pub fn inspect(&self, epoch: &str, profile: &str, generation: &str) -> Result<Status> {
+        if self.owner.epoch != epoch || self.owner.profile != profile {
+            bail!("HANDOFF_OWNER_CHANGED");
+        }
+        if native::exited(self.coordinator.handle.as_raw_handle())? {
+            bail!("HANDOFF_OWNER_CHANGED");
+        }
+        let lease = self.lease(generation)?;
+        // Registration holds progress before the journal. Inspection follows
+        // that order and refuses contention rather than waiting for effects.
+        let progress = lease
+            .progress
+            .try_lock()
+            .map_err(|_| anyhow::anyhow!("HANDOFF_NATIVE_STATE_UNAVAILABLE"))?;
+        let root = progress
+            .root
+            .as_ref()
+            .map(|peer| record(peer.pid, &peer.identity));
+        let journal = self
+            .journal
+            .as_ref()
+            .context("HANDOFF_OWNER_NOT_REGISTERED")?
+            .try_lock()
+            .map_err(|_| anyhow::anyhow!("HANDOFF_JOURNAL_UNAVAILABLE"))?;
+        journal.inspect_generation(&self.owner, generation, root.as_ref())?;
+        lease.status_locked(&progress)
     }
     pub fn bind_journal(&mut self, directory: &Path) -> Result<()> {
         if self.journal.is_some() {

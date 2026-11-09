@@ -19983,6 +19983,30 @@ session data is used.
   inferred from schema or stream fixtures.
 - **Spec:** [H0 contracts](../03-runtime/06-host-rpc-protocol.md#executable-owner-handoff-integration-contracts-h0).
 
+### E2E-HOST-owner-inspection
+
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-owner-inspection.mjs`
+  with `PI_SCRATCH_DIR` and Node `node:sqlite` on Windows.
+- **Steps:** Bundle the production HostProcess and inspection consumer from
+  current source. Explicitly preserve `PI_DESKTOP_DATA_DIR` in the final child
+  environment and verify the scratch database after handshake. Register a real
+  contained native runner; inspect startup settlement, then create a session,
+  begin a turn, checkpoint its partial reply, end and recover it. Inject valid
+  but mismatched root metadata only into the isolated journal; restore the
+  fixture, test stale identity/caller inventory and an unfenced Host.
+- **Expected:** Own inspection is not execution activity; live generation is
+  not certified closed. Durable turn facts follow the real user path without
+  losing the aborted reply. Identity mismatch and missing authority refuse;
+  original native Stop and both Host exits are confirmed, with artifact hashes.
+- **Lower-level coverage:** Strict bounded request/report contracts, original
+  Host replacement on success and rejection, timeout/late failure, real SQLite
+  read-only approval preservation and missing source refusal, scan/lock budget
+  restoration, original background/write lifetime and cancellation uncertainty.
+- **Boundary:** Native coverage is only the execution generation. No complete
+  Desktop inventory, admission hold, source transfer or readiness is established.
+  HOME/USERPROFILE do not isolate Rust's Windows known-folder default profile.
+- **Spec:** [Running-owner inspection](../03-runtime/06-host-rpc-protocol.md#private-running-owner-inspection-windows).
+
 ### Desktop admission integration prerequisites (H1 partial)
 
 - **Entry:** `node --test apps/desktop/test/handoff-admission.test.mjs apps/desktop/test/handoff-lifecycle.test.mjs apps/desktop/test/agent-host-bridge-work-ack.test.mjs apps/desktop/test/scheduled-runner.test.mjs apps/desktop/test/shutdown-regenerate-persistence.test.mjs apps/desktop/test/plugin-restore-notifies-renderer.test.mjs`.

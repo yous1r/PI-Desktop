@@ -369,7 +369,7 @@ pub async fn create_session_worktree(
         }
     };
 
-    let (row, command) = {
+    let (row, command, activity) = {
         let st = state.lock().await;
         registry::set_status(&st.db, &row.id, WorktreeStatus::Active)?;
         let command = setup_command(&st.db, project_path)?;
@@ -380,15 +380,16 @@ pub async fn create_session_worktree(
         };
         registry::set_setup_status(&st.db, &row.id, status, None)?;
         let row = registry::get(&st.db, &row.id)?.unwrap_or(row);
-        (row, command)
+        (row, command, st.handoff_activity.clone())
     };
     if let Some(command) = command {
-        tokio::spawn(run_setup(
-            state.clone(),
-            row.clone(),
-            project_path.to_string(),
-            command,
-        ));
+        let obligation = activity.begin(crate::owner_handoff::activity::Kind::Background);
+        let (setup_state, setup_row, project_path) =
+            (state.clone(), row.clone(), project_path.to_string());
+        tokio::spawn(async move {
+            run_setup(setup_state, setup_row, project_path, command).await;
+            obligation.finish(true);
+        });
     }
     Ok(CreatedWorktree {
         worktree: summary_of(&row),
@@ -454,6 +455,7 @@ pub(super) async fn run_setup(
     };
     let st = state.lock().await;
     if let Err(error) = registry::set_setup_status(&st.db, &row.id, status, Some(&log)) {
+        st.handoff_activity.mark_uncertain();
         tracing::warn!(%error, "could not record the worktree setup result");
     }
 }
@@ -864,9 +866,11 @@ async fn remove_row(
 /// Remove worktrees whose session was deleted by any path (ON DELETE SET
 /// NULL). Returns how many were removed; failures stay for the next pass.
 pub async fn cleanup_orphans(state: &SharedState, git: &GitRunner) -> usize {
+    let activity = state.lock().await.handoff_activity.clone();
     let orphans = match registry::orphans(&state.lock().await.db) {
         Ok(rows) => rows,
         Err(error) => {
+            activity.mark_uncertain();
             tracing::warn!(%error, "could not list orphaned worktrees");
             return 0;
         }
@@ -876,7 +880,8 @@ pub async fn cleanup_orphans(state: &SharedState, git: &GitRunner) -> usize {
         match remove_row(state, git, &row).await {
             Ok(()) => removed += 1,
             Err(error) => {
-                tracing::warn!(%error, path = %row.path, "could not remove an orphaned worktree")
+                activity.mark_uncertain();
+                tracing::warn!(%error, path = %row.path, "could not remove an orphaned worktree");
             }
         }
     }
@@ -886,9 +891,11 @@ pub async fn cleanup_orphans(state: &SharedState, git: &GitRunner) -> usize {
 /// Startup pass: drop half-created worktrees, mark vanished ones missing,
 /// repair git's links after a moved data directory, and clean orphans.
 pub async fn reconcile(state: SharedState, git: GitRunner) {
+    let activity = state.lock().await.handoff_activity.clone();
     let rows = match registry::all(&state.lock().await.db) {
         Ok(rows) => rows,
         Err(error) => {
+            activity.mark_uncertain();
             tracing::warn!(%error, "could not read the worktree registry");
             return;
         }
@@ -899,6 +906,7 @@ pub async fn reconcile(state: SharedState, git: GitRunner) {
         }
         if row.status == WorktreeStatus::Creating {
             if let Err(error) = remove_row(&state, &git, &row).await {
+                activity.mark_uncertain();
                 tracing::warn!(%error, path = %row.path, "could not drop a half-created worktree");
             }
             continue;
@@ -906,7 +914,10 @@ pub async fn reconcile(state: SharedState, git: GitRunner) {
         let root = Path::new(&row.path);
         if !is_real_dir(root) {
             let st = state.lock().await;
-            let _ = registry::set_status(&st.db, &row.id, WorktreeStatus::Missing);
+            if let Err(error) = registry::set_status(&st.db, &row.id, WorktreeStatus::Missing) {
+                activity.mark_uncertain();
+                tracing::warn!(%error, "could not mark a worktree missing");
+            }
             continue;
         }
         let common_dir = Path::new(&row.common_dir);
@@ -916,6 +927,7 @@ pub async fn reconcile(state: SharedState, git: GitRunner) {
                 .run_git_dir(common_dir, &["worktree", "repair", &row.path])
                 .await
             {
+                activity.mark_uncertain();
                 tracing::warn!(%error, path = %row.path, "git worktree repair failed");
             }
         }

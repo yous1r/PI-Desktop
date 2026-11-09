@@ -2201,3 +2201,29 @@ HEAD, base and clean state, accepting the actual 138-test result without rerunni
 tests. The [verification record](ai-command-center-p0-evidence/event-persistence-verification.json)
 records that correction and fifteen artifact hashes. Full inventory/Rust status
 and native resource qualification remain pending; Voice stays paused.
+
+### H1 Rust inspection prerequisite
+
+The running Rust owner now exposes private read-only inspection through existing
+stdio. Original request, startup/worktree setup, sync tick and blocking transcript
+write reservations survive waiter cancellation; ambiguous completion remains
+uncertain. Bounded SQLite reads report durable obligations without expiring
+approvals or recovering work. The consumer binds the exact original Host and
+generation on success and rejection, with a whole-call deadline.
+
+Journal owner/generation/root identities are compared with the original native
+lease under the registration lock order. A regression baseline reproduced
+acceptance of valid-but-mismatched root metadata; inspection now refuses that
+case. Native coverage remains only the execution generation. Complete Desktop
+19-family composition, background admission/fenced factories and H1-H5 readiness
+remain pending. Voice remains paused. Clean-candidate acceptance follows below.
+
+The first inspection E2E accidentally removed its explicit data-directory
+environment setting and opened the current user's default Windows profile.
+Specific owner metadata confirmed the temporary Host registration; it exited,
+but no pre-run baseline exists to determine recovery/data effects. The profile
+was preserved without cleanup or rollback. The fixture now explicitly retains
+its scratch data directory in the final environment. The
+[incident record](ai-command-center-p0-evidence/rust-inspection-isolation-incident.json)
+is part of acceptance provenance; a corrected passing run does not prove that
+the earlier startup had no user-data effects.

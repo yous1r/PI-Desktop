@@ -685,9 +685,17 @@ mod durability {
                 let output = future.await;
                 let pending = PENDING.with(|pending| std::mem::take(&mut *pending.borrow_mut()));
                 // The work blocks, so it runs off the async worker.
-                let committed = tokio::task::spawn_blocking(move || commit(pending))
-                    .await
-                    .unwrap_or_else(|error| Err(anyhow!("transcript commit did not run: {error}")));
+                let obligation = crate::owner_handoff::activity::Activity::current()
+                    .map(|activity| activity.begin(crate::owner_handoff::activity::Kind::Write));
+                let committed = tokio::task::spawn_blocking(move || {
+                    let result = commit(pending);
+                    if let Some(obligation) = obligation {
+                        obligation.finish(result.is_ok());
+                    }
+                    result
+                })
+                .await
+                .unwrap_or_else(|error| Err(anyhow!("transcript commit did not run: {error}")));
                 (output, committed)
             })
             .await

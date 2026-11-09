@@ -72,6 +72,7 @@
 			"packages/shared/src/owner-handoff*.ts",
 			"packages/host-runtime/src/owner-handoff*.ts",
 			"scripts/e2e-owner-handoff-client.mjs",
+			"scripts/e2e-owner-inspection.mjs",
 			"scripts/e2e-desktop-plan-handoff.mjs",
 			"scripts/e2e-browser-handoff.mjs",
 			"scripts/e2e/browser-handoff.ts",

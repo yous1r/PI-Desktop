@@ -41,7 +41,7 @@ use crate::scratch;
 use crate::sessions::{self, UiMessage};
 use crate::state::{AppState, HOST_VERSION, PROTOCOL_VERSION};
 use crate::tools::{self, ToolsExecuteParams};
-use crate::transcripts::{self, CompactionRecord};
+use crate::transcripts::CompactionRecord;
 use crate::turn_queue;
 use crate::visualizations;
 use crate::workspace::{self, ContainedRoots, ToolRoot};
@@ -301,6 +301,10 @@ fn spawn_stdout_writer(
         })
 }
 
+mod request_lifetime;
+#[cfg(test)]
+use request_lifetime::with_request_budget;
+
 pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
     let (tx, rx) = mpsc::unbounded_channel::<String>();
     // Keep request tasks bounded as well as tool executions. Tool calls have
@@ -309,6 +313,7 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
     const MAX_IN_FLIGHT_RPC: usize = 32;
     let request_slots = Arc::new(Semaphore::new(MAX_IN_FLIGHT_RPC));
     let mut request_tasks = tokio::task::JoinSet::new();
+    let activity = state.lock().await.handoff_activity.clone();
 
     // Keep stdio off Tokio's blocking pool. Under process/thread pressure,
     // Tokio's stdio adapter can panic while trying to create a worker thread;
@@ -354,6 +359,7 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
     let config_sync_scheduler = tokio::spawn({
         let state = state.clone();
         let tx = tx.clone();
+        let activity = activity.clone();
         async move {
             // The host owns a short local debounce clock; remote polling is
             // gated inside the engine to five minutes when no local change is
@@ -363,8 +369,10 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {
                 interval.tick().await;
-                let _ =
+                let obligation = activity.begin(crate::owner_handoff::activity::Kind::Background);
+                let result =
                     crate::config_sync::engine::sync_if_enabled(state.clone(), tx.clone()).await;
+                obligation.finish(result.is_ok());
             }
         }
     });
@@ -452,6 +460,9 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
                         continue 'serve;
                     }
                 };
+                let obligation = (method != crate::owner_handoff::inspection::METHOD)
+                    .then(|| activity.begin(crate::owner_handoff::activity::Kind::Request));
+                let activity = activity.clone();
 
                 request_tasks.spawn(async move {
                     let _permit = permit;
@@ -460,17 +471,17 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
                     // handler releases the state lock and before the response
                     // leaves. Transcript appends are synced inside their write
                     // path before derived SQLite rows are committed.
-                    let (handled, committed) = transcripts::commit_writes_of(
-                        with_request_budget(
-                            budget,
-                            handle_request(state, &method, params, tx.clone()),
-                        ),
+                    let (handled, committed) = request_lifetime::execute(
+                        &activity,
+                        budget,
+                        handle_request(state, &method, params, tx.clone()),
                     )
                     .await;
                     let out = response_for(id, handled, committed);
                     if let Ok(raw) = serde_json::to_string(&out) {
                         let _ = tx.send(format!("{raw}\n"));
                     }
+                    if let Some(obligation) = obligation { obligation.finish(true); }
                 });
             }
             result = &mut writer_done_rx => {
@@ -547,6 +558,9 @@ const RPC_PERMISSION_WAIT_CAP_MS: u64 = 120_000;
 /// follows its own effective tool timeout (plus permission cap and grace); all
 /// other methods use the fixed budget.
 fn request_budget_ms(method: &str, params: &Value) -> Option<u64> {
+    if method == crate::owner_handoff::inspection::METHOD {
+        return Some(crate::owner_handoff::inspection::BUDGET_MS);
+    }
     if method == "configSync.syncNow" {
         // One sync may contain arbitrarily many individually bounded S3
         // requests. Keep the Host-owned workflow alive across renderer routes.
@@ -587,38 +601,6 @@ fn request_budget_ms(method: &str, params: &Value) -> Option<u64> {
             .saturating_add(RPC_PERMISSION_WAIT_CAP_MS)
             .saturating_add(RPC_TOOL_BUDGET_GRACE_MS)
     })
-}
-
-/// Wrap one request's handler future in its wall-clock budget (issue #1071).
-///
-/// The timeout can only fire at an `await` point, so a handler stuck inside a
-/// long *synchronous* call is not interrupted — that class needs the sync work
-/// moved off the async workers instead. What this does guarantee is that a
-/// handler waiting on the global state lock (the dominant queueing case) is
-/// cut loose with its slot, and that one wedged request can no longer hold
-/// every other caller forever: each waiting request fails with its own
-/// `HOST_RPC_TIMEOUT` instead of piling up until `HOST_OVERLOADED`.
-async fn with_request_budget<F>(budget: Option<u64>, fut: F) -> Result<Value, JsonRpcError>
-where
-    F: std::future::Future<Output = Result<Value, JsonRpcError>>,
-{
-    let Some(budget) = budget else {
-        return fut.await;
-    };
-    match tokio::time::timeout(Duration::from_millis(budget), fut).await {
-        Ok(result) => result,
-        Err(_) => {
-            tracing::warn!(
-                budget_ms = budget,
-                "rpc request exceeded its wall-clock budget; slot released"
-            );
-            Err(JsonRpcError {
-                code: -32030,
-                message: format!("host rpc budget of {budget}ms exceeded"),
-                data: Some(json!({ "errorCode": "HOST_RPC_TIMEOUT" })),
-            })
-        }
-    }
 }
 
 fn rpc_err(code: i64, message: impl Into<String>, error_code: &str) -> JsonRpcError {
@@ -1945,6 +1927,11 @@ async fn handle_request(
     }
 
     match method {
+        crate::owner_handoff::inspection::METHOD => {
+            crate::owner_handoff::inspection::handle(state, params)
+                .await
+                .map_err(|_| rpc_err(1000, "owner inspection unavailable", "HANDOFF_UNAVAILABLE"))
+        }
         method if method.starts_with("executionFence.") => {
             crate::execution_fence::handle(state, method, params)
                 .await

@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Add private read-only Rust owner inspection with original Host/generation
+  validation and bounded database reads. Pending requests, startup/setup work
+  and transcript commits remain visible through their original completion;
+  timeout or uncertain cleanup refuses handoff. Full Desktop resource inventory
+  and transfer readiness remain under development.
 - Keep regenerate branch archives and pager updates bound to the Host that
   received the terminal event. A restart during persistence cannot redirect the
   archive or publish a stale result. Pending finalization, archive and follow-up

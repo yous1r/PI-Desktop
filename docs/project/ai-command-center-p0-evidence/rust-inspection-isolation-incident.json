@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "classification": "confirmed_test_isolation_failure",
+  "occurredAt": "2026-11-09T18:43:56.679Z",
+  "failedReport": "owner-inspection-PcM64L/report.json",
+  "failedLog": "h1-rust-inspection-e2e01.log",
+  "exitCode": 1,
+  "scriptSha256": "9651373fea525b1d4da4867d7712797eab0fcc6ef24831059eff7deaa1b8474c",
+  "binarySha256": "c4f8bbe630b5902fc479807ccb433bb843c997a234975bf892e5bfab78174b09",
+  "cause": "The fixture cleared inherited environment fields with undefined values. HostProcess spreads options.env after its data-directory assignment, so PI_DESKTOP_DATA_DIR was removed. Rust uses the Windows known-folder profile, independently of HOME and USERPROFILE.",
+  "confirmedEffects": [
+    "The temporary Host opened the current user's default profile and completed handshake.",
+    "A read-only metadata query confirmed its execution owner: PID 17064, creation FILETIME 134387234329112520, retired=0, image ending in h1-rust-inspection-host.exe.",
+    "The temporary Host exited; the failed fixture report confirmed cleanup. No test session, native runner, tool or provider was started before the failure."
+  ],
+  "unknownEffects": "Normal startup migration, recovery and sweeps may have modified user data. No pre-run baseline exists; exact data changes and absence of impact cannot be established.",
+  "preservation": "No default-profile file, backup or journal row was removed, reset, repaired or rolled back. Investigation queried schema and specific test-owner metadata, not session content.",
+  "disclosure": "The user was informed of confirmed unintended startup and unknown effects.",
+  "correction": "Every fixture Host explicitly supplies PI_DESKTOP_DATA_DIR in its final environment override and checks the expected scratch database after handshake.",
+  "correctedDevelopmentReport": "owner-inspection-HMCRnq/report.json",
+  "qualificationLimit": "A corrected isolated run does not erase the deviation or establish default-profile integrity. Scratch logs and the original incident note remain retained."
+}

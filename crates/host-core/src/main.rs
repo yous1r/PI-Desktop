@@ -146,9 +146,19 @@ async fn run(
     }
     // Drop half-created worktrees, mark vanished ones, repair links after a
     // moved data directory, and remove orphans (ADR 0329).
-    tokio::spawn(session_worktrees::lifecycle::reconcile(
-        state.clone(),
-        session_worktrees::git::GitRunner::default(),
-    ));
+    let startup = state
+        .lock()
+        .await
+        .handoff_activity
+        .begin(owner_handoff::activity::Kind::Background);
+    let startup_state = state.clone();
+    tokio::spawn(async move {
+        session_worktrees::lifecycle::reconcile(
+            startup_state,
+            session_worktrees::git::GitRunner::default(),
+        )
+        .await;
+        startup.finish(true);
+    });
     owner_control.serve(rpc::serve(state)).await
 }

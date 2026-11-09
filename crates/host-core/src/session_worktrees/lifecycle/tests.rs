@@ -210,7 +210,25 @@ async fn the_setup_command_runs_once_and_its_failure_does_not_block() {
     }
     let (session, created, root) = isolated(&env).await;
     assert_eq!(created.worktree.setup_status, Some(SetupStatus::Running));
+    assert_eq!(
+        env.state
+            .lock()
+            .await
+            .handoff_activity
+            .snapshot()
+            .background_tasks,
+        1
+    );
     let row = wait_for_setup(&env, &session).await;
+    assert_eq!(
+        env.state
+            .lock()
+            .await
+            .handoff_activity
+            .snapshot()
+            .background_tasks,
+        0
+    );
     assert_eq!(
         row.setup_status,
         Some(SetupStatus::Ok),
@@ -357,6 +375,7 @@ async fn startup_reconcile_drops_partial_rows_and_marks_vanished_worktrees() {
     fs::remove_dir_all(&root).unwrap();
 
     reconcile(env.state.clone(), env.git.clone()).await;
+    assert!(!env.state.lock().await.handoff_activity.snapshot().uncertain);
 
     let st = env.state.lock().await;
     assert!(registry::for_owner(&st.db, &partial_session, None)
@@ -769,4 +788,20 @@ async fn a_worktree_folder_replaced_by_a_link_is_never_followed() {
         "keep"
     );
     assert!(!git_cmd(&env.project, &["branch", "--list"]).contains(&created.worktree.branch));
+}
+
+#[tokio::test]
+async fn failed_worktree_registry_reads_retain_handoff_uncertainty() {
+    let env = env();
+    env.state
+        .lock()
+        .await
+        .db
+        .conn()
+        .execute_batch("DROP TABLE worktrees")
+        .unwrap();
+    reconcile(env.state.clone(), env.git.clone()).await;
+    assert!(env.state.lock().await.handoff_activity.snapshot().uncertain);
+    assert_eq!(cleanup_orphans(&env.state, &env.git).await, 0);
+    assert!(env.state.lock().await.handoff_activity.snapshot().uncertain);
 }

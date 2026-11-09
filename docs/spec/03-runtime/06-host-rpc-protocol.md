@@ -1586,6 +1586,41 @@ superseded generations refuse. Calls are not automatically replayed on transport
 loss. Native registration is durable in schema v28; a Stop response alone is not
 a successor-admission or transfer-readiness receipt.
 
+## Private running-owner inspection (Windows)
+
+`ownerHandoff.inspect` uses existing authenticated private stdio after handshake.
+It is read-only and is not advertised by discovery. A strict request of at most
+16 KiB contains only `version: 1`, `requestId`, `sourceEpoch`, `profileId` and
+`generation`. UUIDs are canonical and non-nil; the profile is 64 lowercase hex
+characters. Callers cannot supply idle state, counters or native identities.
+
+The response echoes those fields and returns required groups:
+
+- `activity`: safe nonnegative `requests`, `backgroundTasks`, `writes`, and
+  sticky `uncertain` evidence from the original Rust owner.
+- `durable`: boolean `turns`, `queuedTurns`, `plans`, `approvals`,
+  `scheduledRuns`, `modeClaims`, `modeWaits`, `worktrees` from one SQLite statement.
+- `runtime`: boolean `tools`, `backgroundProcesses`, `remoteExecutions`,
+  `pluginExecutions`, `permissions`, `configSync` from their current Rust owners.
+- `nativeCoverage: "execution_generation_only"` and `native`, the original
+  execution-fence status. This does not cover every Host/Desktop native family.
+
+Inspection verifies the original live coordinator handle, owner/profile/epoch,
+  unretired journal owner, open current generation and exact recorded root
+identity against the retained native lease. Lock contention, malformed/missing
+sources and identity mismatch refuse with `HANDOFF_UNAVAILABLE`; diagnostics do
+not echo inputs or database contents. No approval expiry, task recovery, journal
+mutation, admission hold, execution replay or transfer readiness follows.
+
+The method shares the existing 32 RPC slots but excludes its own request from
+activity. Its Host request budget is two seconds. SQLite lock waiting is disabled
+temporarily; a progress hook aborts after 100,000 VM operations or 100 ms checked
+every 1,000 operations. Original timeout policy and the hook are restored on
+success, error and unwind. This cannot bound arbitrary OS/filesystem stalls.
+The TypeScript consumer caps the whole call, including existing overload retries,
+at 2.5 seconds and validates the exact Host object/generation and request identity
+on both success and failure. Late responses never authorize another owner.
+
 ## Restricted owner-handoff bootstrap (Windows)
 
 `--owner-handoff` is an exclusive launch mode, before ordinary AppState and RPC.

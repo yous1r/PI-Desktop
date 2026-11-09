@@ -656,6 +656,23 @@ release or later success. Event and coordination finalization reports can cover
 the same nested obligation; they are conservative busy evidence, not independent
 execution occupancy. Full inventory consumers must respect that overlap.
 
+Rust inspection retains original request, detached startup/worktree setup,
+configuration-sync tick and transcript commit obligations. Reservations precede
+spawn; a blocking writer releases only inside its actual commit closure.
+Cancellation, timeout, panic or failed recovery/commit leaves sticky uncertainty,
+even after a waiter or RPC slot disappears. Handled ordinary RPC errors retain
+their existing semantics. Fixed safe-integer counters do not retain task history.
+
+The private [running-owner inspection](06-host-rpc-protocol.md#private-running-owner-inspection-windows)
+reads durable busy facts without expiring approvals or recovering tasks. Unknown
+or unfinished turns/runs, queued work, pending approvals, mode claims/waits and
+creating/setup/orphan worktrees remain obligations. Configured schedules and
+paused unclaimed modes without a pending gate alone are not execution. Native
+status is bound to the journal and original lease; its coverage is explicitly
+limited to the execution generation. Desktop must still compose all 19 families,
+hold admission and obtain actual native closure before transfer. Inspection
+neither fences background schedulers nor establishes that full composition.
+
 User-configured MCP uses the same application gate for discovery, connection
 tests, tool calls and status probes. Admitted work remains counted through OAuth,
 handshake and original operation completion, including after cache replacement,

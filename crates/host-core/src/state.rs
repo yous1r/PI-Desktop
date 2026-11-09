@@ -29,6 +29,7 @@ const PLUGIN_DELETE_RATE_LIMIT: usize = 20;
 pub struct AppState {
     pub data_dir: std::path::PathBuf,
     pub execution_fence: Option<crate::execution_fence::Registry>,
+    pub handoff_activity: crate::owner_handoff::activity::Activity,
     pub db: Database,
     pub secrets: SecretStore,
     pub workspace: WorkspaceState,
@@ -96,8 +97,13 @@ pub struct AppState {
 }
 
 impl AppState {
+    pub(crate) fn has_pending_permissions(&self) -> bool {
+        !self.pending_permissions.is_empty()
+    }
+
     pub fn open(data_dir: &std::path::Path) -> Result<Self> {
         let db = Database::open_in_dir(data_dir)?;
+        let handoff_activity = crate::owner_handoff::activity::Activity::default();
         crate::scheduled::automation::recover(&db)?;
         // Replies that were still streaming when the previous process ended
         // are promoted into their transcripts before any client can read them
@@ -111,21 +117,30 @@ impl AppState {
                 );
             }
             Ok(_) => {}
-            Err(error) => tracing::warn!(%error, "orphaned session sweep failed"),
+            Err(error) => {
+                handoff_activity.mark_uncertain();
+                tracing::warn!(%error, "orphaned session sweep failed");
+            }
         }
         match crate::sessions::recover_inflight_messages(&db, false) {
             Ok(recovered) if !recovered.is_empty() => {
                 tracing::info!(count = recovered.len(), "recovered in-flight replies");
             }
             Ok(_) => {}
-            Err(error) => tracing::warn!(%error, "in-flight reply sweep failed"),
+            Err(error) => {
+                handoff_activity.mark_uncertain();
+                tracing::warn!(%error, "in-flight reply sweep failed");
+            }
         }
         // A staged mode run's claim dies with the process that dispatched
         // its turn: such runs pause and nothing is replayed.
         match crate::mode_runs::recover(&db) {
             Ok(0) => {}
             Ok(count) => tracing::info!(count, "paused mode runs with stale claims"),
-            Err(error) => tracing::error!(%error, "mode run recovery failed"),
+            Err(error) => {
+                handoff_activity.mark_uncertain();
+                tracing::error!(%error, "mode run recovery failed");
+            }
         }
         let secrets = SecretStore::open(data_dir)?;
         // The marketplace channel is read before the manager builds its first
@@ -145,7 +160,10 @@ impl AppState {
         match crate::plugins::reconcile_all(&db, &secrets, &plugins) {
             Ok(0) => {}
             Ok(count) => tracing::info!(count, "reconciled plugin provider rows"),
-            Err(error) => tracing::warn!(%error, "plugin provider reconciliation failed"),
+            Err(error) => {
+                handoff_activity.mark_uncertain();
+                tracing::warn!(%error, "plugin provider reconciliation failed");
+            }
         }
         let mcp_servers = McpServerRegistry::new(data_dir);
         let user_skills = UserSkillRegistry::new(data_dir);
@@ -153,6 +171,7 @@ impl AppState {
         Ok(Self {
             data_dir: data_dir.to_path_buf(),
             execution_fence: None,
+            handoff_activity,
             db,
             secrets,
             workspace: WorkspaceState::default(),

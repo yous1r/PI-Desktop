@@ -106,6 +106,40 @@ impl Journal {
             Ok(())
         })
     }
+    pub fn inspect_generation(
+        &self,
+        owner: &Owner,
+        id: &str,
+        root: Option<&model::ProcessIdentity>,
+    ) -> Result<()> {
+        owner.validate()?;
+        model::uuid(id)?;
+        super::read_budget::bounded_read(&self.conn, || {
+            let (stored_owner, stored_generation, retired, closed): (String, String, bool, bool) =
+                self.conn.query_row(
+                    "SELECT o.record_json,g.record_json,o.retired,g.closed
+                 FROM execution_owners o JOIN execution_generations g ON g.owner_epoch=o.epoch
+                 WHERE o.epoch=?1 AND o.profile=?2 AND g.id=?3",
+                    params![owner.epoch, owner.profile, id],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                )?;
+            let stored_owner: Owner = model::decode(&stored_owner)?;
+            let generation: Generation = model::decode(&stored_generation)?;
+            stored_owner.validate()?;
+            generation.validate()?;
+            if stored_owner != *owner
+                || retired
+                || closed
+                || generation.id != id
+                || generation.owner_epoch != owner.epoch
+                || generation.profile != owner.profile
+                || generation.root.as_ref() != root
+            {
+                bail!("HANDOFF_OWNER_CHANGED");
+            }
+            Ok(())
+        })
+    }
     pub fn owner(&self, epoch: &str) -> Result<Option<Owner>> {
         let present: bool = self.conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM execution_owners WHERE epoch=?1)",

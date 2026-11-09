@@ -1,9 +1,12 @@
 //! Rust-owned execution registration and idle handoff journal.
+pub(crate) mod activity;
 #[cfg(windows)]
 mod cli;
+pub(crate) mod inspection;
 pub(crate) mod model;
 #[cfg(windows)]
 pub(crate) mod native;
+pub(crate) mod read_budget;
 pub(crate) mod repository;
 #[cfg(any(windows, test))]
 mod service;
