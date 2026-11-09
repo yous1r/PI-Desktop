@@ -2442,3 +2442,48 @@ ended before retirement; the Desktop coordinator need not exit. The next slice
 must order original Sidecar cleanup, replacement Host startup and new Sidecar
 creation, coalesce simultaneous restart requests and preserve ordinary paths.
 No startup/lifecycle wiring is included in this acceptance.
+
+### H1 Windows Desktop backend startup and restart composition
+
+Windows Desktop now starts its Rust Host with execution fencing and constructs
+the concrete Desktop Sidecar behind the native barrier. `DesktopBackendOwner`
+owns original Host/Sidecar lifetimes, serializes both startup kinds, joins
+same-kind reentry and publishes only after configuration and original-binding
+checks. The factory captures the admission guard before preparation and checks
+it before spawn. Live-owner Sidecar replacement requires native Stop and child
+exit; dead-owner replacement first confirms original children and then relies on
+new Rust startup's journal/native proof. Ordinary unfenced rebinding is preserved.
+
+Retired instances retain unfinished extension work with a bound of eight; invalid
+or asynchronous reports never permit pruning. Cleanup uncertainty refuses later
+creation. Quit joins admitted setup, counts closing work through completion,
+stops the Sidecar and native generation before persistence drains, then closes
+the original Host. Host-first crashes run the original ordinary-turn interruption
+path exactly once even when the Sidecar exit notification arrives later. Shared
+supervisor policy and the frozen Rust/Node responsibilities remain unchanged;
+the main entry decreases from 1,128 to 1,127 lines.
+
+Development verification passed 172 unique Desktop cases and 29 runtime cases.
+A final closing-counter correction was then verified by the affected 27 Desktop
+cases plus types/lint/architecture; the clean-candidate run will repeat the entire
+selection. Real isolated Rust/runner/Node tests passed eight checks across four
+Host processes, including descendants, original generation closure, same-Desktop
+Host restart recovery and confirmed cleanup. The original query Host binary was
+reused after exact Rust input/hash equality; Rust tests and Clippy were not rerun.
+Types, lint (416 files), architecture, agent policy, docs (633 pages), whitespace
+and freshly fetched main ancestry passed. Existing documentation advisories remain.
+
+Retained failed evidence distinguishes missing source modules and test dependency
+aliases, incomplete external-service fixtures, a redundant pre-publication bind,
+an old source-string assertion, and the stale-generation query in the native
+fixture. Production regressions separately reproduced admission closure during
+native preparation, Host-first skipped turn settlement and missing closing-work
+counts before correction. No failed log was overwritten. Exact clean-candidate
+acceptance follows separately.
+
+Next: connect original-owner identity/inventory/transfer queries to the production
+coordinator, include retained backend activity, and establish Rust background
+admission plus Worker/resource/native qualification. H1 and the remaining approved
+DAG stay open. Voice remains paused. This slice used explicit scratch profiles;
+the earlier default-profile startup incident and unknown data effects remain
+recorded and are not resolved by these passing checks.

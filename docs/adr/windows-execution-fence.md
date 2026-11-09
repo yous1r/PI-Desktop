@@ -16,7 +16,8 @@ Object leaves a window for preload, plugin initialization and child creation.
 An explicit Windows `--execution-fence` Host mode captures the original parent
 coordinator handle, token SID and creation identity before AppState opens. It
 provides private stdio `executionFence.prepare`, `status` and `stop` operations.
-The ordinary Host protocol stays at version 11; default launches do not opt in.
+The ordinary Host protocol stays at version 11. Windows Desktop now selects this
+mode through its backend lifecycle owner; headless callers retain explicit opt-in.
 The discovery flag may be combined with this mode, but discovery continues to
 advertise only its implemented `status` operation.
 
@@ -55,8 +56,13 @@ a replaced generation is stale. No transmitted operation is automatically replay
 
 `HostProcess.executionFence` and `AgentSidecar.createFenced` expose this path to
 embedding coordinators. `fenceExecution` is separate from ordinary disposal and
-single-child `confirmExit`. Existing constructors and default app launches retain
-their behavior until durable startup/recovery and full resource inventory exist.
+single-child `confirmExit`. Windows Desktop composition retains original children
+across startup, retirement and cross-kind restart; live-owner replacement requires
+Stop plus child exit, while a dead owner's replacement must pass Rust journal
+recovery first. This avoids rebinding a generation to another Host. Existing
+unfenced constructors and non-Windows rebinding remain supported. Native execution
+containment is useful before all-resource inventory is qualified; incomplete
+inventory continues to refuse app transfer. No fallback bypasses native refusal.
 
 ## Consequences
 

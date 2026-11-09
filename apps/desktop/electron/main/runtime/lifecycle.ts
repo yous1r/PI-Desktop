@@ -20,6 +20,7 @@ import type { PluginRuntime } from "../plugin-runtime";
 import type { RuntimeState } from "./context";
 import { syncPluginDisplayLocale } from "../plugin-display-locale";
 import { RuntimeSupervisor } from "@pi-desktop/host-runtime";
+import { DesktopBackendOwner, type DesktopBackendOwnerOptions } from "./backend-owner";
 
 type RestartKind = "host" | "sidecar";
 export type RuntimeLifecycleDependencies = {
@@ -27,8 +28,9 @@ export type RuntimeLifecycleDependencies = {
   dataDir: string;
   logger: Logger;
   sendToRenderer: (channel: string, payload: unknown) => void;
-  startHost: () => Promise<void>;
-  startSidecar: () => Promise<void>;
+  hostStartup: DesktopBackendOwnerOptions<string>["host"];
+  sidecarStartup: DesktopBackendOwnerOptions<string>["sidecar"];
+  fenced: boolean;
   drainApprovedPlanExecutions: () => Promise<void>;
   applyNetworkProxyFromAppSettings: (settings: unknown) => Promise<unknown>;
   plugins: PluginRuntime;
@@ -51,8 +53,9 @@ export function createRuntimeLifecycle({
   dataDir,
   logger,
   sendToRenderer,
-  startHost,
-  startSidecar,
+  hostStartup,
+  sidecarStartup,
+  fenced,
   drainApprovedPlanExecutions,
   applyNetworkProxyFromAppSettings,
   plugins,
@@ -66,9 +69,12 @@ export function createRuntimeLifecycle({
   bootHostStatus: (bootError: unknown) => HostStatusEvent;
   runtimeArch: () => ReturnType<typeof detectRuntimeArch>;
   bootBackends: () => Promise<void>;
+  backends: DesktopBackendOwner<string>;
 } {
   let runtimeArchCache: ReturnType<typeof detectRuntimeArch> | null = null;
   const admission = runtimeState.handoffAdmission;
+  const backends = new DesktopBackendOwner({ runtimeState, fenced, isQuitting, host: hostStartup, sidecar: sidecarStartup });
+  const { startHost, startSidecar } = backends;
   const assertAdmission = (): void => {
     if (isQuitting() || admission.isClosed()) {
       throw Object.assign(new Error("HOST_BUSY"), { errorCode: "HOST_BUSY" });
@@ -116,9 +122,9 @@ export function createRuntimeLifecycle({
       host: async () => {
         await startHost();
         assertAdmission();
-        const sidecar = runtimeState.sidecar;
+        await startSidecar();
+        assertAdmission();
         const host = runtimeState.host;
-        if (sidecar && host) sidecar.setHost(host);
         // A fresh host process starts in English, so the app language and
         // the language-dependent rows it draws have to be restored here:
         // nothing else re-applies settings after a crash.
@@ -333,5 +339,5 @@ export function createRuntimeLifecycle({
     assertHost();
   });
 
-  return { superviseRestart, bootHostStatus, runtimeArch, bootBackends };
+  return { superviseRestart, bootHostStatus, runtimeArch, bootBackends, backends };
 }

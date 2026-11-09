@@ -4,7 +4,7 @@ import { ExecutionFence } from "./execution-fence.js";
 type Cleanup = Pick<AgentSidecar, "dispose" | "confirmExit">;
 const constructionCleanup = Symbol("sidecar construction cleanup");
 type ConstructionLaunch = SidecarLaunch & { [constructionCleanup]?: (cleanup: Cleanup) => void };
-export type FencedSidecarOptions = AgentSidecarOptions & { host: SidecarHostLink; binaryPath: string };
+export type FencedSidecarOptions = AgentSidecarOptions & { host: SidecarHostLink; binaryPath: string; assertLaunch?: () => void };
 
 /** Capture the original transport even when a derived constructor throws after spawn. */
 export function retainSidecarConstruction(launch: SidecarLaunch, cleanup: Cleanup): void {
@@ -17,10 +17,13 @@ export async function createFencedSidecar<T extends AgentSidecar>(
   construct: (options: AgentSidecarOptions) => T,
   attach: (sidecar: T, fence: ExecutionFence) => void,
 ): Promise<T> {
-  const { host, binaryPath, launch, onStderr } = options;
+  const { host, binaryPath, launch, onStderr, assertLaunch } = options;
+  assertLaunch?.();
   const prepared = await ExecutionFence.prepare(host, binaryPath, launch);
   let cleanup: Cleanup | undefined;
   try {
+    prepared.fence.assertHost(host);
+    assertLaunch?.();
     prepared.fence.assertHost(host);
     const ownedLaunch: ConstructionLaunch = { ...prepared.launch,
       [constructionCleanup]: owner => { cleanup = owner; } };
@@ -28,6 +31,8 @@ export async function createFencedSidecar<T extends AgentSidecar>(
     cleanup = sidecar;
     attach(sidecar, prepared.fence);
     sidecar.setHost(host);
+    prepared.fence.assertHost(host);
+    assertLaunch?.();
     prepared.fence.assertHost(host);
     return sidecar;
   } catch (error) {

@@ -1,21 +1,26 @@
 # Unreleased changes
 
+- Start Windows Desktop agents inside the Rust execution fence. Serialize Host
+  and Sidecar startup/restart, retain original children through cleanup, and
+  require native closure or Rust owner recovery before replacement. Publish only
+  after configuration; quit waits for admitted setup and preserves persistence
+  ordering. Full idle handoff remains unavailable pending resource qualification.
 - Keep fenced Sidecars bound to their original Host and generation. Refuse
   replacement before extension effects and reject stale status/Stop responses;
-  Host exit or fencing cannot revive the old binding. Ordinary rebinding and
-  default startup remain unchanged.
+  Host exit or fencing cannot revive the old binding. Ordinary unfenced rebinding
+  remains supported.
 - Preserve Desktop Sidecar extension/resource tracking when creating a fenced
   process. Capture original launch parameters before Rust preparation and clean
   up the original child and native generation after construction/binding failure;
-  missing closure proof remains an error. Default startup is unchanged.
+  missing closure proof remains an error.
 - Add bounded private original-owner identity and transfer queries over Rust
   stdio. Exact retained owner/journal checks and stale-response refusal support
   Desktop composition without enabling handoff or bypassing qualification gaps.
 - Add the original-owner Desktop inventory reader for all 19 handoff fields.
   Required resource reports, retained writes and retired owners remain visible;
   malformed reports, overflow and replaced authority refuse inspection. Fixed
-  qualification gaps preserve refusal while startup/transfer composition,
-  Worker classification and native closure remain incomplete; Voice is paused.
+  qualification gaps preserve refusal while transfer composition, Worker
+  classification and native closure remain incomplete; Voice is paused.
 - Add private read-only Rust owner inspection with original Host/generation
   validation and bounded database reads. Pending requests, startup/setup work
   and transcript commits remain visible through their original completion;

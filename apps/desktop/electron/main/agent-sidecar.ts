@@ -61,6 +61,16 @@ function fallbackStderrLogger(text: string): void {
   );
 }
 
+export function desktopSidecarLaunch(): ConstructorParameters<typeof RuntimeAgentSidecar>[0]["launch"] {
+  return {
+    command: process.execPath,
+    // macOS Electron replaces bundled roots with --use-system-ca. The runtime
+    // merges its bundled/system/extra roots there; keep the flag elsewhere.
+    args: ["--max-old-space-size=2048", ...(process.platform === "darwin" ? [] : ["--use-system-ca"]), resolveSidecarEntry()],
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+  };
+}
+
 /**
  * The desktop's agent sidecar: the shared stdio transport from
  * `@pi-desktop/host-runtime`, launched the only way Electron can run Node
@@ -214,26 +224,7 @@ export class AgentSidecar extends RuntimeAgentSidecar {
   }
   constructor(onStderr?: StderrHandler, launch?: ConstructorParameters<typeof RuntimeAgentSidecar>[0]["launch"]) {
     super({
-      launch: launch ?? {
-        command: process.execPath,
-        // Keep the OS trust store available to the sidecar. On macOS the
-        // Electron 43 build applies `--use-system-ca` by replacing the
-        // bundled roots instead of adding them (its keychain enumeration
-        // misses public anchors like GlobalSign Root CA - R3, issue #1187),
-        // so there the sidecar merges bundled + system + extra CAs itself
-        // (agent-runtime system-ca) and this launcher omits the flag. On
-        // Windows and Linux the flag behaves as documented and stays.
-        // Never bypass TLS verification.
-        args: [
-          "--max-old-space-size=2048",
-          ...(process.platform === "darwin" ? [] : ["--use-system-ca"]),
-          resolveSidecarEntry(),
-        ],
-        env: {
-          ...process.env,
-          ELECTRON_RUN_AS_NODE: "1",
-        },
-      },
+      launch: launch ?? desktopSidecarLaunch(),
       onStderr: onStderr ?? fallbackStderrLogger,
     });
     this.onExit(() => this.disposeExtensionOwner());

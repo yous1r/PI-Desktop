@@ -100,11 +100,12 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
   registerShutdownHandlers({
     hasSingleInstanceLock: true, state,
     getHost: () => host,
-    getSidecar: () => ({ shutdown: async () => {
+    getSidecar: () => null,
+    backends: { closeHost: () => host.dispose(), closeSidecar: async () => {
       assert.equal(pluginsDisposed, false, "extension shutdown requires live owner plugin services");
       assert.equal(hostDisposed, false, "extension shutdown requires live host context");
       sidecarStopped.resolve();
-    } }),
+    } },
     getMcpControl: () => null, activeTurns, persistenceOutbox: outbox,
     inflightCheckpointer: checkpoint,
     flushEventPersistence: () => persistence.flush(),
@@ -200,6 +201,7 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
     persistenceOutbox: { flush: async () => {}, size: () => 0 },
     inflightCheckpointer: { flushAll: async () => {}, dispose },
     flushEventPersistence: async () => {},
+    backends: { closeSidecar: async () => {}, closeHost: async () => {} },
     pluginPanels: { closeAll: async () => {} },
     plugins: { disposeAll: async () => {} },
     userMcp: { disposeAll: dispose },
@@ -287,6 +289,7 @@ test("personal todo preparation blocks disposal and permits a cancelled quit to 
     persistenceOutbox: { flush: async () => {}, size: () => 0 },
     inflightCheckpointer: { flushAll: async () => {}, dispose },
     flushEventPersistence: async () => {},
+    backends: { closeSidecar: async () => {}, closeHost: async () => { hostDisposed = true; } },
     pluginPanels: { closeAll: async () => {} },
     plugins: { disposeAll: async () => {} }, userMcp: { disposeAll: dispose },
     speech: { dispose() { speechDisposed = true; } },

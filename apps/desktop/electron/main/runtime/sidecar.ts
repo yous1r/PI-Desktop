@@ -17,7 +17,9 @@ import { createImageGenerationTool } from "../services/image-generation-service"
 import { registerPluginDevTools } from "../plugin-dev-tools";
 import { resolveLocalFile } from "../browser-view";
 import { catalogModelConfigFor } from "../models-dev-catalog";
-import { AgentSidecar } from "../agent-sidecar";
+import { AgentSidecar, desktopSidecarLaunch } from "../agent-sidecar";
+import { DESKTOP_EXECUTION_FENCED } from "../host-process";
+import type { DesktopBackendOwnerOptions } from "./backend-owner";
 import { relaxedNetworkPolicyEnabled } from "../endpoint-policy";
 import { OAUTH_AUTH_KIND, type VendorOAuth } from "../oauth";
 import type { AgentExtensionBridge } from "../agent-extensions";
@@ -105,7 +107,7 @@ export function createSidecarRuntime({
 }: SidecarRuntimeDependencies): {
   emitAgentEvent: (envelope: AgentEventEnvelope) => void;
   wireSidecar: (sidecar: AgentSidecar) => void;
-  startSidecar: () => Promise<void>;
+  startup: DesktopBackendOwnerOptions<string>["sidecar"];
 } {
   const emitAgentEvent = (envelope: AgentEventEnvelope) => {
     // A terminal event for a turn that no longer owns its session must not clear
@@ -189,6 +191,7 @@ export function createSidecarRuntime({
       );
     }
   };
+  const retirements = new WeakMap<AgentSidecar, () => void>();
   const wireSidecar = (s: AgentSidecar) => {
 
 
@@ -293,7 +296,7 @@ export function createSidecarRuntime({
     // permissions.request reaches the renderer once, via wireHost; the
     // sidecar no longer relays it (agent-sidecar.setHost filters it out).
   });
-  s.onExit(({ code, signal, intentional, stderrTail }) => {
+  const handleExit = ({ code, signal, intentional, stderrTail }: Parameters<Parameters<AgentSidecar["onExit"]>[0]>[0], replacingHost = false) => {
     if (runtimeState.sidecar !== s) return;
     logger.flushChild("agent");
     const interruptedToolCalls = [...activeToolCalls.values()];
@@ -313,7 +316,7 @@ export function createSidecarRuntime({
           toolName: tool.toolName,
           outcome: "interrupted",
           durationMs: Math.max(0, Date.now() - tool.startedAt),
-          reason: "agent_sidecar_exit",
+          reason: replacingHost ? "agent_host_replaced" : "agent_sidecar_exit",
           exitCode: code,
           signal,
         },
@@ -349,7 +352,7 @@ export function createSidecarRuntime({
         "PLAN_EXECUTION_INTERRUPTED",
       );
     }
-    logger.app("runtime", "error", "agent sidecar exited unexpectedly", {
+    logger.app("runtime", "error", replacingHost ? "agent sidecar retired after Host loss" : "agent sidecar exited unexpectedly", {
       data: {
         exitCode: code,
         signal,
@@ -363,12 +366,22 @@ export function createSidecarRuntime({
       component: "sidecar",
       restarting: true,
     });
-    void superviseRestart("sidecar");
-  });
+    if (!replacingHost) void superviseRestart("sidecar");
   };
-  const startSidecar = async (): Promise<void> => {
-
-  const s = new AgentSidecar((text) => logger.child("agent", text));
+  s.onExit(handleExit);
+  retirements.set(s, () => handleExit({ code: null, signal: null, intentional: false, stderrTail: [] }, true));
+  };
+  const startup: DesktopBackendOwnerOptions<string>["sidecar"] = {
+    retire: s => retirements.get(s)?.(),
+    create: (host, assertCurrent) => {
+      assertCurrent();
+      const onStderr = (text: string) => logger.child("agent", text);
+      return DESKTOP_EXECUTION_FENCED
+        ? AgentSidecar.createFenced({ host, binaryPath: host.binaryPath, launch: desktopSidecarLaunch(), onStderr, assertLaunch: assertCurrent })
+        : new AgentSidecar(onStderr);
+    },
+    configure: async (s, host, assertCurrent) => {
+  assertCurrent();
   wireSidecar(s);
   const processClient = (hostKey: string) => {
     const boot = getActiveRemoteHostsBoot();
@@ -674,15 +687,16 @@ export function createSidecarRuntime({
       sendToRenderer(IPC.event.pluginChanged,{ reason: "scaffold" });
     },
   });
-  runtimeState.sidecar = s;
-  if (runtimeState.host) s.setHost(runtimeState.host);
+  assertCurrent();
   await s.call("sidecar.configure", {
-    hostBinary: runtimeState.host?.binaryPath,
+    hostBinary: host.binaryPath,
     dataDir,
     networkProxy: currentNetworkProxy(),
     systemProxyRelayUrl: currentSystemProxyRelayUrl(),
   });
+  assertCurrent();
   logger.app("runtime", "info", "agent sidecar configured");
+    },
   };
-  return { emitAgentEvent, wireSidecar, startSidecar };
+  return { emitAgentEvent, wireSidecar, startup };
 }

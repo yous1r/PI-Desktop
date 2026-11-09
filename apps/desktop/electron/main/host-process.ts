@@ -106,6 +106,8 @@ function fallbackStderrLogger(text: string): void {
   );
 }
 
+export const DESKTOP_EXECUTION_FENCED = process.platform === "win32";
+
 /**
  * The desktop's host-core child: the shared stdio transport from
  * `@pi-desktop/host-runtime` plus the two things only Electron knows — where
@@ -118,6 +120,7 @@ export class HostProcess extends RuntimeHostProcess {
     super({
       binaryPath: resolveHostBinary(),
       dataDir,
+      executionFence: DESKTOP_EXECUTION_FENCED,
       // Only Electron knows whether this build runs from `resources/` or a
       // source checkout, so it resolves the bundled-plugin directory and
       // host-core simply reconciles its registry against it (ADR 0105).

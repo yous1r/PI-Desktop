@@ -9,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { database, harness, until } from './e2e/owner-handoff-fixture.mjs';
 import { verifyOwnerQueries } from './e2e/owner-query.mjs';
 import { verifyDesktopSidecarFactory } from './e2e/desktop-sidecar-factory.mjs';
+import { verifyDesktopBackendOwner } from './e2e/desktop-backend-owner.mjs';
 
 assert.equal(process.platform, 'win32');
 assert.ok(process.env.PI_SCRATCH_DIR && process.env.PI_DESKTOP_HOST_BIN);
@@ -25,7 +26,7 @@ await writeFile(runtimeExports, [
   `export { AgentSidecar } from ${JSON.stringify(join(root, 'packages/host-runtime/src/agent-sidecar.ts').replaceAll('\\', '/'))};`,
 ].join('\n'));
 const built = await build({ absWorkingDir: root, stdin: { resolveDir: root, contents:
-  'export { HostProcess } from "./packages/host-runtime/src/host-process.ts"; export { AgentSidecar as DesktopSidecar } from "./apps/desktop/electron/main/agent-sidecar.ts"; export { inspectOwnerHandoff } from "./packages/host-runtime/src/owner-handoff-inspection.ts"; export { queryOwnerHandoffIdentity, readOwnerHandoffTransfer } from "./packages/host-runtime/src/owner-handoff-query.ts"; export { verifyDesktopInventory } from "./scripts/e2e/desktop-handoff-inventory.mjs";' },
+  'export { HostProcess } from "./packages/host-runtime/src/host-process.ts"; export { AgentSidecar as DesktopSidecar } from "./apps/desktop/electron/main/agent-sidecar.ts"; export { DesktopBackendOwner } from "./apps/desktop/electron/main/runtime/backend-owner.ts"; export { DesktopHandoffAdmission } from "./apps/desktop/electron/main/runtime/handoff-admission.ts"; export { inspectOwnerHandoff } from "./packages/host-runtime/src/owner-handoff-inspection.ts"; export { queryOwnerHandoffIdentity, readOwnerHandoffTransfer } from "./packages/host-runtime/src/owner-handoff-query.ts"; export { verifyDesktopInventory } from "./scripts/e2e/desktop-handoff-inventory.mjs";' },
   outfile: bundle, bundle: true, format: 'esm', platform: 'node', metafile: true,
   alias: { '@pi-desktop/shared': join(root, 'packages/shared/src/index.ts'),
     '@pi-desktop/host-runtime': runtimeExports,
@@ -36,7 +37,7 @@ for (const input of Object.keys(built.metafile.inputs).filter(input => input !==
   inputs.push({ path: input.replaceAll('\\', '/'), sha256: hash(await readFile(resolve(root, input))) });
 }
 await writeFile(join(directory, 'build-inputs.json'), JSON.stringify(inputs, null, 2) + '\n');
-const { HostProcess, DesktopSidecar, inspectOwnerHandoff, queryOwnerHandoffIdentity, readOwnerHandoffTransfer, verifyDesktopInventory } = await import(pathToFileURL(bundle));
+const { HostProcess, DesktopSidecar, DesktopBackendOwner, DesktopHandoffAdmission, inspectOwnerHandoff, queryOwnerHandoffIdentity, readOwnerHandoffTransfer, verifyDesktopInventory } = await import(pathToFileURL(bundle));
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const report = { status: 'FAIL', candidate: git('rev-parse', 'HEAD'), base: git('rev-parse', 'origin/main'),
   dirty: git('status', '--porcelain').length > 0, binarySha256: hash(await readFile(binary)),
@@ -66,6 +67,8 @@ try {
   passed('production owner identity and transfer queries bind original journal authority before Sidecar startup and refuse mismatched records');
   await verifyDesktopSidecarFactory(DesktopSidecar, source, binary, { ...env, PI_DESKTOP_DATA_DIR: profile }, directory);
   passed('real Desktop Sidecar factory retains subclass tracking and confirms original native cleanup after success, binding failure and derived constructor failure');
+  await verifyDesktopBackendOwner({ DesktopBackendOwner, DesktopSidecar, DesktopHandoffAdmission }, host, binary, env, directory);
+  passed('real Desktop backend owner serializes startup and restart, closes original descendant generations and verifies Rust owner recovery before replacement');
   ticket = await source.call('executionFence.prepare', {});
   const runner = h.launch(binary, ['--internal-execution-runner', '--', process.execPath, '-e', 'process.stdin.resume()'], profile,
     { PI_EXECUTION_TICKET: JSON.stringify(ticket) });

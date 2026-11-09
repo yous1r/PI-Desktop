@@ -487,6 +487,10 @@ then requires both native closure and original-child exit. Missing confirmation
 or cleanup errors produce `EXECUTION_FENCE_CLEANUP_UNCONFIRMED` with the original
 failure retained; no replacement Host, fallback launch or replay is selected.
 Successful construction alone does not certify handshake or transfer readiness.
+The embedding startup guard is captured before preparation and checked before
+prepare, before native runner spawn and after binding. Admission or original
+owner changes during preparation prevent spawn; the original ticket is still
+closed through the native failure path.
 
 A fenced Sidecar binds only its original Host object and captured generation.
 Replacement binding refuses before Desktop extension callbacks or subscriptions;
@@ -498,10 +502,30 @@ including rejection. A changed transport cannot receive cleanup RPCs, so cleanup
 remains unconfirmed. Observation is released on failed creation, transport
 closure or confirmed Stop. Ordinary unfenced rebinding remains supported.
 
-This additive path is available to coordinators; default Desktop/headless launch
-is unchanged. It does not adopt unrelated applications or other process families.
-All-resource idle handoff and readiness remain separate prerequisites. Other
-platforms refuse this mode. See [the execution-fence ADR](../../adr/windows-execution-fence.md).
+Windows Desktop enables this path for its Rust Host and concrete Sidecar.
+`DesktopBackendOwner` serializes Host/Sidecar startup across both supervisor
+kinds, joins same-kind calls, retains original objects after current references
+are cleared, and publishes the Sidecar only after configuration and original
+binding/admission checks. Supervisor retry budgets and backoff remain unchanged.
+
+A Sidecar restart under a live original Host requires native Stop confirmation
+and original-child exit before a replacement generation starts. Host replacement
+first disposes the old Sidecar and confirms the old Host/child exits; the new
+Rust Host must complete journal/native recovery before new execution. A late
+Sidecar exit cannot skip or duplicate ordinary-turn interruption when Host loss
+triggers its retirement first. No execution is replayed. Failed cleanup refuses
+further creation and remains visible. Up to eight retired Sidecars retain delayed
+extension work; only confirmed native/child closure plus strict synchronous empty
+owner/process/service reports permit removal. Capacity exhaustion refuses startup.
+
+Quit seals new startup, joins admitted setup, gracefully stops the original
+Sidecar, and requests native closure. Terminal persistence drains while the Host
+is still alive; only then is the original Host closed. Cleanup failures are
+observable and do not become native-family proof. Ordinary non-Windows Host
+replacement preserves unfenced Sidecar rebinding; headless opt-in is unchanged.
+Unrelated applications and other resource families are not adopted. All-resource
+idle handoff and readiness remain separate prerequisites. See
+[the execution-fence ADR](../../adr/windows-execution-fence.md).
 
 ## Durable owner registration and restricted recovery
 
@@ -535,7 +559,7 @@ The restricted mode holds the OS lock until exit. Its operations do not publish
 `ready`, admit execution, replay turns/tools or change permission modes. A receipt
 is a historical operation result, not execution authorization. Complete idle
 inventory, source prepare/cancel/fencing, successor readiness and client
-reattachment remain the next integration slice. Default app launch is unchanged.
+reattachment remain the next integration slice. Restricted startup never enables execution.
 The [private transport contract](06-host-rpc-protocol.md#restricted-owner-handoff-bootstrap-windows)
 defines framing and timeout behavior.
 
@@ -721,8 +745,9 @@ fixed qualification gaps retain refusal for Rust background admission, native
 resources outside the execution generation, updater, model catalog, vendor
 OAuth, MCP control, personal todos, Electron surfaces/listeners, independent
 Worker classification, and paused Voice/LiveVoice. These gaps cannot be cleared by a caller flag or an empty known
-report. No Voice runtime is initialized by inspection. Full factory/lifecycle
-composition and native closure remain required before enabling handoff.
+report. No Voice runtime is initialized by inspection. Production fenced startup
+is composed separately; complete inventory/coordinator composition and native
+closure of every required resource family remain necessary before handoff.
 
 User-configured MCP uses the same application gate for discovery, connection
 tests, tool calls and status probes. Admitted work remains counted through OAuth,

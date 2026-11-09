@@ -243,7 +243,7 @@ test("app quit waits for one idempotent teardown before allowing the follow-up q
   // bridge failure nobody can act on.
   assert.ok(
     shutdownSource.indexOf("await pluginSurfacesShutdown") <
-      shutdownSource.indexOf("getHost()?.dispose()"),
+      shutdownSource.indexOf("backends.closeHost()"),
     "panel and view pages must be gone before the host stops",
   );
   assert.ok(

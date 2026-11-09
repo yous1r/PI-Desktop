@@ -21,6 +21,7 @@ import type { SpeechService } from "../services/speech-service";
 import { disposeWorkspaceTerminals } from "./workspace-terminals";
 import type { DesktopHandoffAdmission } from "../runtime/handoff-admission";
 import type { PlanRuntime } from "../runtime/plans";
+import type { DesktopBackendOwner } from "../runtime/backend-owner";
 
 const QUIT_TURN_SETTLE_BUDGET_MS = 2_000;
 
@@ -47,6 +48,7 @@ export type ShutdownDependencies = {
   persistenceOutbox: PersistenceOutbox;
   inflightCheckpointer: InflightCheckpointer;
   flushEventPersistence: () => Promise<void>;
+  backends: Pick<DesktopBackendOwner<string>, "closeSidecar" | "closeHost">;
   pluginPanels: Pick<PluginPanelHost, "closeAll">;
   plugins: Pick<PluginRuntime, "disposeAll">;
   userMcp: Pick<UserMcpRuntime, "disposeAll">;
@@ -77,6 +79,7 @@ export function registerShutdownHandlers({
   persistenceOutbox,
   inflightCheckpointer,
   flushEventPersistence,
+  backends,
   pluginPanels,
   plugins,
   userMcp,
@@ -223,8 +226,8 @@ export function registerShutdownHandlers({
       // Stop event production before draining the terminal writes. A finished
       // turn can already have left activeTurns while its branch archive is
       // still awaiting the host; closing host-core first loses that archive.
-      const sidecarShutdown = getSidecar()?.shutdown();
-      await Promise.allSettled([sidecarShutdown]);
+      const sidecarShutdown = backends.closeSidecar();
+      await sidecarShutdown.catch(error => logger.app("lifecycle", "warn", "sidecar shutdown unconfirmed", { data: String(error) }));
       await inflightCheckpointer.flushAll();
       let persistenceTimer: ReturnType<typeof setTimeout> | undefined;
       try {
@@ -241,7 +244,7 @@ export function registerShutdownHandlers({
         if (persistenceTimer) clearTimeout(persistenceTimer);
       }
       await persistenceOutbox.flush(getHost);
-      const hostShutdown = getHost()?.dispose();
+      const hostShutdown = backends.closeHost();
       const mcpShutdown = getMcpControl()?.stop();
       updater.dispose();
       // Plugin hosts are stopped as a shutdown, not left for the process teardown

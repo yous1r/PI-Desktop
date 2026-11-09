@@ -289,3 +289,14 @@ for (const during of ["prepare", "binding"]) test(`original Host exit during ${d
   if (during === "prepare") assert.deepEqual(f.launches, []);
   else assert.equal(f.child.exitCode, 0);
 });
+
+test("admission closing during native preparation refuses spawn and closes the original ticket", async t => {
+  const prepare = Promise.withResolvers(), f = fixture(t, { prepare });
+  let open = true;
+  const originalGuard = () => { if (!open) throw new Error("HOST_BUSY"); };
+  const creating = AgentSidecar.createFenced({ ...f.options, assertLaunch: originalGuard });
+  open = false; prepare.resolve(ticket);
+  await assert.rejects(creating, /HOST_BUSY/);
+  assert.equal(f.launches.length, 0);
+  assert.equal(f.calls.filter(call => call.method === "executionFence.stop").length, 1);
+});

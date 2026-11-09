@@ -1,6 +1,6 @@
 import { ErrorCodes, IPC, type AgentEventEnvelope, type PlanExecutionFinishStatus, type Risk } from "@pi-desktop/shared";
 import { assertLinuxGlibcSupported } from "../linux-glibc";
-import { HostProcess } from "../host-process";
+import { HostProcess, DESKTOP_EXECUTION_FENCED } from "../host-process";
 import type { Logger } from "../logger";
 import type { PersistenceOutbox } from "../persistence-outbox";
 import type { PluginRuntime } from "../plugin-runtime";
@@ -9,6 +9,7 @@ import type { RuntimeState } from "./context";
 import type { FinishTurn } from "./plans";
 import { getActiveRemoteHostsBoot } from "../bootstrap/remote-hosts";
 import { createRemoteWorkspaceToolRelay, type RemoteWorkspaceToolRequest } from "../remote/remote-workspace-tools";
+import type { DesktopBackendOwnerOptions } from "./backend-owner";
 
 export type HostRuntimeDependencies = {
   runtimeState: RuntimeState;
@@ -75,7 +76,8 @@ export function createHostRuntime({
   ensureSystemProxyRelay,
 }: HostRuntimeDependencies): {
   wireHost: (host: HostProcess) => void;
-  startHost: () => Promise<void>;
+  fenced: boolean;
+  startup: DesktopBackendOwnerOptions<string>["host"];
 } {
   const wireHost = (h: HostProcess) => {
   const remoteTools = createRemoteWorkspaceToolRelay(h, {
@@ -411,18 +413,19 @@ export function createHostRuntime({
     void superviseRestart("host");
   });
   };
-  const startHost = async (): Promise<void> => {
-
-  assertLinuxGlibcSupported();
-  const systemProxyRelayUrl = await ensureSystemProxyRelay();
-  const h = new HostProcess(dataDir, (text) => logger.child("host", text));
-  wireHost(h);
-  runtimeState.host = h;
-  try {
-    await h.handshake();
-    await h.call("network.configureSystemProxyRelay", {
-      url: systemProxyRelayUrl,
-    });
+  const startup: DesktopBackendOwnerOptions<string>["host"] = {
+    prepare: async () => {
+      assertLinuxGlibcSupported();
+      return ensureSystemProxyRelay();
+    },
+    create: () => new HostProcess(dataDir, (text) => logger.child("host", text)),
+    configure: async (h, systemProxyRelayUrl, assertCurrent) => {
+      wireHost(h);
+      assertCurrent();
+      await h.handshake();
+      assertCurrent();
+      await h.call("network.configureSystemProxyRelay", { url: systemProxyRelayUrl });
+      assertCurrent();
     logger.app("runtime", "info", "host-core handshake ok", {
       data: { generation: h.generation },
     });
@@ -433,19 +436,18 @@ export function createHostRuntime({
     // completed checkpoints in place so this drain can land the finished
     // row first; leftovers are then promoted as complete.
     await persistenceOutbox.flush(() => runtimeState.host);
+    assertCurrent();
     try {
       await h.call("session.recoverInflightMessages");
+      assertCurrent();
     } catch (error) {
+      assertCurrent();
       logger.app("persistence", "warn", "in-flight reply recovery after outbox drain failed", {
         data: String(error),
       });
     }
-  } catch (error) {
-    if (runtimeState.host === h) runtimeState.host = null;
-    logger.flushChild("host");
-    await h.dispose();
-    throw error;
-  }
+    assertCurrent();
+    },
   };
-  return { wireHost, startHost };
+  return { wireHost, startup, fenced: DESKTOP_EXECUTION_FENCED };
 }

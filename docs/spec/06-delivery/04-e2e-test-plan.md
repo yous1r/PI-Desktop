@@ -19997,8 +19997,13 @@ session data is used.
   verify refusal and record preservation. Create a real fenced Desktop Sidecar,
   hold/complete an RPC and inspect extension activity; confirm native closure
   and original-child exit. Inject binding and derived-constructor failures and
-  verify cleanup on the original Rust generation. Register another real contained
-  native runner; inspect startup settlement, then
+  verify cleanup on the original Rust generation. In another explicit scratch
+  profile, compose the Desktop backend owner with real Host/runner/Node children:
+  start concurrently, create a descendant, exit the root, replace the Sidecar only
+  after original native Stop, then close the original Host and restart both kinds.
+  Verify old owner retirement through Rust recovery and exactly one replacement
+  pair. Confirm graceful Sidecar closure precedes Host disposal. Register another
+  contained native runner; inspect startup settlement, then
   create a session, begin a turn, checkpoint its partial reply, end and recover
   it. Exercise real Desktop outbox/checkpoint disposal and admission refusal
   through the Rust report. Other Desktop resource owners are explicit fixtures.
@@ -20007,7 +20012,7 @@ session data is used.
 - **Expected:** Own inspection is not execution activity; live generation is
   not certified closed. Durable turn facts follow the real user path without
   losing the aborted reply. Identity mismatch and missing authority refuse;
-  original native Stop and both Host exits are confirmed, with artifact hashes.
+  original native Stop and all four Host exits are confirmed, with artifact hashes.
 - **Lower-level coverage:** Strict bounded request/report contracts, original
   Host replacement on success and rejection, timeout/late failure, real SQLite
   read-only approval preservation and missing source refusal, scan/lock budget
@@ -20021,6 +20026,14 @@ session data is used.
   reentry, and stale successful/rejected status/Stop responses. The real process
   path also refuses replacement and post-Stop binding; ordinary unfenced mode
   rebinding remains covered by `handoff-mode-services.test.mjs`.
+  `handoff-backend-owner.test.mjs` covers setup/cleanup races, original identity,
+  gate/quit closure, sticky uncertainty, failed recovery retries, bounded retired
+  resources, invalid reports, ordinary rebinding and reentry. The production
+  `handoff-backend-wiring.test.mjs` executes Host/Sidecar startup, lifecycle and
+  extension-service wiring with only Electron, OS/RPC and unused external-service
+  boundaries as fixtures; it covers configuration failure, concurrent crashes,
+  and Host-first interruption of ordinary turns without duplicate settlement.
+  Factory guard tests prove admission closure during prepare prevents spawn.
 - **Boundary:** Native coverage is only the execution generation. No complete
   Desktop inventory, admission hold, source transfer or readiness is established.
   HOME/USERPROFILE do not isolate Rust's Windows known-folder default profile.

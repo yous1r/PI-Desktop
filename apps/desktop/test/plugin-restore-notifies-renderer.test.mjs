@@ -5,6 +5,7 @@ import ts from "typescript";
 import { register } from "node:module";
 register(new URL("./helpers/current-source-import-hooks.mjs", import.meta.url));
 const { DesktopHandoffAdmission } = await import("../electron/main/runtime/handoff-admission.ts");
+const { DesktopBackendOwner } = await import("../electron/main/runtime/backend-owner.ts");
 
 function loadLifecycle(imports) {
   const source = readFileSync(
@@ -46,6 +47,7 @@ test("startup plugin restore notifies the renderer after every enabled plugin lo
   const firstStarted = deferred();
   const secondStarted = deferred();
   const createRuntimeLifecycle = loadLifecycle({
+    "./backend-owner": { DesktopBackendOwner },
     "node:fs": { mkdirSync() {} },
     "node:path": { join: (...parts) => parts.join("/") },
     "@pi-desktop/shared": {
@@ -80,6 +82,7 @@ test("startup plugin restore notifies the renderer after every enabled plugin lo
   const runtimeState = {
     handoffAdmission: new DesktopHandoffAdmission(),
     host: {
+      generation: "fixture", isAvailable: () => true, onExit: () => () => {},
       call: async (method) => {
         if (method === "settings.get") return {};
         if (method === "workspace.get") return { workspace: { path: "/workspace" } };
@@ -89,6 +92,8 @@ test("startup plugin restore notifies the renderer after every enabled plugin lo
     },
     sidecar: null,
   };
+  const host = runtimeState.host;
+  runtimeState.host = null;
   t.after(() => runtimeState.handoffAdmission.dispose());
   const plugins = {
     setServices() {},
@@ -115,8 +120,9 @@ test("startup plugin restore notifies the renderer after every enabled plugin lo
       events.push({ channel, payload });
       order.push(`sent:${payload.reason}`);
     },
-    startHost: async () => {},
-    startSidecar: async () => {},
+    fenced: false,
+    hostStartup: { prepare: async () => "", create: () => host, configure: async () => {} },
+    sidecarStartup: { create: () => ({ onExit: () => () => {}, setHost() {}, captureHostBinding: () => () => true }), configure: async () => {} },
     drainApprovedPlanExecutions: async () => {},
     applyNetworkProxyFromAppSettings: async () => {},
     plugins,

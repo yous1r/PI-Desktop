@@ -801,9 +801,8 @@ const sidecarRuntime = createSidecarRuntime({
   currentNetworkProxy,
 });
 emitAgentEvent = sidecarRuntime.emitAgentEvent;
-const { startSidecar } = sidecarRuntime;
 
-const { startHost } = createHostRuntime({
+const hostRuntime = createHostRuntime({
   runtimeState,
   dataDir,
   logger,
@@ -835,8 +834,7 @@ runtimeLifecycle = createRuntimeLifecycle({
   dataDir,
   logger,
   sendToRenderer,
-  startHost,
-  startSidecar,
+  hostStartup: hostRuntime.startup, sidecarStartup: sidecarRuntime.startup, fenced: hostRuntime.fenced,
   drainApprovedPlanExecutions,
   applyNetworkProxyFromAppSettings,
   plugins,
@@ -1103,6 +1101,7 @@ registerShutdownHandlers({
   persistenceOutbox,
   inflightCheckpointer,
   flushEventPersistence: eventPersistence.flush,
+  backends: runtimeLifecycle.backends,
   pluginPanels,
   plugins,
   userMcp,
