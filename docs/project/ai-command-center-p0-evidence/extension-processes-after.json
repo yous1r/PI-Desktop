@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "75ceb6293e9cdb0f43ed3e9b2206b2573dead1d4",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-08T23:58:30.236Z",
+  "endedAt": "2026-11-08T23:58:45.967Z",
+  "command": [
+    "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+    "--import",
+    "file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-mcp-test-loader.mjs",
+    "--test",
+    "--test-reporter=tap",
+    "--test-concurrency=2",
+    "--test-timeout=25000",
+    "test/handoff-extension-processes.test.mjs",
+    "test/extension-workspace-processes.test.mjs",
+    "test/workspace-execution-context.test.mjs",
+    "test/handoff-extension-owner.test.mjs",
+    "test/plugin-extension-owner-main.test.mjs",
+    "test/handoff-lifecycle.test.mjs",
+    "test/handoff-workspace-terminal.test.mjs",
+    "test/workspace-terminal-router.test.mjs"
+  ],
+  "tests": {
+    "files": 8,
+    "expected": 118,
+    "newFocusedCases": 30
+  },
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "sourceInputs": {
+    "count": 1619,
+    "sha256": "abc919ad528e076be703513de64253ccdc0d4a1f6b724bb82cce89249977bfe3",
+    "unchanged": true,
+    "manifest": "handoff-processes-candidate-inputs.json",
+    "scope": "Tracked Desktop/runtime/contract source inputs; not a complete third-party dependency graph."
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "result": {
+    "exitCode": 0,
+    "signal": null
+  },
+  "log": {
+    "path": "handoff-processes-candidate.log",
+    "bytes": 28485,
+    "sha256": "f4b37918498b2a0fc5228ab3fda5309f52837d11d903df5dbffa034a0972ef97"
+  },
+  "observations": [
+    {
+      "kind": "extension-process-user-path",
+      "gateRefusedBeforeStart": true,
+      "starts": 1,
+      "workspaceExitConfirmed": true,
+      "helperExitCode": 0,
+      "serviceInUse": 0,
+      "activity": {
+        "operations": 0,
+        "resources": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 2
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 2
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 3
+      },
+      "nativeFamilyQualified": false
+    }
+  ],
+  "limitations": [
+    "Original process exit and remote cleanup ACK are not native-family qualification.",
+    "Remote RPC uses a local WorkspaceProcessService; actual Desktop sidecar and trusted extension runtime execute with deterministic Host boundaries.",
+    "Full H1 inventory and H2-H5 transfer remain incomplete.",
+    "No live Desktop/profile/provider, stored SSH Host, paid API or dependency installation."
+  ]
+}

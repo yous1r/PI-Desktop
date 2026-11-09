@@ -1474,3 +1474,23 @@ source types and Biome 313 files pass. Clean-candidate acceptance follows the lo
 implementation commit; no Rust build/full suite or live Desktop/SSH/provider test
 is required for this slice. Other trusted-extension, MCP/OAuth, voice and remote
 owners, the 19-family H1 composition and H2-H5 remain open.
+
+Clean process-ownership candidate `75ceb6293e9cdb0f43ed3e9b2206b2573dead1d4`
+on base `fd28eb89866ac513912ed109716e7120cf60f18c` passed all 118 related
+tests with zero failures, cancellations or skips. Worktree status remained clean;
+all 1619 tracked source inputs were unchanged, digest
+`abc919ad528e076be703513de64253ccdc0d4a1f6b724bb82cce89249977bfe3`.
+Seven diagnostic observations confirm six original sidecar exits with empty
+stderr and one complete extension-to-process-service user path. All observed
+operation/resource counts settled to zero while native refusal evidence remained.
+Result: `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+
+The [process candidate report](ai-command-center-p0-evidence/extension-processes-after.json)
+is 4200 bytes, SHA-256
+`6dd696c7e96430b1081d8774f521d0636b8b4c3537bf8915f5a034eff64ba629`.
+The [process verification archive](ai-command-center-p0-evidence/extension-processes-verification.json)
+is 432350 bytes, SHA-256
+`0c3d97c60120e1afcc7c64e34d9aac081a6b0094bd98dfd56b1da10c519cde6b`.
+It retains seventeen exact artifacts, input hashes and 118 unique passing test
+names. This process-owner slice is accepted within its stated limits; remaining
+trusted-extension UI/configuration and other external owners continue.
