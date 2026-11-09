@@ -1686,3 +1686,21 @@ path. Desktop types and Biome 335 files passed. The focused ownership suite now
 contains 40 cases; clean candidate acceptance follows this bounded security fix.
 The earlier 188-test result remains historical evidence, not acceptance of this
 additional response-confidentiality requirement.
+
+Clean confidentiality candidate `40f7cb29ff2a258da46865d478f90083a9317dee` on
+base `fd28eb89866ac513912ed109716e7120cf60f18c` passed all 191 tests with no
+failures/cancellations/skips. The worktree stayed clean, and all 1634 source inputs
+were unchanged, digest
+`2b5c01ab10a6e6312a9fd3c012ae592a22185a4521b140b389b5246b1ddadb8f`.
+The actual HTTP path again closed both original listeners and the cancelled token
+response, with final zero operations/resources and native uncertainty 13.
+Result: `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+
+The [confidentiality candidate report](ai-command-center-p0-evidence/oauth-json-after.json)
+is 3027 bytes, SHA-256
+`fb1289ab4f52bed062df3161155ded61db24293407646676a75e0a9c0aee1fbb`.
+The [confidentiality verification archive](ai-command-center-p0-evidence/oauth-json-verification.json)
+is 414726 bytes, SHA-256
+`481e7c407a6044c518720bb3e1d0ea832439521d14a3296477d2e9763617a010`.
+It retains thirteen exact artifacts and 191 unique passing test names. This is the
+latest accepted OAuth candidate; remaining voice/remote and H1-H5 work is unchanged.

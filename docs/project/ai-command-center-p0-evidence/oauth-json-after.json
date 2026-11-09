@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "40f7cb29ff2a258da46865d478f90083a9317dee",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-09T02:17:15.961Z",
+  "endedAt": "2026-11-09T02:17:38.753Z",
+  "command": [
+    "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+    "--import",
+    "file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-mcp-test-loader.mjs",
+    "--test",
+    "--test-reporter=tap",
+    "--test-concurrency=1",
+    "--test-timeout=25000",
+    "test/handoff-mcp-oauth.test.mjs",
+    "test/handoff-mcp-oauth-user-path.test.mjs",
+    "test/mcp-oauth.test.mjs",
+    "test/mcp-oauth-discovery.test.mjs",
+    "test/mcp-oauth-error.test.mjs",
+    "test/handoff-user-mcp.test.mjs",
+    "test/handoff-user-mcp-transport.test.mjs",
+    "test/user-mcp.test.mjs",
+    "test/plugin-mcp.test.mjs",
+    "test/mcp-call-registry.test.mjs",
+    "test/plugin-services.test.mjs",
+    "test/main-wiring-contract.test.mjs"
+  ],
+  "tests": {
+    "files": 12,
+    "expected": 191,
+    "newFocusedCases": 40,
+    "newRealHttpUserPaths": 1
+  },
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "sourceInputs": {
+    "count": 1634,
+    "sha256": "2b5c01ab10a6e6312a9fd3c012ae592a22185a4521b140b389b5246b1ddadb8f",
+    "unchanged": true,
+    "manifest": "handoff-oauth-json-candidate-inputs.json",
+    "scope": "Tracked Desktop/runtime/contract source inputs; not a complete third-party dependency graph."
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "result": {
+    "exitCode": 0,
+    "signal": null
+  },
+  "log": {
+    "path": "handoff-oauth-json-candidate.log",
+    "bytes": 39293,
+    "sha256": "d15249acb3051726c9253ef8068c502037b4d11851e3f6c7dc76e09898900fc3"
+  },
+  "observations": [
+    {
+      "kind": "oauth-user-path",
+      "listenerCount": 2,
+      "originalListenersClosed": true,
+      "cancelledTokenResponseClosed": true,
+      "successfulTools": 1,
+      "activity": {
+        "operations": 0,
+        "resources": 0,
+        "uncontainedResources": 13
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "user-mcp-transport-path",
+      "resultBeforeStreamEnd": true,
+      "originalResponseClosed": true,
+      "activity": {
+        "mcp": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    }
+  ],
+  "limitations": [
+    "HTTP response/listener closure and ordinary child exit do not qualify native-family closure.",
+    "Actual registered IPC, admission, OAuth and user MCP/client use real loopback HTTP. Host encrypted storage, browser launch and renderer delivery remain fixture boundaries.",
+    "Complete H1 inventory, fenced Desktop composition and H2-H5 transfer remain incomplete.",
+    "No live Desktop/profile/provider, configured OAuth account, stored SSH Host, paid API or dependency installation."
+  ]
+}
