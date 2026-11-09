@@ -1987,10 +1987,10 @@ remain counted until they settle. Concurrent and reentrant close join the same
 original completion. The RACP protocol, wire format and RPC semantics are
 unchanged.
 
-The fifteen-case deterministic suite (`handoff-racp-client.test.mjs`) had one
-pass and ten failures against the prior wrapper. Its final run passes fifteen
-of fifteen, and the existing compatibility suites pass: 57 of 57 for the RACP
-client, remote connection, boot, SSH tunnel, pairing and realignment tests.
+The initial eleven-case deterministic suite (`handoff-racp-client.test.mjs`)
+had one pass and ten failures against the prior wrapper. The final suite passes
+fifteen of fifteen; 57 compatibility cases cover the RACP client, remote
+connection, boot, SSH tunnel, pairing and realignment paths.
 
 ### H1 RACP client clean-candidate acceptance
 
@@ -2001,8 +2001,10 @@ worktree, with three existing POSIX process-inspection skips on Windows. All
 [client report](ai-command-center-p0-evidence/racp-client-after.json) binds the
 result to the tested commit; the
 [verification archive](ai-command-center-p0-evidence/racp-client-verification.json)
-retains the exact log and input manifest. Status is
-`PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+retains the exact log and input-manifest hash and metadata; the full manifest
+remains in session scratch. Status is `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+Ancestry was checked against the previously fetched `origin/main`; this
+continuation did not fetch the remote base again.
 
 This acceptance covers the RACP client wrapper only, using the in-memory
 transport and real `RacpClient` state machine. It does not contact a real Host,
