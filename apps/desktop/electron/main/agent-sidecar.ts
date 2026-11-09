@@ -108,6 +108,7 @@ export class AgentSidecar extends RuntimeAgentSidecar {
   }
 
   override setHost(host: Parameters<RuntimeAgentSidecar["setHost"]>[0]): void {
+    this.assertHostOwner(host);
     if (this.ownerDisposed) return;
     const generation = "generation" in host ? host.generation : undefined;
     if (this.hostBinding?.host !== host || this.hostBinding.generation !== generation) {

@@ -2404,3 +2404,24 @@ Next: enforce original-owner binding for fenced generations, integrate actual
 Windows Host/Sidecar startup and restart cleanup, then connect the coordinator
 to concrete Desktop sources. H1 and the remaining approved DAG stay open; fixed
 qualification gaps and the Voice pause remain in effect.
+
+### H1 fenced original-Host binding prerequisite
+
+Fenced Sidecars now reject another Host before extension callbacks or subscription
+changes. The original Host generation is captured before prepare; an exit observer
+spans preparation and construction. Publication checks both before spawn and
+after binding. Original exit, changed generation, unavailability, transport closure
+and admitted Stop cannot revive the binding. Status/Stop validate original
+transport before and after success or rejection; changed transport cleanup remains
+unconfirmed. Failed creation, transport closure and confirmed Stop release the
+observer. Ordinary unfenced binding and default startup remain unchanged.
+
+Development reproduced six initial binding failures and two preparation/binding
+exit failures before correction. The final selection passed 110 Desktop cases,
+29 runtime cases and seven real isolated process checks with confirmed cleanup.
+Types, lint, architecture, policy and whitespace passed. These counts overlap
+the prior factory selection. Exact clean-candidate acceptance follows separately.
+The accepted query Host was reused; Rust inputs are unchanged and Rust/Clippy
+were not rerun. Full Windows startup/restart ordering and coordinator composition
+are next; H1, remaining native qualification and the approved DAG stay open.
+Voice remains paused, and the earlier default-profile incident remains unresolved.

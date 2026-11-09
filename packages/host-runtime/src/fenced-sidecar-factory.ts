@@ -21,12 +21,14 @@ export async function createFencedSidecar<T extends AgentSidecar>(
   const prepared = await ExecutionFence.prepare(host, binaryPath, launch);
   let cleanup: Cleanup | undefined;
   try {
+    prepared.fence.assertHost(host);
     const ownedLaunch: ConstructionLaunch = { ...prepared.launch,
       [constructionCleanup]: owner => { cleanup = owner; } };
     const sidecar = construct({ launch: ownedLaunch, onStderr });
     cleanup = sidecar;
     attach(sidecar, prepared.fence);
     sidecar.setHost(host);
+    prepared.fence.assertHost(host);
     return sidecar;
   } catch (error) {
     // Start both paths before awaiting either. A lost native reply must not
@@ -38,8 +40,9 @@ export async function createFencedSidecar<T extends AgentSidecar>(
     const errors: unknown[] = [error];
     if (stopped.status === "rejected") errors.push(stopped.reason);
     if (disposed.status === "rejected") errors.push(disposed.reason);
+    try { prepared.fence.releaseHostObservation(); } catch (cleanupError) { errors.push(cleanupError); }
     if (stopped.status !== "fulfilled" || !stopped.value.confirmed ||
-        disposed.status !== "fulfilled" || !disposed.value) {
+        disposed.status !== "fulfilled" || !disposed.value || errors.length > 1) {
       throw new AggregateError(errors, "EXECUTION_FENCE_CLEANUP_UNCONFIRMED");
     }
     throw error;

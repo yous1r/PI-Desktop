@@ -20,6 +20,10 @@ export async function verifyDesktopSidecarFactory(AgentSidecar, host, binaryPath
     assert.ok(sidecar instanceof AgentSidecar);
     const binding = sidecar.captureHostBinding(host);
     assert.equal(binding(), true);
+    assert.throws(() => sidecar.setHost({ generation: 'replacement',
+      onExit() { throw new Error('replacement observed'); }, onNotification() { throw new Error('replacement observed'); },
+      async call() { throw new Error('replacement called'); } }), /EXECUTION_FENCE_OWNER_CHANGED/);
+    assert.equal(binding(), true);
     assert.deepEqual(await sidecar.call('fixture.ready', {}, 10000), { ok: true, held: false });
     const status = await sidecar.executionStatus();
     assert.equal(status.state, 'running');
@@ -36,6 +40,7 @@ export async function verifyDesktopSidecarFactory(AgentSidecar, host, binaryPath
     assert.deepEqual(sidecar.getExtensionWorkspaceProcessActivity(), { operations: 0, processes: 0, uncontainedResources: 0 });
     assert.equal(await sidecar.fenceExecution(), true);
     assert.equal(await sidecar.confirmExit(), true);
+    assert.throws(() => sidecar.setHost(host), /EXECUTION_FENCE_OWNER_CHANGED/);
     assert.equal(binding(), false);
   } finally {
     assert.equal(await sidecar.fenceExecution(), true);

@@ -488,6 +488,16 @@ or cleanup errors produce `EXECUTION_FENCE_CLEANUP_UNCONFIRMED` with the origina
 failure retained; no replacement Host, fallback launch or replay is selected.
 Successful construction alone does not certify handshake or transfer readiness.
 
+A fenced Sidecar binds only its original Host object and captured generation.
+Replacement binding refuses before Desktop extension callbacks or subscriptions;
+the valid original binding is preserved. Original Host exit is observed before
+preparation starts and checked before spawn and after binding. Generation change,
+unavailability, observed exit, transport closure or admitted Stop cannot revive
+the binding. Status/Stop check transport identity before and after the RPC,
+including rejection. A changed transport cannot receive cleanup RPCs, so cleanup
+remains unconfirmed. Observation is released on failed creation, transport
+closure or confirmed Stop. Ordinary unfenced rebinding remains supported.
+
 This additive path is available to coordinators; default Desktop/headless launch
 is unchanged. It does not adopt unrelated applications or other process families.
 All-resource idle handoff and readiness remain separate prerequisites. Other

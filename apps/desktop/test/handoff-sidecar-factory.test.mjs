@@ -205,3 +205,87 @@ test("bounded disposal with no original root exit cannot certify failed creation
   assert.equal(f.child.exitCode, null);
   assert.equal(f.kills(), 1);
 });
+
+test("fenced Sidecar refuses a replacement Host before touching extension owners or original binding", async t => {
+  const f = fixture(t), rebound = [];
+  const sidecar = await AgentSidecar.createFenced(f.options);
+  t.after(() => sidecar.dispose());
+  const binding = sidecar.captureHostBinding(f.host);
+  sidecar.setExtensionOwnerLifecycle({ rebindHost: host => rebound.push(host), closeSession() {}, dispose() {},
+    getHandoffActivity: () => ({ operations: 0, runtimes: 0 }) });
+  sidecar.setHost(f.host);
+  assert.equal(binding(), true);
+  rebound.length = 0;
+  const replacement = { ...f.host, generation: "replacement", onExit() { throw new Error("replacement observed"); } };
+  assert.throws(() => sidecar.setHost(replacement), /EXECUTION_FENCE_OWNER_CHANGED/);
+  assert.deepEqual(rebound, []);
+  assert.equal(binding(), true, "a refused replacement must not destroy the valid original binding");
+  assert.equal(await sidecar.fenceExecution(), true);
+  assert.equal(f.calls.at(-1).params.generation, generation);
+});
+
+for (const change of ["generation", "unavailable", "exit", "stop"]) {
+  test(`fenced Sidecar cannot revive the original Host after ${change}`, async t => {
+    const f = fixture(t), exits = [], rebound = [];
+    const subscribe = f.host.onExit;
+    f.host.onExit = callback => { exits.push(callback); return subscribe(callback); };
+    let available = true;
+    f.host.isAvailable = () => available;
+    const sidecar = await AgentSidecar.createFenced(f.options);
+    t.after(() => sidecar.dispose());
+    sidecar.setExtensionOwnerLifecycle({ rebindHost: host => rebound.push(host), closeSession() {}, dispose() {},
+      getHandoffActivity: () => ({ operations: 0, runtimes: 0 }) });
+    if (change === "generation") f.host.generation = "changed";
+    if (change === "unavailable") available = false;
+    if (change === "exit") for (const callback of exits) callback({ code: 1, signal: null, intentional: false });
+    if (change === "stop") await sidecar.fenceExecution();
+    assert.throws(() => sidecar.setHost(f.host), /EXECUTION_FENCE_OWNER_CHANGED/);
+    f.host.generation = "original";
+    available = true;
+    assert.throws(() => sidecar.setHost(f.host), /EXECUTION_FENCE_OWNER_CHANGED/);
+    assert.deepEqual(rebound, []);
+  });
+}
+
+test("generation changes during prepare refuse launch and retain unconfirmed original cleanup", async t => {
+  const prepare = Promise.withResolvers();
+  const f = fixture(t, { prepare });
+  const creating = AgentSidecar.createFenced(f.options);
+  f.host.generation = "replacement";
+  prepare.resolve(ticket);
+  await assert.rejects(creating, error => {
+    assert.equal(error.message, "EXECUTION_FENCE_CLEANUP_UNCONFIRMED");
+    assert.deepEqual(error.errors.map(entry => entry.message), ["EXECUTION_FENCE_OWNER_CHANGED", "EXECUTION_FENCE_OWNER_CHANGED"]);
+    return true;
+  });
+  assert.equal(f.subscriptions.size, 0);
+  assert.deepEqual(f.launches, []);
+  assert.deepEqual(f.calls.map(call => call.method), ["executionFence.prepare"]);
+});
+
+for (const during of ["prepare", "binding"]) test(`original Host exit during ${during} cannot publish a fenced Sidecar`, async t => {
+  const prepare = during === "prepare" ? Promise.withResolvers() : undefined;
+  const f = fixture(t, { prepare }), exits = [];
+  const subscribe = f.host.onExit;
+  f.host.onExit = callback => { exits.push(callback); return subscribe(callback); };
+  if (during === "binding") {
+    const notifications = f.host.onNotification;
+    f.host.onNotification = callback => {
+      for (const exit of exits) exit({ code: 1, signal: null, intentional: false });
+      return notifications(callback);
+    };
+  }
+  const creating = AgentSidecar.createFenced(f.options);
+  if (prepare) {
+    for (const exit of exits) exit({ code: 1, signal: null, intentional: false });
+    prepare.resolve(ticket);
+  }
+  await assert.rejects(creating, error => {
+    assert.equal(error.message, "EXECUTION_FENCE_CLEANUP_UNCONFIRMED");
+    assert.ok(error.errors.every(entry => entry.message === "EXECUTION_FENCE_OWNER_CHANGED"));
+    return true;
+  });
+  assert.equal(f.subscriptions.size, 0);
+  if (during === "prepare") assert.deepEqual(f.launches, []);
+  else assert.equal(f.child.exitCode, 0);
+});

@@ -20016,6 +20016,11 @@ session data is used.
   original parameters across preparation awaits, lost replies, partial constructor
   failure, cleanup rejection and unconfirmed original-child exit. Its OS/Rust
   boundary fixtures do not themselves prove native closure.
+  Fenced binding cases cover replacement rejection before extension effects,
+  original generation/unavailability/exit/Stop revocation, preparation and binding
+  reentry, and stale successful/rejected status/Stop responses. The real process
+  path also refuses replacement and post-Stop binding; ordinary unfenced mode
+  rebinding remains covered by `handoff-mode-services.test.mjs`.
 - **Boundary:** Native coverage is only the execution generation. No complete
   Desktop inventory, admission hold, source transfer or readiness is established.
   HOME/USERPROFILE do not isolate Rust's Windows known-folder default profile.

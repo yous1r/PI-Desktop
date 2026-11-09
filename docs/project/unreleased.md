@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Keep fenced Sidecars bound to their original Host and generation. Refuse
+  replacement before extension effects and reject stale status/Stop responses;
+  Host exit or fencing cannot revive the old binding. Ordinary rebinding and
+  default startup remain unchanged.
 - Preserve Desktop Sidecar extension/resource tracking when creating a fenced
   process. Capture original launch parameters before Rust preparation and clean
   up the original child and native generation after construction/binding failure;

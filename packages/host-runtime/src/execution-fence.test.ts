@@ -78,3 +78,35 @@ describe("execution fence transport", () => {
     expect(call).toHaveBeenCalledTimes(1);
   });
 });
+
+for (const method of ["status", "stop"] as const) for (const rejects of [false, true]) {
+  it(`refuses ${method} after original Host generation changes during ${rejects ? "rejected" : "successful"} RPC`, async () => {
+    const { host, call } = hostWith(ticket);
+    const original = Object.assign(host, { generation: "original" });
+    const { fence } = await ExecutionFence.prepare(original, "host.exe", { command: "node", args: [] });
+    const reply = Promise.withResolvers<unknown>();
+    call.mockReturnValue(reply.promise);
+    const pending = fence[method]();
+    original.generation = "replacement";
+    if (rejects) reply.reject(new Error("old transport lost"));
+    else reply.resolve({ generation, state: "closed", activeProcesses: 0, rootExited: true, confirmed: true });
+    await expect(pending).rejects.toThrow("EXECUTION_FENCE_OWNER_CHANGED");
+    original.generation = "original";
+    call.mockClear();
+    await expect(fence.status()).rejects.toThrow("EXECUTION_FENCE_OWNER_CHANGED");
+    expect(call).not.toHaveBeenCalled();
+  });
+}
+
+it("invalid Stop budget keeps the original binding; an admitted Stop revokes it synchronously", async () => {
+  const { host, call } = hostWith(ticket);
+  const { fence } = await ExecutionFence.prepare(host, "host.exe", { command: "node", args: [] });
+  await expect(fence.stop(-1)).rejects.toThrow(RangeError);
+  expect(() => fence.assertHost(host)).not.toThrow();
+  const reply = Promise.withResolvers<unknown>();
+  call.mockReturnValue(reply.promise);
+  const stopping = fence.stop();
+  expect(() => fence.assertHost(host)).toThrow("EXECUTION_FENCE_OWNER_CHANGED");
+  reply.resolve({ generation, state: "closed", activeProcesses: 0, rootExited: true, confirmed: true });
+  expect((await stopping).confirmed).toBe(true);
+});

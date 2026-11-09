@@ -223,6 +223,8 @@ export class AgentSidecar {
   private closeTransport(error: Error) {
     if (this.closed) return;
     this.closed = true;
+    this.executionFence?.revokeBinding();
+    this.executionFence?.releaseHostObservation();
     this.unsubscribeHost?.();
     this.unsubscribeHost = null;
     this.unsubscribeHostExit?.();
@@ -380,7 +382,10 @@ export class AgentSidecar {
     this.vendorAuthBindings.delete(sessionId.trim());
   }
 
+  protected assertHostOwner(host: SidecarHostLink): void { this.executionFence?.assertHost(host); }
+
   setHost(host: SidecarHostLink) {
+    this.assertHostOwner(host);
     if (this.closed) return;
     if (this.host && this.host !== host) {
       for (const controller of this.localToolControllers.values()) controller.abort();
@@ -403,6 +408,7 @@ export class AgentSidecar {
       this.writeToChild(payload);
     });
     this.unsubscribeHostExit = host.onExit(() => {
+      this.executionFence?.revokeBinding();
       for (const controller of this.localToolControllers.values()) controller.abort();
       this.unsubscribeHost?.();
       this.unsubscribeHost = null;
