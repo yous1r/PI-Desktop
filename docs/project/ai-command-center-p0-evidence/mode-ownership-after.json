@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "e484a9cee45504cf1da0a73094510a379197dd47",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "freshBaseFetched": true,
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "startedAt": "2026-11-09T16:46:01.903Z",
+  "endedAt": "2026-11-09T16:48:01.441Z",
+  "sourceInputs": {
+    "count": 2813,
+    "digest": "c3695bd325ec4644bc53879f9c0ea5c533ac2f03fbf21e8c82cdbe0231f9a3a9",
+    "unchangedAfterTestsAndChecks": true,
+    "manifest": "handoff-mode-candidate-inputs.json",
+    "scope": "Tracked Desktop, Rust Host, runtimes, contracts, tests and build configuration; reused third-party dependencies are excluded."
+  },
+  "node": {
+    "files": 18, "tests": 204, "uniquePassed": 204,
+    "failed": 0, "cancelled": 0, "skipped": 0,
+    "selection": [
+      "handoff-mode-runs", "handoff-mode-services", "handoff-mode-prompt", "mode-runs-main",
+      "mode-definitions-user-path", "mode-definitions-renderer", "shutdown-regenerate-persistence",
+      "plugin-extension-owner-main", "handoff-plan-dispatch", "handoff-session-launch",
+      "agent-host-bridge-per-turn-ceiling", "agent-host-bridge-work-ack", "queued-turn-finalization",
+      "session-message-input", "session-turn-ended", "composer-mcp", "native-pi-sessions", "handoff-lifecycle"
+    ]
+  },
+  "coverage": [
+    "Closed admission and stale catalog/RPC results cannot start or publish replacement-owner work",
+    "Original claims survive pending or failed settlement; duplicate terminal reports join once",
+    "Successful late claims abort-settle through their original Host, including during quit",
+    "Pause/Stop/Remove cannot affect a rebound Sidecar or later turn; same binding remains usable",
+    "Real stdio Sidecar guards invalidate before callbacks, on Host exit and disposal, and never revive after away-and-back rebinding",
+    "Real catalog, coordinator, AgentHost bridge, prompt IPC and finalization wiring preserve continuation identity and permission ceilings",
+    "Continuation held in session reads, lock, launch, begin or claim refuses replacement effects and uses original Host cleanup",
+    "Timers and started continuations remain counted until completion; quit drains before runtime disposal",
+    "Isolated Electron picker, run controls and mode editor pass; extension-owner, plan, queue and ordinary prompt compatibility pass"
+  ],
+  "staticChecks": {
+    "desktopTypes": "PASS", "biome": "PASS: 388 files", "architecture": "PASS",
+    "agentPolicy": "PASS", "docs": "PASS: 633 pages with existing advisory ADR warnings",
+    "whitespace": "PASS", "baseAncestry": "PASS"
+  },
+  "limitations": [
+    "Host RPC in mode integration tests is a controlled external boundary; no Rust mode state-machine or schema change was made in this candidate.",
+    "No Rust full suite, Clippy or native handoff recovery rerun was needed for this Main-only change; remote-boot results remain bound to their own candidate.",
+    "Ordinary native families remain unqualified. Wrapper disposal and passing stdio fixtures do not certify native-family closure.",
+    "Complete nineteen-family Desktop inventory, bounded Rust status and H1-H5 composition remain unfinished. Voice remains paused and missing ownership refuses transfer.",
+    "No production Desktop/profile, external provider, stored SSH Host, microphone, model download, dependency installation, paid service, push, PR or remote merge was used."
+  ]
+}

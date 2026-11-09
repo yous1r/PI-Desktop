@@ -2094,3 +2094,28 @@ and Biome 388 files passed. Prior 69-test binding and 20-test bridge runs overla
 and are not additional unique coverage. Clean-candidate acceptance follows the
 implementation commit. This change does not qualify native-family closure or
 complete the nineteen-family H1 inventory. Voice remains paused.
+
+### H1 mode-run ownership acceptance
+
+Clean candidate `e484a9cee45504cf1da0a73094510a379197dd47`, based on freshly
+fetched `7e493e8b18d277d8d13f682cf250604ed94fb00d`, passed **204/204 unique
+tests** across eighteen files, with no failures, cancellations or skips. This
+includes the real stdio Sidecar binding path, full internal continuation startup
+and finalization wiring, and isolated Electron mode picker/controls/editor.
+All 2,813 frozen source inputs stayed unchanged and the worktree stayed clean.
+Desktop types, Biome 388 files, architecture, policy, 633 documentation pages,
+whitespace and base ancestry passed. Existing advisory ADR warnings remain.
+
+The [acceptance report](ai-command-center-p0-evidence/mode-ownership-after.json)
+and [artifact index](ai-command-center-p0-evidence/mode-ownership-verification.json)
+bind the candidate, base, unique test names and twelve artifact hashes. Exact
+logs/full manifest remain in session scratch. Red binding, bridge-read and
+prompt-finalization runs are retained separately from acceptance. Earlier
+overlapping green runs are not additional unique coverage. No Rust code changed
+or Rust/native recovery rerun occurred for this Main-only increment.
+
+Mode-run Main ownership is accepted within this scope. The next work is the
+nineteen-family Desktop inventory, bounded Rust status and fenced coordinator
+composition. Native-family qualification and H1-H5 remain incomplete, so the
+status remains `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`. Voice remains paused;
+its incomplete inventory cannot be treated as idle.

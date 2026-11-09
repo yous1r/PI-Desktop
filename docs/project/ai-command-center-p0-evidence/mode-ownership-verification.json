@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "candidate": "e484a9cee45504cf1da0a73094510a379197dd47",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "artifactStorage": "Exact logs, complete test-name list and full source-input manifest remain in session scratch. This index contains metadata and hashes, not embedded copies.",
+  "scratch": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569",
+  "artifacts": [
+    { "path": "handoff-mode-candidate.mjs", "bytes": 5881, "sha256": "8cf6f00568543d9ee2b5e6cad461a125320ad18c5258e3e00c47a483d30d5644" },
+    { "path": "handoff-mode-candidate.json", "bytes": 20152, "sha256": "2d38e80376fb73e63106a5385c230e754b8b072c1e1779a66b9b788650246ac8" },
+    { "path": "handoff-mode-candidate.log", "bytes": 43627, "sha256": "c704fc2a306b1fa9e119e837940bf730a7e04e0e4216d2a6ec7cf8b7cd1e26f6" },
+    { "path": "handoff-mode-candidate-inputs.json", "bytes": 482787, "sha256": "a8df239515f6d770c653e12e01aada9bb348ea6d60c1b7a821749c307d3c8eaf" },
+    { "path": "handoff-mode-clean-types.log", "bytes": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
+    { "path": "handoff-mode-clean-lint.log", "bytes": 46, "sha256": "4be79d74f5369f27522f42b8904d1504db785db36fc6115cfbf6b28a504aadf1" },
+    { "path": "handoff-mode-clean-architecture.log", "bytes": 1949, "sha256": "5db0822edfbd2bba928376a0ed0fffc4dba4a075ec311a145497b43818f616d1" },
+    { "path": "handoff-mode-clean-policy.log", "bytes": 58, "sha256": "58a9ee0870461c6f590356bb7f15372a9dac1bc2f0450ff6b731bb4996c1460c" },
+    { "path": "handoff-mode-clean-docs.log", "bytes": 848, "sha256": "b413e29d8a953100844e7eab171af74dabe545fbc343adaf17481be6b6ff6323" },
+    { "path": "handoff-mode-binding-before.log", "bytes": 12800, "sha256": "a6773fe2c00344850f1cfc0d888c4b294d59970886033b8c19379c9358919d67" },
+    { "path": "handoff-mode-continuation-before.log", "bytes": 2341, "sha256": "cd572471d4d9a52ff5fcac9af801baa8e750b2f248724dce8cf9c5cd5263310f" },
+    { "path": "handoff-mode-prompt-before.log", "bytes": 4008, "sha256": "1db77ee327ae5f83164f518e114ee86828b69d4e322310286d478d4f3eea21c5" }
+  ],
+  "provenance": {
+    "acceptance": "Clean candidate, fresh base ancestry and unchanged 2813-input manifest verified. All 204 test names are unique; earlier overlapping runs are not added to this count.",
+    "bindingBaseline": "12 cases: 4 passed, 8 failed. Seven exposed old control effects reaching rebound/disposed runtime; one failed because the new captureHostBinding API did not yet exist.",
+    "continuationBaseline": "3 cases: normal path passed; both held session reads allowed replacement-owner work before correction.",
+    "promptBaseline": "5 cases: normal path passed; lock/launch/begin/claim replacement paths failed, including session.endTurn directed to the replacement Host.",
+    "runtimeBoundary": "Sidecar binding tests use the production wrapper and a local stdio child. Prompt composition uses real internal wiring with controlled Host/Sidecar edges. UI uses an isolated Electron window and profile."
+  }
+}
