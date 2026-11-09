@@ -2425,3 +2425,20 @@ The accepted query Host was reused; Rust inputs are unchanged and Rust/Clippy
 were not rerun. Full Windows startup/restart ordering and coordinator composition
 are next; H1, remaining native qualification and the approved DAG stay open.
 Voice remains paused, and the earlier default-profile incident remains unresolved.
+
+#### Fenced binding clean-candidate acceptance
+
+Candidate `fedb3d8f2d69ae99ca5be175ee3bce6e2c3ca9ec` against freshly fetched
+`7e493e8b18d277d8d13f682cf250604ed94fb00d` passed 110 unique Desktop cases,
+29 runtime cases and seven isolated process checks, with original native/child
+cleanup confirmed. Types, lint (412 files), architecture, agent policy, docs
+(633 pages), base and whitespace passed. All 2,845 inputs were unchanged, the
+worktree stayed clean, and 31 artifacts were rehashed. The previously accepted
+Host binary was reused after input/hash equality checks. Rust tests and Clippy
+were not rerun. See [binding verification](./ai-command-center-p0-evidence/fenced-binding-verification.json).
+
+Read-only startup research confirms Rust proves the old Host and every generation
+ended before retirement; the Desktop coordinator need not exit. The next slice
+must order original Sidecar cleanup, replacement Host startup and new Sidecar
+creation, coalesce simultaneous restart requests and preserve ordinary paths.
+No startup/lifecycle wiring is included in this acceptance.

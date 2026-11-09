@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "fedb3d8f2d69ae99ca5be175ee3bce6e2c3ca9ec",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "startedAt": "2026-11-09T21:11:43.577Z",
+  "endedAt": "2026-11-09T21:12:28.092Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "scope": "Original-Host binding for fenced Sidecars, preparation/exit/reentry refusal and original transport status/Stop validation; full H1 startup and transfer remain pending",
+  "sourceInputs": {
+    "count": 2845,
+    "sha256": "3806c6770c9bd342fb32ecb39e3fec07abde1774768651ded373a842b7ed83ff",
+    "unchanged": true,
+    "manifest": {
+      "file": "h1-binding-candidate-inputs.json",
+      "bytes": 488293,
+      "sha256": "717bcbcfb3a88c69ff73a510ba7071c9571524777b1f03c8cc50fc99c1c89573"
+    }
+  },
+  "tests": {
+    "desktop": { "files": 4, "uniquePassed": 110, "failed": 0, "skipped": 0, "cancelled": 0,
+      "selection": ["handoff-sidecar-factory", "handoff-mode-services", "handoff-extension-owner", "handoff-inventory"] },
+    "runtime": { "files": 3, "uniquePassed": 29, "failed": 0,
+      "selection": ["execution-fence", "process-exit-confirmation", "sidecar-handoff-client"] },
+    "native": {
+      "checks": 7,
+      "hostProcesses": 2,
+      "cleanupConfirmed": true,
+      "report": "owner-inspection-xtTvyB/report.json",
+      "reportBytes": 1725,
+      "reportSha256": "df08d20c49902ba2f7320ed9efe21c21a13a1250164cc125bcfb7078ae979a59",
+      "bundleSha256": "0c6c16bd3432d64ca9841eec207467f118d8d7cdbc22a36458dd1a125d8ac82b",
+      "scriptSha256": "6c59b3bf5598d2b0e861789c349a79fde578d980fa1918d411162741e69453af",
+      "bundleInputs": 1464,
+      "bundleInputsSha256": "609f612170d868e24656564fbcaf4acdd0eb5e1fded5c63945fb590a04116570",
+      "manifestVerified": true,
+      "scope": "Real Rust, runner, Node fixture and Desktop subclass; replacement/post-Stop binding refusal, pending/completed RPC activity and failed-construction cleanup. Other Desktop owners remain fixtures."
+    }
+  },
+  "checks": [
+    { "name": "node", "exitCode": 0 },
+    { "name": "runtime", "exitCode": 0 },
+    { "name": "native", "exitCode": 0 },
+    { "name": "types", "exitCode": 0 },
+    { "name": "lint", "exitCode": 0 },
+    { "name": "architecture", "exitCode": 0 },
+    { "name": "policy", "exitCode": 0 },
+    { "name": "docs", "exitCode": 0 },
+    { "name": "base", "exitCode": 0 },
+    { "name": "whitespace", "exitCode": 0 }
+  ],
+  "reusedHost": {
+    "file": "h1-query-candidate-host.exe",
+    "bytes": 34910208,
+    "sha256": "69a4270bb59c7d1b0d7204bb81ecb478d205d972b60ade18567042bc8e4d699d",
+    "acceptedCandidate": "17da5209186823485400b74a9736445f502b2844",
+    "rustInputsUnchanged": true,
+    "rustTestsRerun": false,
+    "clippyRerun": false
+  },
+  "evidence": {
+    "location": "Session scratch 233744ff-b9c5-46dd-9a91-5169100d5569",
+    "rawReport": "h1-binding-candidate.json",
+    "rawReportBytes": 30775,
+    "rawReportSha256": "3081b8bbd87925201795a2fd02c86931f52f351cc82a4378cc3ab751ef97d8e9",
+    "runner": "h1-binding-candidate.mjs",
+    "runnerPreparation": "h1-binding-prepare.mjs",
+    "artifactsRehashed": 31,
+    "preservedFailures": [
+      "h1-fenced-binding-before.log: six original binding cases failed before correction",
+      "h1-fenced-binding-exit-before.log: two preparation/binding exit cases failed before correction"
+    ],
+    "coverageNote": "Development, factory and binding selections overlap; totals are not additive. Full input, unique test names and artifact manifests remain in scratch."
+  },
+  "limitations": [
+    "Default startup remains unchanged. Full Windows startup/restart ordering, coordinator composition and Rust background admission are pending.",
+    "Native coverage remains execution_generation_only; Worker classification and missing resource families refuse transfer. Voice/LiveVoice remain paused.",
+    "No Rust rebuild/test/Clippy, live Desktop, real provider, stored SSH, install or minimum-hardware qualification was performed in this TypeScript slice.",
+    "Existing architecture and ADR advisories remain; this is not warning-free repository-wide acceptance.",
+    "Earlier default-profile startup/owner registration is confirmed; recovery/user-data impact remains unknown without a baseline. No remediation occurred. See rust-inspection-isolation-incident.json."
+  ]
+}
