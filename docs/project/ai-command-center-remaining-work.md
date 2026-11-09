@@ -2184,3 +2184,20 @@ new cases and the real final-message/outbox/finalization/archive user path.
 Desktop types and Biome passed. Clean-candidate acceptance follows. Full H1
 inventory, bounded Rust status, fenced factory composition and H2-H5 remain open;
 Voice development stays paused.
+
+### H1 terminal persistence acceptance
+
+Clean candidate `11881f222b6d6be3889d675b8bfb53c3e15a49cd`, against freshly
+fetched base `7e493e8b18d277d8d13f682cf250604ed94fb00d`, passed 138/138 unique
+tests across ten files, with no failures, cancellations or skips. Desktop types,
+Biome 395 files, architecture, agent policy, docs 633 pages, whitespace and base
+ancestry passed. All 2,816 frozen source inputs and the clean worktree remained
+unchanged. No Rust or native recovery suite was rerun for this Main increment.
+
+The runner incorrectly expected 137 tests and marked its report failed despite
+all eight commands exiting zero. The original report and logs remain immutable;
+an independent verifier checked raw TAP names/counts, all artifact/source hashes,
+HEAD, base and clean state, accepting the actual 138-test result without rerunning
+tests. The [verification record](ai-command-center-p0-evidence/event-persistence-verification.json)
+records that correction and fifteen artifact hashes. Full inventory/Rust status
+and native resource qualification remain pending; Voice stays paused.

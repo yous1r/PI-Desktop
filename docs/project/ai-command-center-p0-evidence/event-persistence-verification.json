@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "11881f222b6d6be3889d675b8bfb53c3e15a49cd",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "interval": {
+    "startedAt": "2026-11-09T17:55:17.076Z",
+    "endedAt": "2026-11-09T17:56:11.884Z"
+  },
+  "scope": "H1 terminal persistence ownership and activity prerequisite; complete H1 remains pending.",
+  "nodeTests": {
+    "files": 10,
+    "total": 138,
+    "uniquePassed": 138,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "newCases": 17
+  },
+  "staticChecks": [
+    "Desktop TypeScript",
+    "Biome 395 files",
+    "Architecture",
+    "Agent policy",
+    "Documentation 633 pages",
+    "PR base ancestry",
+    "Whitespace"
+  ],
+  "sourceInputs": {
+    "count": 2816,
+    "sha256": "45a9bb87f5ce91957d740b282bede143ad5c423fae9badc94263060fe76bd888",
+    "unchanged": true,
+    "manifest": "h1-event-candidate-inputs.json",
+    "scope": "Tracked first-party source, tests and configuration; reused third-party dependencies excluded."
+  },
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "independentlyRechecked": true,
+  "baseline": {
+    "artifact": "h1-event-persistence-before.log",
+    "tests": 10,
+    "failed": 10,
+    "classification": "Three actual archive redirection/stale-publication failures; seven absent-reporting-API baselines. Development 61/61 and 101/101 runs overlap acceptance."
+  },
+  "harnessCorrection": {
+    "originalReport": "h1-event-candidate.json",
+    "originalStatus": "FAIL",
+    "reason": "Runner expected 137 tests; actual 138 unique tests all passed. All eight commands exited zero. Original report/logs/runner are preserved. This verifier independently validates raw TAP, every artifact hash, every source input, HEAD, base and clean state; no tests were rerun."
+  },
+  "userPath": "Real event persistence, plan finalization, coordination, checkpointer and disk outbox; final assistant event -> durable append -> archive -> pager publication, plus replacement and failure paths.",
+  "compatibility": "No wire, schema or durable ledger changes. Ordinary outbox replay, queue release and quit behavior preserved. Missing/ambiguous persistence refuses handoff.",
+  "limitations": [
+    "Real Main event/outbox/checkpoint/coordination/plan integration with isolated files and controlled Host RPC; no real Host/native closure qualification.",
+    "Full nineteen-family inventory, bounded Rust status and Desktop coordinator wiring remain pending. Voice remains paused.",
+    "No live Desktop/profile, provider, install, Rust suite or native recovery rerun. Existing advisory architecture/doc warnings remain."
+  ],
+  "artifacts": [
+    {
+      "path": "h1-event-candidate-node.log",
+      "bytes": 29462,
+      "sha256": "09683e340d87e6f744338e3f6c97befabae11139315d1b0f2d95da5f35e45db6"
+    },
+    {
+      "path": "h1-event-candidate-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "h1-event-candidate-lint.log",
+      "bytes": 46,
+      "sha256": "68f6d6266771efd6633539f7fa2dbc9c3034bd32c8053d4ddda162ab843a0e3f"
+    },
+    {
+      "path": "h1-event-candidate-architecture.log",
+      "bytes": 1949,
+      "sha256": "a00a46c6b9fc4e302fcd19eb4dc29aeb5c306b864595e4d35597bed2129f0589"
+    },
+    {
+      "path": "h1-event-candidate-policy.log",
+      "bytes": 58,
+      "sha256": "58a9ee0870461c6f590356bb7f15372a9dac1bc2f0450ff6b731bb4996c1460c"
+    },
+    {
+      "path": "h1-event-candidate-docs.log",
+      "bytes": 848,
+      "sha256": "b413e29d8a953100844e7eab171af74dabe545fbc343adaf17481be6b6ff6323"
+    },
+    {
+      "path": "h1-event-candidate-base.log",
+      "bytes": 88,
+      "sha256": "2203c05f447628317a0aca6ba96214719afe840e1d994a21b3f9bcc4a358abfc"
+    },
+    {
+      "path": "h1-event-candidate-whitespace.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "h1-event-candidate.mjs",
+      "bytes": 6368,
+      "sha256": "cce0518c4df5846b272efa20bbdb2470c2c8cc026331cdd8a4fd031356a7696f"
+    },
+    {
+      "path": "h1-event-candidate.json",
+      "bytes": 17301,
+      "sha256": "23340ebf2950c0d4d2effd9eade717a85a23dbe2ffd4687f45f3aaed0f7d8136"
+    },
+    {
+      "path": "h1-event-candidate-inputs.json",
+      "bytes": 483320,
+      "sha256": "4869970093f324c7506a7b84ed334c60ef4a199d8a17dfe26c8abdfc83b87eb2"
+    },
+    {
+      "path": "h1-event-persistence-before.log",
+      "bytes": 10142,
+      "sha256": "9e639228de252a86d767eac2aaa7c2d2a46f1b7aee7fd518ead04a1d1e4f560e"
+    },
+    {
+      "path": "h1-event-verify.mjs",
+      "bytes": 4514,
+      "sha256": "149e779fab69cb3692fa4166aa52eaf9db7fcc0c65160e8db9b976fa43f2aab8"
+    },
+    {
+      "path": "handoff-mcp-test-loader.mjs",
+      "bytes": 181,
+      "sha256": "210aeb0c6e33cbe79d2cf500eeeb1ce34b89c719a80432f8ce53e809412f4fca"
+    },
+    {
+      "path": "owner-desktop-tsconfig.json",
+      "bytes": 3065,
+      "sha256": "1f7b856a979dad18f6a9efb11df58dac9afe791cc74181c018478942d0664121"
+    }
+  ]
+}
