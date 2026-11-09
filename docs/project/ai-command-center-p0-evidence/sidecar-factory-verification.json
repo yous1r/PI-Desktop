@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "6235da54d1bc67217f7400e91cdeb72564e7deb8",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "startedAt": "2026-11-09T20:58:02.976Z",
+  "endedAt": "2026-11-09T20:58:47.116Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "scope": "Concrete Desktop fenced Sidecar factory, original launch capture and failed construction/binding cleanup; full H1 startup and transfer remain pending",
+  "sourceInputs": {
+    "count": 2845,
+    "sha256": "8625f3d6992fb09125797ba0428679fca789ece7123ca21b1568a1d62a58efaf",
+    "unchanged": true,
+    "manifest": {
+      "file": "h1-factory-candidate-inputs.json",
+      "bytes": 488293,
+      "sha256": "29b31abd7e6486f11ed3bfabaf04f5785b03cc57fc65e6c89623ccc7e7bbe538"
+    }
+  },
+  "tests": {
+    "desktop": {
+      "files": 4,
+      "uniquePassed": 102,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "selection": ["handoff-sidecar-factory", "handoff-mode-services", "handoff-extension-owner", "handoff-inventory"]
+    },
+    "runtime": {
+      "files": 3,
+      "uniquePassed": 24,
+      "failed": 0,
+      "selection": ["execution-fence", "process-exit-confirmation", "sidecar-handoff-client"]
+    },
+    "native": {
+      "checks": 7,
+      "hostProcesses": 2,
+      "cleanupConfirmed": true,
+      "report": "owner-inspection-ZpjxOo/report.json",
+      "reportBytes": 1725,
+      "reportSha256": "0aafd6baf510377612b220b28c95757d35eb9fa46c62de421beac249338293d8",
+      "bundleSha256": "047ed0d7b9e3fa12a9a0ba4929acc1d20e9a434e13654b1137536b86ae148327",
+      "scriptSha256": "6c59b3bf5598d2b0e861789c349a79fde578d980fa1918d411162741e69453af",
+      "bundleInputs": 1464,
+      "bundleInputsSha256": "e29df3de89bc060d039a0fefe78667a1e56c2d722660604075b51d3b18116fc6",
+      "manifestVerified": true,
+      "scope": "Real Rust Host, runner, Node fixture and Desktop subclass including pending/completed RPC tracking, original native closure and binding/derived-constructor failure cleanup. Other Desktop owners remain fixtures; no Electron instance."
+    }
+  },
+  "checks": [
+    { "name": "node", "exitCode": 0 },
+    { "name": "runtime", "exitCode": 0 },
+    { "name": "native", "exitCode": 0 },
+    { "name": "types", "exitCode": 0 },
+    { "name": "lint", "exitCode": 0 },
+    { "name": "architecture", "exitCode": 0 },
+    { "name": "policy", "exitCode": 0 },
+    { "name": "docs", "exitCode": 0 },
+    { "name": "base", "exitCode": 0 },
+    { "name": "whitespace", "exitCode": 0 }
+  ],
+  "reusedHost": {
+    "file": "h1-query-candidate-host.exe",
+    "bytes": 34910208,
+    "sha256": "69a4270bb59c7d1b0d7204bb81ecb478d205d972b60ade18567042bc8e4d699d",
+    "acceptedCandidate": "17da5209186823485400b74a9736445f502b2844",
+    "rustInputsUnchanged": true,
+    "rustTestsRerun": false,
+    "clippyRerun": false
+  },
+  "evidence": {
+    "location": "Session scratch 233744ff-b9c5-46dd-9a91-5169100d5569",
+    "rawReport": "h1-factory-candidate.json",
+    "rawReportBytes": 28926,
+    "rawReportSha256": "b31b387773abab2b7f2f0abeb3064c284fd082b37597b940373520c3b7e10002",
+    "runner": "h1-factory-candidate.mjs",
+    "artifactsRehashed": 28,
+    "preservedFailures": [
+      "h1-factory-before.log: original implementation, 3 passed and 7 failed",
+      "h1-factory-after01.log: 12 passed and 1 test-fixture failure from an invalid Node mock API; corrected before accepted selection"
+    ],
+    "coverageNote": "Development and acceptance selections overlap; totals are not additive. Full input and unique-test-name manifests remain in scratch."
+  },
+  "limitations": [
+    "Default startup remains unchanged. Full Desktop startup/restart, coordinator composition and Rust background admission are pending.",
+    "Native coverage is execution_generation_only. Worker classification and remaining resource families still refuse handoff; Voice/LiveVoice remain paused.",
+    "No Rust rebuild/test/Clippy, live Desktop, real provider, stored SSH, install or minimum-hardware qualification was performed in this TypeScript slice.",
+    "Existing architecture and ADR advisories remain; this is not warning-free repository-wide acceptance.",
+    "The earlier default-profile startup and owner registration are confirmed; recovery/user-data effects remain unknown without a baseline. No remediation occurred. See rust-inspection-isolation-incident.json."
+  ]
+}

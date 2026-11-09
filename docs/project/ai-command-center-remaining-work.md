@@ -2387,3 +2387,20 @@ coordinator composition, Rust background admission, Worker classification and
 remaining native/resource qualification are still pending. Voice remains paused.
 The earlier default-profile startup incident and its unknown data effects remain
 recorded; passing isolated checks do not resolve those unknown effects.
+
+#### Fenced factory clean-candidate acceptance
+
+Candidate `6235da54d1bc67217f7400e91cdeb72564e7deb8` against freshly fetched
+`7e493e8b18d277d8d13f682cf250604ed94fb00d` passed 102 unique Desktop cases,
+24 runtime cases and seven real isolated process checks, including confirmed
+native/child cleanup. Types, Biome (412 files), architecture, agent policy,
+documentation (633 pages), base and whitespace checks passed. The worktree was
+clean before/after, all 2,845 source inputs were unchanged, and 28 evidence
+artifacts were rehashed. The accepted Host binary was reused only after Rust
+input equality and hash checks; no Rust/Clippy rerun is claimed. See
+[factory verification](./ai-command-center-p0-evidence/sidecar-factory-verification.json).
+
+Next: enforce original-owner binding for fenced generations, integrate actual
+Windows Host/Sidecar startup and restart cleanup, then connect the coordinator
+to concrete Desktop sources. H1 and the remaining approved DAG stay open; fixed
+qualification gaps and the Voice pause remain in effect.
