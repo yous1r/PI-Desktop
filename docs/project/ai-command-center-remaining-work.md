@@ -1530,3 +1530,30 @@ Desktop is claimed. Full Desktop source types, Biome 321 files, architecture and
 agent-policy checks passed. Clean-candidate acceptance follows the implementation
 commit. Native-family closure, remaining MCP/OAuth/voice/remote owners, complete
 19-family H1 composition and H2-H5 remain open.
+
+Clean service-ownership candidate `6ebac7e97854187fc91a8d96b40a02fa23e3251f`
+on base `fd28eb89866ac513912ed109716e7120cf60f18c` passed all 160 tests with
+zero failures, cancellations or skips. Worktree status remained clean; all 1625
+source hashes were unchanged, digest
+`acf8cd77c96372a1be142beeff071eeca8eba51b75c9202b265d714bb2f0fd4a`.
+Six new service-sidecar observations and thirteen related owner/process observations
+retain zero final operation counts and explicitly deny native-family qualification.
+The malformed-report case intentionally retains refusal evidence after disposal.
+Result: `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+
+The first clean run passed 159 tests and failed one unchanged npm fixture's raw
+temporary-path prefix comparison. A restricted path probe confirmed Windows
+normalization reached the same directory. Normalizing only the candidate script's
+TEMP/TMP fixed it; product and test inputs remained byte-identical. The report's
+diagnostic count was corrected from 13 to 19 to include existing owner tests. Both
+runner versions and the failed run are retained, not relabeled as passing.
+
+The [service candidate report](ai-command-center-p0-evidence/extension-services-after.json)
+is 7993 bytes, SHA-256
+`5eb92e6a9dbe0633cf8b30bb87b36aaf75ec28bbbe27cfd4312ee55278564a20`.
+The [service verification archive](ai-command-center-p0-evidence/extension-services-verification.json)
+is 566072 bytes, SHA-256
+`8f16119bac9b3d12955aa4d8151c9d4b5791a83cd2c196c26fb3d4d2d154c8d0`.
+It retains 23 exact artifacts, source hashes and 160 unique passing test names.
+This service-owner slice is accepted within its limits. User MCP raw transport,
+OAuth, voice and remote owners continue before complete H1 composition.

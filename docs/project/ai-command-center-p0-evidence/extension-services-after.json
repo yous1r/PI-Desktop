@@ -1,0 +1,277 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "6ebac7e97854187fc91a8d96b40a02fa23e3251f",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-09T00:42:35.618Z",
+  "endedAt": "2026-11-09T00:42:55.716Z",
+  "command": [
+    "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+    "--import",
+    "file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-mcp-test-loader.mjs",
+    "--test",
+    "--test-reporter=tap",
+    "--test-concurrency=2",
+    "--test-timeout=25000",
+    "test/agent-extensions.test.mjs",
+    "test/agent-extension-command.test.mjs",
+    "test/extension-cancellation.test.mjs",
+    "test/handoff-extension-ui.test.mjs",
+    "test/handoff-extension-services.test.mjs",
+    "test/handoff-extension-services-process.test.mjs",
+    "test/handoff-extension-owner.test.mjs",
+    "test/plugin-extension-owner-main.test.mjs",
+    "test/handoff-extension-processes.test.mjs",
+    "test/extension-workspace-processes.test.mjs",
+    "test/handoff-lifecycle.test.mjs",
+    "test/main-wiring-contract.test.mjs"
+  ],
+  "tests": {
+    "files": 12,
+    "expected": 160,
+    "newFocusedCases": 43
+  },
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "sourceInputs": {
+    "count": 1625,
+    "sha256": "acf8cd77c96372a1be142beeff071eeca8eba51b75c9202b265d714bb2f0fd4a",
+    "unchanged": true,
+    "manifest": "handoff-extension-ui-candidate-v2-inputs.json",
+    "scope": "Tracked Desktop/runtime/contract source inputs; not a complete third-party dependency graph."
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "result": {
+    "exitCode": 0,
+    "signal": null
+  },
+  "log": {
+    "path": "handoff-extension-ui-candidate-v2.log",
+    "bytes": 39175,
+    "sha256": "a3fd7e3ef45d15787bb8e8dbc74634b0a21c525da836813608f2fa3b21aeb7f8"
+  },
+  "observations": [
+    {
+      "kind": "extension-process-user-path",
+      "gateRefusedBeforeStart": true,
+      "starts": 1,
+      "workspaceExitConfirmed": true,
+      "helperExitCode": 0,
+      "serviceInUse": 0,
+      "activity": {
+        "operations": 0,
+        "resources": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "sidecar retains original bridge work through replacement and disposal",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "old disposeSession cannot clear a replacement lifecycle",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "old disposeSession cannot clear a replacement launch",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "retirement query from a replaced lifecycle cannot dispose or launch a session",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "timed-out original session cleanup retains uncertainty after a late reply and root exit",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-sidecar",
+      "test": "missing or invalid lifecycle activity remains a refusal after disposal",
+      "originalChildExitObserved": true,
+      "activity": {
+        "operations": 0,
+        "runtimes": 0,
+        "uncontainedResources": 2
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 2
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 2
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 1
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-process-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "processes": 0,
+        "uncontainedResources": 3
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-services-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "inputs": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-services-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "inputs": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-services-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "inputs": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-services-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "inputs": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-services-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "inputs": 0,
+        "uncontainedResources": 0
+      },
+      "nativeFamilyQualified": false
+    },
+    {
+      "kind": "extension-services-sidecar",
+      "originalExitConfirmed": true,
+      "stderrEmpty": true,
+      "activity": {
+        "operations": 0,
+        "inputs": 0,
+        "uncontainedResources": 4
+      },
+      "nativeFamilyQualified": false
+    }
+  ],
+  "limitations": [
+    "Original child exit is not complete native-family qualification.",
+    "Actual Desktop sidecar reverse RPC, UI/service ownership and shared admission run against deterministic Host/queue/renderer edges; no real Rust model persistence is claimed.",
+    "Service-only admission fixture counts do not constitute complete H1 inventory or H2-H5 transfer.",
+    "No live Desktop/profile/provider, native dialog, stored SSH Host, paid API or dependency installation."
+  ]
+}
