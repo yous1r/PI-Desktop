@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "17da5209186823485400b74a9736445f502b2844",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "baseFreshlyFetched": true,
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "startedAt": "2026-11-09T20:30:13.483Z",
+  "endedAt": "2026-11-09T20:32:36.887Z",
+  "scope": "Strict private original-owner identity/transfer queries over existing Rust stdio, bounded retained Journal reads and original-Host consumer correlation. Production Desktop startup/fenced lifecycle/coordinator composition remains pending.",
+  "sourceInputs": {
+    "count": 2842,
+    "sha256": "6717c09c11c84f667e16b27e355fe64c84f94b297914d592f44e20e07fe46da6",
+    "unchanged": true,
+    "manifest": "h1-query-candidate-inputs.json",
+    "manifestBytes": 487777,
+    "manifestSha256": "6e78c3e60e5a8d78626a4708eaa181d159cb70c1a4be42a990f915688000ad85"
+  },
+  "tests": {
+    "rust": {
+      "uniquePassed": 20,
+      "failed": 0,
+      "ignored": 0,
+      "coverage": "Original registered owner before generation, strict request parsing, retained Journal source/profile/principal/column validation, read-only phase reads, missing/retired/corrupt owner refusal, lock/scan budget restoration, original native generation and precise RPC budgets.",
+      "executable": "h1-query-candidate-tests-80dba909cfd6fe40.exe",
+      "bytes": 47913472,
+      "sha256": "ff3feef83716e3da63e10162c12d5c52a1463fc16ff58133ec1a8b33eafde21b"
+    },
+    "shared": { "files": 3, "uniquePassed": 32, "failed": 0, "skipped": 0, "queryCases": 18 },
+    "runtime": { "files": 3, "uniquePassed": 49, "failed": 0, "skipped": 0, "queryCases": 21 },
+    "desktop": { "files": 1, "uniquePassed": 48, "failed": 0, "cancelled": 0, "skipped": 0 },
+    "process": {
+      "checks": 6,
+      "hostProcesses": 2,
+      "cleanupConfirmed": true,
+      "report": "owner-inspection-lOizmx/report.json",
+      "scriptSha256": "63d162d29df7d1a7fb187bde7152226136b2388fae1cc4ed3bfc6a8712e20102",
+      "bundleSha256": "569c9298e3b14cf2ff3a8c02fb0ada052535bbaef7f5014beb0387d8882a513c",
+      "bundleInputs": 1454,
+      "bundleInputsSha256": "b92d408a22c557aa11eddde9e2271d4d4f6268194e48abe41b27db5ee82e6966",
+      "manifestVerified": true,
+      "coverage": "Production identity before Sidecar startup and terminal transfer reads; isolated owner/coordinator/profile/principal/revision fault injection; live native generation, real checkpoint recovery, actual Desktop inventory/persistence/admission and original native/Host cleanup. Other Desktop resource owners are fixtures."
+    }
+  },
+  "checksPassed": ["fmt", "rust-build", "host-build", "types", "lint", "architecture", "policy", "docs", "base", "whitespace", "clippy"],
+  "docsPages": 633,
+  "host": {
+    "binary": "h1-query-candidate-host.exe",
+    "bytes": 34910208,
+    "sha256": "69a4270bb59c7d1b0d7204bb81ecb478d205d972b60ade18567042bc8e4d699d",
+    "builtFromCandidate": true
+  },
+  "rawEvidence": {
+    "scratchRoot": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569",
+    "runner": "h1-query-candidate.mjs",
+    "report": "h1-query-candidate.json",
+    "reportBytes": 55636,
+    "reportSha256": "50a99a0b22d36fcf38753fe68fdc8ea5064738af0c425781079ed0c50151a71e",
+    "verifiedArtifacts": 32,
+    "note": "All artifacts rehashed after the runner completed. Full report retains commands, unique passing names and hashes. Development/acceptance runs overlap and are not additional unique coverage."
+  },
+  "preservedFailures": [
+    { "artifact": "h1-query-rust-tests01.log", "classification": "19 passed / 1 fixture failure. A second active owner reused a unique profile and failed before the query assertion. Corrected by assigning that fixture owner a distinct profile; not a production regression." }
+  ],
+  "incident": {
+    "record": "rust-inspection-isolation-incident.json",
+    "confirmed": "Earlier temporary test Host opened and registered in the default profile; it exited.",
+    "impact": "Recovery/user-data effects remain unknown without a pre-run baseline.",
+    "remediation": "No default-profile rollback, deletion or repair performed.",
+    "currentSlice": "Only explicitly isolated scratch profiles were used. Final child env preserves PI_DESKTOP_DATA_DIR; passing tests do not establish no impact from the earlier incident."
+  },
+  "limitations": [
+    "Complete Desktop startup, subclass-preserving fenced factories, restart ownership and coordinator wiring remain pending.",
+    "Fixed inventory gaps still refuse Rust background admission, remaining native/resource producers, independent Worker classification and paused Voice/LiveVoice.",
+    "No transfer mutation, admission hold, execution replay, source release or target readiness is enabled by these queries.",
+    "No current full Rust suite, live Desktop/default-profile operation, real provider/stored SSH, dependency installation, minimum-hardware/mobile/macOS/Linux qualification was performed.",
+    "Existing mode unused/dead-code warnings and architecture/ADR advisories remain. Clippy passed, not warning-free. TodoWrite still returns TOOL_TURN_CANCELLED."
+  ]
+}

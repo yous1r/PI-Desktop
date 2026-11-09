@@ -2341,3 +2341,22 @@ fenced factory/lifecycle composition. Voice remains paused.
 - Corrected development verification: Rust 20/20, runtime 49/49 and Desktop
   inventory 48/48 passed; no failures or skips in these runs. The fixture failure
   remains recorded separately, not relabeled as a production regression.
+
+### H1 original-owner query acceptance
+
+- Accepted clean candidate `17da5209186823485400b74a9736445f502b2844`
+  against freshly fetched `7e493e8b18d277d8d13f682cf250604ed94fb00d`.
+  Rust 20, shared 32, runtime 49 and Desktop inventory 48 unique cases passed;
+  six process checks passed with two isolated Hosts and confirmed original
+  native/Host cleanup. These selections overlap prior development evidence.
+- Candidate Host and Rust tests were rebuilt. Format, typecheck, Biome,
+  architecture, agent policy, 633 docs, base, whitespace and ordinary Clippy
+  passed. Existing mode warnings remain; no full Rust-suite claim is made.
+- All 2,842 frozen source inputs remained unchanged, digest
+  `6717c09c11c84f667e16b27e355fe64c84f94b297914d592f44e20e07fe46da6`;
+  32 evidence artifacts were rehashed. See
+  [owner query verification](ai-command-center-p0-evidence/owner-query-verification.json).
+- Result: `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`. Full H1 startup/lifecycle,
+  coordinator, background admission, Worker/resource/native coverage remain.
+  Voice remains paused. The earlier default-profile incident and unknown impact
+  are preserved; this slice used only explicitly isolated scratch profiles.
