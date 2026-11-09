@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "2e1c9f94af01a1cd9e8993df5e91becc8025b1ae",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "startedAt": "2026-11-09T23:30:26.937Z",
+  "endedAt": "2026-11-09T23:31:41.254Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "scope": "Windows Desktop fenced backend startup/restart and shutdown ordering, production configuration wiring with external boundaries replaced, and real Rust/runner/Node recovery; full H1 inventory/transfer remain pending",
+  "sourceInputs": {
+    "count": 2862,
+    "sha256": "c470aa8be5f1a9b2442758e04d0f4f5e6a46ac255b4635c5c556bc14c32389f6",
+    "unchanged": true,
+    "manifest": {
+      "file": "h1-backend-candidate-inputs.json",
+      "bytes": 491090,
+      "sha256": "f7ec0d7bb10a066e506c9956fc448ff56a08d5266f7dd5b19f3ceb256f24e6ef"
+    }
+  },
+  "tests": {
+    "desktop": {
+      "files": 11, "uniquePassed": 172, "failed": 0, "skipped": 0, "cancelled": 0,
+      "selection": ["handoff-backend-owner", "handoff-backend-wiring", "handoff-lifecycle", "handoff-sidecar-factory", "handoff-mode-services", "handoff-extension-owner", "handoff-inventory", "plugin-restore-notifies-renderer", "shutdown-regenerate-persistence", "main-wiring-contract", "rpc-lifecycle-contract"]
+    },
+    "runtime": {
+      "files": 3, "uniquePassed": 29, "failed": 0,
+      "selection": ["execution-fence", "process-exit-confirmation", "sidecar-handoff-client"]
+    },
+    "native": {
+      "checks": 8,
+      "hostProcesses": 4,
+      "cleanupConfirmed": true,
+      "report": "owner-inspection-kWm2NE/report.json",
+      "reportBytes": 1882,
+      "reportSha256": "48f3395edad8a6a3661178b8102becc6fe6b446e323cbea448757c2575c01855",
+      "bundleSha256": "22a1c8d175667dbe49a84901b013eb1b1338578b91b8528c631b426a9904284e",
+      "scriptSha256": "1891d454d36c1912fd3c642ed86d137c8c6fa30c2c2283978feee45e3c4c0880",
+      "bundleInputs": 1465,
+      "bundleInputsSha256": "e8c295bbafef9fc0406a5a0edf6cc572b30499a06da727529f37fde3a566bc24",
+      "manifestVerified": true,
+      "scope": "Real Rust, runner, Node fixture/descendants, Desktop subclass and backend owner; concurrent starts, Sidecar replacement, original native closure, same-Desktop Host restart recovery and shutdown ordering. Other Desktop owners remain fixtures."
+    }
+  },
+  "checks": [
+    { "name": "node", "exitCode": 0 },
+    { "name": "runtime", "exitCode": 0 },
+    { "name": "native", "exitCode": 0 },
+    { "name": "types", "exitCode": 0 },
+    { "name": "lint", "exitCode": 0 },
+    { "name": "architecture", "exitCode": 0 },
+    { "name": "policy", "exitCode": 0 },
+    { "name": "docs", "exitCode": 0 },
+    { "name": "base", "exitCode": 0 },
+    { "name": "whitespace", "exitCode": 0 }
+  ],
+  "reusedHost": {
+    "file": "h1-query-candidate-host.exe",
+    "bytes": 34910208,
+    "sha256": "69a4270bb59c7d1b0d7204bb81ecb478d205d972b60ade18567042bc8e4d699d",
+    "acceptedCandidate": "17da5209186823485400b74a9736445f502b2844",
+    "rustInputsUnchanged": true,
+    "rustTestsRerun": false,
+    "clippyRerun": false
+  },
+  "evidence": {
+    "location": "Session scratch 233744ff-b9c5-46dd-9a91-5169100d5569",
+    "rawReport": "h1-backend-candidate.json",
+    "rawReportBytes": 39607,
+    "rawReportSha256": "fd0c78a1df8398dd090c0abca3ea6ec5f85b4aa9177c411eec1b17418d808bfb",
+    "runner": "h1-backend-candidate.mjs",
+    "runnerPreparation": "h1-backend-prepare.mjs",
+    "independentVerifier": "h1-backend-verify.mjs",
+    "artifactsRehashed": 43,
+    "preservedFailures": [
+      "h1-backend-before.log: missing implementation baseline",
+      "h1-backend-launch-red.log: admission closing during native preparation did not prevent spawn",
+      "h1-backend-host-first-red.log: Host-first retirement skipped ordinary-turn interruption",
+      "h1-backend-close-red.log: pending closing work was absent from activity counts",
+      "h1-backend-after02.log: 69 passed and one obsolete shutdown source-string assertion",
+      "h1-backend-wiring01.log and wiring02.log: missing dist entries; current-source test aliases corrected",
+      "h1-backend-wiring03.log: incomplete external plugin fixture; no native child launched",
+      "h1-backend-wiring04.log: redundant pre-publication extension rebind refused; removed after real wiring reproduction",
+      "h1-backend-process01.log: stale-generation native fixture query after replacement; cleanup confirmed, corrected to journal closure evidence"
+    ],
+    "coverageNote": "Development and prior-slice selections overlap; totals are not additive. Full source inputs, unique test names and artifact manifests remain in scratch."
+  },
+  "limitations": [
+    "Production coordinator inventory/transfer composition and Rust background admission are pending; this does not enable handoff.",
+    "Native coverage remains execution_generation_only; Worker classification and missing resource families refuse transfer. Voice/LiveVoice remain paused.",
+    "No Rust rebuild/test/Clippy, live Desktop, Electron UI, real provider, stored SSH, install or minimum-hardware qualification was performed in this TypeScript slice.",
+    "Existing architecture and ADR advisories remain; this is not warning-free repository-wide acceptance.",
+    "Earlier default-profile startup/owner registration is confirmed; recovery/user-data impact remains unknown without a baseline. No remediation occurred. See rust-inspection-isolation-incident.json."
+  ]
+}

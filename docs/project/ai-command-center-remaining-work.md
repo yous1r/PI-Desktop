@@ -2487,3 +2487,21 @@ admission plus Worker/resource/native qualification. H1 and the remaining approv
 DAG stay open. Voice remains paused. This slice used explicit scratch profiles;
 the earlier default-profile startup incident and unknown data effects remain
 recorded and are not resolved by these passing checks.
+
+#### Windows backend startup clean-candidate acceptance
+
+Candidate `2e1c9f94af01a1cd9e8993df5e91becc8025b1ae` against freshly fetched
+`7e493e8b18d277d8d13f682cf250604ed94fb00d` passed all 172 unique Desktop cases,
+29 runtime cases and eight real isolated process checks across four Hosts with
+confirmed cleanup. Types, lint (416 files), architecture, agent policy, docs
+(633 pages), base and whitespace passed. The worktree stayed clean before/after,
+all 2,862 inputs were unchanged, and 43 artifacts were independently rehashed.
+The input scope also includes current plugin-devkit sources used by the new
+production wiring test. Accepted Rust binary reuse was proved by unchanged Rust
+inputs and exact hash; no Rust/Clippy rerun is claimed. See
+[backend startup verification](./ai-command-center-p0-evidence/backend-startup-verification.json).
+
+This accepts the Windows startup/restart composition slice, not complete H1.
+Next is production coordinator binding and retained-backend inventory integration,
+then Rust background admission and remaining required resource/native proofs.
+The fixed qualification gaps, Voice pause and earlier incident limits remain.
