@@ -1786,3 +1786,17 @@ This is capture-module acceptance only. Controller/model/download ownership,
 VoiceService initialization, confirmed shutdown and microphone lease retention
 remain next, followed by LiveVoice/remote owners and full H1 composition. Clean
 candidate acceptance is recorded separately.
+
+### H1 Dictation capture clean-candidate acceptance
+
+Implementation `8c8dea7cf7bad082100e40453e8815573a583a22` passed all 44 tests
+on a clean worktree against refreshed base
+`fd28eb89866ac513912ed109716e7120cf60f18c`. All 1,676 tracked inputs remained
+unchanged (manifest digest
+`83bd6f831bf806803306d1210763476bb3858e67433e7885fe0c3ea35c001824`).
+The [capture report](ai-command-center-p0-evidence/audio-capture-after.json)
+records exact PCM, original release and retained uncertainty observations.
+The [verification archive](ai-command-center-p0-evidence/audio-capture-verification.json)
+preserves 17 exact artifacts and 44 unique passing test names. Status is
+`PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`; remaining controller/model/service/lease,
+LiveVoice/remote and H1-H5 work is unchanged.

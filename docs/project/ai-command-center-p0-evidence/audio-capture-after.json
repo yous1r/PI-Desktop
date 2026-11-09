@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "8c8dea7cf7bad082100e40453e8815573a583a22",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-09T04:35:05.780Z",
+  "endedAt": "2026-11-09T04:35:12.536Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "tests": {
+    "files": 6,
+    "unique": 44,
+    "focused": 20,
+    "userPaths": 1
+  },
+  "run": {
+    "command": [
+      "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+      "--import",
+      "file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-mcp-test-loader.mjs",
+      "--test",
+      "--test-reporter=tap",
+      "--test-concurrency=1",
+      "--test-timeout=25000",
+      "test/handoff-audio-capture.test.mjs",
+      "test/handoff-audio-user-path.test.mjs",
+      "test/voice-service-idle-unload.test.mjs",
+      "test/voice-model-download.test.mjs",
+      "test/plugin-audio-unsupported.test.mjs",
+      "test/main-wiring-contract.test.mjs"
+    ],
+    "exitCode": 0,
+    "signal": null
+  },
+  "log": {
+    "path": "handoff-audio-candidate.log",
+    "bytes": 9245,
+    "sha256": "c7a8c8d9e2e6385596f415dea1bddbc16a77b523482b763164919161769bfe11"
+  },
+  "sourceInputs": {
+    "count": 1676,
+    "sha256": "83bd6f831bf806803306d1210763476bb3858e67433e7885fe0c3ea35c001824",
+    "unchanged": true,
+    "manifest": "handoff-audio-candidate-inputs.json",
+    "scope": "Tracked Desktop/runtime/contract sources including Voice; not a complete third-party dependency graph."
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "observations": [
+    {
+      "kind": "audio-user-path",
+      "exactPcmTranscription": true,
+      "originalReleases": 2,
+      "lateFramePublished": false,
+      "activity": {
+        "operations": 0,
+        "resources": 0,
+        "uncontainedResources": 2
+      },
+      "nativeFamilyQualified": false,
+      "physicalMicrophoneUsed": false
+    }
+  ],
+  "limitations": [
+    "Actual controller, engine, model manager and audio backend use deterministic native recorder/model boundaries and an isolated model file. No physical microphone or native model execution is certified.",
+    "Ordinary release is not native-family closure; full Voice service/controller/model/lease ownership and LiveVoice/remote/H1-H5 integration remain pending.",
+    "No live Desktop/profile/provider/account, stored SSH Host, model download, paid API or dependency installation was used."
+  ]
+}
