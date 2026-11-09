@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "bca1ddcc1b920facfc97f210a9a4c92664d86a2d",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "implementation": "7fe1af95cf6e7ee4628b48a7acb8724030e13dc1",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "freshBaseFetched": true,
+  "sourceInputs": {
+    "count": 2808,
+    "digest": "17fa9247c530fc7751af283ceb23509bebf2c43403a79930567d0123100bb48e",
+    "unchangedAfterNodeAndNativeTests": true,
+    "scope": "Tracked Desktop, Rust Host, runtimes, shared contracts, tests and build configuration. Third-party dependencies are reused and excluded.",
+    "manifest": "handoff-remote-boot-candidate-inputs.json"
+  },
+  "node": {
+    "files": 20,
+    "tests": 208,
+    "uniquePassed": 205,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 3,
+    "skipReason": "Existing POSIX process-inspection cases on Windows",
+    "selection": [
+      "handoff-remote-hosts", "handoff-remote-pairing-user-path", "boot-remote-hosts",
+      "remote-host-prepare", "remote-host-realign", "pairing-boot-add-remove",
+      "handoff-racp-client", "racp-remote-host-client", "remote-host-connection",
+      "remote-host-ssh-tunnel", "handoff-ssh-tunnel", "remote-host-ssh-bootstrap",
+      "remote-host-deployment-confirm", "remote-host-supervisor", "handoff-ssh-tunnel-user-path",
+      "handoff-plan-dispatch", "handoff-session-launch", "plugin-extension-owner-main",
+      "mode-runs-main", "mode-definitions-user-path"
+    ],
+    "userPaths": "Real isolated loopback WebSocket/RACP authentication with an in-memory credential store; local SSH process fixture; isolated Electron mode UI. No stored Host or external SSH server."
+  },
+  "contracts": { "shared": 9, "hostRuntime": 24, "failed": 0 },
+  "native": {
+    "binarySha256": "cdfbbd7cd3ae486123c77a9d4acbf26d0470c7a9328a0bc0e4f90cf46e099ff7",
+    "schema": 30,
+    "recovery": {
+      "status": "PASS", "checks": 11, "childCount": 58, "cleanupConfirmed": true,
+      "coverage": [
+        "Missing profiles are refused without creating a database",
+        "Crash before prepare proves original owner and containment before restart",
+        "Prepared, source_fencing, source_fenced and release_pending crash recovery",
+        "Registration precedes Node effects; ordinary startup refuses unfinished handoff",
+        "One native target; target crash rotates capability without replay",
+        "Unsupported versions, stale revisions and unknown fields preserve data",
+        "Live or mismatched original identities refuse retirement",
+        "Invalid frames and blocked input/output cancel and release the directory lock",
+        "Coordinator crash closes the original restricted Host"
+      ]
+    },
+    "client": {
+      "status": "PASS", "checks": 4, "restrictedProcesses": 5, "cleanupConfirmed": true,
+      "bundleSha256": "35c9e45f12f966c8855386be296273cc26ff6b6822ba57dcdcddf72dc83654cc",
+      "buildInputs": 778,
+      "buildInputsDigest": "5d9d1c020e1b15935791dd8a2b748023b3dfe3e98015da1f0e89545a5f7fdf18",
+      "coverage": [
+        "Live-owner refusal and original restricted child exit confirmation",
+        "Profile mismatch closes the consumer without journal or turn changes",
+        "Production recover/claim preserves FILETIME and durable receipts",
+        "Exclusive owner, reopen and explicit rotation preserve history without replay"
+      ]
+    },
+    "scope": "Production restricted recovery/bootstrap and client with injected durable fault states. Does not certify full Desktop handoff readiness."
+  },
+  "staticChecks": {
+    "desktopTypes": "PASS", "biome": "PASS: 380 files", "architecture": "PASS",
+    "agentPolicy": "PASS", "docs": "PASS: 633 pages", "cargoFmt": "PASS",
+    "whitespace": "PASS", "baseAncestry": "PASS"
+  },
+  "integrationEvidence": {
+    "rustTargeted": "33/33 passed before the final upstream release-metadata and test-only rebase; includes owner journal, mode migration and provider schema regression.",
+    "standardClippy": "Passed before the final upstream release-metadata and test-only rebase with upstream unused mode-policy import/function warnings.",
+    "strictClippy": "Failed: upstream unused imports/dead code and a constant assertion introduced during integration. The assertion was corrected; ordinary Clippy passed. Strict zero-warning Clippy is not accepted.",
+    "fullRust": "The pre-release-rebase full suite was still running at archive creation. A schema-29 assertion failure was corrected and its targeted test passed. No full-suite pass is claimed."
+  },
+  "limitations": [
+    "Accepts remote boot facade ownership through original preparation, cancellation, replacement, temporary pairing and cleanup. Inner SSH installer native lifecycle remains unqualified.",
+    "Ordinary Node/plugin/Electron/browser/socket/terminal/MCP/OAuth/Speech/native voice family closure remains unqualified; disposal alone never proves closure.",
+    "Full nineteen-family inventory, upstream mode-run ownership and H1-H5 composition remain incomplete.",
+    "Voice development remains paused; incomplete voice accounting must refuse handoff.",
+    "No production Desktop/profile, external provider, microphone, model download, dependency installation, paid service, push, PR or remote merge was used.",
+    "Historical pre-rebase evidence remains bound to its original commits, preserved by the checkpoint branch."
+  ]
+}

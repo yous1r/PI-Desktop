@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "candidate": "bca1ddcc1b920facfc97f210a9a4c92664d86a2d",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "artifactStorage": "Exact logs, full input manifest and test-name list remain in this session's scratch directory. This committed index contains hashes and metadata, not copies of those files.",
+  "scratch": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569",
+  "artifacts": [
+    { "path": "handoff-remote-boot-candidate.json", "bytes": 21669, "sha256": "be44b3d30b4d4cc4dc33585e09b8686ce545d9d45c5d04fc55acc0c45ae36e9b" },
+    { "path": "handoff-remote-boot-candidate.log", "bytes": 45867, "sha256": "0924caa2ab854997716212638c160d161e0feba687e4841111157d720174ca2e" },
+    { "path": "handoff-remote-boot-candidate-inputs.json", "bytes": 481907, "sha256": "74fce8fbd386443b67e47b3930c1e3a1888cf187cc12cb99bf37df6b179d8e50" },
+    { "path": "remote-boot-host-build.log", "bytes": 1120, "sha256": "f79e54cc677c5714edcc307eedec18e836837a252711d33d1f0e6ec892ed5b3d" },
+    { "path": "remote-boot-integrated-host.exe", "bytes": 34685440, "sha256": "cdfbbd7cd3ae486123c77a9d4acbf26d0470c7a9328a0bc0e4f90cf46e099ff7" },
+    { "path": "remote-boot-native-recovery.log", "bytes": 3676, "sha256": "6cf3e0c5cff7bfbcdc69b66055e9b4481e176a09c794fd44ba28f634e3e2d2ce" },
+    { "path": "owner-handoff-3A6LIG/report.json", "bytes": 2063, "sha256": "cb5a6bebd305f6149783df4b2e7625d91ba6311d620ca81b1dc1a283a78fb1ac" },
+    { "path": "remote-boot-native-client.log", "bytes": 1879, "sha256": "47d3028e7389dbec2b09b9a49c554ace95469f51cbc5ef753a80cd86e20f3947" },
+    { "path": "owner-handoff-client-HTGdgB/report.json", "bytes": 1281, "sha256": "7c85eeba4786bcbd656985c86ccf7854c62b7a59ec6495e484481f3caf9a5a92" },
+    { "path": "remote-boot-clean-types.log", "bytes": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
+    { "path": "remote-boot-clean-lint.log", "bytes": 46, "sha256": "27d0384eeffd822880e9bac309cbb1711a3c168abaf8e5ca25d0ee938136f846" },
+    { "path": "remote-boot-clean-architecture.log", "bytes": 1949, "sha256": "9ea18097e02d5966b2940ddfd7cf50587d0ef622e3fe0a3fce4c3122d31da25d" },
+    { "path": "remote-boot-clean-policy.log", "bytes": 58, "sha256": "58a9ee0870461c6f590356bb7f15372a9dac1bc2f0450ff6b731bb4996c1460c" },
+    { "path": "remote-boot-clean-docs.log", "bytes": 848, "sha256": "b413e29d8a953100844e7eab171af74dabe545fbc343adaf17481be6b6ff6323" },
+    { "path": "remote-boot-clean-shared.log", "bytes": 505, "sha256": "b6a16f39a579d3eab3b28691ff513ff5b1cd22f89304de27b657269767ef6890" },
+    { "path": "remote-boot-clean-runtime.log", "bytes": 747, "sha256": "90874a64e99cad09c5f50c0c7c33e58f1c47683a49a5819f6bb1da674b20c717" },
+    { "path": "remote-boot-schema-corrected-run.log", "bytes": 3515, "sha256": "2b4410093eedf20762b1aaf5026b3014fed091c9ee705850c4a4d22903c5e8ed" },
+    { "path": "remote-boot-clippy-standard.log", "bytes": 1039, "sha256": "a595852bb5201947d84bf332aaa19ad0c890aaf5e010f58b6f4fc367bbb9dced" },
+    { "path": "remote-boot-clippy.log", "bytes": 1636, "sha256": "a7c9fb591cb712673ad46b366aeb9cef644556178d434b5c9883a30c19149627" }
+  ],
+  "provenance": {
+    "nodeAndNative": "Clean candidate and unchanged input hashes verified before evidence files were added.",
+    "targetedRustAndClippy": "Integration worktree before the final upstream release-metadata and test-only rebase. These are supplementary evidence, not a new full-suite acceptance.",
+    "priorFailures": "Retained in scratch: original-job cancellation/cleanup regressions, pairing fixture capability failures, missing React and stale shared-dist UI builds, and the Rust shared schema fixture mismatch. The final candidate passed the corrected user paths.",
+    "runnerError": "The first corrected Rust command used an obsolete binary suffix and executed zero tests. The actual generated executable was then located; its 33 selected tests passed.",
+    "fullRust": "Still running when this index was written; excluded from acceptance totals."
+  }
+}

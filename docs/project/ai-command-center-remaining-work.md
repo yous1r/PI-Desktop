@@ -2012,3 +2012,50 @@ SSH server, stored credential or device token, and it does not certify
 native-family closure of Node, Electron, socket or browser resources. Remote Host
 boot accounting, nineteen-family inventory and H1 composition remain next.
 Voice stays deferred.
+
+### H1 remote Host boot ownership and schema integration
+
+Implementation `7fe1af95c` retains original preparation, bootstrap, temporary
+pairing/authentication, adapter replacement and cleanup operations. Cancellation
+of a caller no longer hides the original preparation job. Temporary clients are
+cancelled before draining, and concurrent/reentrant cleanup joins one original
+completion. Retired adapters and failed cleanup remain visible. A validated SSH
+transport attempt records uncertainty before external allocation; malformed
+input invents no resource. Admission refusal remains `HOST_BUSY`, including
+mid-flight refusal, without rolling back an admitted registry write.
+
+Upstream mode-run schema 29 and the earlier ownership journal are integrated as
+schema 30. Existing journal rows survive additive migration; old owners still
+require native proof before normal startup, and unfinished legacy transfers
+still refuse startup. Shared contracts, fixtures and native client build identity
+now require schema 30. The mode UI fixture resolves current shared source, and
+native recovery fixtures isolate the Rust agents directory explicitly.
+
+Clean candidate `bca1ddcc1b920facfc97f210a9a4c92664d86a2d`, incorporating freshly
+fetched base `7e493e8b18d277d8d13f682cf250604ed94fb00d`, passed 205 unique Node
+tests across twenty files, with three existing Windows skips. Shared handoff
+contracts passed 9/9 and Host-runtime channel/coordinator/process tests 24/24.
+Actual loopback WebSocket pairing, the local SSH process fixture and isolated
+Electron mode UI are included. The rebuilt schema-30 Host passed eleven native
+recovery checks and four production-client checks; original process cleanup was
+confirmed. All 2,808 source inputs remained unchanged through these runs.
+
+The [acceptance report](ai-command-center-p0-evidence/remote-boot-after.json) and
+[artifact index](ai-command-center-p0-evidence/remote-boot-verification.json)
+record commit, base, binary/input/log hashes and scope. Exact logs, test-name
+list and full manifest remain in session scratch; the index embeds metadata,
+not the files. Desktop types, Biome 380 files, architecture, policy, 633 docs,
+Rust formatting, whitespace and ancestry passed. Before the last upstream
+release-metadata/test-only rebase, 33 targeted Rust regressions and ordinary
+Clippy passed. Strict Clippy remains unaccepted because of upstream unused mode
+policy code. The broader pre-rebase Rust suite was still running when this
+checkpoint was written; its old schema assertion failed, was corrected, and
+passed the targeted rerun. No full-suite pass is claimed.
+
+Status is `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`. Inner SSH installer and
+ordinary native-family closure remain unqualified. Next: include the upstream
+mode-run coordinator's original Host/Sidecar lifetime, pending continuations and
+settlements in ownership; then finish all nineteen families, bounded Rust
+status and fenced Desktop composition. Voice remains paused and must fail
+closed where its inventory/closure is incomplete. H1-H5 and the later command
+center DAG are not complete.
