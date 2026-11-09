@@ -8,7 +8,14 @@ it("cancels an owned process tree after an explicit readiness signal", async () 
   const root = mkdtempSync(join(tmpdir(), "pi-owned-exec-"));
   const ready = join(root, "ready.json");
   const owner = new AbortController();
-  const childSource = `require('node:fs').writeFileSync(${JSON.stringify(ready)}, JSON.stringify([process.ppid,process.pid])); setInterval(()=>{},1000);`;
+  // File creation alone is observable before writeFileSync finishes writing JSON.
+  const childSource = `
+    const { writeFileSync, renameSync } = require('node:fs');
+    const ready = ${JSON.stringify(ready)};
+    writeFileSync(ready + '.tmp', JSON.stringify([process.ppid, process.pid]));
+    renameSync(ready + '.tmp', ready);
+    setInterval(() => {}, 1000);
+  `;
   const parentSource = `require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(childSource)}],{stdio:'inherit'}); setInterval(()=>{},1000);`;
   const pending = managedExec(process.execPath, ["-e", parentSource], root, owner.signal);
   try {
