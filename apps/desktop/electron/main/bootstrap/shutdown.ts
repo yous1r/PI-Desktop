@@ -16,6 +16,7 @@ import type { McpControlServer } from "../mcp-control";
 import type { McpOAuthManager } from "../mcp-oauth";
 import { getActiveRemoteHostsBoot, setActiveRemoteHostsBoot } from "./remote-hosts";
 import type { LiveCallService } from "../live-voice/call-service";
+import type { SpeechService } from "../services/speech-service";
 
 import { disposeWorkspaceTerminals } from "./workspace-terminals";
 import type { DesktopHandoffAdmission } from "../runtime/handoff-admission";
@@ -50,6 +51,7 @@ export type ShutdownDependencies = {
   plugins: Pick<PluginRuntime, "disposeAll">;
   userMcp: Pick<UserMcpRuntime, "disposeAll">;
   mcpOAuth?: Pick<McpOAuthManager, "disposeAll">;
+  speech: Pick<SpeechService, "dispose">;
   browserHost: Pick<BrowserHost, "dispose">;
   pluginViews: Pick<PluginViewHost, "dispose">;
   /** Composer suggestions still waiting for an answer at quit (ADR 0333). */
@@ -78,6 +80,7 @@ export function registerShutdownHandlers({
   plugins,
   userMcp,
   mcpOAuth,
+  speech,
   browserHost,
   pluginViews,
   composerSuggestion,
@@ -166,6 +169,7 @@ export function registerShutdownHandlers({
     state.quitting = true;
     state.handoffAdmission.dispose();
     state.planRuntime?.dispose();
+    speech.dispose();
     // Persist the confirmed shutdown before any awaited cleanup so a forced
     // process termination still leaves an observable lifecycle boundary.
     logger.app("lifecycle", "info", "app shutdown");

@@ -75,3 +75,37 @@ only consumers, and the renderer has no transcription or speech control.
 Whisper / TTS models must not appear in the chat model picker.
 
 v1 does not implement microphone capture, Realtime, or agent tools.
+
+## 7. Original ownership during idle handoff
+
+Desktop Speech requires the shared admission gate. Status, transcription and
+synthesis capture the original Host object, generation and availability before
+settings lookup. Every later RPC, adapter dispatch, HTTP request and scratch
+operation rechecks that authority. Closed admission returns `HOST_BUSY`; a
+replaced or unavailable Host returns `HOST_UNAVAILABLE`. Ordinary settings errors
+still permit the status catalog's unconfigured fallback, but cannot hide a retired
+owner. New operations may capture the current Host; old operations never adopt it.
+
+The selected plugin adapter registration and installation are captured before
+provider/secret lookup. Re-registration or unload invalidates that invocation;
+delayed replies cannot start HTTP or write output. The original owner guard also
+travels with the pending child request into its host callbacks and workspace
+continuations. Existing permissions, reply validation and the 60-second adapter
+deadline remain in force. Original teardown and authorized retirement semantics
+are preserved; no new plugin wire capability is introduced.
+
+`SpeechService.getHandoffActivity()` reports original operations, resources and
+saturating uncontained-resource evidence. Original settings/secret RPCs, adapter
+work, file reads/writes, HTTP headers/bodies and unused response-body cancellation
+remain counted until their promises settle. A started file write is neither
+rolled back nor replayed after retirement. Permanent `dispose()` closes future
+entry and aborts original HTTP signals without dropping pending work. Confirmed
+application shutdown disposes Speech before awaited teardown; cancelled quit
+confirmation or personal-todo preparation leaves it available.
+
+Shared HTTP ownership hooks are optional for other callers. A transport attempt,
+unknown Host completion or failed body cleanup remains refusal evidence after
+ordinary completion; cleanup failures are observable without raw response data.
+Response close, abort and ordinary child exit do not certify native-family
+closure. This slice does not qualify microphones, Voice/LiveVoice, remote owners,
+the complete nineteen-family inventory or end-to-end Desktop handoff.

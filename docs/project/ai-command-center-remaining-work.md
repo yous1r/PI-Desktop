@@ -1704,3 +1704,39 @@ is 414726 bytes, SHA-256
 `481e7c407a6044c518720bb3e1d0ea832439521d14a3296477d2e9763617a010`.
 It retains thirteen exact artifacts and 191 unique passing test names. This is the
 latest accepted OAuth candidate; remaining voice/remote and H1-H5 work is unchanged.
+
+### H1 Speech original ownership checkpoint
+
+Speech status/transcribe/synthesize now require shared Desktop admission and
+capture one original Host/generation. Provider/secret lookup, plugin adapter
+selection, scratch reads/writes and HTTP continuations cannot adopt replacements.
+Adapter identity includes its registration and installation; its original Host
+guard survives the pending request into plugin callbacks and workspace checks.
+Original teardown/retirement rules and the 60-second adapter deadline remain.
+
+`SpeechActivity` retains original work through disposal, abort-ignoring bodies,
+late headers and unused-response cleanup. Confirmed shutdown seals Speech before
+awaited teardown. Already-started file writes finish under the original owner
+without rollback/replay; stale results cannot publish success. Unknown Host
+completion and native HTTP attempts remain saturated refusal evidence. Existing
+size caps, protocol behavior, provider origin checks and normal error mapping are
+unchanged; shared HTTP ownership hooks are optional and wire contracts unchanged.
+
+The parser extraction passed nine existing compatibility tests before and after
+the structural change. Initial ownership tests produced fifteen behavioral reds
+and five missing-API failures; a subsequent actual plugin callback test reproduced
+one lost-owner-guard failure. The final source run passes 126 Desktop tests in
+thirteen files, including 29 focused cases, a real registered-IPC/loopback-HTTP
+transcription+synthesis/cancellation path, plugin processes and quit compatibility.
+Eight shared adapter tests also pass: 134 unique tests, no failures/cancellations/
+skips. The first shared runner selected zero tests because its reused configuration
+fixed a different package root; the corrected explicit-root run selected all eight.
+Desktop types, Biome (348 files), architecture, agent policy and whitespace pass.
+
+Real HTTP response closure leaves `{operations:0,resources:0,
+uncontainedResources:3}` and still refuses handoff. Host RPC and renderer are
+fixtures; no actual provider, account, microphone, stored SSH Host, live profile,
+dependency install or full transfer was exercised. Clean-commit acceptance is
+recorded separately below. Next: Voice/audio/LiveVoice and remote ownership,
+then complete nineteen-family H1 composition, bounded Rust status and fenced
+Desktop/coordinator integration before H2-H5.

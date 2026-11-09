@@ -49,6 +49,7 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
   let hostDisposed = false;
   let pluginsDisposed = false;
   let plansDisposed = false;
+  let speechDisposed = false;
   const host = {
     isAvailable: () => !hostDisposed,
     async call(method, params) {
@@ -107,6 +108,7 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
     flushEventPersistence: () => persistence.flush(),
     pluginPanels: { closeAll: async () => {} },
     plugins: { disposeAll: async () => { pluginsDisposed = true; } }, userMcp: { disposeAll: dispose },
+    speech: { dispose() { speechDisposed = true; } },
     browserHost: { dispose }, pluginViews: { dispose: async () => {} },
     updater: { dispose, isInstallingUpdate: () => false }, logger,
     confirmQuitDialog: async () => true, disposePowerSaveBlockers: dispose,
@@ -132,6 +134,7 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
   await sidecarStopped.promise;
   assert.equal(state.handoffAdmission.isClosed(), true, "confirmed quit closes new admission before disposal");
   assert.equal(plansDisposed, true, "confirmed quit disposes plan retries before resource teardown");
+  assert.equal(speechDisposed, true, "confirmed quit seals Speech before awaited cleanup");
   assert.equal(hostDisposed, false, "quit must wait for the branch already being saved");
   if (outcome === "unresponsive") {
     await new Promise((resolve) => setImmediate(resolve));
@@ -162,6 +165,7 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
   const confirmations = [];
   let confirmationCount = 0;
   let plansDisposed = false;
+  let speechDisposed = false;
   const state = {
     handoffAdmission: new DesktopHandoffAdmission(),
     planRuntime: { dispose() { plansDisposed = true; } },
@@ -191,6 +195,7 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
     pluginPanels: { closeAll: async () => {} },
     plugins: { disposeAll: async () => {} },
     userMcp: { disposeAll: dispose },
+    speech: { dispose() { speechDisposed = true; } },
     browserHost: { dispose },
     pluginViews: { dispose: async () => {} },
     updater: { dispose, isInstallingUpdate: () => false },
@@ -229,6 +234,7 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
   assert.equal(state.quitConfirmed, false);
   assert.equal(state.handoffAdmission.isClosed(), false, "cancelled confirmation keeps normal admission");
   assert.equal(plansDisposed, false, "cancelled confirmation preserves plan runtime");
+  assert.equal(speechDisposed, false, "cancelled confirmation preserves Speech");
   assert.equal(requestQuit(), true);
   assert.equal(confirmationCount, 2);
 
@@ -239,12 +245,14 @@ test("a repeated before-quit cannot bypass the pending renderer confirmation", a
   assert.equal(state.shutdownComplete, true);
   assert.equal(state.handoffAdmission.isClosed(), true);
   assert.equal(plansDisposed, true);
+  assert.equal(speechDisposed, true);
 });
 
 test("personal todo preparation blocks disposal and permits a cancelled quit to retry", async (t) => {
   app.removeAllListeners();
   const originalQuit = app.quit;
   let plansDisposed = false;
+  let speechDisposed = false;
   const state = {
     handoffAdmission: new DesktopHandoffAdmission(),
     planRuntime: { dispose() { plansDisposed = true; } },
@@ -273,6 +281,7 @@ test("personal todo preparation blocks disposal and permits a cancelled quit to 
     flushEventPersistence: async () => {},
     pluginPanels: { closeAll: async () => {} },
     plugins: { disposeAll: async () => {} }, userMcp: { disposeAll: dispose },
+    speech: { dispose() { speechDisposed = true; } },
     browserHost: { dispose }, pluginViews: { dispose: async () => {} },
     updater: { dispose, isInstallingUpdate: () => false }, logger: { app() {} },
     confirmQuitDialog: async () => true,
@@ -293,6 +302,7 @@ test("personal todo preparation blocks disposal and permits a cancelled quit to 
   assert.equal(hostDisposed, false);
   assert.equal(state.handoffAdmission.isClosed(), false, "unsaved todos keep the application usable");
   assert.equal(plansDisposed, false, "unsaved todos preserve plan runtime");
+  assert.equal(speechDisposed, false, "unsaved todos preserve Speech");
   state.quitConfirmed = true;
   app.quit();
   assert.equal(preparations.length, 2);
@@ -305,4 +315,5 @@ test("personal todo preparation blocks disposal and permits a cancelled quit to 
   assert.equal(state.shutdownComplete, true);
   assert.equal(state.handoffAdmission.isClosed(), true);
   assert.equal(plansDisposed, true);
+  assert.equal(speechDisposed, true);
 });

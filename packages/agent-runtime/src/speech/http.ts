@@ -25,6 +25,11 @@ export type SpeechHttpContext = {
   apiKey?: string;
   audio?: { filename: string; mimeType: string; bytes: Uint8Array };
   fetchImpl?: typeof fetch;
+  /** Optional original-owner hooks; ordinary callers keep the existing transport behavior. */
+  signal?: AbortSignal;
+  assertCurrent?: () => void;
+  beforeRequest?: () => void;
+  onCleanupError?: () => void;
 };
 
 export type SpeechHttpResult =
@@ -159,22 +164,45 @@ export async function executeSpeechHttp(
   }
 
   const fetchImpl = context.fetchImpl ?? fetch;
+  const assertCurrent = () => { context.assertCurrent?.(); context.signal?.throwIfAborted(); };
+  assertCurrent();
+  context.beforeRequest?.();
+  assertCurrent();
   let response: Response;
   try {
     response = await fetchImpl(call.url, {
       method: call.method ?? "POST",
       headers,
       body,
+      ...(context.signal ? { signal: context.signal } : {}),
     });
   } catch (error) {
+    assertCurrent();
     fail(ErrorCodes.NETWORK_ERROR, error instanceof Error ? error.message : "speech request failed");
   }
-  if (response.status === 401 || response.status === 403) {
-    fail(ErrorCodes.PROVIDER_UNAUTHORIZED, `speech provider returned ${response.status}`);
+  try {
+    assertCurrent();
+    if (response.status === 401 || response.status === 403) {
+      fail(ErrorCodes.PROVIDER_UNAUTHORIZED, `speech provider returned ${response.status}`);
+    }
+    if (!response.ok) {
+      const detail = (await response.text().catch(() => "")).slice(0, 300);
+      assertCurrent();
+      fail(ErrorCodes.PROVIDER_ERROR, detail || `speech provider returned ${response.status}`);
+    }
+    const result = await parseBody(response, call);
+    assertCurrent();
+    return result;
+  } catch (error) {
+    assertCurrent();
+    throw error;
+  } finally {
+    if (response.body && !response.bodyUsed) {
+      try { await response.body.cancel(); }
+      catch {
+        if (context.onCleanupError) context.onCleanupError();
+        else console.error("Speech response cleanup could not be confirmed");
+      }
+    }
   }
-  if (!response.ok) {
-    const detail = (await response.text().catch(() => "")).slice(0, 300);
-    fail(ErrorCodes.PROVIDER_ERROR, detail || `speech provider returned ${response.status}`);
-  }
-  return parseBody(response, call);
 }

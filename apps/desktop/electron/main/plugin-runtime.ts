@@ -1,3 +1,4 @@
+import { parseSpeechAdapterReply } from "./plugin-speech";
 import { pluginMcpActivity, registerPluginMcpServers } from "./plugin-mcp-registration";
 import { sendPluginProcessCall, type PendingPluginCall } from "./plugin-process-calls";
 import { PluginLifecycle } from "./plugin-lifecycle";
@@ -1426,55 +1427,6 @@ const spawnUtilityProcess: PluginProcessSpawner = async ({ pluginId, entry, cwd,
   };
 };
 
-const SPEECH_HTTP_PARSE = new Set([
-  "bytes",
-  "json-text",
-  "json-path",
-  "openai-transcription",
-  "openai-chat-audio",
-]);
-
-function parseSpeechAdapterReply(value: unknown): {
-  kind: "text" | "audio" | "http";
-  text?: string;
-  mimeType?: string;
-  data?: string;
-  call?: Record<string, unknown>;
-} {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw apiError("INVALID_ARGUMENT", "speech adapter reply is invalid");
-  }
-  const record = value as Record<string, unknown>;
-  if (record.kind === "text") {
-    const text = typeof record.text === "string" ? record.text.trim() : "";
-    if (!text) throw apiError("PROVIDER_ERROR", "speech adapter returned empty text");
-    return { kind: "text", text };
-  }
-  if (record.kind === "audio") {
-    const data = typeof record.data === "string" ? record.data.trim() : "";
-    const mimeType =
-      typeof record.mimeType === "string" && record.mimeType.trim()
-        ? record.mimeType.trim()
-        : "application/octet-stream";
-    if (!data) throw apiError("PROVIDER_ERROR", "speech adapter returned empty audio");
-    return { kind: "audio", mimeType, data };
-  }
-  if (record.kind === "http") {
-    const call = record.call;
-    if (!call || typeof call !== "object" || Array.isArray(call)) {
-      throw apiError("INVALID_ARGUMENT", "speech adapter http call is invalid");
-    }
-    const spec = call as Record<string, unknown>;
-    if (typeof spec.url !== "string" || !spec.url.trim()) {
-      throw apiError("INVALID_ARGUMENT", "speech adapter http call is invalid");
-    }
-    if (typeof spec.parse !== "string" || !SPEECH_HTTP_PARSE.has(spec.parse)) {
-      throw apiError("INVALID_ARGUMENT", "speech adapter http parse is invalid");
-    }
-    return { kind: "http", call: spec };
-  }
-  throw apiError("INVALID_ARGUMENT", "speech adapter reply kind is invalid");
-}
 
 export class PluginRuntime {
   private readonly lifecycle: PluginLifecycle;
@@ -1670,28 +1622,34 @@ export class PluginRuntime {
     }));
   }
 
-  async runSpeechAdapter(
-    job: { binding: { protocol: string } } & Record<string, unknown>,
-    payload: Record<string, unknown>,
-  ) {
-    const adapter = this.speechAdapters.get(String(job.binding.protocol));
-    if (!adapter) {
-      throw apiError("SPEECH_PROTOCOL_UNSUPPORTED", `unknown speech protocol: ${job.binding.protocol}`);
-    }
+  captureSpeechAdapter(protocol: string) {
+    const adapter = this.speechAdapters.get(protocol);
+    if (!adapter) return undefined;
     const loaded = this.loaded.get(adapter.pluginId);
-    if (!loaded?.child || loaded.disposing) {
-      throw apiError("NOT_FOUND", `plugin not loaded: ${adapter.pluginId}`);
-    }
-    const reply = await this.sendToChild(
-      loaded,
-      {
-        t: "call",
-        method: "speech.handle",
-        payload: { protocol: adapter.protocol, ...payload, role: (job as { role?: string }).role },
+    if (!loaded?.child || loaded.disposing) throw apiError("NOT_FOUND", `plugin not loaded: ${adapter.pluginId}`);
+    const assertCurrent = () => {
+      this.assertPluginCurrent(loaded);
+      if (this.speechAdapters.get(protocol) !== adapter) throw apiError("PLUGIN_UNLOADED", "Speech adapter registration changed");
+    };
+    assertCurrent();
+    return { roles: [...adapter.roles], assertCurrent,
+      run: async (job: { role?: string }, payload: Record<string, unknown>, assertOwner: () => void = () => {}) => {
+        const assertInvocation = () => { assertOwner(); assertCurrent(); };
+        assertInvocation();
+        return this.callbackAccess.run({ loaded, assertCurrent: assertInvocation }, async () => {
+          const reply = await this.sendToChild(loaded, { t: "call", method: "speech.handle",
+            payload: { protocol: adapter.protocol, ...payload, role: job.role } }, 60_000);
+          assertInvocation();
+          return parseSpeechAdapterReply(reply);
+        });
       },
-      60_000,
-    );
-    return parseSpeechAdapterReply(reply);
+    };
+  }
+
+  async runSpeechAdapter(job: { binding: { protocol: string }; role?: string } & Record<string, unknown>, payload: Record<string, unknown>) {
+    const adapter = this.captureSpeechAdapter(String(job.binding.protocol));
+    if (!adapter) throw apiError("SPEECH_PROTOCOL_UNSUPPORTED", `unknown speech protocol: ${job.binding.protocol}`);
+    return adapter.run(job, payload);
   }
 
   private readonly extensionOwnerUnavailable = new Set<(pluginId: string) => void>();
@@ -2200,7 +2158,10 @@ export class PluginRuntime {
   private assertPluginAccess(loaded: LoadedPlugin): void {
     const access = this.callbackAccess.getStore();
     if (access?.loaded === loaded) access.assertCurrent();
-    else this.assertPluginCurrent(loaded);
+    else {
+      if (loaded.installation && access?.loaded === loaded.installation) access.assertCurrent();
+      this.assertPluginCurrent(loaded);
+    }
   }
 
   drainToasts(): string[] {
@@ -2798,15 +2759,15 @@ export class PluginRuntime {
   private async createWorkspaceInstance(installation: LoadedPlugin, context: WorkspaceExecutionContext): Promise<LoadedPlugin> {
     const entry = installation.manifest.execution?.main === "workspace" ? installation.manifest.main : installation.manifest.execution?.workspaceMain;
     if (!entry) throw apiError("PLUGIN_INVALID", "Workspace entry is missing");
-    this.assertPluginCurrent(installation);
+    this.assertPluginAccess(installation);
     this.lifecycle.nativeAttempt();
     const child = context.authority.kind === "remote"
       ? await this.services.spawnWorkspaceProcess?.({pluginPath:installation.path,entry,context,permissions:[...installation.permissions]})
       : await (this.services.spawnProcess ?? spawnUtilityProcess)({pluginId:installation.manifest.id,
           entry:this.services.hostEntry ?? join(getModuleDirectory(import.meta.url), "plugin-host-process.js"),pluginPath:installation.path,cwd:context.roots.find(root=>root.primary)!.path,
-          assertCurrent: () => this.assertPluginCurrent(installation)});
+          assertCurrent: () => this.assertPluginAccess(installation)});
     if (!child) throw apiError("CAPABILITY_UNAVAILABLE", "Workspace plugin execution is unavailable");
-    try { this.assertPluginCurrent(installation); }
+    try { this.assertPluginAccess(installation); }
     catch (error) { child.kill(); throw error; }
     const loaded: LoadedPlugin = {...installation,installation,workspaceContext:context,runtimeId:randomUUID(),child,
       workspaceExecution:undefined,workspaceMcp:undefined,workspaceTools:new Map(),
@@ -2859,7 +2820,8 @@ export class PluginRuntime {
       if (loaded.disposing) throw apiError("PLUGIN_GONE", "Workspace plugin process is no longer active");
     }
     if (retirement) this.assertPluginCurrent(loaded, true); else if (!teardown) this.assertPluginAccess(loaded);
-    return sendPluginProcessCall(loaded, message, timeoutMs, signal, this.surfaceInvocation.getStore(), () => this.lifecycle.nativeAttempt(), retirement);
+    return sendPluginProcessCall(loaded, message, timeoutMs, signal, this.surfaceInvocation.getStore(), () => this.lifecycle.nativeAttempt(), retirement,
+      teardown || retirement ? undefined : this.callbackAccess.getStore()?.assertCurrent);
   }
 
   private handleChildMessage(loaded: LoadedPlugin, message: any): void {
@@ -2895,6 +2857,7 @@ export class PluginRuntime {
             throw apiError("PLUGIN_CALL_EXPIRED", "The originating call has ended");
           }
           parent?.signal.throwIfAborted();
+          parent?.assertOwner?.();
           this.toolInvocations.current(loaded.installation ?? loaded);
           if (!parent?.teardown) this.assertPluginCurrent(loaded, parent?.retirement);
         };

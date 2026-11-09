@@ -743,3 +743,12 @@ state. Unknown RPC completion retains bounded refusal evidence. See the
 This composition does not enable a transfer request. Complete owner inventory,
 bounded source journal transport, native/coordinator integration and target
 readiness remain separate H1-H5 acceptance work.
+
+Desktop Speech shares the same admission and captures the original Host and
+plugin adapter before asynchronous setup. Original RPC, adapter, scratch-file and
+HTTP body/cleanup work remains visible through service disposal; stale owners
+cannot dispatch follow-up work or publish results. Confirmed shutdown seals the
+service and aborts its original HTTP signals. See the
+[Speech ownership contract](20-speech.md#7-original-ownership-during-idle-handoff).
+HTTP close and plugin exit retain unqualified native-resource evidence; complete
+resource composition and ownership transfer remain pending.

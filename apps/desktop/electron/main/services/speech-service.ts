@@ -26,6 +26,7 @@ import {
 import type { HostProcess } from "../host-process";
 import type { Logger } from "../logger";
 import type { PluginRuntime } from "../plugin-runtime";
+import { SpeechActivity, type SpeechOperation } from "./speech-activity";
 
 const AUDIO_EXT_MIME: Record<string, string> = {
   ".wav": "audio/wav",
@@ -53,6 +54,8 @@ function extensionFor(mimeType: string, format?: string): string {
 }
 
 export type SpeechService = {
+  getHandoffActivity(): { operations: number; resources: number; uncontainedResources: number };
+  dispose(): void;
   status(): Promise<SpeechStatus>;
   transcribe(input: {
     sessionId?: string | null;
@@ -71,18 +74,14 @@ export type SpeechService = {
 export function createSpeechService(options: {
   dataDir: string;
   getHost: () => HostProcess | null;
-  plugins: PluginRuntime;
+  isAdmissionClosed: () => boolean;
+  plugins: Pick<PluginRuntime, "listSpeechAdapters" | "captureSpeechAdapter">;
   logger: Pick<Logger, "app">;
 }): SpeechService {
-  const { dataDir, getHost, plugins, logger } = options;
-
-  const hostOrThrow = () => {
-    const host = getHost();
-    if (!host) fail(ErrorCodes.HOST_UNAVAILABLE, "host unavailable");
-    return host;
-  };
-
-  const loadSettings = async () => hostOrThrow().call<AppSettings>("settings.get");
+  const { dataDir, getHost, plugins, logger, isAdmissionClosed } = options;
+  const activity = new SpeechActivity({ getHost, isAdmissionClosed,
+    onCleanupError: () => logger.app("provider", "warn", "Speech response cleanup could not be confirmed; idle handoff remains unavailable"),
+  });
 
   const protocolCatalog = (): SpeechProtocolInfo[] => [
     ...builtinSpeechProtocols(),
@@ -96,34 +95,35 @@ export function createSpeechService(options: {
     }
   };
 
-  const bindingFor = async (role: SpeechRole): Promise<SpeechBinding> => {
-    const speech = (await loadSettings()).speech;
+  const bindingFor = async (owner: SpeechOperation, role: SpeechRole) => {
+    const speech = (await owner.call<AppSettings>("settings.get")).speech;
     const binding = speech?.[role];
     if (!binding) fail(ErrorCodes.SPEECH_NOT_CONFIGURED, `${role} is not configured`);
     assertProtocol(binding, role);
-    return binding;
+    owner.assertCurrent();
+    const adapter = plugins.captureSpeechAdapter(binding.protocol);
+    if (adapter) owner.bindResource(adapter.assertCurrent);
+    return { binding, adapter };
   };
 
-  const resolveEndpoint = async (binding: SpeechBinding): Promise<SpeechEndpoint & { providerId: string }> => {
-    const host = hostOrThrow();
-    const result = await host.call<{ provider?: { id: string; baseUrl?: string; enabled?: boolean } }>(
+  const resolveEndpoint = async (owner: SpeechOperation, binding: SpeechBinding): Promise<SpeechEndpoint & { providerId: string }> => {
+    const result = await owner.call<{ provider?: { id: string; baseUrl?: string; enabled?: boolean } }>(
       "providers.get",
       { id: binding.providerId },
     );
     const provider = result.provider;
     if (!provider || provider.enabled === false) fail(ErrorCodes.NOT_FOUND, "speech provider is missing");
-    const secret = await host.call<{ value?: string }>("providers.getSecret", { id: provider.id });
-    return {
+    const secret = await owner.call<{ value?: string }>("providers.getSecret", { id: provider.id });
+    return { ...owner.http,
       providerId: provider.id,
       baseUrl: (provider.baseUrl || "").replace(/\/+$/, ""),
       apiKey: secret.value,
     };
   };
 
-  const scratchDir = async (sessionId?: string | null) => {
+  const scratchDir = async (owner: SpeechOperation, sessionId?: string | null) => {
     if (!sessionId?.trim()) fail(ErrorCodes.INVALID_ARGUMENT, "sessionId is required");
-    const host = hostOrThrow();
-    const result = await host.call<{ path: string }>("session.getScratchPath", {
+    const result = await owner.call<{ path: string }>("session.getScratchPath", {
       sessionId: sessionId.trim(),
     });
     const scratchPath = resolve(String(result?.path ?? ""));
@@ -132,33 +132,34 @@ export function createSpeechService(options: {
     if (!rel || rel.startsWith("..") || isAbsolute(rel)) {
       fail(ErrorCodes.INVALID_ARGUMENT, "invalid session id");
     }
-    await mkdir(scratchPath, { recursive: true });
+    await owner.wait(() => mkdir(scratchPath, { recursive: true }));
     return scratchPath;
   };
 
-  const readAudio = async (path: string, scratchPath: string, mimeType?: string) => {
+  const readAudio = async (owner: SpeechOperation, path: string, scratchPath: string, mimeType?: string) => {
     const full = resolve(path);
     const rel = relative(scratchPath, full);
     if (!rel || rel.startsWith("..") || isAbsolute(rel)) {
       fail(ErrorCodes.INVALID_ARGUMENT, "speech input must be a session file");
     }
-    const info = await stat(full).catch(() => null);
+    const info = await owner.wait(() => stat(full).catch(() => null));
     if (!info || !info.isFile()) fail(ErrorCodes.NOT_FOUND, "speech input file is missing");
     assertSpeechInputSize(info.size);
     return {
       filename: basename(full),
       mimeType: mimeFor(full, mimeType),
-      bytes: new Uint8Array(await readFile(full)),
+      bytes: new Uint8Array(await owner.wait(() => readFile(full))),
     };
   };
 
-  const runJob = async (job: SpeechJob, endpoint: SpeechEndpoint): Promise<SpeechHttpResult> => {
-    const plugin = plugins.getSpeechAdapter(job.binding.protocol);
+  const runJob = async (owner: SpeechOperation, job: SpeechJob, endpoint: SpeechEndpoint,
+    plugin: ReturnType<PluginRuntime["captureSpeechAdapter"]>): Promise<SpeechHttpResult> => {
+    owner.assertCurrent();
     if (plugin) {
       if (!plugin.roles.includes(job.role)) {
         fail(ErrorCodes.SPEECH_PROTOCOL_UNSUPPORTED, `speech protocol does not support ${job.role}`);
       }
-      const reply = await plugins.runSpeechAdapter(job, {
+      const reply = await owner.wait(() => plugin.run(job, {
         modelId: job.binding.modelId,
         voice: job.binding.voice,
         format: job.binding.format,
@@ -171,7 +172,7 @@ export function createSpeechService(options: {
               data: Buffer.from(job.audio.bytes).toString("base64"),
             }
           : undefined,
-      });
+      }, owner.assertCurrent));
       if (reply.kind === "text") return { kind: "text", text: reply.text ?? "" };
       if (reply.kind === "audio") {
         return {
@@ -185,6 +186,7 @@ export function createSpeechService(options: {
       if (!endpoint.baseUrl) fail(ErrorCodes.INVALID_ARGUMENT, "speech provider has no base URL");
       assertSameOrigin(endpoint.baseUrl, call.url);
       return executeSpeechHttp(call, {
+        ...owner.http,
         apiKey: endpoint.apiKey,
         audio: job.audio,
       });
@@ -194,8 +196,11 @@ export function createSpeechService(options: {
   };
 
   return {
-    async status() {
-      const settings = await loadSettings().catch(() => null);
+    getHandoffActivity: () => activity.snapshot(),
+    dispose: () => activity.dispose(),
+    status: () => activity.run(async owner => {
+      const settings = await owner.call<AppSettings>("settings.get").catch(() => null);
+      owner.assertCurrent();
       const protocols = protocolCatalog();
       const roleStatus = (role: SpeechRole) => {
         const binding = settings?.speech?.[role];
@@ -214,14 +219,14 @@ export function createSpeechService(options: {
         synthesize: roleStatus("synthesize"),
         protocols,
       };
-    },
+    }),
 
-    async transcribe(input) {
-      const binding = await bindingFor("transcribe");
-      const endpoint = await resolveEndpoint(binding);
-      const dir = await scratchDir(input.sessionId);
-      const audio = await readAudio(String(input.path ?? ""), dir, input.mimeType);
-      const result = await runJob(
+    transcribe: input => activity.run(async owner => {
+      const { binding, adapter } = await bindingFor(owner, "transcribe");
+      const endpoint = await resolveEndpoint(owner, binding);
+      const dir = await scratchDir(owner, input.sessionId);
+      const audio = await readAudio(owner, String(input.path ?? ""), dir, input.mimeType);
+      const result = await owner.wait(() => runJob(owner,
         {
           role: "transcribe",
           binding,
@@ -229,20 +234,22 @@ export function createSpeechService(options: {
           audio,
         },
         endpoint,
-      );
+        adapter,
+      ));
       if (result.kind !== "text") fail(ErrorCodes.PROVIDER_ERROR, "speech adapter did not return text");
+      owner.assertCurrent();
       logger.app("provider", "info", "speech transcribed", {
         data: { protocol: binding.protocol, providerId: binding.providerId },
       });
       return { text: result.text };
-    },
+    }),
 
-    async synthesize(input) {
+    synthesize: input => activity.run(async owner => {
       const text = String(input.text ?? "").trim();
       if (!text) fail(ErrorCodes.INVALID_ARGUMENT, "speech text is required");
-      const binding = await bindingFor("synthesize");
-      const endpoint = await resolveEndpoint(binding);
-      const result = await runJob(
+      const { binding, adapter } = await bindingFor(owner, "synthesize");
+      const endpoint = await resolveEndpoint(owner, binding);
+      const result = await owner.wait(() => runJob(owner,
         {
           role: "synthesize",
           binding: {
@@ -253,20 +260,22 @@ export function createSpeechService(options: {
           text,
         },
         endpoint,
-      );
+        adapter,
+      ));
       if (result.kind !== "audio") fail(ErrorCodes.PROVIDER_ERROR, "speech adapter did not return audio");
-      const dir = await scratchDir(input.sessionId);
+      const dir = await scratchDir(owner, input.sessionId);
       const ext = extensionFor(result.mimeType, input.format || binding.format);
       const path = join(dir, `speech-${randomUUID()}.${ext}`);
-      await writeFile(path, result.bytes);
+      await owner.wait(() => writeFile(path, result.bytes));
       const payload: SpeechSynthesizeResult = { path, mimeType: result.mimeType };
       if (result.bytes.byteLength <= MAX_SPEECH_TTS_DATA_URL_BYTES) {
         payload.dataUrl = `data:${result.mimeType};base64,${Buffer.from(result.bytes).toString("base64")}`;
       }
+      owner.assertCurrent();
       logger.app("provider", "info", "speech synthesized", {
         data: { protocol: binding.protocol, providerId: binding.providerId },
       });
       return payload;
-    },
+    }),
   };
 }

@@ -1106,7 +1106,7 @@ registerShutdownHandlers({
   pluginPanels,
   plugins,
   userMcp,
-  mcpOAuth,
+  mcpOAuth, speech,
   browserHost,
   pluginViews,
   composerSuggestion: pluginServices.composerSuggestion,

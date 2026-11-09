@@ -20368,3 +20368,38 @@ Evidence: 40 focused `handoff-mcp-oauth.test.mjs` cases and one real HTTP
 `handoff-mcp-oauth-user-path.test.mjs` journey, plus existing OAuth and MCP suites.
 Actual listener/response closure is not native-family qualification. Full H1
 inventory, fenced Desktop composition and H2-H5 transfer remain separate work.
+
+### E2E-HANDOFF-speech
+
+Run the current-source Desktop tests `handoff-speech.test.mjs`,
+`handoff-speech-plugin.test.mjs` and `handoff-speech-user-path.test.mjs`, together
+with existing Speech/plugin/quit compatibility tests. The first two contain 29
+deterministic owner and cleanup cases; the third enters through registered
+Speech IPC, the shared Desktop admission gate and the real Speech HTTP adapter.
+Use an isolated temporary scratch and loopback HTTP server; Host RPC, renderer
+delivery and deterministic plugin process ports remain fixture boundaries.
+
+1. Hold idle admission and verify Speech status/transcribe/synthesize are refused
+   before Host, plugin, file or HTTP work. Cancel the hold and complete a real
+   multipart transcription and synthesis; verify exact output bytes/data URL in
+   the originating session scratch.
+2. Pause settings, provider, secret, scratch, metadata, file read, adapter reply
+   and HTTP body work. Replace the Host/generation, retire its availability,
+   re-register the adapter or close admission. No old continuation may read a
+   replacement secret, dispatch a new adapter/request, create output or publish
+   success. Known status fallback remains distinct from retired-owner refusal.
+3. Verify the original Speech owner guard reaches adapter host callbacks through
+   the pending request; a stale callback cannot write the fixture clipboard.
+   Original teardown and bounded retirement still work under the existing rules.
+4. Dispose during a real streaming HTTP response and observe original response
+   closure without creating another file. Also retain abort-ignoring bodies,
+   delayed headers, unused-body cleanup and already-started writes until their
+   original promises settle. Do not roll back or replay an admitted file write.
+5. Failed cleanup and unknown Host completion remain observable refusal evidence.
+   Confirmed application quit seals Speech before asynchronous cleanup; cancelled
+   confirmation or unsaved personal todos preserve the service.
+6. Final real-HTTP activity is zero operations/resources with three uncontained
+   transport attempts. A subsequent handoff still refuses with `HOST_BUSY`.
+   HTTP close, abort, plugin ACK and ordinary child exit do not qualify native
+   families. This does not accept Voice/LiveVoice, remote owners, full H1/H2-H5
+   transfer, real providers/microphones or minimum-hardware performance.

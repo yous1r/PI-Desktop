@@ -44,6 +44,7 @@ function speechHarness({ transcribeProtocol = "openai_audio", synthesizeProtocol
   test.after(() => rmSync(dataDir, { recursive: true, force: true }));
   const scratch = join(dataDir, "scratch", "sess");
   const host = {
+    generation: "fixture", isAvailable: () => true,
     call: async (method) => {
       if (method === "settings.get") {
         return {
@@ -74,7 +75,8 @@ test("speech-service keeps transcription inside session scratch", async () => {
   const speech = createSpeechService({
     dataDir,
     getHost: () => host,
-    plugins: { listSpeechAdapters: () => [], getSpeechAdapter: () => undefined, runSpeechAdapter: async () => ({}) },
+    isAdmissionClosed: () => false,
+    plugins: { listSpeechAdapters: () => [], captureSpeechAdapter: () => undefined },
     logger: { app() {} },
   });
   await assert.rejects(
@@ -93,7 +95,8 @@ test("speech-service rejects a protocol that cannot transcribe", async () => {
   const speech = createSpeechService({
     dataDir,
     getHost: () => host,
-    plugins: { listSpeechAdapters: () => [], getSpeechAdapter: () => undefined, runSpeechAdapter: async () => ({}) },
+    isAdmissionClosed: () => false,
+    plugins: { listSpeechAdapters: () => [], captureSpeechAdapter: () => undefined },
     logger: { app() {} },
   });
   await assert.rejects(

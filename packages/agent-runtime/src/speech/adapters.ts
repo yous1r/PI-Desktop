@@ -16,11 +16,7 @@ export type SpeechJob = {
   audio?: { filename: string; mimeType: string; bytes: Uint8Array };
 };
 
-export type SpeechEndpoint = {
-  baseUrl: string;
-  apiKey?: string;
-  fetchImpl?: typeof fetch;
-};
+export type SpeechEndpoint = Omit<SpeechHttpContext, "audio"> & { baseUrl: string };
 
 function fail(code: string, message: string): never {
   throw Object.assign(new Error(message), { errorCode: code });
@@ -110,9 +106,8 @@ export async function runBuiltinSpeech(
 ): Promise<SpeechHttpResult> {
   const call = builtinSpeechCall(job, endpoint);
   const context: SpeechHttpContext = {
-    apiKey: endpoint.apiKey,
+    ...endpoint,
     audio: job.audio,
-    fetchImpl: endpoint.fetchImpl,
   };
   return executeSpeechHttp(call, context);
 }

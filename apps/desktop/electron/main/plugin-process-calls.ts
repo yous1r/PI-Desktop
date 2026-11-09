@@ -5,6 +5,7 @@ export type PendingPluginCall = {
   retirement: boolean;
   signal: AbortSignal;
   owner?: PluginPanelBridgeContext;
+  assertOwner?: () => void;
   resolve(value: unknown): void;
   reject(error: Error, answered?: boolean): void;
   timer: ReturnType<typeof setTimeout>;
@@ -21,6 +22,7 @@ export async function sendPluginProcessCall(
   owner: PluginPanelBridgeContext | undefined,
   uncertain: () => void,
   retirement = false,
+  assertOwner?: () => void,
 ): Promise<unknown> {
   const child = loaded.child;
   if (!child) throw callError("NOT_FOUND", `plugin host process gone: ${loaded.manifest.id}`);
@@ -53,7 +55,7 @@ export async function sendPluginProcessCall(
     loaded.pending.set(id, {
       teardown: message.t === "call" && (message.method === "lifecycle.unload" || message.method === "service.stop"),
       retirement,
-      signal: controller.signal, owner,
+      signal: controller.signal, owner, assertOwner,
       resolve: value => { if (settled) return; cleanup(); resolve(value); },
       reject: (error, answered = false) => { if (settled) return; if (!answered) uncertain(); cleanup(); controller.abort(error); reject(error); },
       timer,

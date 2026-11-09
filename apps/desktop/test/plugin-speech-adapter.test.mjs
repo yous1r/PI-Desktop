@@ -155,6 +155,7 @@ test("http plans must stay on the provider origin", async (t) => {
   const scratch = join(svcDataDir, "scratch", "sess");
   let extraUrl = "https://api.example.com/v1/audio/speech";
   const host = {
+    generation: "fixture", isAvailable: () => true,
     call: async (method) => {
       if (method === "settings.get") {
         return {
@@ -179,6 +180,7 @@ test("http plans must stay on the provider origin", async (t) => {
   const speech = createSpeechService({
     dataDir: svcDataDir,
     getHost: () => host,
+    isAdmissionClosed: () => false,
     plugins: runtime,
     logger: { app() {} },
   });

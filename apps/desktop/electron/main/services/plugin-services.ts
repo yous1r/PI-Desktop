@@ -857,6 +857,7 @@ export function createPluginServices({
   const speech = createSpeechService({
     dataDir,
     getHost,
+    isAdmissionClosed: () => handoffAdmission.isClosed(),
     plugins,
     logger,
   });

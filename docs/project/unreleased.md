@@ -1,5 +1,10 @@
 # Unreleased changes
 
+- Bind Desktop Speech to shared admission, its original Host and plugin adapter.
+  Retired callbacks cannot borrow replacement authority; original HTTP bodies,
+  response cleanup and scratch writes remain counted through disposal. Confirmed
+  quit aborts original HTTP without replaying or rolling back admitted writes.
+  Ordinary response close and plugin exit remain insufficient for full handoff.
 - Keep malformed OAuth response bodies out of login errors and refresh logs;
   JSON decoding reports a fixed error without credential-bearing fragments.
 - Bind MCP OAuth login, refresh and secret changes to shared Desktop admission and
