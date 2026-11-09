@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "5c9fd57f72780a9c2ae9e56e2c17f427fb700c9e",
+  "implementation": "d43d0dc3341c7133854fa11572348b3e85ceb12c",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "verificationStartedAt": "2026-11-09T19:21:44.622Z",
+  "verificationEndedAt": "2026-11-09T19:22:06.170Z",
+  "scope": "Bounded original-Rust owner inspection, original request/background/write activity, strict TypeScript consumer and isolated production stdio/native user path. Full Desktop inventory and transfer readiness remain pending.",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "sourceInputs": {
+    "count": 2828,
+    "sha256": "9e42f9b3ca822abf75e08fb11e1b793bae50731f6fe6b5b20aca6f94cbbe4e0f",
+    "unchanged": true,
+    "manifest": "h1-rust-inspection-corrected-inputs.json",
+    "manifestFileSha256": "b688ea76e8253d729112738cb07b5b3cd803b89d4b781d64470237d9b8c14801",
+    "scope": "Tracked first-party source/tests/configuration frozen in session scratch; third-party packages were reused. The raw manifest and exact test names remain with the full reports."
+  },
+  "tests": {
+    "rust": {
+      "total": 35,
+      "uniquePassed": 35,
+      "failed": 0,
+      "ignored": 0,
+      "originalCandidate": "d43d0dc3341c7133854fa11572348b3e85ceb12c",
+      "compiler": "rustc/cargo 1.97.1",
+      "reuseBasis": "The only later source change was two writable-mode arguments in scripts/e2e-owner-inspection.mjs. All frozen Rust, Cargo, consumer, test and configuration inputs were byte-identical; logs and executables were rehashed. No new Rust execution is claimed for the fixture-only commit."
+    },
+    "sharedContracts": { "total": 14, "uniquePassed": 14, "failed": 0, "skipped": 0 },
+    "runtimeContracts": { "total": 28, "uniquePassed": 28, "failed": 0, "skipped": 0 },
+    "native": {
+      "checksPassed": 4,
+      "hostProcesses": 2,
+      "cleanupConfirmed": true,
+      "report": "owner-inspection-5tHnbI/report.json",
+      "reportSha256": "03858cc41a81e046b701b5317c9ae6c2d941e6f3242fdc248378033c096f427b",
+      "hostBinarySha256": "bc290387f2bcdc339b972af44a54f69b3927a89da0fe5f20012346a1019e85db",
+      "bundleSha256": "df14dfb83ffed959fd336af00bad475e4564d8370fb6164ad34cec2297be268d",
+      "bundleInputCount": 781,
+      "bundleInputSha256": "9b1fa8d026b98525583fa566e60248977e7f4e8d483e6b2849758d5c8be768be",
+      "userPath": "Native generation registration; own-request exclusion; session create/begin/checkpoint/end/recovery preserving aborted reply; missing/mismatched root rejection; stale identities/caller inventory/unfenced owner refusal; native Stop and original Host exit confirmation."
+    }
+  },
+  "checks": {
+    "cargoFmt": 0,
+    "desktopTypes": 0,
+    "biome": { "exitCode": 0, "files": 400 },
+    "architecture": 0,
+    "agentPolicy": 0,
+    "documentation": { "exitCode": 0, "pages": 633 },
+    "baseAncestry": 0,
+    "whitespace": 0,
+    "ordinaryClippy": {
+      "exitCode": 0,
+      "toolchain": "Installed rustc/cargo 1.99.1 and clippy 0.1.99, bound by absolute Cargo/RUSTC/RUSTDOC and toolchain PATH prefix",
+      "command": "cargo clippy -p host-core --all-targets --locked --offline --target-dir <session-scratch>/h1-clippy-target",
+      "reasonForSeparateBuildOutput": "Shared metadata mixed rustc 1.97.1 and 1.99.1. Offline rebuild used existing cached registry sources without installation or shared-cache deletion.",
+      "remainingWarnings": "Existing unused ToolPolicy/tool_policy imports and tool_policy dead code; strict warning-free Clippy is not claimed.",
+      "logSha256": "e6f3447eee4fde8d84eac82e6c74c3f5bbe5e1fafcca35be012e362dde074733"
+    }
+  },
+  "preservedFailures": [
+    "Root identity regression failed before correction: valid-but-mismatched journal root was accepted.",
+    "Initial development compile used unsupported u64 FromSql; corrected to u32. A later 32-test foreground run timed out after 29 completions; it is not recorded as a complete pass.",
+    "First development E2E unintentionally opened the default profile; see the linked incident record. Exact user-data effects remain unknown.",
+    "First clean candidate E2E attempted fixture fault injection through a read-only helper. Two preceding checks passed; process cleanup was confirmed. The two-line writable-mode correction was committed separately.",
+    "Corrected candidate passed native/shared/runtime checks, then Clippy failed on E0514 mixed-toolchain metadata. Unified/shared-cache attempts also failed; the isolated explicit-toolchain run passed. Original reports and logs remain unchanged."
+  ],
+  "incident": {
+    "record": "rust-inspection-isolation-incident.json",
+    "sha256": "69ddb6f772b4799d339815d5ee5501bfe144388e681d632a79d21f25b96cc344",
+    "impact": "Confirmed unintended default-profile startup and owner registration. Recovery/user-data effects are unknown without a pre-run baseline. No profile cleanup, deletion or rollback was performed. Corrected tests do not establish default-profile integrity."
+  },
+  "evidence": {
+    "verifiedArtifactCount": 49,
+    "fullReport": { "path": "h1-rust-inspection-final.json", "bytes": 36277, "sha256": "9298a1f7c227b44515082882a39e51b8fcac7510c5d3836abb5c9868fcb5216e" },
+    "verifier": { "path": "h1-rust-inspection-final.mjs", "sha256": "3297d0352ebfc2fcb8d45f7aebd17e30021e8d133a34f5418918235d1d17d627" },
+    "originalCandidateReport": { "path": "h1-rust-inspection-candidate.json", "sha256": "46767c8e1709e776e146f9f01cb6aabd98f0b23f2d2dd5b10a91ff3d8e7c95d8" },
+    "correctedCandidateReport": { "path": "h1-rust-inspection-corrected.json", "sha256": "bfbb640eae764ba8a56f13f655f9dd8663e32477b614cfeed3c7af6fde7f0eb5" }
+  },
+  "limitations": [
+    "Native coverage is execution_generation_only, not complete Host/Desktop resource closure. H1 19-family composition, actual fenced factories and H2-H5 transfer/readiness remain open.",
+    "Targeted Rust suites only; no current full Rust suite or minimum-hardware/platform/mobile qualification is claimed.",
+    "Voice development remains paused. Missing, stale or unqualified resource evidence must refuse handoff.",
+    "No provider, microphone, stored SSH Host, production Desktop instance, deployment, push or PR was used in the accepted candidate run. The earlier default-profile incident remains separately disclosed."
+  ]
+}

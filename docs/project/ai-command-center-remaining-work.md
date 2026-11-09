@@ -2227,3 +2227,33 @@ its scratch data directory in the final environment. The
 [incident record](ai-command-center-p0-evidence/rust-inspection-isolation-incident.json)
 is part of acceptance provenance; a corrected passing run does not prove that
 the earlier startup had no user-data effects.
+
+### H1 Rust inspection acceptance
+
+Candidate `5c9fd57f72780a9c2ae9e56e2c17f427fb700c9e` contains implementation
+`d43d0dc3341c7133854fa11572348b3e85ceb12c` and a two-line E2E fixture correction.
+Freshly fetched base remains `7e493e8b18d277d8d13f682cf250604ed94fb00d`.
+The original clean implementation passed 35/35 Rust tests. Exact source and
+artifact comparison proves the fixture-only commit leaves those Rust inputs
+unchanged; this is explicitly reused evidence, not a second test execution.
+
+The corrected clean candidate passed 14 shared and 28 runtime contract tests,
+plus four real stdio/native checks. It preserved the checkpointed aborted reply,
+refused mismatched journal roots and stale authority, and confirmed both Host
+exits and native cleanup. Types, Biome 400 files, architecture, policy, docs 633
+pages, whitespace, base ancestry and ordinary Clippy passed. All 2,828 frozen
+inputs remained unchanged; the final verifier checked 49 evidence artifacts.
+
+The first clean E2E failed because fault injection used a read-only helper;
+that failure and cleanup evidence remain preserved. Mixed 1.97.1/1.99.1 compiler
+metadata then blocked Clippy. Explicit installed 1.99.1 tools and a scratch-only
+offline build output passed without installing dependencies or deleting shared
+caches. Rust tests used 1.97.1; existing mode-policy warnings remain. No current
+full Rust suite, warning-free Clippy or whole-Desktop native closure is claimed.
+
+The [verification record](ai-command-center-p0-evidence/rust-inspection-verification.json)
+links the raw evidence and the earlier confirmed default-profile isolation
+incident; its recovery/user-data impact remains unknown. This accepts the Rust
+inspection prerequisite only. Continue actual Desktop 19-family composition,
+original-owner transport and fenced startup/coordinator integration; Voice stays
+paused and incomplete native resources continue to refuse handoff.
