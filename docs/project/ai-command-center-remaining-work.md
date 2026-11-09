@@ -1831,3 +1831,18 @@ session streaming/feed/finalize; the existing engine currently assumes synchrono
 stream construction and string finalization. Reproduce that concrete boundary
 in the engine/model step before changing it. No real microphone/provider/model
 download or native-family/full-handoff qualification is claimed here.
+
+### H1 Dictation controller clean-candidate acceptance
+
+Implementation `848586494d5d88b3f86f7951014351ae993596f4` passed all 63
+Desktop and 23 shared tests on a clean worktree against refreshed base
+`fd28eb89866ac513912ed109716e7120cf60f18c`. All 1,677 tracked source inputs
+remained unchanged (manifest digest
+`19f8686336e0036d30b9d76ce3b770ec2857097d447ff131d90cfef95c39914d`).
+The [controller report](ai-command-center-p0-evidence/voice-controller-after.json)
+records the candidate, source identity and original capture user path.
+The [verification archive](ai-command-center-p0-evidence/voice-controller-verification.json)
+retains 17 exact artifacts and 86 unique passing test names. Status remains
+`PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`. Proceed with native model/stream/download
+lifetime and VoiceService initialization/lease/confirmed-shutdown ownership before
+LiveVoice/remote and the remaining H1-H5 integration.
