@@ -1645,3 +1645,30 @@ or skips. Desktop source types, Biome 335 files, architecture, policy, current-m
 ancestry, whitespace and 631 documentation pages passed. The 37 focused cases and
 the real HTTP journey are included in that total, not additional unique coverage.
 Clean-candidate acceptance follows the implementation commit.
+
+Clean OAuth candidate `b1ded096dd0ffb019c3a7bfbd53c4f4005017e7c` on base
+`fd28eb89866ac513912ed109716e7120cf60f18c` passed all 188 tests with no failures,
+cancellations or skips. Worktree status stayed clean and all 1634 source inputs
+were unchanged, digest
+`7d02a9f0c3b695bb8643efcff8b3a456b3e41d4374e78c7ed7d3fc6338922b46`.
+The real OAuth journey observed two original listeners closed, the cancelled token
+response closed, one successful tool result and final
+`{operations: 0, resources: 0, uncontainedResources: 13}`. Native-family qualification
+remains false. Result: `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+
+The first clean run passed 187 tests and failed an unchanged plugin-MCP fixture's
+20ms initialization budget before reaching its long-running tool assertion. The
+test, re-export and shared MCP transport source were unchanged from `d4546b0d4`;
+the isolated file passed 31 tests. Changing only candidate concurrency from two
+to one passed all 188, with every deadline and source hash preserved. Both runners,
+the failed report/log/manifest and the isolated result are retained.
+
+The [OAuth candidate report](ai-command-center-p0-evidence/oauth-after.json) is
+3023 bytes, SHA-256
+`a8c69b6a12257a9a1c9e48d42603567fefb896953827c5f322cc5165a1ddfd7b`.
+The [OAuth verification archive](ai-command-center-p0-evidence/oauth-verification.json)
+is 959469 bytes, SHA-256
+`c37cf38f280909e8788806feecc6bd135ca134b305853f1993002a19745af6ce`.
+It retains 28 exact artifacts, source hashes and 188 unique passing test names.
+OAuth ownership is accepted within these limits. Speech/voice and remote owners
+continue before the remaining H1 integration.
