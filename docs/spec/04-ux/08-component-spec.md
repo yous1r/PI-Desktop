@@ -4628,3 +4628,11 @@ Native secure desktops and OS compositor restrictions are outside stacking contr
 The personal todo surface follows language and font preferences and system/light/
 dark appearance. Plugin theme CSS is not exported through its narrow bridge;
 plugin theme preferences therefore fall back to system light/dark.
+
+File Manager Git deadlines settle the command at the deadline even when child
+output pipes remain open. A failed snapshot omits Git badges and does not block
+directory listings or file previews indefinitely (Refs #1731).
+
+### Native Pi file references (#1853)
+
+User-initiated file reads, directory listings, reference resolution and file search use the native session's sidecar-projected project path. Native identities never query Desktop session storage or fall back to the selected workspace. Missing/replaced sources fail closed. Existing local file containment and explicit external-file rules still apply; this grants no model tools or attachments. Native sessions have no Desktop scratch directory.

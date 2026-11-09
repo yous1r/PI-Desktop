@@ -10139,3 +10139,104 @@ PluginPack 产物的解包目录，仅用于开发验证。验收 #1711 前需�
 - 验收：真实隔离 Electron/Host 用户路径和可控失败测试。
 - 里程碑：个人效率功能；Windows 候选已通过，证据和平台限制见 `docs/project/global-floating-todo.md`。
 - 平台说明：DOM/API 测试不能证明安全桌面和全屏优先级，需单独记录原生平台覆盖情况。
+
+
+## User-defined mode workflow acceptance
+
+Candidate command: `PI_DESKTOP_HOST_BIN=<candidate-host> node scripts/e2e-mode-definitions.mjs`
+with `PI_SCRATCH_DIR` set to an isolated test directory. No model API is called.
+
+1. Configure a session with a two-stage definition snapshot. Start a durable
+   turn and claim the first contract stage.
+2. Request completion without its required artifact; observe a failed gate.
+3. Supply the artifact through stage completion; verify its exact disk content
+   and the waiting-for-approval state.
+4. Settle the first turn, approve with the current revision and claim the next
+   stage with approval provenance.
+5. Submit the stage's command gate. A changed command must fail with
+   `MODE_GATE_MISMATCH` before execution.
+6. Execute the exact command through `tools.execute`; consume the Host-recorded
+   result and observe finished, no open run, and session mode Agent.
+
+Companion tests: `mode_runs::*` and `rpc::modes_rpc::tests::*` cover migration,
+recovery, CAS, budget and permission caps; desktop `mode-definitions-user-path`,
+`mode-definitions-renderer` and `mode-runs-main` cover source editing, selection,
+run controls and Main dispatch. Runtime `modes/*` covers stage completion and
+compaction injection.
+
+### Goal run controls with a live model (opt-in, paid)
+
+Command: `PI_LIVE_BASE_URL=<url> PI_LIVE_MODEL=<model> PI_LIVE_API_KEY=<key>
+PI_DESKTOP_HOST_BIN=<candidate-host> node scripts/e2e-goal-live.mjs` with
+`PI_SCRATCH_DIR` set (`PI_LIVE_SECRETS_DIR` + `PI_LIVE_SECRET_REF` may replace
+the key; only the machine key and that one secret file are copied). It calls a
+paid model API and needs the account owner's authorization. Real pieces: an
+isolated Host, the production runtime loop and Electron main's run coordinator.
+
+1. With `goalBudget { maxTurns: 6 }` set, a Goal run starts with 6 turns, does
+   the work, calls `CompleteStage` with the three-heading artifact, finishes,
+   and the session returns to Agent.
+2. During the first turn, Edit the objective and budget, then Pause: the turn
+   receives the closeout notice and ends within 3 more model requests; the run
+   stays paused and no turn starts. Resume starts an approval turn with the
+   edited objective, which the run meets before it finishes.
+3. During a turn, Remove: the turn is not interrupted, finishes in Agent
+   without `CompleteStage`, no Host-started turn follows, and no open run is
+   left.
+#### E2E-ISSUE-2173: Redundant delegation job selectors
+
+- Entry: build shared/agent-runtime/host-runtime and Host, then run
+  `PI_DESKTOP_HOST_BIN=<candidate-host> node scripts/e2e-task-job-selectors.mjs`.
+- Preconditions: isolated Host data/workspace and a deterministic localhost
+  provider; production parent and delegate loops, with no external model account.
+- Steps: start a delegate; wait with both its job reference and matching
+  delegationIds; re-read with empty delegationIds and single-job mode/minCompleted;
+  start another delegate, hold its provider response, stop it with both selectors,
+  and confirm its stopped state through TaskWait.
+- Expected: reports remain readable, redundant selectors do not cause errors,
+  single-job mode/minCompleted are ignored, and cancellation settles the target.
+  Unit tests also reject conflicting/malformed IDs and mixed Bash selectors.
+- Specs: `03-runtime/02-agent-runtime.md`, Session job controls.
+- Acceptance: wait, report re-read and running-delegate cancellation complete
+  through the real tool loop. Milestone: maintenance. Status: automated.
+#### E2E-ISSUE-1707
+
+生产 SSH 引导使用合成 Darwin 目标，按 IPC 形态传递错误并解析界面提示：显示 Linux 安装包范围，不下载或上传。Linux 及其他安装失败提示保持原行为。
+
+### E2E-FILE-MANAGER-git-deadline
+
+`file-manager-git-timeout.test.mjs` 对真实测试文件调用内置 `fm.list` 和
+`fm.read`，仅控制子进程边界。子进程从不关闭时推进 Git 截止时间，目录及
+预览仍完成，Git 元数据不可用。原有 Electron 目录定位和文件修改旅程验证
+正常读取、保存和目录浏览。
+
+### E2E-COMPOSER-screenshot-without-directory-scan
+
+Paste a synthetic screenshot and a native image file through real Composer,
+preload IPC and the bounded scratch writer in `e2e-composer-paste.mjs`.
+Run with `--screenshot-only` to verify both image routes while excluding MP4
+preview. The fork already writes screenshot bytes without native directory
+discovery; this backport preserves that path and adds regression coverage.
+Main verifies the scratch bytes exactly. `composer-directory-paste.test.mjs`
+covers screenshot byte preservation. No system clipboard contents are changed.
+Directory cards from upstream before v0.22.0 are outside this migration.
+
+### E2E-NATIVE-workspace-file-routing
+
+运行 `node scripts/e2e-native-workspace-files.mjs`：使用隔离 Electron Main、
+生产 workspace IPC、合成 sidecar 会话元数据和真实测试文件。选中无关的
+Desktop 工作区后，列出、读取和解析 native 文件，再拒绝不存在的 native 会话。
+断言 native 会话及 scratch 请求不会进入 Desktop 存储。
+`native-workspace-files.test.mjs` 另验证 sidecar 更换后拒绝旧响应。
+不执行模型或访问用户 native 会话。
+
+#### E2E-ISSUE-1926-scratch-prefix
+
+创建配置相同但 scratch 不同的真实 runtime，基础提示段相同且尾部各保留自身路径；验证 shell 语法和自定义提示兼容，不调用真实供应商。
+
+### E2E-STEERING-recovery-reply-order
+
+在早先回复和下一次恢复回复之间送入已消费的 steering，旧片段结束，下一条
+回复使用新 ID。`runtime.test.ts` 覆盖提供商、溢出、空回复及进度恢复。
+`e2e-transcript-render.mjs` 验证生产事件投影，以及无 steering 时原有的
+单气泡溢出恢复行为。

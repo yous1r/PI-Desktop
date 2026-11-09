@@ -14,6 +14,7 @@ export type SettingsTabId =
   | "skills"
   | "mcp"
   | "subagents"
+  | "modes"
   | "projects"
   | "sync"
   | "remoteHosts"
@@ -268,6 +269,22 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       "extensions.subagents.presetFixerName",
       "extensions.subagents.presetUiDesignerName",
       "extensions.subagents.tools",
+    ],
+  },
+  {
+    id: "modes",
+    labelKey: "settings.nav.modes",
+    titleKey: "modes.settings.title",
+    group: "agent",
+    keywordKeys: [
+      "modes.settings.listTitle",
+      "modes.settings.directory",
+      "modes.settings.newMode",
+      "modes.settings.duplicate",
+      "modes.settings.source",
+      "modes.settings.builtin",
+      "modes.settings.user",
+      "modes.settings.staged",
     ],
   },
   {

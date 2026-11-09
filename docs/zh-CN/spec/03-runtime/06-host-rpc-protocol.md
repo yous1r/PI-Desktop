@@ -1152,3 +1152,30 @@ schedule，Manual 转 Hourly 继续使用现有默认间隔行为。
 不会覆盖数据。它是本地 Desktop 数据服务，不是 Agent 工具或远程会话操作。
 内容属于本地数据目录，无须活动会话。
 参见[存储规格](04-data-storage.md)和[ADR](/adr/global-floating-personal-todos)。
+
+## User-defined mode run RPC
+
+ADR `mode-definitions` adds the following Host methods. Parameters use camelCase.
+
+| Method | Parameters | Result |
+| --- | --- | --- |
+| `modes.get` | `sessionId` | `{ run }`, null when no open run exists |
+| `modes.start` | `sessionId, input, turnId` | `{ claimed, run, enteredStage, definition }` |
+| `modes.claimTurn` | `sessionId, runId, expectedRevision, turnId, origin` | claim result; origins: user, approval, host |
+| `modes.completeStage` | `sessionId, runId, turnId, summary, artifacts?, input?` | failed, run, awaiting_approval, advanced, goto, blocked or finished outcome; `MODE_INPUT_CHANGED` when `input` (the input the turn was claimed with) differs from the run's current input |
+| `modes.gateResult` | `sessionId, runId, turnId, gateIndex, toolCallId` | next stage outcome |
+| `modes.settleTurn` | `sessionId, runId, turnId, tokens, outcome, error?` | `{ run, continue }` |
+| `modes.control` | `sessionId, runId, expectedRevision, action` | `{ run, continue }`; pause, resume, stop or remove. Stop and remove both end the run; Electron main interrupts the active turn only for stop |
+| `modes.update` | `sessionId, runId, expectedRevision, input?, budget?` | `{ run, continue: false }`; edits an open run's input and `{ maxTurns, maxTokens }` budget (both fields required, `null` is unlimited), effective from the next claim |
+| `modes.resolve` | `sessionId, runId, expectedRevision, action` | `{ run, continue }`; approve or reject |
+| `modes.settleReturn` | `sessionId, runId, mode?, modeSnapshot?` | `{ pending, applied }`; after a run closed, reports the custom `returnTo` the session waits on (`pending`). Called again with that `mode`, it stores `modeSnapshot` for it, or moves the session to `agent` when the snapshot is absent because the mode no longer exists |
+
+`session.configure` accepts an optional validated `modeSnapshot`. Custom mode
+ids require a snapshot. Agent and Plan retain their builtin policies. Host
+notifications use `modes.changed { sessionId, run }`. Renderer catalog editing
+uses the `pi-desktop/modes/*` IPC channels and never writes SQLite directly.
+
+`tools.execute` accepts `modeGate { runId, gateIndex }` only for the exact
+pending Bash gate command. The Host records the exit code; a model-supplied
+verdict cannot pass a command gate. Stage completion may write only declared
+artifacts within the workspace. Staged runs reject remote workspaces.

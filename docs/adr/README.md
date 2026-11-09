@@ -20,6 +20,7 @@ Each ADR includes:
 
 | ID | Title | Status |
 |---|---|---|
+| mode-definitions | [User-definable modes as staged workflows](mode-definitions.md) | Implemented candidate |
 | user-mcp-private-ca | [User MCP connections retain endpoint-scoped CA trust](user-mcp-private-ca.md) | Implemented candidate |
 | 0340 | [Native workspace plugin execution](0340-workspace-plugin-execution.md) | Implemented candidate |
 | plugin-effective-permissions-query | [Plugin self-query for effective permission metadata](plugin-effective-permissions-query.md) | Accepted |

@@ -1103,3 +1103,11 @@ the current window width:
 | Card radius | ~14px elevated stroke |
 | Toggle | **32×20** thumb 16, neutral accent on (not green) |
 | Open-target pill | leading VS Code glyph |
+
+- The **Goal budget** row sits under the default mode in this fork's Agent defaults card: two
+  numeric fields (turns, tokens) persisted as optional
+  `AppSettings.goalBudget { maxTurns, maxTokens }`. A field saves on blur or
+  Enter; empty is unlimited and an out-of-range value (turns 1–10000, tokens
+  at least 1000) reverts to the saved one. Absent keeps the builtin Goal
+  budget (20 turns, unlimited tokens). Only new Goal runs use it; an open run
+  is edited from its status bar.

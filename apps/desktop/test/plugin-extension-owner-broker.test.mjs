@@ -35,7 +35,7 @@ test("owner broker uses host scope, detaches data and retires the handler signal
   assert.equal(context.signal.aborted, true);
 });
 
-for (const mode of ["plan", "goal"]) test(`owner broker rejects ${mode} writes including shutdown`, async (t) => {
+for (const mode of ["plan", "goal", "review"]) test(`owner broker rejects ${mode} writes including shutdown`, async (t) => {
   const f = fixture(t); f.session.mode = mode; f.registration.mode = mode;
   await f.broker.registerRuntime(f.registration);
   await f.broker.callOwner(f.request);

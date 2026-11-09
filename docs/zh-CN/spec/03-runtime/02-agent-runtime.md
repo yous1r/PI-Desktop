@@ -1,5 +1,9 @@
 # 02. Agent 运行时
 
+接收 steering 后结束此前尚未落定的回复片段，下一条回复使用新身份。
+提供商、溢出、空回复及进度恢复仍属于原持久化回合，但不会覆盖位于用户
+补充消息之前的旧回复（Refs #1699）。
+
 > **翻译说明：** 本页是与 [英文源规格](/spec/03-runtime/02-agent-runtime) 一一对应的机器辅助翻译。代码、协议字段和标识符保持原文；如翻译与英文源事实有歧义，以英文版本为准。
 
 
@@ -1309,3 +1313,7 @@ content. The durable transcript is unchanged and completed tools are not
 re-executed. Other malformed context remains subject to strict validation.
 Tool token estimates are optional telemetry: an invalid call identity must not
 prevent the corresponding terminal tool event from being delivered.
+
+### 公共提示前缀与 scratch（#1926）
+
+基础 runtime 段保留 shell、scratch 变量及临时文件规则，具体路径移到项目/记忆上下文之后，Bash 工具描述继续提供路径。改善跨会话系统文本公共前缀，不承诺供应商缓存命中，不更改历史重建。

@@ -41,7 +41,7 @@ declare global {
   var composerPreviewPointer: (input: { type: "mousePressed" | "mouseMoved" | "mouseReleased"; x: number; y: number }) => Promise<void>;
   var composerPreviewPressKey: (key: string) => Promise<void>;
   var composerPreviewCapture: (() => Promise<void>) | undefined;
-  var composerPasteProbe: () => Promise<unknown>;
+  var composerPasteProbe: (screenshotOnly?: boolean) => Promise<unknown>;
   var composerHistoryProbe: (phase: "prepare" | "verify") => Promise<unknown>;
 }
 const assert = (value: unknown, message: string) => {
@@ -64,7 +64,7 @@ function Fixture({ sessionId, t, workspacePath }: { sessionId: string; t: TFunct
     composerPrefill: null,
     clearComposerPrefill: noop,
     t,
-    invalidatePromptEnhancement: noop,
+    invalidateComposerTransforms: noop,
     inputBlocked: false,
   });
   controller = draft;
@@ -151,7 +151,7 @@ function Mp4AttachmentChips({ scratchPath }: { scratchPath: string }) {
   );
 }
 
-globalThis.composerPasteProbe = async () => {
+globalThis.composerPasteProbe = async (screenshotOnly = false) => {
   const i18n = createInstance();
   await i18n.init({
     lng: "en",
@@ -310,6 +310,26 @@ globalThis.composerPasteProbe = async () => {
       !api.getDroppedFilePath(image),
       "synthetic clipboard image unexpectedly has a native path",
     );
+    if (screenshotOnly) {
+      const readDirectories = api.readClipboardDirectories;
+      let directoryScans = 0;
+      api.readClipboardDirectories = async () => {
+        directoryScans++;
+        throw new Error("screenshot entered native directory discovery");
+      };
+      try {
+        await paste("", [image]);
+        assert(directoryScans === 0, "screenshot entered native directory discovery");
+        assert(controller.fileReferences.length === 1 && controller.fileReferences[0].kind === "image",
+          "screenshot bytes did not become an image attachment");
+      } finally {
+        api.readClipboardDirectories = readDirectories;
+      }
+      await paste("native-image.png", [nativeFiles[0]]);
+      assert(controller.fileReferences.length === 1 && controller.fileReferences[0].kind === "image",
+        "native image file lost its attachment path");
+      return { ok: true, screenshotWithoutDirectoryScan: true, nativeImagePreserved: true };
+    }
     const text = "Word paragraph 中文\nsecond line";
     let editor = await paste(text, [image]);
     assert(
@@ -519,7 +539,18 @@ globalThis.composerPasteProbe = async () => {
       previewHost.remove();
     }
 
-    await paste("", [image]);
+    const readDirectories = api.readClipboardDirectories;
+    let screenshotDirectoryScans = 0;
+    api.readClipboardDirectories = async () => {
+      screenshotDirectoryScans++;
+      return readDirectories();
+    };
+    try {
+      await paste("", [image]);
+    } finally {
+      api.readClipboardDirectories = readDirectories;
+    }
+    assert(screenshotDirectoryScans === 0, "screenshot paste waited for native directory scanning");
     assert(
       controller.fileReferences.length === 1 &&
         controller.fileReferences[0].kind === "image",

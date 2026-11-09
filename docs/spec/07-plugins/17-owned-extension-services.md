@@ -81,3 +81,13 @@ workflow are owned there. Desktop retains only the generic owner-call, managed
 connection, file-scope and lifecycle contracts and their synthetic host tests.
 Installing or updating the plugin remains an explicit plugin installation;
 Desktop does not bundle it or promise compatibility with arbitrary memory servers.
+
+### Custom mode identity
+
+Staged and user-defined modes retain their exact mode id in owner-call
+registration and dispatch. Main accepts a custom id only when the durable
+Host session and its outbound launch binding agree. Missing or changed mode
+identity fails closed. This preserves the existing owner-service write rule:
+only the builtin `agent` id permits mutating owner operations; Plan, Goal and
+custom ids can call declared read-only operations. An agent-level custom stage
+does not acquire additional plugin owner authority through this migration.

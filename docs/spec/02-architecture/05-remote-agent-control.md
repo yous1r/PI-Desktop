@@ -659,3 +659,7 @@ Host/package consent and retains the SSH account trust boundary.
 [Spec 18](../07-plugins/18-workspace-execution.md) defines schemas, ownership,
 limits, package compatibility, cancellation, file resources and no-replay behavior.
 See [ADR 0340](../../adr/0340-workspace-plugin-execution.md).
+
+### Unpublished SSH target feedback (#1707)
+
+When SSH uname identifies an unpublished macOS target, the bootstrap refuses before downloading and Settings explains that this release publishes Linux x64/arm64 Host bundles only. Other install/authentication failures retain their own messages. Desktop macOS packaging is separate from remote Host support.

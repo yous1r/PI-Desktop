@@ -50,9 +50,9 @@ const childSource = `
     } catch(error) { console.log(JSON.stringify({id:msg.id,error:{code:-32000,message:error.message ?? String(error)}})); }
   });`;
 
-async function fixture(t, dispatch) {
+async function fixture(t, dispatch, mode = "agent") {
   const sidecar = new AgentSidecar(() => {}, { command: process.execPath, args: ["-e", childSource] });
-  const records = new Map([["session", { id: "session", mode: "agent", projectPath: "/project", parentSessionId: "host-parent" }]]);
+  const records = new Map([["session", { id: "session", mode, projectPath: "/project", parentSessionId: "host-parent" }]]);
   const listeners = new Set(); const calls = []; let available = true; let hostGate;
   const host = { call: async (method, params) => {
     if (hostGate) { hostGate.entered?.resolve(); await hostGate.promise; }
@@ -72,7 +72,7 @@ async function fixture(t, dispatch) {
   sidecar.setExtensionOwnerLifecycle(bridge);
   sidecar.setTrustedExtensionBridge({ ...bridge, publishCommands() {}, publishDiagnostics() {}, requestUi: async () => ({}),
     configureModel: async () => ({}), queuePush: async () => ({}), queuePrioritize: async () => ({}) });
-  const launch = { sessionId: "session", turnId: "turn-1", mode: "agent", projectPath: "/project", workspaceRoot: "/project",
+  const launch = { sessionId: "session", turnId: "turn-1", mode, projectPath: "/project", workspaceRoot: "/project",
     trustedExtensions: [{ id: "extension", ownerPluginId: "demo.owner", ownerOperations: operations }] };
   const request = { sessionId: "session", runtimeId: "runtime-1", turnId: "turn-1", extensionId: "extension", operation: "recall" };
   let sequence = 0;
@@ -272,4 +272,13 @@ test("plugin reload retires an idle runtime before the next launch, and never in
   await f.call({ runtimeId: "runtime-2", turnId: "turn-2", operation: "capture" });
   assert.equal(f.calls.at(-1).context.runtimeId, "runtime-2");
   await assert.rejects(f.registerRuntime(), /not authorized/);
+});
+
+test("custom mode owner calls preserve Host identity and cannot gain Agent write authority", async (t) => {
+  const f = await fixture(t, undefined, "review");
+  await f.call();
+  assert.equal(f.calls.at(-1).context.mode, "review");
+  await assert.rejects(f.call({ operation: "capture", mode: "agent" }), /Plan[/]Goal/);
+  f.records.get("session").mode = "other-mode";
+  await assert.rejects(f.call(), /authorized|stale/);
 });
