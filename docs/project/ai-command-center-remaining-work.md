@@ -1672,3 +1672,17 @@ is 959469 bytes, SHA-256
 It retains 28 exact artifacts, source hashes and 188 unique passing test names.
 OAuth ownership is accepted within these limits. Speech/voice and remote owners
 continue before the remaining H1 integration.
+
+### OAuth response diagnostics follow-up
+
+Three public-path regressions confirmed that JSON parser errors could include a
+credential-bearing response fragment in token-exchange events, DCR errors or
+refresh logs. OAuth JSON decoding now returns fixed diagnostics and requires an
+object before consumers inspect fields. Malformed refresh keeps the original
+access-token fallback; cancellation/body ownership remains unchanged.
+
+All 84 OAuth-focused/compatibility tests passed, including the actual HTTP user
+path. Desktop types and Biome 335 files passed. The focused ownership suite now
+contains 40 cases; clean candidate acceptance follows this bounded security fix.
+The earlier 188-test result remains historical evidence, not acceptance of this
+additional response-confidentiality requirement.

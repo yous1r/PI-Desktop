@@ -5,7 +5,7 @@ import { oauthRetired, type McpOAuthActivity, type McpOAuthOperation } from "./m
 import type { McpOAuthClient } from "./mcp-oauth-client.ts";
 import { McpOAuthLoopback } from "./mcp-oauth-loopback.ts";
 import type { McpOAuthTokens } from "./mcp-oauth-tokens.ts";
-import { McpOAuthError, canReuseDcrClient, loopbackRedirectUri, parseExpiresIn, preferredLoopbackPort, renderOAuthHtml, type McpOAuthMetadata, type StoredMcpOAuthToken } from "./mcp-oauth-protocol.ts";
+import { McpOAuthError, canReuseDcrClient, loopbackRedirectUri, parseExpiresIn, preferredLoopbackPort, readOAuthJson, renderOAuthHtml, type McpOAuthMetadata, type StoredMcpOAuthToken } from "./mcp-oauth-protocol.ts";
 
 type LoginEvent<T = McpOAuthLoginEvent> = T extends McpOAuthLoginEvent ? Omit<T, "loginId" | "serverId"> : never;
 
@@ -165,7 +165,7 @@ export class McpOAuthLogin {
       if (this.clientSecret) params.set("client_secret", this.clientSecret);
       const result = await this.operation.request(this.metadata.tokenEndpoint, {
         method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" }, body: params.toString(),
-      }, async res => ({ ok: res.ok, status: res.status, json: res.ok ? await res.json() as Record<string, unknown> : null }));
+      }, async res => ({ ok: res.ok, status: res.status, json: res.ok ? await readOAuthJson(res) : null }));
       this.assertCurrent();
       if (!result.ok) { reply(500, `Token exchange failed (${result.status})`); this.fail(new Error(`OAuth token exchange failed (HTTP ${result.status})`)); return; }
       const json = result.json ?? {}, accessToken = typeof json.access_token === "string" ? json.access_token : "";

@@ -1,5 +1,7 @@
 # Unreleased changes
 
+- Keep malformed OAuth response bodies out of login errors and refresh logs;
+  JSON decoding reports a fixed error without credential-bearing fragments.
 - Bind MCP OAuth login, refresh and secret changes to shared Desktop admission and
   their original Host. Cancelled HTTP bodies, browser setup and listener cleanup
   stay counted; stale callbacks cannot write through a replacement or revive

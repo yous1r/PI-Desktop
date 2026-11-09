@@ -641,6 +641,8 @@ or storage failure, cancellation and the five-minute deadline always settle the
 original waiter. Observer errors remain observable without skipping cleanup. TLS,
 manual redirects, PKCE S256, exact state checks, scope selection, DCR reuse/fallback,
 encrypted Host storage and transient-refresh fallback retain their existing contracts.
+OAuth JSON decoding rejects malformed/non-object responses with fixed diagnostics;
+parser response fragments never enter returned errors, renderer events or logs.
 This resource-owner slice does not enable complete Desktop handoff.
 
 Workspace terminal entries require that same gate. Their router captures the

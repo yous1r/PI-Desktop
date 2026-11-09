@@ -24,6 +24,17 @@ export type McpOAuthMetadata = {
 export type McpOAuthCall = <T = unknown>(method: string, params?: unknown) => Promise<T>;
 export type McpOAuthLog = (level: "info" | "warn" | "error", message: string, data?: unknown) => void;
 
+/** JSON parser diagnostics can include credential-bearing response fragments. */
+export async function readOAuthJson(response: Response): Promise<Record<string, unknown>> {
+  let value: unknown;
+  try { value = await response.json(); }
+  catch { throw new Error("MCP OAuth response is not valid JSON"); }
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("MCP OAuth response must contain a JSON object");
+  }
+  return value as Record<string, unknown>;
+}
+
 export class McpOAuthError extends Error {
   readonly errorCode: McpOAuthLoginErrorCode;
   constructor(errorCode: McpOAuthLoginErrorCode, message: string) {

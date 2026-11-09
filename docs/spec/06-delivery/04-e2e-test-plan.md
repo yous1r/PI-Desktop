@@ -20360,7 +20360,11 @@ configured MCP endpoint, live Desktop profile or paid API is used.
    clock. The original waiter settles once; callback replay remains rejected;
    timeout reports an error and observer failure cannot skip cleanup.
 
-Evidence: 37 focused `handoff-mcp-oauth.test.mjs` cases and one real HTTP
+6. Return invalid JSON containing a fixture credential marker during token exchange,
+   DCR and refresh. Errors settle normally and refresh keeps its prior-token fallback,
+   but renderer events, returned errors and logs never contain response fragments.
+
+Evidence: 40 focused `handoff-mcp-oauth.test.mjs` cases and one real HTTP
 `handoff-mcp-oauth-user-path.test.mjs` journey, plus existing OAuth and MCP suites.
 Actual listener/response closure is not native-family qualification. Full H1
 inventory, fenced Desktop composition and H2-H5 transfer remain separate work.

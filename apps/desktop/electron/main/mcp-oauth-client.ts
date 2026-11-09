@@ -1,6 +1,6 @@
 import type { McpOAuthOperation } from "./mcp-oauth-activity.ts";
 import { authorizationMetadataUrls, parseBearerChallenge, selectOAuthScope } from "./mcp-oauth-discovery.ts";
-import { assertTlsProtectedUrl, LOOPBACK_REDIRECT_PORTLESS, type McpOAuthLog, type McpOAuthMetadata } from "./mcp-oauth-protocol.ts";
+import { assertTlsProtectedUrl, LOOPBACK_REDIRECT_PORTLESS, readOAuthJson, type McpOAuthLog, type McpOAuthMetadata } from "./mcp-oauth-protocol.ts";
 
 /** OAuth discovery and client registration; fallback never changes the original owner. */
 export class McpOAuthClient {
@@ -50,7 +50,7 @@ export class McpOAuthClient {
   private async metadata(operation: McpOAuthOperation, candidates: string[]): Promise<Record<string, unknown> | null> {
     for (const url of candidates) {
       try {
-        const data = await operation.request(url, { redirect: "manual" }, async response => response.ok ? await response.json() as Record<string, unknown> : null);
+        const data = await operation.request(url, { redirect: "manual" }, async response => response.ok ? await readOAuthJson(response) : null);
         operation.assertCurrent();
         if (data) return data;
       } catch { operation.assertCurrent(); }
@@ -70,7 +70,7 @@ export class McpOAuthClient {
         this.log?.("warn", "mcp oauth DCR failed", { status: response.status });
         throw new Error(`Dynamic client registration failed (HTTP ${response.status})`);
       }
-      return await response.json() as Record<string, unknown>;
+      return readOAuthJson(response);
     });
     operation.assertCurrent();
     const clientId = typeof json.client_id === "string" ? json.client_id : "";

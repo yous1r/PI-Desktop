@@ -65,7 +65,7 @@ function fixture(t, overrides = {}) {
     call: (method, params) => hostCall(state.owner, method, params), fetchImpl, createServer,
     openExternal: async url => { opens.push(url); opened.resolve(url); await overrides.open?.(); },
     emit: event => { events.push(event); overrides.emit?.(event); },
-    log: (level, message) => { if (level === "error") errors.push(message); },
+    log: (level, message, data) => { if (level === "error") errors.push(message); overrides.log?.(level, message, data); },
     onAuthorized: overrides.onAuthorized,
   };
   const manager = new McpOAuthManager(deps);
@@ -332,4 +332,29 @@ test("OAuth five-minute deadline reports an error rather than user cancellation"
   t.mock.timers.tick(300000); await turn();
   assert.equal(f.events.at(-1).kind, "error"); assert.match(f.events.at(-1).message, /timed out/);
   assert.equal(f.events.filter(event => event.kind === "cancelled").length, 0);
+});
+
+test("OAuth malformed token JSON never publishes the response body", async t => {
+  const sensitive = "fixture-key";
+  const f = fixture(t, { fetch: async path => path === "/token" ? new Response(sensitive, { status: 200 }) : undefined });
+  const pending = f.manager.startLogin("s", "https://oauth.test/mcp"); const rejected = assert.rejects(pending);
+  await f.callback(); await rejected;
+  const failure = f.events.find(event => event.kind === "error"); assert.ok(failure);
+  assert.equal(failure.message.includes(sensitive), false);
+});
+
+test("OAuth malformed DCR JSON never exposes the response body", async t => {
+  const sensitive = "fixture-key";
+  const f = fixture(t, { fetch: async path => path === "/register" ? new Response(sensitive, { status: 201 }) : undefined });
+  await assert.rejects(f.manager.registerClient("https://oauth.test/register", "http://127.0.0.1/callback"), error => !error.message.includes(sensitive));
+});
+
+test("OAuth malformed refresh JSON preserves fallback without logging its body", async t => {
+  const sensitive = "fixture-key", logs = [];
+  const f = fixture(t, { fetch: async path => path === "/token" ? new Response(sensitive, { status: 200 }) : undefined,
+    log: (_level, message, data) => logs.push(JSON.stringify({ message, data })),
+  });
+  f.secrets.set(secretRefForMcpOAuth("s"), JSON.stringify(token));
+  assert.equal(await f.manager.getValidAccessToken("s"), token.accessToken);
+  assert.ok(logs.length > 0); assert.equal(logs.some(log => log.includes(sensitive)), false);
 });

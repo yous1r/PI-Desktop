@@ -1,5 +1,5 @@
 import type { McpOAuthOperation } from "./mcp-oauth-activity.ts";
-import { assertTlsProtectedUrl, parseExpiresIn, secretRefForMcpOAuth, type McpOAuthLog, type StoredMcpOAuthToken } from "./mcp-oauth-protocol.ts";
+import { assertTlsProtectedUrl, parseExpiresIn, readOAuthJson, secretRefForMcpOAuth, type McpOAuthLog, type StoredMcpOAuthToken } from "./mcp-oauth-protocol.ts";
 
 /** One ordered lane per secret, shared by login writes, refresh, deletion and transfer. */
 export class McpOAuthTokens {
@@ -75,7 +75,7 @@ export class McpOAuthTokens {
     if (token.resource) params.set("resource", token.resource);
     const result = await operation.request(token.tokenEndpoint, {
       method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", accept: "application/json" }, body: params.toString(),
-    }, async response => ({ ok: response.ok, status: response.status, json: response.ok ? await response.json() as Record<string, unknown> : null }));
+    }, async response => ({ ok: response.ok, status: response.status, json: response.ok ? await readOAuthJson(response) : null }));
     operation.assertCurrent();
     if (!result.ok) {
       this.log?.("warn", "mcp oauth token refresh failed", { serverId, status: result.status });
