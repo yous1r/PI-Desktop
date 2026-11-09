@@ -10212,11 +10212,14 @@ isolated Host, the production runtime loop and Electron main's run coordinator.
 
 ### E2E-COMPOSER-screenshot-without-directory-scan
 
-`e2e-composer-paste.mjs` 使用真实 Composer、preload IPC 和有界 scratch 写入，
-先粘贴原生目录，再粘贴合成截图。使用 `--screenshot-only` 验证这条路径，
-跳过无关的 MP4 预览；截图不进入原生目录探测，Main 精确校验 scratch 字节。
-`composer-directory-paste.test.mjs` 验证字节不变及原有目录/混合选择流程。
-不修改系统剪贴板内容。
+Paste a synthetic screenshot and a native image file through real Composer,
+preload IPC and the bounded scratch writer in `e2e-composer-paste.mjs`.
+Run with `--screenshot-only` to verify both image routes while excluding MP4
+preview. The fork already writes screenshot bytes without native directory
+discovery; this backport preserves that path and adds regression coverage.
+Main verifies the scratch bytes exactly. `composer-directory-paste.test.mjs`
+covers screenshot byte preservation. No system clipboard contents are changed.
+Directory cards from upstream before v0.22.0 are outside this migration.
 
 ### E2E-NATIVE-workspace-file-routing
 

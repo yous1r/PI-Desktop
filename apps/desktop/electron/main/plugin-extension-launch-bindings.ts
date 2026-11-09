@@ -1,4 +1,4 @@
-import type { PluginExtensionOperation, PluginExtensionRuntimeRegistration } from "@pi-desktop/shared";
+import { normalizeMode, type Mode, type PluginExtensionOperation, type PluginExtensionRuntimeRegistration } from "@pi-desktop/shared";
 
 export type OwnerLaunchBinding = {
   sessionId: string;
@@ -7,7 +7,7 @@ export type OwnerLaunchBinding = {
   projectPath: string | null;
   workspaceRoot: string | null;
   remoteWorkspace?: { hostKey: string; path: string };
-  mode: "agent" | "plan" | "goal";
+  mode: Mode;
   extensions: Array<{ id: string; ownerPluginId: string; operations: PluginExtensionOperation[] }>;
 };
 const record = (value: unknown): Record<string, unknown> =>
@@ -37,7 +37,7 @@ export class PluginExtensionLaunchBindings {
       ...(remoteWorkspace ? { remoteWorkspace } : {}),
       ...(turnId ? { turnId } : {}),
       ...(text(input.parentSessionId) ? { parentSessionId: text(input.parentSessionId)! } : {}),
-      mode: input.mode === "plan" || input.mode === "chat" ? "plan" : input.mode === "goal" ? "goal" : "agent",
+      mode: normalizeMode(input.mode),
       extensions: input.trustedExtensions.flatMap((value: unknown) => {
         const item = record(value);
         if (!text(item.id) || !text(item.ownerPluginId) || !Array.isArray(item.ownerOperations)) return [];

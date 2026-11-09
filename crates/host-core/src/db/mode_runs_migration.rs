@@ -2,7 +2,7 @@ use super::{create_migration_backup, Connection, Context, Path, Result};
 use rusqlite::Transaction;
 
 /// Staged mode storage (ADR mode-definitions). One batch so a fresh database
-/// and the v28 -> v29 migration cannot drift in tables, checks or indexes.
+/// and the v27/v28 -> v29 migration cannot drift in tables, checks or indexes.
 ///
 /// - `mode_snapshots` keeps every definition a session or run used, keyed by
 ///   the SHA-256 of its JSON. Rows are immutable: editing a mode never changes
@@ -86,13 +86,16 @@ fn migrate_v28_to_v29_tx(tx: &Transaction<'_>) -> Result<()> {
 
 pub(super) fn migrate(conn: &Connection, path: &Path) -> Result<()> {
     let from: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
-    anyhow::ensure!(from == 27 || from == 28, "unsupported source schema for mode runs: {from}");
+    anyhow::ensure!(
+        from == 27 || from == 28,
+        "unsupported source schema for mode runs: {from}"
+    );
     let backup = create_migration_backup(conn, path, from)?;
     let tx = conn.unchecked_transaction()?;
     migrate_v28_to_v29_tx(&tx)?;
     tx.commit().with_context(|| {
         format!(
-            "commit schema v28 to v29 mode runs migration; backup {} remains",
+            "commit schema v{from} to v29 mode runs migration; backup {} remains",
             backup.display()
         )
     })?;

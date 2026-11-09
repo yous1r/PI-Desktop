@@ -7,9 +7,10 @@ type Session = { id?: string; projectPath?: string | null; worktree?: unknown; m
   parentSessionId?: unknown; remoteWorkspace?: { hostKey: string; path: string } };
 type OwnerPlugins = Pick<PluginRuntime, "getAgentExtensions" | "callAgentExtension" | "onExtensionOwnerUnavailable">;
 /** Host persists legacy `chat` as Plan. Unknown/missing modes never grant Agent access. */
-function liveMode(value: unknown): ExtensionOwnerSession["mode"] | undefined {
+function liveMode(value: unknown, launchedMode: ExtensionOwnerSession["mode"]): ExtensionOwnerSession["mode"] | undefined {
   if (value === "agent" || value === "plan" || value === "goal") return value;
   if (value === "chat") return "plan";
+  if (typeof value === "string" && value === launchedMode) return launchedMode;
   return undefined;
 }
 export function createPluginExtensionOwnerBridge(deps: {
@@ -27,7 +28,7 @@ export function createPluginExtensionOwnerBridge(deps: {
     if (closed || !currentLaunch || !launch || !host) return undefined;
     const result = await host.call<{ session: Session | null }>("session.get", { id: sessionId, messageLimit: 1, contentLimit: 1 });
     const session = result.session;
-    const mode = liveMode(session?.mode);
+    const mode = liveMode(session?.mode, launch.mode);
     if (!session || !mode || (session.id !== undefined && session.id !== sessionId) ||
         (session.projectPath?.trim() || null) !== launch.projectPath ||
         session.remoteWorkspace?.hostKey !== launch.remoteWorkspace?.hostKey ||

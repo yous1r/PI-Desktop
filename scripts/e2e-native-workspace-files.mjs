@@ -5,6 +5,7 @@ import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveElectronBinary } from "./e2e/boot.mjs";
+import { rawSourcePlugin } from "../apps/desktop/test/helpers/raw-source-plugin.mjs";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const { build } = createRequire(join(root, "packages/agent-runtime/package.json"))("esbuild");
@@ -13,7 +14,7 @@ try {
   const project = join(temporary, "native-project");
   await mkdir(project);
   await writeFile(join(project, "note.md"), "NATIVE FILE CONTENT");
-  await build({ entryPoints: [join(root, "apps/desktop/electron/main/ipc/workspace-ipc.ts")], outfile: join(temporary, "workspace.mjs"), bundle: true, platform: "node", format: "esm", packages: "external", nodePaths: [join(root, "apps/desktop/node_modules")] });
+  await build({ entryPoints: [join(root, "apps/desktop/electron/main/ipc/workspace-ipc.ts")], outfile: join(temporary, "workspace.mjs"), bundle: true, platform: "node", format: "esm", packages: "external", plugins: [rawSourcePlugin], nodePaths: [join(root, "apps/desktop/node_modules")] });
   await writeFile(join(temporary, "main.cjs"), `
 const assert = require("node:assert/strict");
 const { app } = require("electron");

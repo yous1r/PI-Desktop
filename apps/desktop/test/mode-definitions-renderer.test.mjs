@@ -1,3 +1,4 @@
+import { TERMINAL_IPC } from "../src/lib/terminal-channels.ts";
 /**
  * Renderer rules for user-definable modes (ADR mode-definitions): what the
  * composer picker offers, what the run status bar says and sends, how the
@@ -298,6 +299,7 @@ function loadApi(bridge) {
     "./plan-history": { projectPlanHistory: (messages) => messages },
     "./remote-session-safety": safety,
     "./remote-ipc-safety": { guardRemoteInvocation() {} },
+    "./terminal-channels": { TERMINAL_IPC },
   };
   const module = { exports: {} };
   new Function("require", "exports", "module", "window", outputText)(

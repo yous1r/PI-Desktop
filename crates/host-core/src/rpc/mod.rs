@@ -1,7 +1,7 @@
 mod config_sync_rpc;
 mod gen_ui;
-mod personal_todos;
 mod modes_rpc;
+mod personal_todos;
 mod plugin_reviews_rpc;
 mod remote_tools;
 mod scheduled_rpc;

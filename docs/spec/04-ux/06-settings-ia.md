@@ -1104,7 +1104,7 @@ the current window width:
 | Toggle | **32×20** thumb 16, neutral accent on (not green) |
 | Open-target pill | leading VS Code glyph |
 
-- The **Goal budget** row sits under the default mode in Session defaults: two
+- The **Goal budget** row sits under the default mode in this fork's Agent defaults card: two
   numeric fields (turns, tokens) persisted as optional
   `AppSettings.goalBudget { maxTurns, maxTokens }`. A field saves on blur or
   Enter; empty is unlimited and an out-of-range value (turns 1–10000, tokens

@@ -1,3 +1,5 @@
+import type { Mode } from "./types/common.js";
+
 /** Additive owner-call wire protocol. All routing identities are host supplied. */
 export type PluginExtensionRetirementReason = "reconfigure" | "session-close" | "app-quit";
 export type PluginExtensionOperation = { name: string; readOnly: boolean };
@@ -8,7 +10,7 @@ export type PluginExtensionCallContext = {
   projectPath: string | null;
   workspaceRoot: string | null;
   remoteWorkspace?: { hostKey: string; path: string };
-  mode: "agent" | "plan" | "goal";
+  mode: Mode;
   retirementReason?: PluginExtensionRetirementReason;
   parentSessionId?: string;
 };

@@ -275,7 +275,6 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
     id: "modes",
     labelKey: "settings.nav.modes",
     titleKey: "modes.settings.title",
-    subtitleKey: "modes.settings.subtitle",
     group: "agent",
     keywordKeys: [
       "modes.settings.listTitle",

@@ -8,7 +8,7 @@ export type PluginExtensionCallContext = {
   projectPath: string | null;
   workspaceRoot: string | null;
   remoteWorkspace?: { hostKey: string; path: string };
-  mode: "agent" | "plan" | "goal";
+  mode: "agent" | "plan" | "goal" | (string & {});
   retirementReason?: PluginExtensionRetirementReason;
   parentSessionId?: string;
 };

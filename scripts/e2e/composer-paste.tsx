@@ -41,7 +41,7 @@ declare global {
   var composerPreviewPointer: (input: { type: "mousePressed" | "mouseMoved" | "mouseReleased"; x: number; y: number }) => Promise<void>;
   var composerPreviewPressKey: (key: string) => Promise<void>;
   var composerPreviewCapture: (() => Promise<void>) | undefined;
-  var composerPasteProbe: () => Promise<unknown>;
+  var composerPasteProbe: (screenshotOnly?: boolean) => Promise<unknown>;
   var composerHistoryProbe: (phase: "prepare" | "verify") => Promise<unknown>;
 }
 const assert = (value: unknown, message: string) => {
@@ -64,7 +64,7 @@ function Fixture({ sessionId, t, workspacePath }: { sessionId: string; t: TFunct
     composerPrefill: null,
     clearComposerPrefill: noop,
     t,
-    invalidatePromptEnhancement: noop,
+    invalidateComposerTransforms: noop,
     inputBlocked: false,
   });
   controller = draft;

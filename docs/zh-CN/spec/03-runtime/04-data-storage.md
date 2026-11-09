@@ -1482,8 +1482,8 @@ Host-core 在专用 `personalTodos` kv 命名空间中保存文档和最近一�
 
 ## User-defined mode runs (schema 29)
 
-ADR `mode-definitions` adds one v28-to-v29 migration. It backs up the existing
-database before adding `mode_snapshots`, `mode_runs`, `mode_gate_results` and
+ADR `mode-definitions` upgrades this fork from schema 27 directly to schema 29
+(and accepts upstream schema 28). It backs up the actual source schema before adding `mode_snapshots`, `mode_runs`, `mode_gate_results` and
 `sessions.mode_snapshot_hash`. Existing sessions and Plan approvals are retained.
 Mode ids remain in `sessions.mode`; `chat` still normalizes to `plan`.
 
