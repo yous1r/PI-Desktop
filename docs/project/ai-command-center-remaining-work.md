@@ -2147,3 +2147,18 @@ architecture, policy, docs and whitespace passed; freshly fetched origin/main
 remains `7e493e8b18d277d8d13f682cf250604ed94fb00d`. Clean-candidate acceptance
 follows. Full inventory composition, bounded Rust status and H1-H5 remain open;
 Voice development remains paused.
+
+### H1 persistence prerequisite acceptance
+
+Clean candidate `eac1b4f4021db67dc743be04c6ebece967b5f2a9`, based on freshly
+fetched `7e493e8b18d277d8d13f682cf250604ed94fb00d`, passed 55/55 unique Node
+tests, 27/27 runtime handoff tests and 9/9 shared contract tests. The 2,814 frozen
+source inputs stayed unchanged after tests and static checks; the worktree stayed
+clean. Desktop types, Biome 391 files, architecture, policy, docs 633 pages,
+whitespace and base ancestry passed. Existing advisory ADR warnings remain.
+
+The [verification record](ai-command-center-p0-evidence/persistence-ownership-verification.json)
+records scope, baseline classifications and fifteen artifact hashes. Full logs,
+exact Node test names and full manifest remain in session scratch. This accepts
+the persistence inventory prerequisite; full nineteen-family composition, Rust
+status and H1-H5 continue. Native resources remain unqualified and Voice paused.

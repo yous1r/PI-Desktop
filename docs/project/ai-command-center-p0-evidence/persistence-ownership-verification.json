@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "scope": "H1 persistence activity and original coordinator binding prerequisite",
+  "candidate": "eac1b4f4021db67dc743be04c6ebece967b5f2a9",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "baseProvenance": "origin/main freshly fetched before candidate commit; ancestor check passed",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "sourceInputs": {
+    "count": 2814,
+    "sha256": "bd215bc1563a27151465698b11db68f0ce5aedf36586deb1cb1498df2051ca9a",
+    "unchangedAfterTestsAndStaticChecks": true,
+    "scope": "Tracked first-party source, tests and configuration; reused third-party dependencies excluded"
+  },
+  "tests": {
+    "node": { "files": 4, "total": 55, "uniquePassed": 55, "failed": 0, "cancelled": 0, "skipped": 0,
+      "selection": ["handoff-persistence", "persistence-outbox", "inflight-checkpoint", "shutdown-regenerate-persistence"] },
+    "runtime": { "files": 3, "passed": 27, "failed": 0,
+      "selection": ["owner-handoff-channel", "owner-handoff-coordinator", "owner-handoff-process"] },
+    "shared": { "files": 1, "passed": 9, "failed": 0, "selection": ["owner-handoff"] },
+    "coverage": "Production outbox/checkpointer/Desktop admission composition with real isolated files and controlled filesystem/Host completion boundaries; original-generation coordinator hold/cancel contract; existing recovery, retry, quarantine, strict mutation and shutdown behavior"
+  },
+  "checks": { "desktopTypes": "PASS", "biome391Files": "PASS", "architecture": "PASS", "agentPolicy": "PASS", "docs633Pages": "PASS_WITH_EXISTING_ADVISORY_ADR_WARNINGS", "whitespace": "PASS", "baseAncestry": "PASS" },
+  "baselines": [
+    { "artifact": "h1-coordinator-generation-before.log", "passed": 13, "failed": 3, "classification": "Coordinator accepted mutated-generation reports and stale cancellation; production HostProcess generation is immutable, so mutable wrapper cases are defensive contract coverage" },
+    { "artifact": "h1-persistence-before.log", "passed": 0, "failed": 9, "classification": "Missing activity API baseline, not nine independently reproduced product defects" },
+    { "artifact": "h1-persistence-uncertain-before.log", "passed": 10, "failed": 1, "classification": "Unknown append failure lost refusal evidence after queue removal; corrected" },
+    { "artifact": "h1-persistence-first.log", "passed": 50, "failed": 1, "classification": "Child Node did not inherit current-source loader and could not find host-runtime/dist; inherited-loader compatibility and clean-candidate reruns passed" }
+  ],
+  "limitations": [
+    "Full nineteen-family Desktop inventory, bounded Rust status and fenced coordinator composition remain pending.",
+    "These counts represent outstanding obligations, not exact execution occupancy or native-family closure.",
+    "Voice remains paused and incomplete reporting cannot be treated as idle.",
+    "No live Desktop/profile, real provider, paid API, dependency installation, Rust suite or native recovery rerun occurred.",
+    "Full logs, exact Node test names, runner and full source manifest remain in session scratch; this archive records their hashes."
+  ],
+  "artifacts": [
+    { "path": "h1-persistence-candidate.mjs", "bytes": 6626, "sha256": "1d0988a051301d1579fefef8d1a8f3e9512978e92bdf6801caace6b4cfdec1bd" },
+    { "path": "h1-persistence-candidate.json", "bytes": 8442, "sha256": "c1f6d47cf9fc0c077c375034a287f52a61bbede8b9e771e08d5d453f080e20ad" },
+    { "path": "h1-persistence-candidate-inputs.json", "bytes": 482959, "sha256": "3a827160bdb7ea327432ecbcd6f4d6d72cbacaa50534ec92612ebe9cd086ea4d" },
+    { "path": "h1-persistence-candidate-node.log", "bytes": 11772, "sha256": "62721ff9faabe3ea0bcc4acc7b2af646769222997ce2490314b0721dc2ccf87e" },
+    { "path": "h1-persistence-candidate-runtime.log", "bytes": 747, "sha256": "c85238cee6f1e52ca2e94ded43eb95e0dc207c03832905d53b1bc596c7101b82" },
+    { "path": "h1-persistence-candidate-shared.log", "bytes": 505, "sha256": "84291832be33852fd15f145d7e8f040f6e1a54bbcff2547ad311114ef5acbb0b" },
+    { "path": "h1-persistence-clean-types.log", "bytes": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
+    { "path": "h1-persistence-clean-lint.log", "bytes": 46, "sha256": "7cb451e1c43622b2f0092052c509a01d5823c26b12776fc055db90d94274c9df" },
+    { "path": "h1-persistence-clean-architecture.log", "bytes": 1949, "sha256": "75fbf682ec2614a401190bf03fb7b418cb4a718d5e8433e8a5f4876a695c3f9c" },
+    { "path": "h1-persistence-clean-policy.log", "bytes": 58, "sha256": "58a9ee0870461c6f590356bb7f15372a9dac1bc2f0450ff6b731bb4996c1460c" },
+    { "path": "h1-persistence-clean-docs.log", "bytes": 848, "sha256": "b413e29d8a953100844e7eab171af74dabe545fbc343adaf17481be6b6ff6323" },
+    { "path": "h1-coordinator-generation-before.log", "bytes": 8425, "sha256": "2eb04ff514b0ff15d2b659581513353352b4da3582961fde81b979cfc6381964" },
+    { "path": "h1-persistence-before.log", "bytes": 7940, "sha256": "b39ddaac2167d757d857b2432098f7bc0968c118e40b5917b4a9866e4880aa21" },
+    { "path": "h1-persistence-uncertain-before.log", "bytes": 3246, "sha256": "9d653cd0139e505f7b5c3bc2e875c81059d497453345cc40b2b3eca865290a56" },
+    { "path": "h1-persistence-first.log", "bytes": 13499, "sha256": "f0b38ea10d254dde2850dd211dc52cc7a2c195ea45b5e64ace09d02eead1bfd4" }
+  ]
+}
