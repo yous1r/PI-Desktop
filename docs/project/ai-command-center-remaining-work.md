@@ -1969,3 +1969,44 @@ and restored before this clean candidate. Its fixture errors are not product
 failure evidence or accepted tests. Continue exact remote client/bootstrap/Host
 ownership and H1 composition from this clean result. Voice remains paused;
 no inventory or native-closure requirement is waived.
+
+### H1 remote RACP client ownership
+
+Implementation `c7f7e277f` wraps each remote RACP transport in a local ownership
+record. Pairing, connect and reconnect are admitted by the shared Desktop
+handoff gate before the transport factory runs, and the gate is passed to the
+adapter that `remote-hosts.ts` creates for each Host. Each record counts its
+operations and resources; close retires it synchronously, and a transport that
+arrives after closure is closed before initialization.
+
+Inbound server-request handlers run inside an `AsyncLocalStorage` binding to
+their admitting connection. A stale callback can neither send a mutation through
+a reopened client nor close the replacement; it is refused with
+`HOST_DISCONNECTED`. Reconnect callbacks, backoff timers and sibling recovery
+remain counted until they settle. Concurrent and reentrant close join the same
+original completion. The RACP protocol, wire format and RPC semantics are
+unchanged.
+
+The fifteen-case deterministic suite (`handoff-racp-client.test.mjs`) had one
+pass and ten failures against the prior wrapper. Its final run passes fifteen
+of fifteen, and the existing compatibility suites pass: 57 of 57 for the RACP
+client, remote connection, boot, SSH tunnel, pairing and realignment tests.
+
+### H1 RACP client clean-candidate acceptance
+
+Implementation `c7f7e277f` passed 101 unique tests in eleven files on a clean
+worktree, with three existing POSIX process-inspection skips on Windows. All
+1,687 tracked source inputs remained unchanged (manifest digest
+`c858fa43ef980049aa03addf55f71a18a492f29ad606ac16424a904da8bf9ee2`). The
+[client report](ai-command-center-p0-evidence/racp-client-after.json) binds the
+result to the tested commit; the
+[verification archive](ai-command-center-p0-evidence/racp-client-verification.json)
+retains the exact log and input manifest. Status is
+`PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`.
+
+This acceptance covers the RACP client wrapper only, using the in-memory
+transport and real `RacpClient` state machine. It does not contact a real Host,
+SSH server, stored credential or device token, and it does not certify
+native-family closure of Node, Electron, socket or browser resources. Remote Host
+boot accounting, nineteen-family inventory and H1 composition remain next.
+Voice stays deferred.

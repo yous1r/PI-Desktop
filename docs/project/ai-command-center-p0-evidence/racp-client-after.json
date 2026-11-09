@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "c7f7e277f07e0ff743830ade6340f36dd312029e",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-09T10:29:10.114Z",
+  "endedAt": "2026-11-09T10:29:25.483Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "tests": {
+    "files": 11,
+    "summary": {
+      "tests": 104,
+      "pass": 101,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 3
+    },
+    "uniquePassed": 101,
+    "skipped": 3
+  },
+  "run": {
+    "command": [
+      "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+      "--import",
+      "file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-mcp-test-loader.mjs",
+      "--test",
+      "--test-reporter=tap",
+      "--test-concurrency=1",
+      "--test-timeout=50000",
+      "test/handoff-racp-client.test.mjs",
+      "test/racp-remote-host-client.test.mjs",
+      "test/remote-host-connection.test.mjs",
+      "test/boot-remote-hosts.test.mjs",
+      "test/remote-host-ssh-tunnel.test.mjs",
+      "test/handoff-ssh-tunnel.test.mjs",
+      "test/pairing-boot-add-remove.test.mjs",
+      "test/remote-host-realign.test.mjs",
+      "test/remote-host-deployment-confirm.test.mjs",
+      "test/remote-host-prepare.test.mjs",
+      "test/remote-host-supervisor.test.mjs"
+    ],
+    "exitCode": 0,
+    "signal": null,
+    "artifact": {
+      "path": "handoff-racp-client-candidate.log",
+      "bytes": 22593,
+      "sha256": "9d96290979eb4c3ff85489a4ff0f3e51e0d2b5642527aaa1d30006c7ad6c7060"
+    }
+  },
+  "sourceInputs": {
+    "count": 1687,
+    "sha256": "c858fa43ef980049aa03addf55f71a18a492f29ad606ac16424a904da8bf9ee2",
+    "unchanged": true,
+    "manifest": "handoff-racp-client-candidate-inputs.json",
+    "scope": "Tracked Desktop/runtime/contract sources and configuration; not the complete third-party dependency graph."
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "skippedTests": [
+    "stopped installed Host starts at a fresh port, then running reuse preserves PID and credentials # SKIP Requires POSIX process inspection (ps -o command)",
+    "legacy installed bundle can use system Node without installing # SKIP Requires POSIX process inspection (ps -o command)",
+    "unrelated live PID is neither killed nor mistaken for an installed Host # SKIP Requires POSIX process inspection (ps -o command)"
+  ],
+  "limitations": [
+    "Only the remote RACP client wrapper and its admitted pairing/connect/close/reopen/reconnect paths are accepted. Full remote Host boot ownership, nineteen-family accounting and H1-H5 transfer remain incomplete.",
+    "The RACP tests use the in-memory MemoryLink and real RacpClient state machine; no real WebSocket Host, SSH server, stored Host or device token is contacted.",
+    "Ownership does not certify native-family closure of Node plugins, Electron utility processes, sockets or browser pages; bounded uncontained-resource evidence stays unqualified.",
+    "Voice development remains paused by explicit user direction and is not part of this acceptance.",
+    "No live Desktop/profile, provider/account, microphone, model, dependency installation, push, PR or remote merge was used."
+  ]
+}
