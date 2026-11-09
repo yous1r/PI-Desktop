@@ -2311,3 +2311,33 @@ preserves actual failures, fixture boundaries and the prior isolation incident.
 This accepts the inventory-reader slice, not complete H1 or native transfer.
 Continue trusted original-owner identity/journal transport and subclass-safe
 fenced factory/lifecycle composition. Voice remains paused.
+
+### H1 original-owner identity and transfer transport
+
+- Added strict private `ownerHandoff.identity` and `ownerHandoff.readTransfer`
+  stdio queries. Identity is available before Sidecar startup; the retained
+  live coordinator and exact unretired Journal owner remain authoritative.
+  A bounded read transaction checks owner/source/profile/principal and record
+  columns without mutation. Normal 32-slot RPC admission/accounting remains.
+- Shared contracts reject missing/extra/malformed/oversized facts and enforce
+  exact nonce/source/profile/transfer correlation. The runtime captures original
+  transport/generation and source identity through success, rejection and late
+  responses, sharing the established two-second RPC / 2.5-second total deadline
+  with inspection. No production JS SQLite authority is introduced.
+- Development checks: shared 32 and runtime 48 tests passed before one further
+  synchronous-reentry case; types, Biome, architecture, policy and 633 docs passed.
+  Rust first run was 19 pass / 1 fixture failure: the second test owner violated
+  the unique active-profile constraint before query assertions. The correction
+  gives that owner a distinct profile; the original failure log is retained.
+- Development process verification passed six checks with two temporary Hosts
+  and confirmed original native/Host cleanup. Identity/transfer use production
+  stdio; SQLite is only isolated fault injection/independent verification.
+  Clippy passed with existing mode warnings. Clean-candidate evidence follows.
+- H1 remains partial: Desktop subclass-preserving fenced factories, actual
+  startup/restart/coordinator composition, Rust background admission, independent
+  Workers and complete native/resource coverage remain. Voice remains paused;
+  the fixed inventory qualification gaps still refuse handoff. The previously
+  documented unintended default-profile startup and unknown effects are unchanged.
+- Corrected development verification: Rust 20/20, runtime 49/49 and Desktop
+  inventory 48/48 passed; no failures or skips in these runs. The fixture failure
+  remains recorded separately, not relabeled as a production regression.

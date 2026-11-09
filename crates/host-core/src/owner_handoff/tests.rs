@@ -615,3 +615,5 @@ fn upstream_schema_without_owner_tables_can_reach_additive_migration() {
         .unwrap();
     assert!(super::startup::inspect(&path, None, &mut ProofProbe::default()).is_err());
 }
+
+mod source_read;

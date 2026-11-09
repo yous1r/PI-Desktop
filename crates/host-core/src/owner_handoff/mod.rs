@@ -6,10 +6,12 @@ pub(crate) mod inspection;
 pub(crate) mod model;
 #[cfg(windows)]
 pub(crate) mod native;
+pub(crate) mod query;
 pub(crate) mod read_budget;
 pub(crate) mod repository;
 #[cfg(any(windows, test))]
 mod service;
+mod source_read;
 pub(crate) mod startup;
 #[cfg(windows)]
 mod stdio;

@@ -673,6 +673,13 @@ limited to the execution generation. Desktop must still compose all 19 families,
 hold admission and obtain actual native closure before transfer. Inspection
 neither fences background schedulers nor establishes that full composition.
 
+Private [original-owner queries](06-host-rpc-protocol.md#private-original-owner-queries-windows)
+provide source identity before Sidecar startup and validated transfer facts over
+the original stdio connection. Rust checks retained native owner identity and a
+single bounded Journal read snapshot; Node does not derive authority from SQLite.
+These reads neither fence autonomous producers nor establish full lifecycle
+composition. A stale successful or rejected response cannot authorize a new Host.
+
 The Desktop inventory reader captures exact Host, native generation, Sidecar
 binding token and concrete resource owners before reading Rust. It checks the
 same bindings on success, rejection and before publishing the result, then

@@ -63,3 +63,25 @@ fn native_job_and_coordinator_have_explicit_live_identity() {
     drop(job);
     assert_eq!(Job::recorded_active(&name).unwrap(), None);
 }
+
+#[test]
+fn source_query_refuses_journal_contention_without_waiting() {
+    let directory = tempfile::tempdir().unwrap();
+    drop(crate::db::Database::open_in_dir(directory.path()).unwrap());
+    let mut registry = Registry::start(directory.path()).unwrap();
+    registry.bind_journal(directory.path()).unwrap();
+    let journal = registry.journal.as_ref().unwrap().lock().unwrap();
+    assert!(registry.read_source(None).is_err());
+    drop(journal);
+    let (epoch, profile, record) = registry.read_source(None).unwrap();
+    assert_eq!(epoch, registry.owner.epoch);
+    assert_eq!(profile, registry.owner.profile);
+    assert!(record.is_none());
+    assert!(registry
+        .read_source(Some((
+            &uuid::Uuid::new_v4().to_string(),
+            &profile,
+            &uuid::Uuid::new_v4().to_string()
+        )))
+        .is_err());
+}

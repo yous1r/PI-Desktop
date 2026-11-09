@@ -1621,6 +1621,30 @@ The TypeScript consumer caps the whole call, including existing overload retries
 at 2.5 seconds and validates the exact Host object/generation and request identity
 on both success and failure. Late responses never authorize another owner.
 
+## Private original-owner queries (Windows)
+
+`ownerHandoff.identity` accepts only `version: 1` and a canonical non-nil
+`requestId`. It echoes those fields with `sourceEpoch` and `profileId` from the
+retained Registry after verifying the live original coordinator handle and the
+exact unretired Journal owner. It works before a Sidecar generation is prepared;
+it does not certify generation coverage, idle state or transfer permission.
+
+`ownerHandoff.readTransfer` additionally requires `sourceEpoch`, `profileId` and
+`transferId`. It echoes all request fields and returns the validated `record`.
+One bounded read transaction verifies the original owner and current transfer,
+including matching source/profile, requester SID, stored columns, revision and
+canonical process identities. Missing, retired, corrupt, unavailable or mismatched
+authority refuses with fixed `HANDOFF_UNAVAILABLE` / `owner query unavailable`.
+The result is a point-in-time fact; phase transitions still require Rust CAS.
+
+Both private stdio methods use strict 16 KiB request/response limits, the same
+SQLite read budget as inspection, a two-second Host budget and a 2.5-second
+whole-consumer deadline. They retain normal RPC activity accounting and share
+the 32-slot semaphore; only `ownerHandoff.inspect` excludes its own activity.
+Consumers capture the original Host object/generation and source binding before
+awaiting, checking them on success and rejection. No JS SQLite lookup, discovery
+advertisement, admission hold, transfer mutation, cleanup or readiness follows.
+
 ## Restricted owner-handoff bootstrap (Windows)
 
 `--owner-handoff` is an exclusive launch mode, before ordinary AppState and RPC.

@@ -1,5 +1,8 @@
 # Unreleased changes
 
+- Add bounded private original-owner identity and transfer queries over Rust
+  stdio. Exact retained owner/journal checks and stale-response refusal support
+  Desktop composition without enabling handoff or bypassing qualification gaps.
 - Add the original-owner Desktop inventory reader for all 19 handoff fields.
   Required resource reports, retained writes and retired owners remain visible;
   malformed reports, overflow and replaced authority refuse inspection. Fixed

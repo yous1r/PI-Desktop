@@ -169,6 +169,31 @@ impl Registry {
         journal.inspect_generation(&self.owner, generation, root.as_ref())?;
         lease.status_locked(&progress)
     }
+    pub fn read_source(
+        &self,
+        transfer: Option<(&str, &str, &str)>,
+    ) -> Result<(
+        String,
+        String,
+        Option<crate::owner_handoff::model::Transfer>,
+    )> {
+        if native::exited(self.coordinator.handle.as_raw_handle())? {
+            bail!("HANDOFF_OWNER_CHANGED");
+        }
+        if let Some((epoch, profile, _)) = transfer {
+            if epoch != self.owner.epoch || profile != self.owner.profile {
+                bail!("HANDOFF_OWNER_CHANGED");
+            }
+        }
+        let journal = self
+            .journal
+            .as_ref()
+            .context("HANDOFF_OWNER_NOT_REGISTERED")?
+            .try_lock()
+            .map_err(|_| anyhow::anyhow!("HANDOFF_JOURNAL_UNAVAILABLE"))?;
+        let record = journal.inspect_source(&self.owner, transfer.map(|(_, _, id)| id))?;
+        Ok((self.owner.epoch.clone(), self.owner.profile.clone(), record))
+    }
     pub fn bind_journal(&mut self, directory: &Path) -> Result<()> {
         if self.journal.is_some() {
             bail!("HANDOFF_OWNER_ALREADY_REGISTERED");

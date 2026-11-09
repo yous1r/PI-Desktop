@@ -558,6 +558,12 @@ const RPC_PERMISSION_WAIT_CAP_MS: u64 = 120_000;
 /// follows its own effective tool timeout (plus permission cap and grace); all
 /// other methods use the fixed budget.
 fn request_budget_ms(method: &str, params: &Value) -> Option<u64> {
+    if matches!(
+        method,
+        crate::owner_handoff::query::IDENTITY | crate::owner_handoff::query::TRANSFER
+    ) {
+        return Some(crate::owner_handoff::query::BUDGET_MS);
+    }
     if method == crate::owner_handoff::inspection::METHOD {
         return Some(crate::owner_handoff::inspection::BUDGET_MS);
     }
@@ -1927,6 +1933,11 @@ async fn handle_request(
     }
 
     match method {
+        crate::owner_handoff::query::IDENTITY | crate::owner_handoff::query::TRANSFER => {
+            crate::owner_handoff::query::handle(state, method, params)
+                .await
+                .map_err(|_| rpc_err(1000, "owner query unavailable", "HANDOFF_UNAVAILABLE"))
+        }
         crate::owner_handoff::inspection::METHOD => {
             crate::owner_handoff::inspection::handle(state, params)
                 .await
@@ -5896,6 +5907,21 @@ mod tests {
     // stuck on the global state lock (the dominant queueing case) so their
     // in-flight slots come back, without ever shortening a legitimate
     // long-running tool execution.
+
+    #[test]
+    fn owner_queries_have_bounded_budgets_without_namespace_exemptions() {
+        for method in [
+            "ownerHandoff.identity",
+            "ownerHandoff.readTransfer",
+            "ownerHandoff.inspect",
+        ] {
+            assert_eq!(request_budget_ms(method, &json!({})), Some(2000));
+        }
+        assert_eq!(
+            request_budget_ms("ownerHandoff.other", &json!({})),
+            Some(RPC_REQUEST_BUDGET_MS)
+        );
+    }
 
     #[test]
     fn request_budget_is_fixed_for_non_tool_methods() {

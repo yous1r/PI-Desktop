@@ -19990,7 +19990,11 @@ session data is used.
 - **Steps:** Bundle the production HostProcess, inspection consumer and Desktop
   inventory reader from current source. Explicitly preserve `PI_DESKTOP_DATA_DIR`
   in the final child environment and verify the scratch database after handshake.
-  Register a real contained native runner; inspect startup settlement, then
+  Query original owner identity before preparing a Sidecar generation. Read a
+  terminal transfer fixture through production stdio; inject owner/coordinator,
+  profile/principal/revision mismatches in the isolated journal, restore, and
+  verify refusal and record preservation. Register a real contained native
+  runner; inspect startup settlement, then
   create a session, begin a turn, checkpoint its partial reply, end and recover
   it. Exercise real Desktop outbox/checkpoint disposal and admission refusal
   through the Rust report. Other Desktop resource owners are explicit fixtures.
@@ -20022,8 +20026,8 @@ session data is used.
   explicit qualification gaps refuse handoff even after known work settles.
   Nested plugin/tunnel sources are not separately added as execution occupancy.
 - **Boundary:** This proves the reader/persistence/gate composition. Full Desktop
-  startup, actual source identity/transfer transport and native closure remain
-  pending; Voice/LiveVoice remain paused.
+  startup and native closure remain pending; original source identity/transfer
+  transport is covered by the process path above. Voice/LiveVoice remain paused.
 - **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
 
 ### Desktop admission integration prerequisites (H1 partial)
