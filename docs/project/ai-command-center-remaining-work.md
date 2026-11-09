@@ -1881,3 +1881,19 @@ VoiceService initialization/admission/lease/confirmed-shutdown, LiveVoice/remote
 the full nineteen-family inventory and H1-H5 composition remain unfinished.
 Ordinary wrapper disposal is not native-family closure; no real microphone, native
 model, provider, stored SSH Host, live Desktop/profile or dependency download ran.
+
+### H1 Dictation native-runtime clean-candidate acceptance
+
+Implementation `7fa0961108e17d3939d068319d9b24b4a01c75f8` passed 87 Desktop
+and 30 shared tests on a clean worktree against refreshed base
+`fd28eb89866ac513912ed109716e7120cf60f18c`. All 1,681 tracked source inputs
+remained unchanged (manifest digest
+`9f2901fda02e2faf010e86206ac61cb296a15f07ad6e9f5cd2b795d24601d8ad`).
+The [native-runtime report](ai-command-center-p0-evidence/voice-native-after.json)
+records the tested commit, scope and limits. The
+[verification archive](ai-command-center-p0-evidence/voice-native-verification.json)
+retains 21 exact artifacts and 117 unique passing test names. Biome (365 files),
+architecture, agent policy, refreshed base, whitespace and 631 documentation pages
+also pass. Status remains `PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES`; proceed to
+cache download/delete and VoiceService initialization/admission/lease/shutdown
+ownership, then LiveVoice/remote and the remaining H1-H5 composition.

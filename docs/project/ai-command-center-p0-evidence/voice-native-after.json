@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "7fa0961108e17d3939d068319d9b24b4a01c75f8",
+  "base": "fd28eb89866ac513912ed109716e7120cf60f18c",
+  "startedAt": "2026-11-09T05:17:42.524Z",
+  "endedAt": "2026-11-09T05:17:51.259Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "tests": {
+    "desktopFiles": 8,
+    "desktop": 87,
+    "sharedFiles": 4,
+    "shared": 30,
+    "unique": 117,
+    "focusedNative": 24
+  },
+  "runs": [
+    {
+      "result": {
+        "exitCode": 0,
+        "signal": null
+      },
+      "command": [
+        "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+        "--import",
+        "file:///C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/handoff-mcp-test-loader.mjs",
+        "--test",
+        "--test-reporter=tap",
+        "--test-concurrency=1",
+        "--test-timeout=25000",
+        "test/handoff-voice-native.test.mjs",
+        "test/handoff-voice-controller.test.mjs",
+        "test/handoff-audio-capture.test.mjs",
+        "test/handoff-audio-user-path.test.mjs",
+        "test/voice-service-idle-unload.test.mjs",
+        "test/voice-model-download.test.mjs",
+        "test/plugin-audio-unsupported.test.mjs",
+        "test/main-wiring-contract.test.mjs"
+      ],
+      "artifact": {
+        "path": "handoff-voice-native-candidate.log",
+        "bytes": 18314,
+        "sha256": "ae91495ca70e51438fe06ce0884b939b9e4cfe98b9c50005615b4748781d66aa"
+      }
+    },
+    {
+      "result": {
+        "exitCode": 0,
+        "signal": null
+      },
+      "command": [
+        "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+        "D:\\Packages\\PI-Desktop\\worktrees\\owner-local-control\\node_modules\\vitest\\vitest.mjs",
+        "run",
+        "--config",
+        "vitest.config.ts",
+        "--maxWorkers=2",
+        "--reporter=verbose",
+        "test/voice-controller.test.ts",
+        "test/pcm-utils.test.ts",
+        "test/pcm-chunker.test.ts",
+        "test/chinese.test.ts"
+      ],
+      "artifact": {
+        "path": "handoff-voice-native-candidate-shared.log",
+        "bytes": 4278,
+        "sha256": "6619153699fda3ba7f8d58fe5ddf9bc5db0746e12543166dcd0ab0a3c8f8cc9a"
+      }
+    }
+  ],
+  "sourceInputs": {
+    "count": 1681,
+    "sha256": "9f2901fda02e2faf010e86206ac61cb296a15f07ad6e9f5cd2b795d24601d8ad",
+    "unchanged": true,
+    "manifest": "handoff-voice-native-candidate-inputs.json",
+    "scope": "Tracked Desktop/runtime/contract sources including Voice; not a complete third-party dependency graph."
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "observations": [
+    {
+      "kind": "audio-user-path",
+      "exactPcmTranscription": true,
+      "originalReleases": 2,
+      "lateFramePublished": false,
+      "activity": {
+        "operations": 0,
+        "resources": 0,
+        "uncontainedResources": 2
+      },
+      "nativeFamilyQualified": false,
+      "physicalMicrophoneUsed": false
+    }
+  ],
+  "limitations": [
+    "Actual controller, engine, model owner and audio backend use deterministic native recorder/model boundaries and isolated model files. Native streaming fixtures match the provisioned transcribe-cpp 0.2.2 asynchronous API; native frees are not observed.",
+    "Cache download/delete lifetimes and VoiceService initialization, admission, shutdown and microphone leases remain next; full LiveVoice/remote/H1-H5 acceptance is incomplete.",
+    "No physical microphone, native model execution, real provider/account, live Desktop/profile, stored SSH Host, download, paid API or dependency installation was used. Ordinary reset/dispose is not native-family qualification."
+  ]
+}
