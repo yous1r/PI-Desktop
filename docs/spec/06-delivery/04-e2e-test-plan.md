@@ -19565,3 +19565,13 @@ isolated Host, the production runtime loop and Electron main's run coordinator.
 3. During a turn, Remove: the turn is not interrupted, finishes in Agent
    without `CompleteStage`, no Host-started turn follows, and no open run is
    left.
+
+### E2E-NATIVE-workspace-file-routing
+
+Run `node scripts/e2e-native-workspace-files.mjs`: isolated Electron Main,
+production workspace IPC, synthetic sidecar session metadata and real fixture
+files. Select an unrelated Desktop workspace; list, read and resolve a native
+file, then reject a missing native session. The test asserts no native session
+or scratch RPC reaches Desktop storage. `native-workspace-files.test.mjs`
+additionally rejects replaced sidecars. No provider execution or native user
+session data is used.

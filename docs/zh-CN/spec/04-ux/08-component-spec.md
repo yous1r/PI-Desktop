@@ -3107,3 +3107,7 @@ default nor provider configuration. OAuth accounts remain in their separate sect
 
 浮窗跟随语言、字体及系统/明/暗外观。专用桥接不传入插件主题 CSS，
 因此插件主题偏好在此窗口中回退为系统明暗外观。
+
+### Native Pi 文件引用（#1853）
+
+用户发起的文件读取、目录列表、引用解析和文件搜索使用 sidecar 投影的 native 会话项目路径。Native 身份不查询 Desktop 会话存储，也不回退到当前选中的工作区。来源丢失或更换时拒绝请求。现有本地文件范围和显式外部文件规则继续生效，不增加模型工具或附件权限。Native 会话没有 Desktop scratch 目录。
