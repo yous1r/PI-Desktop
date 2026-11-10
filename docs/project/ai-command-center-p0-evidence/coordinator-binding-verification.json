@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "07336eceddabac797cfefaed2c1f223c07da6deb",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "startedAt": "2026-11-10T00:15:26.878Z",
+  "endedAt": "2026-11-10T00:17:00.401Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "rawReport": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-coordinator-candidate.json",
+    "bytes": 32295,
+    "sha256": "b0546042129c9cb9fe4d7acf031846ac2dad22c16fb6fab6a062fca7d7b4db91"
+  },
+  "sourceInputs": {
+    "count": 2864,
+    "sha256": "fec503257c0f1401b447ffa374e9e14615118254bd05d0123100098c21d01f46",
+    "manifest": {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-coordinator-candidate-inputs.json",
+      "bytes": 491444,
+      "sha256": "20e696bee0be86f1f1cd5ddee555045f09bac6d21cb83c0980e60e176b377460"
+    },
+    "unchanged": true
+  },
+  "desktop": {
+    "files": 2, "uniquePassed": 90, "tests": 90, "pass": 90, "fail": 0, "cancelled": 0, "skipped": 0,
+    "selection": ["handoff-coordinator", "handoff-inventory"]
+  },
+  "runtime": {
+    "files": 4, "uniquePassed": 59,
+    "selection": ["owner-handoff-coordinator", "owner-handoff-query", "owner-handoff-inspection", "sidecar-handoff-client"],
+    "report": {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-coordinator-candidate-runtime.json",
+      "bytes": 19417,
+      "sha256": "7836bc36431b2059f3441d9068939a273bfd8242bedd59d43a403052040ec566"
+    }
+  },
+  "native": {
+    "checks": 8, "hostProcesses": 4, "cleanupConfirmed": true,
+    "report": {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-inspection-6k0bUg/report.json",
+      "bytes": 1929,
+      "sha256": "e999c6fee8dcac1bdc900fa9bcaa14d0e7ec877630618e397774f2aa37bbcb28"
+    },
+    "bundleSha256": "5ba2107816d2d137ff03f5756bcb168b900c0dcf25105554a3d0374906f45c55",
+    "inputs": 1468,
+    "inputsSha256": "638f810734cb1c14732443761f82244c38379062aa48d30a2843e6cd8bcb83b4",
+    "scriptSha256": "689e97e40dd0ced23819c2783ef9d433260c8fa42418547c64bf84eeb3fb10e2"
+  },
+  "checks": [
+    { "name": "node", "exitCode": 0, "signal": null },
+    { "name": "runtime", "exitCode": 0, "signal": null },
+    { "name": "native", "exitCode": 0, "signal": null },
+    { "name": "types", "exitCode": 0, "signal": null },
+    { "name": "lint", "exitCode": 0, "signal": null },
+    { "name": "architecture", "exitCode": 0, "signal": null },
+    { "name": "policy", "exitCode": 0, "signal": null },
+    { "name": "docs", "exitCode": 0, "signal": null },
+    { "name": "base", "exitCode": 0, "signal": null },
+    { "name": "whitespace", "exitCode": 0, "signal": null }
+  ],
+  "artifactsRehashed": 32,
+  "reusedHost": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-query-candidate-host.exe",
+    "bytes": 34910208,
+    "sha256": "69a4270bb59c7d1b0d7204bb81ecb478d205d972b60ade18567042bc8e4d699d",
+    "acceptedCandidate": "17da5209186823485400b74a9736445f502b2844",
+    "rustInputsUnchanged": true,
+    "rustTestsRerun": false,
+    "clippyRerun": false
+  },
+  "environment": {
+    "platform": "win32", "node": "v24.12.0",
+    "executableSha256": "2ffe3acc0458fdde999f50d11809bbe7c9b7ef204dcf17094e325d26ace101d8"
+  },
+  "limitations": [
+    "Original-owner Desktop binding, real inventory/gate refusal and core coordinator transitions are covered; native identity/status/inspection use isolated Rust/runner/Node processes with explicit fixtures for other Desktop producers. Application registration and private Rust reverse exchange remain pending.",
+    "Native coverage remains execution_generation_only. Rust background admission, Worker classification and fixed missing producers refuse handoff; Voice/LiveVoice remain paused.",
+    "No Rust rebuild/test/Clippy, live Desktop, stored SSH, provider, install or full native/hardware qualification performed in this TypeScript slice.",
+    "Earlier default-profile startup/registration is confirmed; recovery/data impact remains unknown. Current profiles are scratch-isolated; no remediation was performed."
+  ],
+  "independentVerifier": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-coordinator-verify.mjs",
+    "bytes": 4309,
+    "sha256": "19ee0507d9e240ec767174786474a0eadbf872581794ff8bc13b96102a54eca7"
+  }
+}

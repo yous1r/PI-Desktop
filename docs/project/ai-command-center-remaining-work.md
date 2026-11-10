@@ -2584,3 +2584,20 @@ H1 remains incomplete: private exchange/application wiring, Rust background
 admission, Workers and required native/resource proofs remain open. Voice remains
 paused. All process profiles in this slice were scratch-isolated; the earlier
 default-profile startup/registration and unknown data effects remain unresolved.
+
+#### Original-owner coordinator adapter clean-candidate acceptance
+
+Candidate `07336eceddabac797cfefaed2c1f223c07da6deb` against freshly fetched
+`7e493e8b18d277d8d13f682cf250604ed94fb00d` passed 90 unique Desktop cases,
+59 runtime cases and eight isolated process checks across four Hosts, with
+confirmed cleanup. Types, lint (418 files), architecture, policy, documentation,
+base and whitespace checks exited zero. All 2,864 source inputs stayed unchanged,
+32 artifacts were independently rehashed and the worktree stayed clean before
+and after. The unchanged accepted Rust binary was reused; no Rust rebuild,
+Rust tests or Clippy rerun is claimed. See
+[coordinator binding verification](./ai-command-center-p0-evidence/coordinator-binding-verification.json).
+
+The adapter and failure-boundary correction are accepted within that scope.
+Next is the Rust-owned bounded private reverse exchange and application service
+registration, followed by Rust background admission and the remaining resource
+proofs. This does not qualify full H1 or resolve the earlier profile incident.
