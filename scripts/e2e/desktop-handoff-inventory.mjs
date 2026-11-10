@@ -40,6 +40,9 @@ export async function verifyDesktopInventory(host, binding, directory, inspectRu
     browser: reporter({ operations: 0, pages: 0, uncontainedResources: 0 }),
     terminals: reporter({ terminals: 0, uncontainedResources: 0 }), userMcp: reporter({ mcp: 0, uncontainedResources: 0 }),
     mcpOAuth: external(), speech: external(),
+    modelCatalog: external(), updater: external(), mcpControl: external(),
+    vendorOAuth: external(), personalTodos: external(), collaboration: external(),
+    surfaces: external(),
   };
   const inspect = () => inspectDesktopHandoff(() => sources);
   const { session } = await host.call('session.create', { title: 'Isolated Desktop inventory fixture' });

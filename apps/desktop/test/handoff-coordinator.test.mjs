@@ -48,6 +48,9 @@ function fixture() {
     remote: external(), browser: report({ operations: 0, pages: 0, uncontainedResources: 0 }),
     terminals: report({ terminals: 0, uncontainedResources: 0 }), userMcp: report({ mcp: 0, uncontainedResources: 0 }),
     mcpOAuth: external(), speech: external(),
+    modelCatalog: external(), updater: external(), mcpControl: external(),
+    vendorOAuth: external(), personalTodos: external(), collaboration: external(),
+    surfaces: external(),
   };
   let live = original;
   return { admission, host, sidecar, native, identity, original, calls,

@@ -4,6 +4,25 @@ import { isIP } from "node:net";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { SESSION_COLLABORATION_OPERATIONS } from "./session-collaboration-control";
+import {
+  MCP_CONTROL_CLOSED_CODE,
+  MCP_CONTROL_CLOSED_RPC_CODE,
+  McpControlLifecycle,
+  type McpControlHandoffActivity,
+  mcpControlClosed,
+  whenResponseSettled,
+} from "./mcp-control-lifecycle";
+
+export {
+  MCP_CONTROL_CLOSED_CODE,
+  MCP_CONTROL_CLOSED_RPC_CODE,
+  MCP_CONTROL_IDLE_ACTIVITY,
+  McpControlLifecycle,
+  createMcpControlHandoffOwner,
+  mcpControlClosed,
+  whenResponseSettled,
+  type McpControlHandoffActivity,
+} from "./mcp-control-lifecycle";
 
 /** A small JSON Schema subset used by MCP's tools/list response. */
 export type McpJsonSchema = {
@@ -655,6 +674,34 @@ function errorInfo(error: unknown): { code: string; message: string; details?: u
   return details === undefined ? { code, message } : { code, message, details };
 }
 
+/**
+ * Bounded, secret-free description of a detached handler failure. The message
+ * and payload are left out on purpose: they can carry session data, and the
+ * error code is what makes the failure diagnosable.
+ */
+function describeFailure(error: unknown): { code: string; name: string } {
+  const candidate = error as { code?: unknown; errorCode?: unknown; name?: unknown } | null;
+  const code = String(candidate?.errorCode ?? candidate?.code ?? "INTERNAL").slice(0, 64);
+  const name = String(candidate?.name ?? "Error").slice(0, 64);
+  return { code, name };
+}
+
+/**
+ * A caller that disconnected destroys its response. That write failure is not
+ * unknown underlying work, so it must not inflate `uncontainedResources`.
+ */
+const RESPONSE_TRANSPORT_CODES = new Set([
+  "ERR_STREAM_DESTROYED",
+  "ERR_STREAM_WRITE_AFTER_END",
+  "ECONNRESET",
+  "EPIPE",
+]);
+
+function isResponseTransportError(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === "string" && RESPONSE_TRANSPORT_CODES.has(code);
+}
+
 function response(id: JsonRpcId, result: unknown): JsonRpcResponse {
   return { jsonrpc: "2.0", id, result };
 }
@@ -819,6 +866,12 @@ export type McpControlServerOptions = {
   host?: string;
   port?: number;
   version?: string;
+  /**
+   * Synchronous host-admission probe. Standalone use defaults to open; the
+   * Desktop startup injects `() => handoffAdmission.isClosed()` so no new MCP
+   * effect can start once the host closes its ingress.
+   */
+  isAdmissionClosed?: () => boolean;
   onOperationComplete?: (
     operation: McpControlOperation,
     result: unknown,
@@ -851,9 +904,12 @@ export class McpControlServer {
   private token = "";
   private port: number | null = null;
   private startedAt: string | undefined;
+  private readonly lifecycle: McpControlLifecycle;
+  private startPending: Promise<McpControlConnectionInfo | null> | null = null;
 
   constructor(options: McpControlServerOptions) {
     this.dataDir = options.dataDir;
+    this.lifecycle = new McpControlLifecycle(options.isAdmissionClosed);
     this.host = options.host ?? DEFAULT_HOST;
     this.requestedPort = options.port ?? DEFAULT_PORT;
     this.version = options.version ?? "1";
@@ -866,6 +922,16 @@ export class McpControlServer {
     this.operations = this.controller.operations.filter((operation) => !operation.pluginOnly);
     for (const operation of this.operations) this.operationById.set(operation.id, operation);
     this.toolsList = this.buildTools();
+  }
+
+  /**
+   * Synchronous ownership report for the handoff inventory. `operations` counts
+   * admitted handler lifetimes and the start/stop filesystem effects,
+   * `resources` the live listener and accepted sockets, and
+   * `uncontainedResources` the closure that could not be observed.
+   */
+  getHandoffActivity(): McpControlHandoffActivity {
+    return this.lifecycle.snapshot();
   }
 
   get isRunning(): boolean {
@@ -886,88 +952,210 @@ export class McpControlServer {
     };
   }
 
+  /**
+   * Start the inbound control transport.
+   *
+   * A stop seals this instance for its whole lifetime, and a closed host
+   * admission refuses to publish a new endpoint: every await boundary of the
+   * attempt re-checks both before the next effect.
+   */
   async start(): Promise<McpControlConnectionInfo | null> {
-    if (this.server) return this.connectionInfo;
+    if (this.lifecycle.isClosed()) throw mcpControlClosed();
+    if (this.server || this.startPending) return this.connectionInfo;
     if (!isLoopbackBindHost(this.host)) {
       throw new Error("MCP control server must bind a loopback address");
     }
     if (!Number.isInteger(this.requestedPort) || this.requestedPort < 0 || this.requestedPort > 65_535) {
       throw new Error("invalid MCP control port");
     }
-    await mkdir(this.dataDir, { recursive: true });
-    this.token = await this.loadToken();
-    const server = createServer((request, result) => {
-      void this.handleRequest(request, result);
-    });
-    this.server = server;
+    const pending = this.launch();
+    this.startPending = pending;
     try {
-      await new Promise<void>((resolve, reject) => {
-        const onError = (error: Error) => {
-          server.off("listening", onListening);
-          reject(error);
-        };
-        const onListening = () => {
-          server.off("error", onError);
-          resolve();
-        };
-        server.once("error", onError);
-        server.once("listening", onListening);
-        server.listen(this.requestedPort, this.host);
-      });
-    } catch (error) {
-      this.server = null;
-      await new Promise<void>((resolve) => server.close(() => resolve()));
-      throw error;
+      return await pending;
+    } finally {
+      if (this.startPending === pending) this.startPending = null;
     }
-    const address = server.address();
-    if (!address || typeof address === "string") {
-      await this.stop();
-      throw new Error("MCP control server did not expose a TCP address");
-    }
-    if (!isLoopbackBindHost(address.address)) {
-      await this.stop();
-      throw new Error("MCP control server bound a non-loopback address");
-    }
-    this.port = address.port;
-    this.startedAt = new Date().toISOString();
-    const info = this.connectionInfo;
-    if (!info) {
-      await this.stop();
-      throw new Error("MCP control connection info unavailable");
-    }
-    try {
-      await this.writeConnectionInfo(info);
-    } catch (error) {
-      await this.stop().catch(() => undefined);
-      throw error;
-    }
-    this.log("info", "MCP control server listening", {
-      url: info.url,
-      port: this.port,
-      operationCount: this.operations.length,
-    });
-    return info;
   }
 
-  async stop(): Promise<void> {
-    const server = this.server;
-    this.server = null;
-    this.sessions.clear();
-    if (server) {
-      if (typeof server.closeAllConnections === "function") {
-        server.closeAllConnections();
-      }
-      await new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, SHUTDOWN_CLOSE_MS);
-        server.close(() => {
-          clearTimeout(timer);
-          resolve();
-        });
+  /** One start attempt; on failure it closes exactly the transport it created. */
+  private async launch(): Promise<McpControlConnectionInfo | null> {
+    const releaseEffect = this.lifecycle.beginEffect();
+    let server: ReturnType<typeof createServer> | null = null;
+    try {
+      await mkdir(this.dataDir, { recursive: true });
+      this.token = await this.loadToken();
+      this.assertAdmissionOpen();
+      server = createServer((request, result) => {
+        this.acceptRequest(request, result);
       });
+      server.on("connection", (socket) => {
+        const release = this.lifecycle.socketAcquired();
+        socket.once("close", release);
+      });
+      this.server = server;
+      await this.listen(server);
+      const address = server.address();
+      if (!address || typeof address === "string") {
+        throw new Error("MCP control server did not expose a TCP address");
+      }
+      if (!isLoopbackBindHost(address.address)) {
+        throw new Error("MCP control server bound a non-loopback address");
+      }
+      this.lifecycle.listenerAcquired();
+      this.port = address.port;
+      this.startedAt = new Date().toISOString();
+      const info = this.connectionInfo;
+      if (!info) throw new Error("MCP control connection info unavailable");
+      // Last closure check before publication. Nothing awaits between it and
+      // the manifest write, so a stop that wins afterwards is reconciled by
+      // `stop()` once this attempt settles.
+      this.assertAdmissionOpen();
+      await this.writeConnectionInfo(info);
+      this.assertAdmissionOpen();
+      this.log("info", "MCP control server listening", {
+        url: info.url,
+        port: this.port,
+        operationCount: this.operations.length,
+      });
+      return info;
+    } catch (error) {
+      if (this.server === server) this.server = null;
+      await this.abandonAttempt(server);
+      throw error;
+    } finally {
+      releaseEffect();
     }
+  }
+
+  private listen(server: ReturnType<typeof createServer>): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const onError = (error: Error) => {
+        server.off("listening", onListening);
+        reject(error);
+      };
+      const onListening = () => {
+        server.off("error", onError);
+        resolve();
+      };
+      server.once("error", onError);
+      server.once("listening", onListening);
+      server.listen(this.requestedPort, this.host);
+    });
+  }
+
+  private assertAdmissionOpen(): void {
+    if (this.lifecycle.isClosed()) throw mcpControlClosed();
+  }
+
+  /**
+   * Close exactly the server a start attempt created. Closure that is not
+   * observed within the bound stays visible as retained resources and
+   * monotonic uncertainty instead of reading as a clean shutdown.
+   */
+  private async abandonAttempt(server: ReturnType<typeof createServer> | null): Promise<void> {
+    const bound = this.port !== null;
+    if (server) {
+      if (typeof server.closeAllConnections === "function") server.closeAllConnections();
+      const proven = await this.closeServer(server, Date.now() + SHUTDOWN_CLOSE_MS);
+      if (proven) {
+        this.lifecycle.listenerReleased();
+      } else {
+        this.lifecycle.retainUnknown(1);
+        this.log("warn", "MCP control listener close was not confirmed", { scope: "start" });
+      }
+    }
+    if (!bound) return;
+    // Withdraw the endpoint claim of the failed attempt. This writes an
+    // inactive record, so it never publishes a listener.
     const info = this.connectionInfo;
-    if (info) await this.writeConnectionInfo({ ...info, active: false });
+    if (info) await this.writeConnectionInfo({ ...info, active: false }).catch(() => undefined);
     this.port = null;
+  }
+
+  /**
+   * Permanently seal the instance, remove only the transport this instance
+   * created, and drain started handlers within the existing bound.
+   *
+   * A timeout is not closure proof: `active:false` records that the endpoint
+   * was withdrawn, not that the listener, its sockets or the handlers that
+   * outlived the bound are gone. Those stay in `resources`, handlers stay in
+   * `operations` until they settle, and `uncontainedResources` only grows.
+   */
+  async stop(): Promise<void> {
+    this.lifecycle.seal();
+    const releaseEffect = this.lifecycle.beginEffect();
+    const deadlineAt = Date.now() + SHUTDOWN_CLOSE_MS;
+    try {
+      // Reconcile an in-flight start first: closing a replacement would leave
+      // the original listener running with nothing referencing it.
+      if (this.startPending) await this.settleWithin(this.startPending, deadlineAt);
+      const server = this.server;
+      this.server = null;
+      this.sessions.clear();
+      if (server) {
+        if (typeof server.closeAllConnections === "function") server.closeAllConnections();
+        const proven = await this.closeServer(server, deadlineAt);
+        if (proven) {
+          this.lifecycle.listenerReleased();
+        } else {
+          this.lifecycle.retainUnknown(1);
+          this.log("warn", "MCP control listener close was not confirmed", { scope: "stop" });
+        }
+      }
+      const retainedHandlers = await this.lifecycle.drain(deadlineAt);
+      if (retainedHandlers > 0) {
+        this.lifecycle.retainUnknown(retainedHandlers);
+        this.log("warn", "MCP control handlers outlived stop", { retainedHandlers });
+      }
+      const info = this.connectionInfo;
+      if (info) await this.writeConnectionInfo({ ...info, active: false });
+      this.port = null;
+    } finally {
+      releaseEffect();
+    }
+  }
+
+  /** Wait for an in-flight start without treating a stall as containment. */
+  private async settleWithin(pending: Promise<unknown>, deadlineAt: number): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const expired = new Promise<boolean>((resolve) => {
+      const remaining = deadlineAt - Date.now();
+      timer = setTimeout(() => resolve(false), remaining > 0 ? remaining : 0);
+    });
+    try {
+      const settled = await Promise.race([pending.then(() => true, () => true), expired]);
+      if (settled) return;
+      this.lifecycle.retainUnknown(1);
+      this.log("warn", "MCP control start did not settle before stop", { scope: "stop" });
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
+  /** Ask the exact server to stop and report whether the close was observed. */
+  private closeServer(server: ReturnType<typeof createServer>, deadlineAt: number): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const finish = (proven: boolean) => {
+        if (settled) return;
+        settled = true;
+        if (timer) clearTimeout(timer);
+        resolve(proven);
+      };
+      const remaining = deadlineAt - Date.now();
+      timer = setTimeout(() => finish(false), remaining > 0 ? remaining : 0);
+      try {
+        server.close((error?: Error) => {
+          // A server that never bound reports ERR_SERVER_NOT_RUNNING: there is
+          // then no listener left to contain.
+          const code = (error as { code?: string } | undefined)?.code;
+          finish(!error || code === "ERR_SERVER_NOT_RUNNING");
+        });
+      } catch {
+        finish(false);
+      }
+    });
   }
 
   private async loadToken(): Promise<string> {
@@ -1049,6 +1237,39 @@ export class McpControlServer {
     return this.headerValue(request, "mcp-protocol-version");
   }
 
+  /**
+   * Track an accepted request from before its first effect until the detached
+   * handler promise settled and the response reached its boundary. A rejected
+   * handler is observed here instead of surfacing as an unhandled rejection,
+   * and the effects it may have left behind stay uncontained.
+   */
+  private acceptRequest(request: IncomingMessage, result: ServerResponse): void {
+    const release = this.lifecycle.beginHandler();
+    // A caller that disconnects mid-effect destroys the response. Observing
+    // that stream error keeps the eventual write from becoming an uncaught
+    // exception; the handler itself stays counted until it settles.
+    result.on("error", () => undefined);
+    this.handleRequest(request, result).then(
+      () => {
+        void this.releaseWhenSettled(result, release);
+      },
+      (error: unknown) => {
+        const disconnected = isResponseTransportError(error);
+        if (!disconnected) this.lifecycle.retainUnknown(1);
+        this.log(
+          disconnected ? "warn" : "error",
+          "MCP control request handler failed",
+          describeFailure(error),
+        );
+        void this.releaseWhenSettled(result, release);
+      },
+    ).catch(() => undefined);
+  }
+
+  private releaseWhenSettled(result: ServerResponse, release: () => void): Promise<void> {
+    return whenResponseSettled(result).then(release, release);
+  }
+
   private async handleRequest(request: IncomingMessage, result: ServerResponse): Promise<void> {
     result.setHeader("Cache-Control", "no-store");
     result.setHeader("X-Content-Type-Options", "nosniff");
@@ -1093,11 +1314,32 @@ export class McpControlServer {
       this.sendHttp(result, 405, { error: "method not allowed" }, { Allow: "POST, DELETE, OPTIONS" });
       return;
     }
+    // Fresh admission closes before any new MCP effect: the request is refused
+    // ahead of the body read and dispatch, after the origin/host/path/auth
+    // contracts above so those keep their exact responses.
+    if (this.lifecycle.isClosed()) {
+      this.sendHttp(
+        result,
+        503,
+        rpcError(
+          null,
+          MCP_CONTROL_CLOSED_RPC_CODE,
+          `${MCP_CONTROL_CLOSED_CODE}: host admission is closed`,
+          { errorCode: MCP_CONTROL_CLOSED_CODE },
+        ),
+      );
+      return;
+    }
     let body: unknown;
     try {
       body = await this.readJson(request);
     } catch (error) {
       this.sendJsonRpc(result, rpcError(null, -32700, error instanceof Error ? error.message : "invalid JSON"));
+      return;
+    }
+    if (this.lifecycle.isClosed()) {
+      this.sendHttp(result, 503, rpcError(null, MCP_CONTROL_CLOSED_RPC_CODE,
+        `${MCP_CONTROL_CLOSED_CODE}: host admission is closed`, { errorCode: MCP_CONTROL_CLOSED_CODE }));
       return;
     }
     if (!body || typeof body !== "object" || Array.isArray(body)) {

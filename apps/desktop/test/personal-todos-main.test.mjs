@@ -19,6 +19,7 @@ async function module(name) {
   return import(pathToFileURL(out).href);
 }
 const { createTodoCoordinator } = await module("coordinator");
+const { createTodoActivity } = await module("activity");
 const { parseItems } = await module("validation");
 const { clampTodoBounds, parseTodoPreferences } = await module("geometry");
 const empty = () => ({ schemaVersion: 1, revision: 0, updatedAt: null, items: [] });
@@ -45,18 +46,25 @@ function fakeClock() {
   };
 }
 function fixture(overrides = {}) {
-  const clock = fakeClock(), writes = [], events = [];
+  const clock = fakeClock(), writes = [], events = [], gate = { closed: false };
+  const activity = createTodoActivity({ isAdmissionClosed: () => gate.closed });
   let doc = empty();
-  const service = createTodoCoordinator({ clock, publish: (v) => events.push(v), persistence: {
+  // The runtime counts every Host RPC from entry to settlement; persistence is
+  // that RPC boundary here.
+  const persistence = {
     get: async () => structuredClone(doc),
     replace: async (request) => {
       writes.push({ at: clock.now(), request: structuredClone(request) });
       doc = { schemaVersion: 1, revision: doc.revision + 1, updatedAt: clock.now(), items: request.items };
       return structuredClone(doc);
     }, ...overrides,
+  };
+  const service = createTodoCoordinator({ clock, activity, publish: (v) => events.push(v), persistence: {
+    get: () => activity.track(() => persistence.get()),
+    replace: (request) => activity.track(() => persistence.replace(request)),
   } });
   const edit = (items) => service.edit({ items, expectedEditVersion: service.view().editVersion });
-  return { service, clock, writes, events, edit };
+  return { service, clock, writes, events, edit, activity, gate };
 }
 
 test("continuous typing saves within the max wait without waiting for typing to stop", async () => {
@@ -158,4 +166,104 @@ test("serialized size validation reserves the persisted document envelope",()=>{
  assert.throws(()=>parseItems(items),{errorCode:"INVALID_ARGUMENT"});
  items[0].note=items[0].note.slice(128);
  assert.equal(parseItems(items).length,200);
+});
+
+test("a closed gate refuses the debounce write and retains the draft for the next admitted flush",async()=>{
+ const f=fixture();await f.service.get();f.edit([row("gate draft")]);
+ f.gate.closed=true;
+ await f.clock.advance(2000);
+ assert.equal(f.writes.length,0,"a closed gate must not start a Host write");
+ assert.deepEqual(f.service.view().items,[row("gate draft")]);
+ // One held draft plus the still-armed 5s save deadline; no Host RPC was issued.
+ assert.deepEqual(f.activity.snapshot(),{operations:1,resources:1,uncontainedResources:0});
+ f.gate.closed=false;
+ await f.service.flush();
+ assert.equal(f.writes.length,1);
+ assert.equal(f.service.view().saveStatus,"saved");
+ assert.deepEqual(f.activity.snapshot(),{operations:0,resources:0,uncontainedResources:0});
+ f.service.dispose();
+});
+test("a late Host reply stays counted to settlement after the caller deadline and retries the same token",async()=>{
+ const requests=[];let settle;
+ const f=fixture({replace:(request)=>{
+  requests.push(structuredClone(request));
+  if(requests.length>1)return Promise.resolve({schemaVersion:1,revision:request.expectedRevision+1,updatedAt:1,items:request.items});
+  return new Promise(resolve=>{settle=()=>resolve({schemaVersion:1,revision:request.expectedRevision+1,updatedAt:1,items:request.items});});
+ }});
+ await f.service.get();f.edit([row("late")]);
+ const flush=f.service.flush().catch(error=>error);
+ await f.clock.advance(4000);
+ assert.equal((await flush).errorCode,"TIMEOUT");
+ // The waiter gave up; the original RPC did not and stays counted.
+ assert.deepEqual(f.activity.snapshot(),{operations:2,resources:1,uncontainedResources:0});
+ settle();await microtasks();
+ assert.deepEqual(f.activity.snapshot(),{operations:1,resources:1,uncontainedResources:0});
+ await f.service.flush();
+ assert.equal(requests.length,2);
+ assert.equal(requests[1].mutationId,requests[0].mutationId,"a retry must keep its idempotency token");
+ assert.equal(requests[1].expectedRevision,requests[0].expectedRevision);
+ assert.deepEqual(requests[1].items,requests[0].items);
+ assert.equal(f.service.view().saveStatus,"saved");
+ assert.deepEqual(f.activity.snapshot(),{operations:0,resources:0,uncontainedResources:0});
+ f.service.dispose();
+});
+test("an admitted write still settles after the gate closes while the RPC is in flight",async()=>{
+ let release;
+ const f=fixture({replace:request=>new Promise(resolve=>{
+  release=()=>resolve({schemaVersion:1,revision:request.expectedRevision+1,updatedAt:1,items:request.items});
+ })});
+ await f.service.get();f.edit([row("in flight")]);
+ const flush=f.service.flush();await microtasks();
+ f.gate.closed=true;
+ assert.deepEqual(f.activity.snapshot(),{operations:2,resources:1,uncontainedResources:0});
+ release();await flush;
+ assert.equal(f.service.view().saveStatus,"saved");
+ assert.equal(f.service.view().document.items[0].title,"in flight");
+ assert.deepEqual(f.activity.snapshot(),{operations:0,resources:0,uncontainedResources:0});
+ f.service.dispose();
+});
+test("dispose keeps an unpersisted draft, never reports success and records the uncertainty",async()=>{
+ const f=fixture();await f.service.get();f.edit([row("never written")]);
+ f.service.dispose();
+ assert.equal(f.service.view().saveStatus,"pending");
+ assert.deepEqual(f.service.view().items,[row("never written")]);
+ assert.deepEqual(f.activity.snapshot(),{operations:0,resources:0,uncontainedResources:1});
+ assert.equal(f.clock.count(),0);
+});
+test("one flush sequence captures its owner once and uses that binding for its own read and write",async()=>{
+ const clock=fakeClock(),activity=createTodoActivity({});const captured=[];const used=[];
+ let revision=0;
+ const base={
+  get:async()=>{used.push("base.get");return {schemaVersion:1,revision,updatedAt:null,items:[]};},
+  replace:async request=>{used.push("base.replace");revision=request.expectedRevision+1;
+   return {schemaVersion:1,revision,updatedAt:1,items:request.items};},
+  capture(){const id=captured.length;captured.push(id);
+   const bound={get:async()=>{used.push(`captured${id}.get`);return {schemaVersion:1,revision,updatedAt:null,items:[]};},
+    replace:async request=>{used.push(`captured${id}.replace`);revision=request.expectedRevision+1;
+     return {schemaVersion:1,revision,updatedAt:1,items:request.items};},
+    capture:()=>bound};
+   return bound;},
+ };
+ const service=createTodoCoordinator({clock,activity,publish(){},persistence:base});
+ await service.get();
+ assert.equal(captured.length,1,"a read sequence captures exactly one owner");
+ assert.equal(captured[0],0);
+ service.edit({items:[row("captured")],expectedEditVersion:0});
+ await service.flush();
+ assert.equal(captured.length,2,"a flush sequence captures exactly one owner");
+ assert.deepEqual(used,["captured0.get","captured1.replace"],
+  "a sequence never falls back to the shared binding for its own I/O");
+ // A queued flush that waits for the in-flight writer keeps its own capture.
+ service.edit({items:[row("queued")],expectedEditVersion:1});
+ const first=service.flush();
+ const queued=service.flush();
+ await Promise.all([first,queued]);
+ // The in-flight writer picks the new edit up in its own loop iteration and
+ // still uses the binding it captured; the queued sequence captured an owner
+ // before awaiting and issued no I/O of its own.
+ assert.deepEqual(used.slice(2),["captured2.replace"]);
+ assert.equal(captured.length,4,"every public sequence captures exactly once");
+ assert.equal(service.view().saveStatus,"saved");
+ assert.equal(service.view().document.items[0].title,"queued");
+ service.dispose();
 });

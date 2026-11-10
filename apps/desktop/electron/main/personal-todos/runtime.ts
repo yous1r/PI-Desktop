@@ -6,27 +6,96 @@ import {
 } from "@pi-desktop/shared";
 import type { HostProcess } from "../host-process";
 import type { IpcRegistrar } from "../ipc/types";
-import { createTodoCoordinator } from "./coordinator";
+import { createTodoActivity } from "./activity";
+import { createTodoCoordinator, type TodoClock, type TodoPersistence } from "./coordinator";
 import { createTodoWindow, type TodoWindow } from "./window";
 import { parseItems, record, text, todoError } from "./validation";
+
+/** A refused fresh effect while application admission is closed. */
+const isGateRefusal = (error: unknown) =>
+  (error as { errorCode?: unknown; code?: unknown } | null)?.errorCode === "HOST_BUSY";
 
 export function createPersonalTodos(input: {
   dataDir: string;
   getHost(): HostProcess | null;
   getMainWindow(): BrowserWindow | null;
   log(message: string, error: unknown): void;
+  /** Shared application gate; a closed gate refuses fresh background effects. */
+  isAdmissionClosed?: () => boolean;
+  clock?: TodoClock;
+  mutationId?: () => string;
 }) {
   let widget: TodoWindow | null = null;
-  const host = () => {
+  const activity = createTodoActivity({ isAdmissionClosed: input.isAdmissionClosed });
+  let closed = false;
+  /** Capture the original Host and its execution generation once, synchronously,
+   * at the entry of one public sequence. Every await inside that sequence keeps
+   * this owner: a queued, deferred or repeated call never adopts the Host that
+   * replaced it, and a reply from a retired owner is never applied. */
+  function owner() {
+    activity.assertOpen();
     const current = input.getHost();
     if (!current) throw todoError("HOST_UNAVAILABLE", "Personal todo storage is unavailable");
-    return current;
+    const host = current;
+    const generation = host.generation;
+    const assertCurrent = () => {
+      if (input.getHost() !== host || host.generation !== generation || !host.isAvailable()) {
+        throw todoError("HOST_UNAVAILABLE", "Personal todo storage owner changed");
+      }
+    };
+    assertCurrent();
+    return {
+      call<T>(method: string, params?: Record<string, unknown>): Promise<T> {
+        // Counted until the original Host settles, never only until a caller
+        // deadline stops waiting for it. A sequence that captured while open
+        // never issues its request after admission closed: the check is before
+        // the send, and an already sent request is never abandoned.
+        return activity.track(async () => {
+          activity.assertOpen();
+          assertCurrent();
+          let value: T;
+          try { value = await host.call<T>(method, params); }
+          catch (error) { assertCurrent(); throw error; }
+          // A retired owner never applies the reply, which may have committed.
+          try { assertCurrent(); }
+          catch (error) { activity.unsettled(); throw error; }
+          return value;
+        });
+      },
+    };
+  }
+  /** A binding for one public sequence; nested captures reuse the same owner. */
+  function capturePersistence(): TodoPersistence {
+    const captured = owner();
+    const bound: TodoPersistence = {
+      get: () => captured.call<PersonalTodoDocument>("personalTodos.get"),
+      replace: (change) => captured.call<PersonalTodoDocument>("personalTodos.replace", change),
+      capture: () => bound,
+    };
+    return bound;
+  }
+  /** A binding that keeps the capture refusal it was created with. A sequence
+   * keeps this instead of falling back to a fresh capture after its first
+   * await, so a Host that appears later is never adopted by that sequence. */
+  function refusedPersistence(error: unknown): TodoPersistence {
+    const refuse = (): Promise<never> => Promise.reject(error);
+    const bound: TodoPersistence = { get: refuse, replace: refuse, capture: () => bound };
+    return bound;
+  }
+  function captureOwnerOrRefusal(): TodoPersistence {
+    try { return capturePersistence(); }
+    catch (error) { return refusedPersistence(error); }
+  }
+  const persistence: TodoPersistence = {
+    get: () => capturePersistence().get(),
+    replace: (change) => capturePersistence().replace(change),
+    capture: capturePersistence,
   };
   const coordinator = createTodoCoordinator({
-    persistence: {
-      get: () => host().call<PersonalTodoDocument>("personalTodos.get"),
-      replace: (change) => host().call<PersonalTodoDocument>("personalTodos.replace", change),
-    },
+    activity,
+    clock: input.clock,
+    mutationId: input.mutationId,
+    persistence,
     publish(view) {
       widget?.publish(view);
       const main = input.getMainWindow();
@@ -35,15 +104,27 @@ export function createPersonalTodos(input: {
       }
     },
   });
-  widget = createTodoWindow({ ...input, getView: coordinator.view,
-    onWindow: coordinator.setWindow, flush: coordinator.flush });
+  const flushDraft = async () => {
+    // Debounce, blur and collapse saves start no fresh Host write once
+    // admission closes. The retained draft is written by the next admitted or
+    // quit flush.
+    activity.assertOpen();
+    return coordinator.flush();
+  };
+  widget = createTodoWindow({ ...input, activity, getView: coordinator.view,
+    onWindow: coordinator.setWindow, flush: flushDraft });
   const window = widget;
   let appearanceRead: Promise<void> | null = null;
   function refreshAppearance(): Promise<void> {
+    // An already admitted read stays visible; a closed gate starts no fresh effect.
     if (appearanceRead) return appearanceRead;
+    if (activity.isClosed()) return Promise.resolve();
     const operation = (async () => {
       try {
-        const settings = await host().call<AppSettings>("settings.get");
+        const settings = await owner().call<AppSettings>("settings.get");
+        // The owner was disposed while this read was outstanding: the reply is
+        // neither applied nor published, and it stays uncertain.
+        if (closed || activity.isClosed()) { activity.unsettled(); return; }
         coordinator.setAppearance({ language: settings.language, theme: settings.theme, fontFamily: settings.fontFamily });
       } catch (error) { input.log("personal todo appearance could not be loaded", error); }
     })();
@@ -53,8 +134,12 @@ export function createPersonalTodos(input: {
   }
   async function open(focus = true) {
     void refreshAppearance();
+    // This open sequence fixes its owner before it awaits the window. A failed
+    // capture stays a refusal for this sequence, so it never reads a Host that
+    // appears during the await; show() still decides the closed-gate refusal.
+    const captured = captureOwnerOrRefusal();
     await window.show(focus);
-    await coordinator.get().catch(() => undefined);
+    await coordinator.get(captured).catch(() => undefined);
   }
   function assertSender(event: IpcMainInvokeEvent, allowMain = false) {
     const main = input.getMainWindow();
@@ -64,6 +149,8 @@ export function createPersonalTodos(input: {
   }
   return {
     open, refreshAppearance,
+    /** Synchronous obstruction view; never constructs the widget or the Host. */
+    getHandoffActivity: () => activity.snapshot(),
     register(registrar: IpcRegistrar) {
       registrar.handleWithEvent(IPC.invoke.personalTodosGet, async (event) => {
         assertSender(event, true);
@@ -106,17 +193,36 @@ export function createPersonalTodos(input: {
       });
     },
     async prepareQuit(): Promise<boolean> {
+      // Shutdown calls this before the application gate is disposed, so a gate
+      // that is already closed means an external handoff owns admission. Refuse
+      // without draining, writing, opening a window or starting a dialog loop.
+      if (activity.isClosed()) {
+        input.log("personal todo quit refused: handoff admission is closed", "HOST_BUSY");
+        return false;
+      }
       for (;;) {
         try {
+          // One quit attempt keeps the owner it captured before it awaits the
+          // editor. A missing owner stays a refusal for this attempt, so a Host
+          // that appears during the drain never receives this attempt's draft.
+          // A clean board never reaches the flush, so it can still quit.
+          const captured = captureOwnerOrRefusal();
           await window.drainEditor();
           coordinator.freeze(true);
           // A failed initial read without edits must not trap users in the app.
-          if (coordinator.view().editVersion > coordinator.view().savedEditVersion) await coordinator.flush();
+          if (coordinator.view().editVersion > coordinator.view().savedEditVersion) await coordinator.flush(captured);
           window.allowClose();
           return true;
         } catch (error) {
           coordinator.freeze(false);
           window.resumeEditor();
+          // Admission closed while draining: the draft and its idempotency token
+          // stay owned, no fresh write is attempted, and no dialog is raised for
+          // a refusal the user cannot resolve by retrying.
+          if (isGateRefusal(error)) {
+            input.log("personal todo quit flush refused: handoff admission is closed", error);
+            return false;
+          }
           input.log("personal todo quit flush failed", error);
           await open().catch(() => undefined);
           const locale = coordinator.view().appearance.language;
@@ -127,7 +233,14 @@ export function createPersonalTodos(input: {
         }
       }
     },
-    dispose() { window.dispose(); coordinator.dispose(); },
+    dispose() {
+      closed = true;
+      // The window releases native handles first; the coordinator then reports an
+      // unsaved draft it can no longer commit instead of claiming success.
+      window.dispose();
+      coordinator.dispose();
+      activity.seal();
+    },
   };
 }
 export type PersonalTodosRuntime = ReturnType<typeof createPersonalTodos>;

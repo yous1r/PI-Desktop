@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { ModelsDevCatalogLoading } from "./models-dev-catalog-loading";
 import {
   createModels,
   InMemoryModelsStore,
@@ -134,6 +134,8 @@ export type ModelsDevCatalogOptions = {
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
   now?: () => number;
+  /** Shared application admission; omitted only for standalone consumers. */
+  isAdmissionClosed?: () => boolean;
   /** Optional Pi providers used only for executable non-chat operations. */
   providers?: readonly Provider[];
 };
@@ -1407,25 +1409,30 @@ export class ModelsDevCatalog {
   /** Host → publishers, derived from the current provider map. */
   private hostIndex: Map<string, ModelsDevProvider[]> | undefined;
   private readonly lookupMemo = new Map<string, ModelsDevModel | undefined>();
-  private loadPromise: Promise<boolean> | undefined;
+  private readonly loading: ModelsDevCatalogLoading;
   private loaded = false;
   private source: ModelsDevCatalogStatus["source"] = "empty";
   private fetchedAt: string | undefined;
   private lastError: string | undefined;
-  private readonly fetchImpl: typeof fetch;
-  private readonly timeoutMs: number;
   private readonly now: () => number;
   private readonly catalogPath: string;
-  private localLoadAttempted = false;
-  private localLoadPromise: Promise<boolean> | undefined;
   private readonly operationModels: MutableModels;
   private readonly accountModels = new Map<string, MutableModels>();
   private readonly accountRows = new Map<string, CatalogAccount>();
   private readonly removedAccounts = new Set<string>();
 
   constructor(options: ModelsDevCatalogOptions) {
-    this.fetchImpl = options.fetchImpl ?? fetch;
-    this.timeoutMs = options.timeoutMs ?? MODELS_DEV_TIMEOUT_MS;
+    this.loading = new ModelsDevCatalogLoading({
+      catalogPath: options.catalogPath, apiUrl: MODELS_DEV_API_URL,
+      fetchImpl: options.fetchImpl ?? fetch, timeoutMs: options.timeoutMs ?? MODELS_DEV_TIMEOUT_MS,
+      isAdmissionClosed: options.isAdmissionClosed ?? (() => false),
+      isLoaded: () => this.loaded,
+      publish: (raw, source) => this.publishSnapshot(raw, source),
+      failed: (error, source) => {
+        if (source === "bundled") this.loaded = false;
+        this.lastError = error instanceof Error ? error.message : String(error);
+      },
+    });
     this.now = options.now ?? (() => Date.now());
     this.catalogPath = options.catalogPath;
     this.operationModels = createModels({
@@ -1455,76 +1462,29 @@ export class ModelsDevCatalog {
   }
 
   /** Load the bundled release snapshot; this never performs network I/O. */
-  async loadLocal(): Promise<boolean> {
-    if (this.localLoadPromise) return this.localLoadPromise;
-    if (this.localLoadAttempted) return this.loaded;
-    this.localLoadAttempted = true;
-    this.localLoadPromise = (async () => {
-      try {
-        const raw = JSON.parse(await readFile(this.catalogPath, "utf8")) as unknown;
-        const parsed = parseModelsDevCatalog(raw);
-        if (parsed.length === 0) throw new Error("models.dev snapshot contained no providers");
-        this.providers = new Map(parsed.map((provider) => [provider.providerKey, provider]));
-        // Replacing the provider map invalidates the derived lookup index.
-        this.lookupIndex = undefined;
-        this.hostIndex = undefined;
-        this.lookupMemo.clear();
-        this.loaded = true;
-        this.source = "bundled";
-        this.lastError = undefined;
-      } catch (error) {
-        this.loaded = false;
-        this.lastError = error instanceof Error ? error.message : String(error);
-      }
-      return this.loaded;
-    })();
-    try {
-      return await this.localLoadPromise;
-    } finally {
-      this.localLoadPromise = undefined;
-    }
-  }
+  loadLocal(): Promise<boolean> { return this.loading.loadLocal(); }
 
   /** Ensure the release snapshot is available without contacting the network. */
-  async ensureLoaded(): Promise<boolean> {
-    return this.loadLocal();
-  }
+  ensureLoaded(): Promise<boolean> { return this.loadLocal(); }
 
-  /** Refresh the in-memory snapshot for the current process; never writes user data. */
-  async refresh(): Promise<boolean> {
-    if (this.loadPromise) return this.loadPromise;
-    this.loadPromise = (async () => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), this.timeoutMs);
-      try {
-        const response = await this.fetchImpl(MODELS_DEV_API_URL, {
-          headers: { Accept: "application/json" },
-          signal: controller.signal,
-        });
-        if (!response.ok) {
-          throw new Error(`models.dev catalog request failed (${response.status})`);
-        }
-        const parsed = parseModelsDevCatalog(await response.json());
-        if (parsed.length === 0) throw new Error("models.dev catalog contained no usable providers");
-        this.providers = new Map(parsed.map((provider) => [provider.providerKey, provider]));
-        // Replacing the provider map invalidates the derived lookup index.
-        this.lookupIndex = undefined;
-        this.hostIndex = undefined;
-        this.lookupMemo.clear();
-        this.loaded = true;
-        this.source = "remote";
-        this.fetchedAt = new Date(this.now()).toISOString();
-        this.lastError = undefined;
-        return true;
-      } catch (error) {
-        this.lastError = error instanceof Error ? error.message : String(error);
-        return false;
-      } finally {
-        clearTimeout(timer);
-        this.loadPromise = undefined;
-      }
-    })();
-    return this.loadPromise;
+  /** Refresh only the original in-memory snapshot; never writes user data. */
+  refresh(): Promise<boolean> { return this.loading.refresh(); }
+
+  getHandoffActivity() { return this.loading.getHandoffActivity(); }
+  dispose(): void { this.loading.dispose(); }
+
+  private publishSnapshot(raw: unknown, source: "bundled" | "remote"): void {
+    const parsed = parseModelsDevCatalog(raw);
+    if (parsed.length === 0) throw new Error(source === "bundled"
+      ? "models.dev snapshot contained no providers" : "models.dev catalog contained no usable providers");
+    this.providers = new Map(parsed.map((provider) => [provider.providerKey, provider]));
+    this.lookupIndex = undefined;
+    this.hostIndex = undefined;
+    this.lookupMemo.clear();
+    this.loaded = true;
+    this.source = source;
+    if (source === "remote") this.fetchedAt = new Date(this.now()).toISOString();
+    this.lastError = undefined;
   }
 
   getStatus(): ModelsDevCatalogStatus {

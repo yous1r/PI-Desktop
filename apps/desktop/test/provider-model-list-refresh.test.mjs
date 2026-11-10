@@ -7,6 +7,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { createInstance } from "i18next";
 import { I18nextProvider } from "react-i18next";
 import { createServer } from "vite";
+import { currentSourceAliases } from "./helpers/current-source-vite.mjs";
 
 register(new URL("./helpers/ts-import-hooks.mjs", import.meta.url));
 const { registerProviderIpc } = await import("../electron/main/ipc/provider-ipc.ts");
@@ -65,6 +66,7 @@ test("refresh hides unlisted chat choices and preserves editable configured bind
   });
   const server = await createServer({
     root: fileURLToPath(new URL("..", import.meta.url)), configFile: false,
+    resolve: { alias: currentSourceAliases(fileURLToPath(new URL("../../..", import.meta.url))) },
     logLevel: "silent", server: { middlewareMode: true, hmr: false, ws: false },
     esbuild: { jsx: "automatic" }, appType: "custom",
     optimizeDeps: { noDiscovery: true, include: [] },
@@ -154,3 +156,29 @@ test("refresh hides unlisted chat choices and preserves editable configured bind
     "gpt-6-sol", "claude-sonnet-4-5", "gpt-6-astra", "new-model",
   ]);
 });
+
+for (const refusal of ["HOST_BUSY", "HOST_UNAVAILABLE"]) {
+  test(`OAuth model discovery propagates ${refusal} without a fallback effect`, async t => {
+    const row = { id: "fixture-oauth", name: "Fixture", vendorKey: "custom", enabled: true,
+      authKind: "oauth", apiStyle: "chat_completions", baseUrl: "https://fixture.invalid/v1", models: [] };
+    const effects = [], handlers = new Map();
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => { effects.push("fetch"); return new Response('{"data":[]}'); };
+    t.after(() => { globalThis.fetch = originalFetch; });
+    const catalog = new ModelsDevCatalog({ providers: [], catalogPath: "unused.json" });
+    const failure = Object.assign(new Error("fixture refused"), { errorCode: refusal });
+    registerProviderIpc({ registrar: { handle: (channel, handler) => handlers.set(channel, handler) },
+      getHost: () => ({ call: async method => {
+        if (method === "providers.get") return { provider: row };
+        if (method === "providers.listModels") return { models: [] };
+        effects.push(method); return {};
+      } }), modelsDevCatalog: catalog, vendorOAuth: { listModels: async () => { throw failure; } },
+      logger: { app() {} }, enrichProvider: value => value, enrichProviderList: value => value,
+      listRuntimeProviders: async () => [row], bindingForModel: () => undefined });
+    try {
+      await assert.rejects(handlers.get(IPC.invoke.providersListModels)({ providerId: row.id, source: "refresh" }),
+        error => error === failure);
+      assert.deepEqual(effects, []);
+    } finally { catalog.dispose(); }
+  });
+}

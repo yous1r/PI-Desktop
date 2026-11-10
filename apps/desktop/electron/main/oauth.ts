@@ -18,6 +18,13 @@
 
 import { randomUUID } from "node:crypto";
 import { createInstallationIdentity } from "./installation-identity.ts";
+import {
+  VendorOAuthActivity,
+  type VendorOAuthHandoffActivity,
+  type VendorOAuthHostCall,
+  type VendorOAuthOwner,
+  type VendorOAuthScope,
+} from "./oauth-activity.ts";
 
 import { InMemoryModelsStore } from "@earendil-works/pi-ai";
 import type {
@@ -131,10 +138,7 @@ export function isXaiConversationModel(modelId: string): boolean {
   return isConversationModelId(modelId);
 }
 
-export type HostCall = <T = unknown>(
-  method: string,
-  params?: unknown,
-) => Promise<T>;
+export type HostCall = VendorOAuthHostCall;
 
 /** The slice of a provider row this module reads; the rest stays in index.ts. */
 export type OAuthProviderRow = {
@@ -195,8 +199,12 @@ export type VendorOAuthDeps = {
     message: string,
     data?: Record<string, unknown>,
   ) => void;
-  /** Stable local installation identity, owned by Host secrets. */
-  getInstallationId?: () => Promise<string>;
+  /**
+   * Stable local installation identity, owned by Host secrets. It is called
+   * with the owner that admitted the login, so the read and the write go to
+   * that Host and a replacement refuses them.
+   */
+  getInstallationId?: (owner: VendorOAuthOwner) => Promise<string>;
   /** Share account-owned Models with the catalog without duplicating credentials. */
   onAccountModels?: (providerId: string, models: MutableModels) => void;
   onAccountRemoved?: (providerId: string) => void;
@@ -211,6 +219,24 @@ export type VendorOAuthDeps = {
   newId?: () => string;
   /** Test seam. Defaults to the process fetch. */
   fetch?: typeof fetch;
+  /**
+   * The shared Desktop admission gate (H1). Once it closes, no login, account
+   * test, credential refresh or model-list read may start; work that was already
+   * admitted keeps running and keeps reporting until it settles.
+   *
+   * Main composition injects this; the default keeps the gate open so an
+   * isolated module test states its own admission.
+   */
+  isAdmissionClosed?: () => boolean;
+  /**
+   * Captures the original Host/generation that admits an operation. Every late
+   * effect of that operation (secret write, provider row update, renderer event)
+   * reuses this owner and refuses once it was replaced, so a previous
+   * generation's credential can never land in a replacement Host.
+   *
+   * Main composition injects this; without it the module follows `call`.
+   */
+  captureOwner?: () => VendorOAuthOwner;
 };
 
 /**
@@ -233,6 +259,8 @@ type AccountModels = {
   vendorId: string;
   models: MutableModels;
   pinnedProvider?: Provider;
+  /** The original Host that created this collection; never re-pointed. */
+  owner: VendorOAuthOwner;
 };
 
 type LoginSession = {
@@ -246,6 +274,8 @@ type LoginSession = {
   prompts: Map<string, PendingPrompt>;
   /** Serializes renderer events so `authUrl` cannot overtake an earlier notice. */
   tail: Promise<void>;
+  /** The admission and original Host this attempt was started for. */
+  scope: VendorOAuthScope;
   /** Settles once the attempt has torn down; set as soon as it is running. */
   finished?: Promise<void>;
 };
@@ -261,6 +291,8 @@ type PluginLoginSession = {
   controller: AbortController;
   tail: Promise<void>;
   cancelled: boolean;
+  /** The admission, original Host and plugin runtime this attempt was started for. */
+  scope: VendorOAuthScope;
   finished?: Promise<void>;
 };
 
@@ -297,6 +329,18 @@ function isHttpUrl(value: unknown): value is string {
     return false;
   }
 }
+
+/**
+ * Events that close something the renderer already shows: a dialog, an open
+ * input or an error banner. They are the one thing a retired attempt may still
+ * publish, because they end the conversation instead of extending it.
+ */
+const TERMINAL_EVENT_KINDS: ReadonlySet<string> = new Set([
+  "cancelled",
+  "error",
+  "done",
+  "promptCancelled",
+]);
 
 function normalizePluginCredential(raw: unknown): PluginProviderOAuthCredential {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -387,18 +431,60 @@ export class VendorOAuth {
   private readonly chains = new Map<string, Promise<unknown>>();
   private catalogPromise?: Promise<MutableModels>;
   private oauthFlowsRegistered = false;
-  private readonly getInstallationId: () => Promise<string>;
+  /** Composition/test seam for the Host-owned installation identity. */
+  private readonly readInstallationId?: (owner: VendorOAuthOwner) => Promise<string>;
+  /** One identity read per live Host generation; never re-pointed at a later one. */
+  private installationIdentity?: { owner: VendorOAuthOwner; read: () => Promise<string> };
+  /** Admission, original-Host attribution and handoff counters for every entry. */
+  private readonly activity: VendorOAuthActivity;
 
   constructor(deps: VendorOAuthDeps) {
     this.deps = deps;
-    this.getInstallationId = deps.getInstallationId ?? createInstallationIdentity(deps.call);
+    this.readInstallationId = deps.getInstallationId;
+    this.activity = new VendorOAuthActivity({
+      isAdmissionClosed: deps.isAdmissionClosed,
+      captureOwner: deps.captureOwner,
+      call: deps.call,
+      log: deps.log,
+    });
     installProviderHeadersFetch();
+  }
+
+  /**
+   * Synchronous handoff sampling: what vendor-account OAuth still owns, and which
+   * of it cannot be certified (pi-ai flow, plugin child process, HTTP transport,
+   * external browser). Counts stay up until the underlying promise settles, so a
+   * cancelled login or a refused caller never looks closed.
+   */
+  getHandoffActivity(): VendorOAuthHandoffActivity {
+    return this.activity.snapshot();
+  }
+
+  /**
+   * Refuse new work and stop the vendor conversations this process is driving.
+   * Already-admitted work keeps running and keeps reporting, and nothing an
+   * admitted operation persisted is rolled back by this call.
+   */
+  dispose(): void {
+    this.activity.seal();
+    for (const session of [...this.logins.values()]) this.cancel(session.loginId);
+    for (const session of [...this.pluginLogins.values()]) this.cancelPluginLogin(session);
+    for (const controller of [...this.pluginRefreshControllers.values()]) {
+      controller.abort(new Error("vendor OAuth disposed"));
+    }
   }
 
   /** Every vendor pi-ai can sign in to, with every local account row. */
   async listVendors(): Promise<OAuthVendor[]> {
+    const scope = this.activity.capture("list-vendors");
+    // Admitted work, counted to settlement: the vendor list reads the catalog
+    // and the provider table, and a replaced Host may not finish it.
+    return scope.track(() => this.listVendorsScope(scope));
+  }
+
+  private async listVendorsScope(scope: VendorOAuthScope): Promise<OAuthVendor[]> {
     const models = await this.ensureCatalogModels();
-    const rows = await this.rows();
+    const rows = await this.rows(scope);
     const vendors = models
       .getProviders()
       .filter((provider) => provider.auth.oauth)
@@ -434,7 +520,7 @@ export class VendorOAuth {
           candidate.authKind === OAUTH_AUTH_KIND,
       );
       if (!row) continue;
-      const credential = row.hasOauth ? await this.readPluginCredential(row.id) : undefined;
+      const credential = row.hasOauth ? await this.readPluginCredential(scope, row.id) : undefined;
       vendors.push({
         vendorId: row.id,
         name: provider.name,
@@ -461,57 +547,75 @@ export class VendorOAuth {
       ?.listOAuthProviders()
       .find((provider) => provider.providerId === vendorId);
     if (pluginProvider) {
-      const row = (await this.rows()).find(
-        (candidate) =>
-          candidate.id === vendorId &&
-          candidate.ownerPluginId === pluginProvider.pluginId &&
-          candidate.authKind === OAUTH_AUTH_KIND,
+      // The login is admitted for this plugin runtime; a reload mid-attempt
+      // retires it instead of letting a new runtime claim the stored credential.
+      const pluginScope = this.activity.capture("plugin-login", {
+        pluginId: pluginProvider.pluginId,
+        runtimeId: pluginProvider.runtimeId,
+      });
+      return pluginScope.track(async () => {
+        const row = (await this.rows(pluginScope)).find(
+          (candidate) =>
+            candidate.id === vendorId &&
+            candidate.ownerPluginId === pluginProvider.pluginId &&
+            candidate.authKind === OAUTH_AUTH_KIND,
+        );
+        if (!row) throw new Error(`unknown plugin OAuth provider: ${vendorId}`);
+        return this.startPluginLogin(pluginScope, pluginProvider);
+      });
+    }
+    // Captured before the first await: the attempt, the pi-ai flow it starts and
+    // everything it persists later stay attributed to this admission and Host.
+    const scope = this.activity.capture("login");
+    return scope.track(async () => {
+      const models = await this.ensureCatalogModels();
+      const provider = models.getProvider(vendorId);
+      if (!provider?.auth.oauth) {
+        throw new Error(`unknown vendor account: ${vendorId}`);
+      }
+      // A second attempt replaces the one in flight rather than racing it, and
+      // waits for it to let go: both hold the same local callback port, so
+      // starting before the old one unwinds is how a login fails on arrival.
+      const superseded = [...this.logins.values()].filter(
+        (running) => running.vendorId === vendorId,
       );
-      if (!row) throw new Error(`unknown plugin OAuth provider: ${vendorId}`);
-      return this.startPluginLogin(pluginProvider);
-    }
-    const models = await this.ensureCatalogModels();
-    const provider = models.getProvider(vendorId);
-    if (!provider?.auth.oauth) {
-      throw new Error(`unknown vendor account: ${vendorId}`);
-    }
-    // A second attempt replaces the one in flight rather than racing it, and
-    // waits for it to let go: both hold the same local callback port, so
-    // starting before the old one unwinds is how a login fails on arrival.
-    const superseded = [...this.logins.values()].filter(
-      (running) => running.vendorId === vendorId,
-    );
-    for (const running of superseded) this.cancel(running.loginId);
-    for (const running of superseded) {
-      await running.finished?.catch(() => undefined);
-    }
+      for (const running of superseded) this.cancel(running.loginId);
+      for (const running of superseded) {
+        await running.finished?.catch(() => undefined);
+      }
 
-    const { provider: row } = await this.deps.call<{
-      provider: OAuthProviderRow;
-    }>("providers.create", {
-      name: provider.auth.oauth?.name || provider.name,
-      vendorKey: vendorId,
-      type: "native",
-      authKind: OAUTH_AUTH_KIND,
-      baseUrl: provider.baseUrl,
+      const { provider: row } = await scope.call<{
+        provider: OAuthProviderRow;
+      }>("providers.create", {
+        name: provider.auth.oauth?.name || provider.name,
+        vendorKey: vendorId,
+        type: "native",
+        authKind: OAUTH_AUTH_KIND,
+        baseUrl: provider.baseUrl,
+      });
+      const account = this.createAccount(scope, vendorId, row.id);
+      const session: LoginSession = {
+        loginId: this.nextId(),
+        vendorId,
+        providerId: row.id,
+        account,
+        createdRow: true,
+        controller: new AbortController(),
+        prompts: new Map(),
+        tail: Promise.resolve(),
+        scope,
+      };
+      this.logins.set(session.loginId, session);
+      this.activity.register(session);
+      session.finished = this.run(session, provider);
+      return { loginId: session.loginId };
     });
-    const account = this.createAccount(vendorId, row.id);
-    const session: LoginSession = {
-      loginId: this.nextId(),
-      vendorId,
-      providerId: row.id,
-      account,
-      createdRow: true,
-      controller: new AbortController(),
-      prompts: new Map(),
-      tail: Promise.resolve(),
-    };
-    this.logins.set(session.loginId, session);
-    session.finished = this.run(session, provider);
-    return { loginId: session.loginId };
   }
 
-  private startPluginLogin(provider: PluginOAuthProvider): OAuthStartResult {
+  private startPluginLogin(
+    scope: VendorOAuthScope,
+    provider: PluginOAuthProvider,
+  ): OAuthStartResult {
     const superseded = [...this.pluginLogins.values()].filter(
       (running) => running.providerId === provider.providerId,
     );
@@ -527,8 +631,10 @@ export class VendorOAuth {
       controller: new AbortController(),
       tail: Promise.resolve(),
       cancelled: false,
+      scope,
     };
     this.pluginLogins.set(session.loginId, session);
+    this.activity.register(session);
     session.finished = this.runPluginLogin(session);
     return { loginId: session.loginId };
   }
@@ -539,6 +645,11 @@ export class VendorOAuth {
     const pluginSession = this.pluginLogins.get(input.loginId);
     const pending = session?.prompts.get(input.promptId) ?? pluginSession?.prompts.get(input.promptId);
     if ((!session && !pluginSession) || !pending) return false;
+    // An answer is a late effect of the attempt that asked the question: a
+    // closed admission or a replaced Host retires it instead of resuming the
+    // conversation that generation had already lost.
+    const scope = session?.scope ?? pluginSession?.scope;
+    if (!scope || !scope.isCurrent()) return false;
     if (input.value === undefined) {
       pending.reject(new Error("login cancelled"));
       if (session) session.controller.abort();
@@ -562,6 +673,36 @@ export class VendorOAuth {
     return true;
   }
 
+  /**
+   * A plugin provider row belongs to exactly one plugin runtime. A reload
+   * replaces that runtime, so an attempt admitted by the previous one may not
+   * prompt through the new one.
+   */
+  private pluginRuntimeCurrent(session: PluginLoginSession): boolean {
+    const provider = this.livePluginProvider(session.providerId);
+    return provider?.pluginId === session.pluginId && provider.runtimeId === session.runtimeId;
+  }
+
+  /** The live plugin provider entry for one provider row, if a bridge has it. */
+  private livePluginProvider(providerId: string): PluginOAuthProvider | undefined {
+    return this.deps
+      .getPluginOAuthBridge?.()
+      ?.listOAuthProviders()
+      .find((candidate) => candidate.providerId === providerId);
+  }
+
+  /** Whether the runtime an admitted operation was bound to is still the live one. */
+  private pluginRuntimeLive(provider: PluginOAuthProvider, runtimeId: string): boolean {
+    const current = this.livePluginProvider(provider.providerId);
+    return current?.pluginId === provider.pluginId && current.runtimeId === runtimeId;
+  }
+
+  private assertPluginRuntime(provider: PluginOAuthProvider, runtimeId: string): void {
+    if (!this.pluginRuntimeLive(provider, runtimeId)) {
+      throw new Error(`plugin provider changed during OAuth refresh: ${provider.providerId}`);
+    }
+  }
+
   /** Plugin callbacks can ask the same Host-rendered question as native OAuth flows. */
   promptPluginOAuth(
     pluginId: string,
@@ -569,7 +710,13 @@ export class VendorOAuth {
     input: PluginProviderOAuthPrompt,
   ): Promise<string> {
     const session = this.pluginLogins.get(loginId);
-    if (!session || session.pluginId !== pluginId || session.cancelled) {
+    if (
+      !session ||
+      session.pluginId !== pluginId ||
+      session.cancelled ||
+      !session.scope.isCurrent() ||
+      !this.pluginRuntimeCurrent(session)
+    ) {
       return Promise.reject(new Error("provider OAuth login is no longer active"));
     }
     if (
@@ -628,23 +775,37 @@ export class VendorOAuth {
     event: PluginProviderOAuthEvent,
   ): Promise<void> {
     const session = this.pluginLogins.get(loginId);
-    if (!session || session.pluginId !== pluginId || session.cancelled) {
+    if (
+      !session ||
+      session.pluginId !== pluginId ||
+      session.cancelled ||
+      !session.scope.isCurrent() ||
+      !this.pluginRuntimeCurrent(session)
+    ) {
       throw new Error("provider OAuth login is no longer active");
     }
     if (event.kind === "authUrl") {
       if (!isHttpUrl(event.url)) throw new Error("provider OAuth URL must use HTTP or HTTPS");
       const url = event.url.slice(0, 4_096);
-      session.tail = session.tail.then(async () => {
-        const opened = await this.deps.openExternal(url).then(() => true, () => false);
-        this.deps.emit({
-          loginId,
-          vendorId: session.vendorId,
-          kind: "authUrl",
-          url,
-          instructions: clippedText(event.instructions, 2_000),
-          opened,
-        });
-      });
+      // The browser launch outlives this callback, so it is counted against the
+      // attempt it was admitted for and never re-attributed to a later owner.
+      session.tail = session.tail.then(() =>
+        session.scope.track(async () => {
+          // A retired attempt may neither launch a browser nor publish a URL for
+          // a dialog that already closed: both ends of the launch are checked.
+          if (session.cancelled || !session.scope.isCurrent()) return;
+          const opened = await this.openConsentPage(session.scope, url);
+          if (session.cancelled || !session.scope.isCurrent()) return;
+          this.deps.emit({
+            loginId,
+            vendorId: session.vendorId,
+            kind: "authUrl",
+            url,
+            instructions: clippedText(event.instructions, 2_000),
+            opened,
+          });
+        }),
+      );
       await session.tail;
       return;
     }
@@ -686,36 +847,40 @@ export class VendorOAuth {
    * Host-core owns the atomic cleanup of the row and both secret references.
    */
   async deleteAccount(providerId: string): Promise<void> {
-    const row = (await this.rows()).find((candidate) => candidate.id === providerId);
-    if (!row || row.authKind !== OAUTH_AUTH_KIND) {
-      throw new Error(`unknown vendor account provider: ${providerId}`);
-    }
-    if (row.ownerPluginId) {
-      this.pluginRefreshControllers.get(providerId)?.abort(new Error("provider sign-out requested"));
-      const running = [...this.pluginLogins.values()].find(
+    const scope = this.activity.capture("delete-account");
+    return scope.track(async () => {
+      const row = (await this.rows(scope)).find((candidate) => candidate.id === providerId);
+      if (!row || row.authKind !== OAUTH_AUTH_KIND) {
+        throw new Error(`unknown vendor account provider: ${providerId}`);
+      }
+      if (row.ownerPluginId) {
+        this.pluginRefreshControllers.get(providerId)?.abort(new Error("provider sign-out requested"));
+        const running = [...this.pluginLogins.values()].find(
+          (session) => session.providerId === providerId,
+        );
+        if (running) this.cancelPluginLogin(running);
+        await this.serialize(providerId, () =>
+          scope.call("secrets.delete", {
+            secretRef: secretRefForProviderOauth(providerId),
+          }),
+        );
+        this.clearAccountModels(providerId);
+        return;
+      }
+      const running = [...this.logins.values()].find(
         (session) => session.providerId === providerId,
       );
-      if (running) this.cancelPluginLogin(running);
-      await this.serialize(providerId, () =>
-        this.deps.call("secrets.delete", {
-          secretRef: secretRefForProviderOauth(providerId),
-        }),
-      );
-      this.clearAccountModels(providerId);
-      return;
-    }
-    const running = [...this.logins.values()].find(
-      (session) => session.providerId === providerId,
-    );
-    if (running) {
-      this.cancel(running.loginId);
-      await running.finished?.catch(() => undefined);
-    }
-    await this.deps.call("providers.delete", { id: providerId });
-    this.accountModels.delete(providerId);
-    this.deps.onAccountRemoved?.(providerId);
-    this.liveModelCache.delete(providerId);
-    this.liveModelLoads.delete(providerId);
+      if (running) {
+        this.cancel(running.loginId);
+        await running.finished?.catch(() => undefined);
+      }
+      // The row is only forgotten once Host deletion actually succeeded.
+      await scope.call("providers.delete", { id: providerId });
+      this.accountModels.delete(providerId);
+      this.deps.onAccountRemoved?.(providerId);
+      this.liveModelCache.delete(providerId);
+      this.liveModelLoads.delete(providerId);
+    });
   }
 
   /**
@@ -724,12 +889,20 @@ export class VendorOAuth {
    * short-lived access token, headers and per-credential baseUrl.
    */
   async resolveAuth(providerId: string): Promise<ModelAuth> {
-    const row = (await this.rows()).find((candidate) => candidate.id === providerId);
+    const scope = this.activity.capture("resolve-auth");
+    return scope.track(() => this.resolveAuthScope(scope, providerId));
+  }
+
+  private async resolveAuthScope(
+    scope: VendorOAuthScope,
+    providerId: string,
+  ): Promise<ModelAuth> {
+    const row = (await this.rows(scope)).find((candidate) => candidate.id === providerId);
     if (row?.ownerPluginId && row.authKind === OAUTH_AUTH_KIND) {
-      return this.resolvePluginAuth(row);
+      return this.resolvePluginAuth(scope, row);
     }
-    return this.withRowHeaders(providerId, async () => {
-      const account = await this.accountForProvider(providerId);
+    return this.withRowHeaders(scope, providerId, async () => {
+      const account = await this.accountForProvider(scope, providerId);
       if (!account) throw new Error(`vendor account not signed in: ${providerId}`);
       const resolved = await account.models.getAuth(account.vendorId);
       if (!resolved) throw new Error(`vendor account not signed in: ${providerId}`);
@@ -745,7 +918,16 @@ export class VendorOAuth {
    * be read. Radius keeps its gateway refresh and does not get a second probe.
    */
   async listModels(providerId: string): Promise<OAuthModelOption[]> {
-    const row = (await this.rows()).find((candidate) => candidate.id === providerId);
+    const scope = this.activity.capture("list-models");
+    return scope.track(() => this.modelsForScope(scope, providerId));
+  }
+
+  /** The same list inside an operation that already holds an owner. */
+  private async modelsForScope(
+    scope: VendorOAuthScope,
+    providerId: string,
+  ): Promise<OAuthModelOption[]> {
+    const row = (await this.rows(scope)).find((candidate) => candidate.id === providerId);
     if (row?.ownerPluginId && row.authKind === OAUTH_AUTH_KIND) {
       if (!row.baseUrl) return [];
       const baseUrl = row.baseUrl;
@@ -755,8 +937,8 @@ export class VendorOAuth {
         baseUrl,
       }));
     }
-    return this.withRowHeaders(providerId, async () => {
-      const account = await this.accountForProvider(providerId);
+    return this.withRowHeaders(scope, providerId, async () => {
+      const account = await this.accountForProvider(scope, providerId);
       if (!account) throw new Error(`unknown vendor account provider: ${providerId}`);
       // Dynamic catalogs (radius) are empty until refreshed.
       await account.models.refresh({ providers: [account.vendorId] });
@@ -786,7 +968,17 @@ export class VendorOAuth {
     providerId: string,
     modelId: string,
   ): Promise<VendorModelBinding | undefined> {
-    const row = (await this.rows()).find((candidate) => candidate.id === providerId);
+    const scope = this.activity.capture("binding");
+    return scope.track(() => this.bindingForScope(scope, providerId, modelId));
+  }
+
+  /** The same binding inside an operation that already holds an owner. */
+  private async bindingForScope(
+    scope: VendorOAuthScope,
+    providerId: string,
+    modelId: string,
+  ): Promise<VendorModelBinding | undefined> {
+    const row = (await this.rows(scope)).find((candidate) => candidate.id === providerId);
     if (row?.ownerPluginId && row.authKind === OAUTH_AUTH_KIND) {
       const declared = row.models?.find((model) => model.id === modelId);
       if (!declared || !row.baseUrl) return undefined;
@@ -818,16 +1010,17 @@ export class VendorOAuth {
         ...capabilitiesFromModelConfig(modelConfig),
       };
     }
-    return this.withRowHeaders(providerId, () =>
-      this.bindingForUnscoped(providerId, modelId),
+    return this.withRowHeaders(scope, providerId, () =>
+      this.bindingForUnscoped(scope, providerId, modelId),
     );
   }
 
   private async bindingForUnscoped(
+    scope: VendorOAuthScope,
     providerId: string,
     modelId: string,
   ): Promise<VendorModelBinding | undefined> {
-    const account = await this.accountForProvider(providerId);
+    const account = await this.accountForProvider(scope, providerId);
     if (!account) return undefined;
     await account.models.refresh({ providers: [account.vendorId] });
     const model = account.models.getModel(account.vendorId, modelId);
@@ -841,6 +1034,7 @@ export class VendorOAuth {
    * pinned catalog.
    */
   private async liveAccountModels(
+    scope: VendorOAuthScope,
     account: AccountModels,
   ): Promise<OAuthModelOption[] | undefined> {
     if (account.vendorId === "radius") return undefined;
@@ -851,7 +1045,7 @@ export class VendorOAuth {
     }
     const pending = this.liveModelLoads.get(account.providerId);
     if (pending) return pending;
-    const load = this.loadLiveAccountModels(account).finally(() => {
+    const load = this.loadLiveAccountModels(scope, account).finally(() => {
       if (this.liveModelLoads.get(account.providerId) === load) this.liveModelLoads.delete(account.providerId);
     });
     this.liveModelLoads.set(account.providerId, load);
@@ -859,71 +1053,83 @@ export class VendorOAuth {
   }
 
   private rememberLiveModels(
+    scope: VendorOAuthScope,
     account: AccountModels,
     models: OAuthModelOption[] | null,
   ): OAuthModelOption[] | undefined {
-    if (this.accountModels.get(account.providerId) === account) {
+    // The cache is state of the admission and Host that read it: an attempt that
+    // already lost either leaves its answer with the caller, not in a later one.
+    if (this.accountPublishable(scope, account)) {
       this.liveModelCache.set(account.providerId, { at: Date.now(), models });
     }
     return models ?? undefined;
   }
 
+  /**
+   * The vendor's own list, read through the attempt's captured owner. The fetch
+   * is a transport this module cannot certify, so it is counted as uncontained;
+   * the operation stays counted until the response is fully consumed.
+   */
   private async loadLiveAccountModels(
+    scope: VendorOAuthScope,
     account: AccountModels,
   ): Promise<OAuthModelOption[] | undefined> {
-    let apiKey: string | undefined;
-    let baseUrl: string | undefined;
-    try {
-      const resolved = await account.models.getAuth(account.vendorId);
-      apiKey = resolved?.auth.apiKey;
-      baseUrl = resolved?.auth.baseUrl;
-    } catch (error) {
-      this.log("warn", "vendor account auth unavailable for model list", {
+    return scope.track(async () => {
+      let apiKey: string | undefined;
+      let baseUrl: string | undefined;
+      try {
+        const resolved = await account.models.getAuth(account.vendorId);
+        apiKey = resolved?.auth.apiKey;
+        baseUrl = resolved?.auth.baseUrl;
+      } catch (error) {
+        this.log("warn", "vendor account auth unavailable for model list", {
+          vendorId: account.vendorId,
+          message: error instanceof Error ? error.message : String(error),
+        });
+        return undefined;
+      }
+      const request = vendorModelListRequest({
         vendorId: account.vendorId,
-        message: error instanceof Error ? error.message : String(error),
+        apiKey,
+        baseUrl,
       });
-      return undefined;
-    }
-    const request = vendorModelListRequest({
-      vendorId: account.vendorId,
-      apiKey,
-      baseUrl,
+      if (!request) return undefined;
+      try {
+        scope.nativeAttempt();
+        const body = await readVendorModelList(request, this.deps.fetch ?? globalThis.fetch);
+        const ids = parseVendorModelIds(account.vendorId, body, request.allowPolicyFallback);
+        if (!ids || ids.length === 0) return this.rememberLiveModels(scope, account, null);
+        const pinned = account.pinnedProvider?.getModels() ?? await account.models.getAvailable(account.vendorId);
+        const known = new Map(pinned.map((model) => [model.id, model]));
+        const wires = pinned.map((model) => ({
+          id: model.id,
+          api: model.api,
+          baseUrl: model.baseUrl,
+        }));
+        const models = ids.flatMap((modelId) => {
+          const pinnedModel = known.get(modelId);
+          if (pinnedModel) return [this.optionFor(pinnedModel)];
+          const wire = wireForLiveModel(account.vendorId, modelId, wires, request.accountBaseUrl);
+          if (!wire?.api || !wire.baseUrl) return [];
+          return [{
+            modelId,
+            apiStyle: apiStyleForWireApi(wire.api),
+            baseUrl: wire.baseUrl,
+          }];
+        });
+        if (models.length === 0) return this.rememberLiveModels(scope, account, null);
+        return this.rememberLiveModels(scope, account, models);
+      } catch (error) {
+        this.log("warn", "vendor account model list failed", {
+          vendorId: account.vendorId,
+          message: error instanceof Error ? error.message : String(error),
+          ...(error instanceof VendorModelListError
+            ? { status: error.status, responseExcerpt: error.responseExcerpt }
+            : {}),
+        });
+        return this.rememberLiveModels(scope, account, null);
+      }
     });
-    if (!request) return undefined;
-    try {
-      const body = await readVendorModelList(request, this.deps.fetch ?? globalThis.fetch);
-      const ids = parseVendorModelIds(account.vendorId, body, request.allowPolicyFallback);
-      if (!ids || ids.length === 0) return this.rememberLiveModels(account, null);
-      const pinned = account.pinnedProvider?.getModels() ?? await account.models.getAvailable(account.vendorId);
-      const known = new Map(pinned.map((model) => [model.id, model]));
-      const wires = pinned.map((model) => ({
-        id: model.id,
-        api: model.api,
-        baseUrl: model.baseUrl,
-      }));
-      const models = ids.flatMap((modelId) => {
-        const pinnedModel = known.get(modelId);
-        if (pinnedModel) return [this.optionFor(pinnedModel)];
-        const wire = wireForLiveModel(account.vendorId, modelId, wires, request.accountBaseUrl);
-        if (!wire?.api || !wire.baseUrl) return [];
-        return [{
-          modelId,
-          apiStyle: apiStyleForWireApi(wire.api),
-          baseUrl: wire.baseUrl,
-        }];
-      });
-      if (models.length === 0) return this.rememberLiveModels(account, null);
-      return this.rememberLiveModels(account, models);
-    } catch (error) {
-      this.log("warn", "vendor account model list failed", {
-        vendorId: account.vendorId,
-        message: error instanceof Error ? error.message : String(error),
-        ...(error instanceof VendorModelListError
-          ? { status: error.status, responseExcerpt: error.responseExcerpt }
-          : {}),
-      });
-      return this.rememberLiveModels(account, null);
-    }
   }
 
   private async bindingFromOption(
@@ -947,123 +1153,166 @@ export class VendorOAuth {
     };
   }
 
+  /**
+   * The detached half of a login. It keeps its own attempt's admission and Host
+   * for everything it does after the caller returned, and it stays counted until
+   * pi-ai's flow has actually settled: cancel, refusal and disposal end the wait,
+   * never the underlying work.
+   */
   private async run(session: LoginSession, provider: Provider): Promise<void> {
-    try {
-      const installationId = await this.getInstallationId();
-      session.controller.signal.throwIfAborted();
-      await this.withRowHeaders(session.providerId, () =>
-        session.account.models.login(
-          session.vendorId,
-          "oauth",
-          this.interactionFor(session),
-          { getDeviceId: () => installationId },
-        ),
-      );
-      const accountLabel = provider.auth.oauth?.name || provider.name;
-      await this.completeRow(session, provider, accountLabel);
-      this.push(session, {
-        kind: "done",
-        providerId: session.providerId,
-        accountLabel,
-      });
-    } catch (error) {
-      await this.discardRow(session);
-      if (session.controller.signal.aborted) {
-        this.push(session, { kind: "cancelled" });
-      } else {
-        const message = error instanceof Error ? error.message : String(error);
-        this.log("warn", "vendor account login failed", {
-          vendorId: session.vendorId,
-          message,
+    const { scope } = session;
+    await scope.track(async () => {
+      try {
+        // The installation identity is a Host-global secret, not account data.
+        // It is read through this attempt's own owner, so a replacement Host
+        // refuses the read and the write instead of giving a new flow the id.
+        const installationId = await this.installationIdFor(scope);
+        session.controller.signal.throwIfAborted();
+        // pi-ai owns the loopback listener or the device-code polling and never
+        // reports its closure: the attempt's transport stays uncontained.
+        scope.nativeAttempt();
+        await this.withRowHeaders(scope, session.providerId, () =>
+          session.account.models.login(
+            session.vendorId,
+            "oauth",
+            this.interactionFor(session),
+            { getDeviceId: () => installationId },
+          ),
+        );
+        scope.assertCurrent();
+        // A flow that ignored its abort signal may not complete a cancelled
+        // attempt: the row, the credential and the "done" event are late effects.
+        session.controller.signal.throwIfAborted();
+        const accountLabel = provider.auth.oauth?.name || provider.name;
+        await this.completeRow(scope, session, provider, accountLabel);
+        this.push(session, {
+          kind: "done",
+          providerId: session.providerId,
+          accountLabel,
         });
-        this.push(session, { kind: "error", message });
+      } catch (error) {
+        await this.discardRow(scope, session);
+        if (session.controller.signal.aborted) {
+          this.push(session, { kind: "cancelled" });
+        } else {
+          const message = error instanceof Error ? error.message : String(error);
+          this.log("warn", "vendor account login failed", {
+            vendorId: session.vendorId,
+            message,
+          });
+          this.push(session, { kind: "error", message });
+        }
+      } finally {
+        for (const pending of session.prompts.values()) {
+          pending.reject(new Error("login finished"));
+        }
+        // A failed renderer push closes the dialog, it does not un-settle the
+        // attempt: an unobserved rejection here would be the only symptom.
+        await session.tail.catch(() => undefined);
+        this.activity.release(session);
+        this.logins.delete(session.loginId);
       }
-    } finally {
-      for (const pending of session.prompts.values()) {
-        pending.reject(new Error("login finished"));
-      }
-      await session.tail;
-      this.logins.delete(session.loginId);
-    }
+    });
   }
 
   private async runPluginLogin(session: PluginLoginSession): Promise<void> {
-    try {
-      const bridge = this.deps.getPluginOAuthBridge?.();
-      if (!bridge) throw new Error("provider OAuth is unavailable");
-      const raw = await bridge.invokeProviderOAuth(
-        session.pluginId,
-        session.contributionId,
-        {
-          operation: "login",
-          providerId: session.contributionId,
-          loginId: session.loginId,
-        },
-        session.controller.signal,
-        session.runtimeId,
-      );
-      if (session.cancelled) throw new Error("login cancelled");
-      const credential = normalizePluginCredential(raw);
-      await this.serialize(session.providerId, async () => {
-        const row = (await this.rows()).find((candidate) => candidate.id === session.providerId);
-        const currentProvider = bridge.listOAuthProviders().find(
-          (candidate) => candidate.providerId === session.providerId,
+    const { scope } = session;
+    await scope.track(async () => {
+      try {
+        const bridge = this.deps.getPluginOAuthBridge?.();
+        if (!bridge) throw new Error("provider OAuth is unavailable");
+        // The plugin child process performs this login; its closure is not
+        // observable from here, so the attempt stays explicitly uncontained.
+        scope.nativeAttempt();
+        const raw = await bridge.invokeProviderOAuth(
+          session.pluginId,
+          session.contributionId,
+          {
+            operation: "login",
+            providerId: session.contributionId,
+            loginId: session.loginId,
+          },
+          session.controller.signal,
+          session.runtimeId,
         );
-        if (
-          session.cancelled ||
-          currentProvider?.runtimeId !== session.runtimeId ||
-          row?.ownerPluginId !== session.pluginId ||
-          row.authKind !== OAUTH_AUTH_KIND ||
-          row.enabled === false
-        ) {
-          throw new Error("plugin provider changed during OAuth sign-in");
-        }
-        await this.writePluginCredential(session.providerId, credential);
-        const savedRow = (await this.rows()).find((candidate) => candidate.id === session.providerId);
-        const savedProvider = this.deps.getPluginOAuthBridge?.()
-          ?.listOAuthProviders()
-          .find((candidate) => candidate.providerId === session.providerId);
-        if (
-          savedRow?.ownerPluginId !== session.pluginId ||
-          savedRow.authKind !== OAUTH_AUTH_KIND ||
-          savedRow.enabled === false ||
-          savedProvider?.runtimeId !== session.runtimeId
-        ) {
-          await this.deps.call("secrets.delete", {
-            secretRef: secretRefForProviderOauth(session.providerId),
-          });
-          throw new Error("plugin provider changed during OAuth sign-in");
-        }
-      });
-      this.invalidateAccountModels(session.providerId);
-      this.pushPluginEvent(session, {
-        kind: "done",
-        providerId: session.providerId,
-        accountLabel: credential.accountLabel,
-      });
-    } catch {
-      if (session.cancelled) {
-        this.pushPluginEvent(session, { kind: "cancelled" });
-      } else {
-        // Callback errors are plugin-controlled and may contain token material.
-        // Keep the user-facing diagnostic useful without reflecting the error.
+        if (session.cancelled) throw new Error("login cancelled");
+        const credential = normalizePluginCredential(raw);
+        await this.serialize(session.providerId, async () => {
+          const row = (await this.rows(scope)).find(
+            (candidate) => candidate.id === session.providerId,
+          );
+          if (!this.pluginLoginApplies(session, row, bridge)) {
+            throw new Error("plugin provider changed during OAuth sign-in");
+          }
+          await this.writePluginCredential(scope, session.providerId, credential);
+          // The write is admitted; only a provider that changed underneath it is
+          // rolled back, and the rollback keeps the original owner.
+          const savedRow = (await this.rows(scope)).find(
+            (candidate) => candidate.id === session.providerId,
+          );
+          const savedProvider = this.deps.getPluginOAuthBridge?.()
+            ?.listOAuthProviders()
+            .find((candidate) => candidate.providerId === session.providerId);
+          if (!this.pluginLoginApplies(session, savedRow, {
+            listOAuthProviders: () => (savedProvider ? [savedProvider] : []),
+          })) {
+            await scope.call("secrets.delete", {
+              secretRef: secretRefForProviderOauth(session.providerId),
+            });
+            throw new Error("plugin provider changed during OAuth sign-in");
+          }
+        });
+        this.invalidateAccountModels(session.providerId);
         this.pushPluginEvent(session, {
-          kind: "error",
-          code: "PLUGIN_OAUTH_FAILED",
-          message: "",
-        });
-        this.log("warn", "plugin provider OAuth sign-in failed", {
-          pluginId: session.pluginId,
+          kind: "done",
           providerId: session.providerId,
+          accountLabel: credential.accountLabel,
         });
+      } catch {
+        if (session.cancelled) {
+          this.pushPluginEvent(session, { kind: "cancelled" });
+        } else {
+          // Callback errors are plugin-controlled and may contain token material.
+          // Keep the user-facing diagnostic useful without reflecting the error.
+          this.pushPluginEvent(session, {
+            kind: "error",
+            code: "PLUGIN_OAUTH_FAILED",
+            message: "",
+          });
+          this.log("warn", "plugin provider OAuth sign-in failed", {
+            pluginId: session.pluginId,
+            providerId: session.providerId,
+          });
+        }
+      } finally {
+        for (const pending of session.prompts.values()) {
+          pending.reject(new Error("login finished"));
+        }
+        await session.tail.catch(() => undefined);
+        this.activity.release(session);
+        this.pluginLogins.delete(session.loginId);
       }
-    } finally {
-      for (const pending of session.prompts.values()) {
-        pending.reject(new Error("login finished"));
-      }
-      await session.tail;
-      this.pluginLogins.delete(session.loginId);
-    }
+    });
+  }
+
+  /**
+   * One plugin provider row is owned by one plugin runtime. A reload replaces
+   * that runtime, so an attempt admitted by the previous one may not store,
+   * announce or retain a credential for the new one.
+   */
+  private pluginLoginApplies(
+    session: PluginLoginSession,
+    row: OAuthProviderRow | undefined,
+    bridge: Pick<PluginOAuthBridge, "listOAuthProviders">,
+  ): boolean {
+    if (session.cancelled) return false;
+    if (row?.ownerPluginId !== session.pluginId) return false;
+    if (row.authKind !== OAUTH_AUTH_KIND) return false;
+    if (row.enabled === false) return false;
+    const current = bridge
+      .listOAuthProviders()
+      .find((candidate) => candidate.providerId === session.providerId);
+    return current?.pluginId === session.pluginId && current.runtimeId === session.runtimeId;
   }
 
   private cancelPluginLogin(session: PluginLoginSession): void {
@@ -1081,6 +1330,13 @@ export class VendorOAuth {
   ): void {
     session.tail = session.tail.then(() => {
       if (session.cancelled && event.kind !== "cancelled") return;
+      // A plugin reload or a replaced Host retires the attempt: its progress may
+      // not be published for the runtime that replaced it. Terminal events still
+      // close the dialog.
+      const terminal = TERMINAL_EVENT_KINDS.has(event.kind);
+      if (!terminal && (!this.pluginRuntimeCurrent(session) || !session.scope.isCurrent())) {
+        return;
+      }
       this.deps.emit({
         ...event,
         loginId: session.loginId,
@@ -1089,36 +1345,55 @@ export class VendorOAuth {
     });
   }
 
-  private async resolvePluginAuth(row: OAuthProviderRow): Promise<ModelAuth> {
+  private async resolvePluginAuth(
+    scope: VendorOAuthScope,
+    row: OAuthProviderRow,
+  ): Promise<ModelAuth> {
     if (!row.ownerPluginId || !row.hasOauth) {
       throw new Error(`plugin provider account not signed in: ${row.id}`);
     }
+    // The runtime is read before the first await: the credential read below is
+    // queued behind the per-row write chain, so a reload in that window must be
+    // refused rather than handed this refresh and its credential.
+    const bridge = this.deps.getPluginOAuthBridge?.();
+    const provider = bridge
+      ?.listOAuthProviders()
+      .find((candidate) => candidate.providerId === row.id);
+    const boundRuntime = provider?.runtimeId;
     const credential = await this.serialize(row.id, async () => {
-      let current = await this.readPluginCredential(row.id);
+      let current = await this.readPluginCredential(scope, row.id);
       if (!current) throw new Error(`plugin provider account not signed in: ${row.id}`);
       if (current.expiresAt !== undefined && current.expiresAt <= Date.now() + 30_000) {
         if (!current.refreshToken) throw new Error(`plugin provider credential expired: ${row.id}`);
-        const provider = this.deps.getPluginOAuthBridge?.()
-          ?.listOAuthProviders()
-          .find((candidate) => candidate.providerId === row.id);
-        const bridge = this.deps.getPluginOAuthBridge?.();
-        if (!provider || !bridge) throw new Error(`plugin provider OAuth is unavailable: ${row.id}`);
+        if (!bridge || !provider || boundRuntime === undefined) {
+          throw new Error(`plugin provider OAuth is unavailable: ${row.id}`);
+        }
+        // The read above may already have outlived the runtime it was admitted
+        // for: the refresh is never sent to the one that replaced it.
+        this.assertPluginRuntime(provider, boundRuntime);
         const refreshController = new AbortController();
         this.pluginRefreshControllers.set(row.id, refreshController);
+        this.activity.register(refreshController);
         let rawRefreshed: unknown;
         try {
-          rawRefreshed = await bridge.invokeProviderOAuth(
-            provider.pluginId,
-            provider.contributionId,
-            {
-              operation: "refresh",
-              providerId: provider.contributionId,
-              credential: current,
-            },
-            refreshController.signal,
-            provider.runtimeId,
+          // The plugin child process performs the refresh and its vendor call:
+          // neither closure is observable from this process.
+          scope.nativeAttempt();
+          rawRefreshed = await scope.track(() =>
+            bridge.invokeProviderOAuth(
+              provider.pluginId,
+              provider.contributionId,
+              {
+                operation: "refresh",
+                providerId: provider.contributionId,
+                credential: current,
+              },
+              refreshController.signal,
+              boundRuntime,
+            ),
           );
         } finally {
+          this.activity.release(refreshController);
           if (this.pluginRefreshControllers.get(row.id) === refreshController) {
             this.pluginRefreshControllers.delete(row.id);
           }
@@ -1130,7 +1405,7 @@ export class VendorOAuth {
           ...(refreshed.accountLabel ? {} : current.accountLabel ? { accountLabel: current.accountLabel } : {}),
           ...(refreshed.headers ? {} : current.headers ? { headers: current.headers } : {}),
         };
-        const latest = (await this.rows()).find((candidate) => candidate.id === row.id);
+        const latest = (await this.rows(scope)).find((candidate) => candidate.id === row.id);
         if (
           !latest ||
           latest.ownerPluginId !== row.ownerPluginId ||
@@ -1139,19 +1414,19 @@ export class VendorOAuth {
         ) {
           throw new Error(`plugin provider changed during OAuth refresh: ${row.id}`);
         }
-        await this.writePluginCredential(row.id, current);
-        const savedRow = (await this.rows()).find((candidate) => candidate.id === row.id);
-        const savedProvider = this.deps.getPluginOAuthBridge?.()
-          ?.listOAuthProviders()
-          .find((candidate) => candidate.providerId === row.id);
+        // A reload during the refresh retires it before the credential is
+        // written, so the replacement never receives it even briefly.
+        this.assertPluginRuntime(provider, boundRuntime);
+        await this.writePluginCredential(scope, row.id, current);
+        const savedRow = (await this.rows(scope)).find((candidate) => candidate.id === row.id);
         if (
           !savedRow ||
           savedRow.ownerPluginId !== row.ownerPluginId ||
           savedRow.authKind !== OAUTH_AUTH_KIND ||
           savedRow.enabled === false ||
-          savedProvider?.runtimeId !== provider.runtimeId
+          !this.pluginRuntimeLive(provider, boundRuntime)
         ) {
-          await this.deps.call("secrets.delete", {
+          await scope.call("secrets.delete", {
             secretRef: secretRefForProviderOauth(row.id),
           });
           throw new Error(`plugin provider changed during OAuth refresh: ${row.id}`);
@@ -1166,9 +1441,10 @@ export class VendorOAuth {
   }
 
   private async readPluginCredential(
+    scope: VendorOAuthScope,
     providerId: string,
   ): Promise<PluginProviderOAuthCredential | undefined> {
-    const { value } = await this.deps.call<{ value?: string | null }>(
+    const { value } = await scope.call<{ value?: string | null }>(
       "secrets.getForRuntime",
       { secretRef: secretRefForProviderOauth(providerId) },
     );
@@ -1182,10 +1458,11 @@ export class VendorOAuth {
   }
 
   private async writePluginCredential(
+    scope: VendorOAuthScope,
     providerId: string,
     credential: PluginProviderOAuthCredential,
   ): Promise<void> {
-    await this.deps.call("secrets.set", {
+    await scope.call("secrets.set", {
       secretRef: secretRefForProviderOauth(providerId),
       value: JSON.stringify(credential),
     });
@@ -1204,13 +1481,14 @@ export class VendorOAuth {
 
   /** Point the row at a usable model now that the catalog can be read. */
   private async completeRow(
+    scope: VendorOAuthScope,
     session: LoginSession,
     provider: Provider,
     accountLabel: string,
   ): Promise<void> {
     let options: OAuthModelOption[] = [];
     try {
-      options = await this.listModels(session.providerId);
+      options = await this.modelsForScope(scope, session.providerId);
     } catch (error) {
       // A catalog that will not load is not worth failing a good login over;
       // the row stays selectable and the model picker retries later.
@@ -1223,7 +1501,7 @@ export class VendorOAuth {
     const apiStyle = chosen?.apiStyle;
     const modelBindings: ModelBinding[] = [];
     for (const option of options) {
-      const binding = await this.bindingFor(session.providerId, option.modelId).catch(
+      const binding = await this.bindingForScope(scope, session.providerId, option.modelId).catch(
         () => undefined,
       );
       const levels = binding?.supportedThinkingLevels ?? ["off"];
@@ -1235,7 +1513,7 @@ export class VendorOAuth {
         defaultThinkingLevel: levels.includes("medium") ? "medium" : levels[0] ?? null,
       });
     }
-    await this.deps.call("providers.update", {
+    await scope.call("providers.update", {
       id: session.providerId,
       name: provider.auth.oauth?.name || provider.name,
       authKind: OAUTH_AUTH_KIND,
@@ -1252,10 +1530,10 @@ export class VendorOAuth {
     });
   }
 
-  private async discardRow(session: LoginSession): Promise<void> {
+  private async discardRow(scope: VendorOAuthScope, session: LoginSession): Promise<void> {
     if (!session.createdRow) return;
     try {
-      await this.deps.call("providers.delete", { id: session.providerId });
+      await scope.call("providers.delete", { id: session.providerId });
       this.accountModels.delete(session.providerId);
       this.liveModelCache.delete(session.providerId);
       this.liveModelLoads.delete(session.providerId);
@@ -1354,12 +1632,14 @@ export class VendorOAuth {
     instructions?: string,
   ): void {
     session.tail = session.tail.then(async () => {
+      // A retired attempt may not launch a browser or offer a URL for a dialog
+      // that already closed, so both ends of the wait are checked.
+      if (!this.publishable(session, "authUrl")) return;
       // Report whether the browser actually opened: when it did not, the
-      // renderer has to offer the link for copying instead.
-      const opened = await this.deps.openExternal(url).then(
-        () => true,
-        () => false,
-      );
+      // renderer has to offer the link for copying instead. The launch is a
+      // counted, uncontained handoff of this attempt's own owner.
+      const opened = await this.openConsentPage(session.scope, url);
+      if (!this.publishable(session, "authUrl")) return;
       this.deps.emit({
         loginId: session.loginId,
         vendorId: session.vendorId,
@@ -1371,8 +1651,39 @@ export class VendorOAuth {
     });
   }
 
+  /**
+   * Whether an event of one attempt may still reach the renderer.
+   *
+   * Terminal events close something the renderer already shows, so they are
+   * delivered even after the attempt lost its Host or its admission.
+   * Everything else belongs to an attempt that is still the current one.
+   */
+  private publishable(session: LoginSession, kind: OAuthEventBody["kind"]): boolean {
+    if (TERMINAL_EVENT_KINDS.has(kind)) return true;
+    return !session.controller.signal.aborted && session.scope.isCurrent();
+  }
+
+  /**
+   * Open the vendor's consent page for one attempt. `opened: false` is a
+   * degradation, not a failure: the dialog offers the URL for copying. A
+   * refusal (admission closed, Host replaced) is not a cancelled attempt.
+   */
+  private async openConsentPage(scope: VendorOAuthScope, url: string): Promise<boolean> {
+    try {
+      scope.nativeAttempt();
+      return await this.deps.openExternal(url).then(
+        () => true,
+        () => false,
+      );
+    } catch {
+      this.log("warn", "vendor account consent page was not opened", {});
+      return false;
+    }
+  }
+
   private push(session: LoginSession, event: OAuthEventBody): void {
     session.tail = session.tail.then(() => {
+      if (!this.publishable(session, event.kind)) return;
       this.deps.emit({
         ...event,
         loginId: session.loginId,
@@ -1405,13 +1716,22 @@ export class VendorOAuth {
     });
   }
 
-  private createAccount(vendorId: string, providerId: string): AccountModels {
+  private createAccount(
+    scope: VendorOAuthScope,
+    vendorId: string,
+    providerId: string,
+  ): AccountModels {
     const existing = this.accountModels.get(providerId);
-    if (existing) return existing;
+    // A collection belongs to the Host that created it. After a replacement it is
+    // dropped instead of being re-pointed at the new Host; work that is already
+    // running keeps its own captured owner and refuses late effects.
+    if (existing && this.accountOwnerCurrent(existing.owner)) return existing;
+    if (existing) this.invalidateAccountModels(providerId);
     const account: AccountModels = {
       providerId,
       vendorId,
-      models: this.createModels(this.credentialsFor(providerId, vendorId)),
+      owner: scope.owner,
+      models: this.createModels(this.credentialsFor(scope, providerId, vendorId)),
     };
     const original = account.models.getProvider(vendorId);
     account.pinnedProvider = original;
@@ -1424,29 +1744,53 @@ export class VendorOAuth {
         // The successful live list is the account's entitlement authority.
         filterModels: (models, credential) => offered ? models : original.filterModels?.(models, credential) ?? models,
         refreshModels: async context => {
-          await original.refreshModels?.(context);
-          if (!context.allowNetwork) return;
-          context.signal.throwIfAborted();
-          if (context.force) this.liveModelCache.delete(providerId);
-          const live = await this.withRowHeaders(providerId, () => this.liveAccountModels(account));
-          if (!live) return;
-          const projected = await Promise.all(live.map(async option => {
-            const config = withMappedThinkingLevels(await this.deps.modelConfigFor?.({
-              providerId,
-              vendorKey: account.vendorId,
-              option,
-            }).catch(() => undefined) ?? genericModelConfig(option.modelId, option.baseUrl));
-            return {
-              ...config, id: option.modelId, provider: vendorId,
-              api: wireApiForStyle(option.apiStyle), baseUrl: option.baseUrl,
-              // Generic limits and zero-price defaults are not published data.
-              cost: config.source === "generic"
-                ? { input: NaN, output: NaN, cacheRead: NaN, cacheWrite: NaN }
-                : config.cost ?? { input: NaN, output: NaN, cacheRead: NaN, cacheWrite: NaN },
-            } as Model<Api>;
-          }));
-          context.signal.throwIfAborted();
-          await context.publish({ update: () => { offered = projected; } });
+          // The account keeps the owner that created it: a refresh started after
+          // a replacement is refused here instead of borrowing the Host that
+          // replaced it, and it stays counted through publication rather than
+          // only until the vendor list has been read.
+          let refreshScope: VendorOAuthScope;
+          try {
+            refreshScope = this.activity.admit("model-refresh", account.owner);
+          } catch {
+            this.activity.report("vendor model refresh refused", { providerId });
+            return;
+          }
+          await refreshScope.track(async () => {
+            await original.refreshModels?.(context);
+            if (!context.allowNetwork) return;
+            context.signal.throwIfAborted();
+            if (context.force) this.liveModelCache.delete(providerId);
+            const live = await this.withRowHeaders(refreshScope, providerId, () =>
+              this.liveAccountModels(refreshScope, account),
+            );
+            if (!live) return;
+            const projected = await Promise.all(live.map(async option => {
+              const config = withMappedThinkingLevels(await this.deps.modelConfigFor?.({
+                providerId,
+                vendorKey: account.vendorId,
+                option,
+              }).catch(() => undefined) ?? genericModelConfig(option.modelId, option.baseUrl));
+              return {
+                ...config, id: option.modelId, provider: vendorId,
+                api: wireApiForStyle(option.apiStyle), baseUrl: option.baseUrl,
+                // Generic limits and zero-price defaults are not published data.
+                cost: config.source === "generic"
+                  ? { input: NaN, output: NaN, cacheRead: NaN, cacheWrite: NaN }
+                  : config.cost ?? { input: NaN, output: NaN, cacheRead: NaN, cacheWrite: NaN },
+              } as Model<Api>;
+            }));
+            context.signal.throwIfAborted();
+            // A publication is a late effect of this refresh: it only lands in
+            // the account it was read for, while that account is still the one
+            // registered for the row and its admission is still current.
+            if (!this.accountPublishable(refreshScope, account)) return;
+            await context.publish({
+              update: () => {
+                if (!this.accountPublishable(refreshScope, account)) return;
+                offered = projected;
+              },
+            });
+          });
         },
       });
     }
@@ -1455,18 +1799,65 @@ export class VendorOAuth {
     return account;
   }
 
+  /** The account is still the one registered for its row, on this admission. */
+  private accountPublishable(scope: VendorOAuthScope, account: AccountModels): boolean {
+    return this.accountModels.get(account.providerId) === account && scope.isCurrent();
+  }
+
+  private accountOwnerCurrent(owner: VendorOAuthOwner): boolean {
+    try {
+      owner.assertCurrent();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * The installation identity of this attempt's own Host.
+   *
+   * The identity is a Host-global secret, so it is resolved once per live owner
+   * generation: every login admitted by the same Host shares that one read and
+   * write, a replacement starts a new one, and a retired attempt refuses after
+   * the wait instead of borrowing the identity of the Host that replaced it.
+   */
+  private installationIdFor(scope: VendorOAuthScope): Promise<string> {
+    scope.assertCurrent();
+    const cached = this.installationIdentity;
+    if (cached && this.accountOwnerCurrent(cached.owner)) {
+      return cached.read().then((id) => {
+        scope.assertCurrent();
+        return id;
+      });
+    }
+    const { owner } = scope;
+    const readInstallationId = this.readInstallationId;
+    const read = readInstallationId
+      ? () => readInstallationId(owner)
+      : createInstallationIdentity(<T,>(method: string, params?: unknown) =>
+          owner.call<T>(method, params),
+        );
+    this.installationIdentity = { owner, read };
+    return read().then((id) => {
+      scope.assertCurrent();
+      return id;
+    });
+  }
+
   private async withRowHeaders<T>(
+    scope: VendorOAuthScope,
     providerId: string,
     fn: () => Promise<T>,
   ): Promise<T> {
-    const row = (await this.rows()).find((candidate) => candidate.id === providerId);
+    const row = (await this.rows(scope)).find((candidate) => candidate.id === providerId);
     return await runWithProviderHeaders(row?.headers, fn);
   }
 
   private async accountForProvider(
+    scope: VendorOAuthScope,
     providerId: string,
   ): Promise<AccountModels | undefined> {
-    const row = (await this.rows()).find(
+    const row = (await this.rows(scope)).find(
       (candidate) =>
         candidate.id === providerId &&
         candidate.authKind === OAUTH_AUTH_KIND &&
@@ -1474,7 +1865,7 @@ export class VendorOAuth {
         candidate.vendorKey.length > 0,
     );
     return row?.vendorKey
-      ? this.createAccount(row.vendorKey, row.id)
+      ? this.createAccount(scope, row.vendorKey, row.id)
       : undefined;
   }
 
@@ -1484,45 +1875,64 @@ export class VendorOAuth {
    * row-specific encrypted secret ref.
    */
   private credentialsFor(
+    scope: VendorOAuthScope,
     providerId: string,
     vendorId: string,
   ): CredentialStore {
+    // The store belongs to the account, and the account to the Host that
+    // created it. Each entry is admitted and counted on its own: pi-ai's locked
+    // refresh is real work, so a replaced Host or a closed admission refuses it
+    // instead of letting it reach the generation that is live now.
+    const admission = () => this.activity.admit("account-credentials", scope.owner);
     return {
-      read: (requestedVendorId) => {
-        if (requestedVendorId !== vendorId) return Promise.resolve(undefined);
-        return this.readCredential(providerId);
+      read: async (requestedVendorId) => {
+        if (requestedVendorId !== vendorId) return undefined;
+        const entry = admission();
+        return entry.track(() => this.readCredential(entry, providerId));
       },
       list: async () => {
-        const row = (await this.rows()).find(
-          (candidate) => candidate.id === providerId,
-        );
-        return row?.authKind === OAUTH_AUTH_KIND && row.hasOauth
-          ? [{ providerId: vendorId, type: "oauth" }]
-          : [];
-      },
-      modify: (requestedVendorId, fn) => {
-        if (requestedVendorId !== vendorId) {
-          throw new Error(`provider is not part of account ${providerId}`);
-        }
-        return this.serialize(providerId, async () => {
-          const current = await this.readCredential(providerId);
-          const next = await fn(current);
-          if (next === undefined) return current;
-          await this.deps.call("secrets.set", {
-            secretRef: secretRefForProviderOauth(providerId),
-            value: JSON.stringify(next),
-          });
-          return next;
+        const entry = admission();
+        return entry.track(async () => {
+          const row = (await this.rows(entry)).find(
+            (candidate) => candidate.id === providerId,
+          );
+          return row?.authKind === OAUTH_AUTH_KIND && row.hasOauth
+            ? [{ providerId: vendorId, type: "oauth" }]
+            : [];
         });
       },
-      delete: (requestedVendorId) => {
+      modify: async (requestedVendorId, fn) => {
         if (requestedVendorId !== vendorId) {
           throw new Error(`provider is not part of account ${providerId}`);
         }
         return this.serialize(providerId, async () => {
-          await this.deps.call("secrets.delete", {
-            secretRef: secretRefForProviderOauth(providerId),
+          const entry = admission();
+          return entry.track(async () => {
+            const current = await this.readCredential(entry, providerId);
+            const next = await fn(current);
+            if (next === undefined) return current;
+            // A token write is a late effect of whoever refreshed it: it goes to
+            // the original Host, and a replacement refuses instead of adopting it.
+            entry.assertCurrent();
+            await entry.call("secrets.set", {
+              secretRef: secretRefForProviderOauth(providerId),
+              value: JSON.stringify(next),
+            });
+            return next;
           });
+        });
+      },
+      delete: async (requestedVendorId) => {
+        if (requestedVendorId !== vendorId) {
+          throw new Error(`provider is not part of account ${providerId}`);
+        }
+        return this.serialize(providerId, async () => {
+          const entry = admission();
+          await entry.track(() =>
+            entry.call("secrets.delete", {
+              secretRef: secretRefForProviderOauth(providerId),
+            }),
+          );
         });
       },
     };
@@ -1536,9 +1946,10 @@ export class VendorOAuth {
   };
 
   private async readCredential(
+    scope: VendorOAuthScope,
     providerId: string,
   ): Promise<Credential | undefined> {
-    const { value } = await this.deps.call<{ value?: string | null }>(
+    const { value } = await scope.call<{ value?: string | null }>(
       "secrets.getForRuntime",
       { secretRef: secretRefForProviderOauth(providerId) },
     );
@@ -1565,8 +1976,8 @@ export class VendorOAuth {
     return next;
   }
 
-  private async rows(): Promise<OAuthProviderRow[]> {
-    const result = await this.deps.call<{ providers?: OAuthProviderRow[] }>(
+  private async rows(scope: VendorOAuthScope): Promise<OAuthProviderRow[]> {
+    const result = await scope.call<{ providers?: OAuthProviderRow[] }>(
       "providers.list",
       { includeDisabled: true },
     );

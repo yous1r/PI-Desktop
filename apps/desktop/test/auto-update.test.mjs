@@ -108,9 +108,11 @@ test("updater gates delivery mode by platform and delivery policy", () => {
   assert.match(updaterSource, /autoUpdater\.autoInstallOnAppQuit = false/);
   assert.match(updaterSource, /autoUpdater\.autoDownload = mode === "in-app"/);
   assert.match(updaterSource, /autoUpdater\.autoInstallOnAppQuit = mode === "in-app"/);
-  assert.match(updaterSource, /this\.applyPreference\(preference, false\)/);
+  // The stored preference is applied by the entry's own immutable scope, never
+  // by a controller-wide owner that a later entry could rebind.
+  assert.match(updaterSource, /this\.applyPreference\(preference, false, scope\)/);
   assert.match(updaterSource, /manualReminderTracker/);
-  assert.match(updaterSource, /applyPreference\(this\.preference, false\)/);
+  assert.match(updaterSource, /applyPreference\(this\.preference, false, scope\)/);
   assert.match(updaterSource, /resolveStoredUpdatePreference/);
   assert.match(updaterSource, /if \(!preferenceChanged\) return/);
   assert.match(

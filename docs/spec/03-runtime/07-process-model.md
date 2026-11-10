@@ -994,3 +994,119 @@ service and aborts its original HTTP signals. See the
 [Speech ownership contract](20-speech.md#7-original-ownership-during-idle-handoff).
 HTTP close and plugin exit retain unqualified native-resource evidence; complete
 resource composition and ownership transfer remain pending.
+
+### Model-catalog loading ownership
+
+The application injects its shared admission gate into the model catalog. Its
+existing local snapshot and remote refresh workflows share a focused loading
+owner with a synchronous `{operations, resources, uncontainedResources}` report.
+Each local/remote flight is reserved before callbacks; concurrent callers join
+the same underlying work. Fresh I/O rechecks admission before starting, while
+already started work remains visible through actual read/body settlement.
+Cached metadata reads do not start I/O or create a second activity reservation.
+
+Refresh timeout/disposal aborts the original controller but cannot erase an
+unsettled fetch. Late cancelled results do not replace catalog state. Error or
+cancelled response bodies are cancelled while the operation remains counted.
+Remote attempts retain native-transport uncertainty after promise settlement;
+this is not proof that a connection pool or native family closed. Disposal seals
+future loads and suppresses late publication. The Desktop inventory requires
+this original owner and validates its identity across the Rust inspection await.
+The fixed model-catalog qualification gap remains until native coverage is proven.
+
+### Updater and inbound MCP ownership
+
+Desktop inventory requires the actual updater and a stable retained inbound MCP
+registry. Each updater entry captures an immutable original Host/generation
+guard. A later entry cannot reattribute earlier asynchronous work. Settings,
+cache, check/download and external-browser work remain counted until their
+underlying promise settles, including after a caller timeout or disposal.
+Queued dismissal persistence is counted from enqueue and revalidates its owner
+before writing. Shared-emitter events with overlapping transport ownership
+refuse persistence/publication/installer effects when attribution is ambiguous.
+The shared admission is rechecked before fresh external effects.
+
+Every created inbound MCP instance is registered before startup and retained
+through failed start, replacement and bounded stop. Startup/stop effects and
+handlers remain visible until the handler and HTTP response have settled. Live
+listeners and accepted sockets are resources and obstruct idle qualification.
+Stop permanently seals that instance; a timeout cannot erase pending handlers
+or unproven listener closure. Closed POST admission is checked after the existing
+Origin/Host/path/authentication checks, again after body parsing, and before
+dispatch. Startup rechecks after endpoint-manifest persistence. Existing IPC
+tool-effect admission and authorization remain authoritative.
+
+These adapters retain the updater and MCP fixed qualification gaps. Ordinary
+transport settlement and listener-close callbacks are not proof of wider native
+closure. See the [H1 resource map](../../project/ai-command-center-h1-native-coverage.md).
+
+### Collaboration dispatch ownership
+
+Each Desktop collaboration entry and drain pass captures the original Host,
+Host generation, Agent bridge and Sidecar before its first await. Spawn/send
+ledger writes and new turn dispatch recheck shared admission and those identities.
+An interrupted old pass cannot borrow a replacement runtime. `HOST_BUSY` leaves
+the durable message queued for a later drain rather than terminalizing it as an
+execution failure. Existing cancellation and read operations remain available.
+
+Admitted completion settlement stays counted while admission is closed; a closed
+gate prevents the subsequent outbox dispatch. Owner replacement stops that pass
+and retains unresolved receipts for an explicit later drain on the new Host.
+The synchronous report includes active entry/drain/settlement operations and
+pending receipts. Durable `workers`, child delegations and native sessions retain
+their distinct inventory meanings; this adapter does not clear the Worker native
+qualification gap.
+
+### Personal-todo ownership
+
+The personal-todo runtime, draft coordinator and widget share one admission and
+activity owner. Unsaved drafts, queued debounce work, actual Host RPCs and live
+window/listener handles obstruct idle inspection. Each public async sequence
+captures its original Host/generation before waiting. Issuing a new RPC checks
+admission again; an already-issued write remains counted to its actual reply.
+Caller timeout preserves both the draft and its mutation ID/expected revision
+for a new explicit retry, rather than claiming a successful commit.
+
+Quit preparation runs before application admission disposal. An already-closed
+handoff gate refuses quit preparation without new writes or a retry-dialog loop.
+Closure during editor drain refuses the new flush. Each admitted quit attempt
+keeps the Host captured before editor drain, while a clean board still permits
+quit when storage is unavailable. Disposed appearance reads do not publish late
+state; requesting window destruction never releases an unobserved original handle.
+The personal-todos native qualification gap remains explicit.
+
+### Electron surface ownership
+
+Main windows, the plugin launcher and lifecycle tray share a single surface
+activity owner in MainProcessState. Fresh creation, accelerator registration and
+delayed show operations check shared admission, original Host/generation and
+target slot generation. Startup before any Host exists remains supported.
+Reusing an already-prewarmed launcher does not claim a new creation slot.
+The Windows focused-window launcher chord observes and logs admission refusal.
+
+Renderer loads, settings reads and pending bounds persistence remain counted
+through actual settlement. Created windows/trays, display listeners and native
+accelerator registrations stay retained until their concrete cleanup or liveness
+evidence arrives; unreadable probes leave monotonic uncertainty. Sealing refuses
+future work and does not discard original resources. The surface adapter does
+not certify compositor/native closure; all fixed qualification gaps, including
+the paused Voice/LiveVoice family, remain in Desktop inventory.
+
+### Vendor-account OAuth ownership
+
+Production composition captures the original Host and generation for each OAuth
+entry and validates it before and after RPC waits. Installation identity reads
+and writes use that captured owner. Login, account credential access, refresh,
+model loading and browser continuations remain counted through actual settlement;
+abort/dispose seals fresh work without erasing admitted operations or controllers.
+Account model refreshes retain their original account owner and guard delayed
+cache/publication effects. Plugin credential refresh also captures and validates
+the original plugin runtime before invoking or persisting its result.
+
+Stale/cancelled attempts cannot publish new prompts, consent URLs or progress.
+Terminal events retain their original login ID so the renderer can close an
+existing conversation after cancellation or lost ownership. Credentials stay in
+Main/Host storage. Provider connection/model-discovery IPC propagates `HOST_BUSY`
+and `HOST_UNAVAILABLE`; those refusals cannot trigger another network discovery
+or cache write. The vendor-oauth gap stays explicit because pi-ai/plugin/browser
+transport settlement does not prove native listener/process closure.

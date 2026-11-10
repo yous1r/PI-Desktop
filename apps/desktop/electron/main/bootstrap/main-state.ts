@@ -25,6 +25,8 @@ import type { AgentHostBridge } from "../agent-host-bridge";
 import type { McpControlController, McpControlServer } from "../mcp-control";
 import type { BackendRouter } from "../remote/backend-router";
 import { DesktopHandoffAdmission } from "../runtime/handoff-admission";
+import { createMcpControlHandoffOwner } from "../mcp-control-lifecycle";
+import { createSurfaceActivity } from "../surface-activity";
 
 export type MenuRendererReadyGate = {
   window: BrowserWindow;
@@ -67,11 +69,21 @@ export class MainProcessState {
   setWorkPanelChatWidthForWindow: ((width: number) => number) | null = null;
 
   readonly handoffAdmission = new DesktopHandoffAdmission();
+  readonly surfaces = createSurfaceActivity({
+    isAdmissionClosed: () => this.handoffAdmission.isClosed(),
+    getHost: () => this.host ? { host: this.host, generation: this.host.generation } : null,
+  });
   scheduledRunner: StartupState["scheduledRunner"] = null;
   planRuntime: PlanRuntime | null = null;
   host: HostProcess | null = null;
   sidecar: AgentSidecar | null = null;
-  mcpControl: McpControlServer | null = null;
+  readonly mcpControlHandoff = createMcpControlHandoffOwner();
+  private currentMcpControl: McpControlServer | null = null;
+  get mcpControl(): McpControlServer | null { return this.currentMcpControl; }
+  set mcpControl(value: McpControlServer | null) {
+    if (value) this.mcpControlHandoff.retain(value);
+    this.currentMcpControl = value;
+  }
   agentHostBridge: AgentHostBridge | null = null;
   desktopControl: McpControlController | null = null;
   backendRouter: BackendRouter | null = null;

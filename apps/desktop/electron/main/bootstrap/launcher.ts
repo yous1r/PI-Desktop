@@ -14,6 +14,7 @@ import type { HostProcess } from "../host-process";
 import type { Logger } from "../logger";
 import type { WindowLifecycleState } from "./window";
 import { suppressLinuxFramelessSystemMenu } from "../frameless-system-menu";
+import type { SurfaceActivityOwner, SurfaceRetention } from "../surface-activity";
 
 export type LauncherState = {
   creationPromise: Promise<BrowserWindow> | null;
@@ -24,6 +25,7 @@ export type LauncherState = {
 export type LauncherDependencies = {
   state: WindowLifecycleState;
   launcherState: LauncherState;
+  surfaces: SurfaceActivityOwner;
   appState: { applicationBooted: boolean };
   getHost: () => HostProcess | null;
   logger: Pick<Logger, "app">;
@@ -52,6 +54,7 @@ function recordHostGlobalBinding(id: string, binding: string | null): void {
 export function createLauncher({
   state,
   launcherState,
+  surfaces,
   appState,
   getHost,
   logger,
@@ -61,6 +64,40 @@ export function createLauncher({
 
   const PLUGIN_LAUNCHER_WIDTH = 620;
   const PLUGIN_LAUNCHER_HEIGHT = 440;
+
+  /** Live process-wide registrations this launcher still holds. */
+  let pluginLauncherShortcutSurface: SurfaceRetention | null = null;
+  let toggleWindowShortcutSurface: SurfaceRetention | null = null;
+
+  /**
+   * Release a process-wide registration only with evidence that it is gone.
+   * `globalShortcut.unregister` is synchronous, but `isRegistered` is the only
+   * native confirmation. Without that platform API the call contract is the
+   * best available evidence, so a missing probe is not treated as a leak.
+   */
+  function unregisterAccelerator(
+    accelerator: string,
+    surface: SurfaceRetention | null,
+  ): void {
+    globalShortcut.unregister(accelerator);
+    let stillRegistered = false;
+    try {
+      stillRegistered =
+        typeof globalShortcut.isRegistered === "function" &&
+        globalShortcut.isRegistered(accelerator);
+    } catch {
+      stillRegistered = true;
+    }
+    if (stillRegistered) surfaces.retainUnobservable();
+    else surface?.release();
+  }
+
+  /** Retain a registration; its probe is the cleanup evidence when available. */
+  function retainAccelerator(kind: string, accelerator: string): SurfaceRetention {
+    return typeof globalShortcut.isRegistered === "function"
+      ? surfaces.retain(kind, () => globalShortcut.isRegistered(accelerator))
+      : surfaces.retain(kind);
+  }
 
   function pluginLauncherBounds() {
     const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
@@ -74,12 +111,25 @@ export function createLauncher({
   }
 
   function createPluginLauncherWindow(): Promise<BrowserWindow> {
+    // Admission and Host identity are checked before a live window is handed
+    // out, so a closed admission never returns a surface to its caller.
+    surfaces.begin("plugin-launcher.create").assertFresh();
     if (launcherState.creationPromise) return launcherState.creationPromise;
     if (state.pluginLauncherWindow && !state.pluginLauncherWindow.isDestroyed()) {
       return Promise.resolve(state.pluginLauncherWindow);
     }
 
+    // Only a fresh creation claims the launcher slot and its generation.
+    // Reusing the prewarmed launcher is not a creation, so its own live
+    // occupant must never refuse the hand-out above.
+    const scope = surfaces.begin("plugin-launcher.create", {
+      create: "launcher-window",
+    });
+
     const creation = (async () => {
+      // Revalidate before the native constructor: no await runs here today, and
+      // this keeps the creation guarded if that ever changes.
+      scope.assertFresh();
       const window = new BrowserWindow({
         ...pluginLauncherBounds(),
         title: `${APP_NAME} Plugin Launcher`,
@@ -104,6 +154,15 @@ export function createLauncher({
           additionalArguments: [`--pi-desktop-locale=${app.getLocale()}`],
         },
       });
+      let surface: SurfaceRetention;
+      try {
+        surface = surfaces.attach("launcher-window", "plugin-launcher.window", () =>
+          !window.isDestroyed(),
+        );
+      } catch (error) {
+        if (!window.isDestroyed()) window.destroy();
+        throw error;
+      }
       state.pluginLauncherWindow = window;
       suppressLinuxFramelessSystemMenu(window);
 
@@ -135,6 +194,7 @@ export function createLauncher({
         }
       });
       window.on("closed", () => {
+        surface.release();
         if (state.pluginLauncherWindow === window) state.pluginLauncherWindow = null;
       });
 
@@ -142,16 +202,28 @@ export function createLauncher({
         if (process.env.ELECTRON_RENDERER_URL) {
           const url = new URL(process.env.ELECTRON_RENDERER_URL);
           url.searchParams.set("surface", "plugin-launcher");
-          await window.loadURL(url.toString());
+          // The initial load is part of the admitted creation: counted until it
+          // actually settles, not until a caller stops waiting.
+          await scope.track(() => window.loadURL(url.toString()));
         } else {
-          await window.loadFile(
-            join(getModuleDirectory(import.meta.url), "../renderer/index.html"),
-            { query: { surface: "plugin-launcher" } },
+          await scope.track(() =>
+            window.loadFile(
+              join(getModuleDirectory(import.meta.url), "../renderer/index.html"),
+              { query: { surface: "plugin-launcher" } },
+            ),
           );
         }
         return window;
       } catch (error) {
-        if (!window.isDestroyed()) window.destroy();
+        if (!window.isDestroyed()) {
+          try {
+            window.destroy();
+          } catch {
+            // The failed surface could not be torn down: keep it counted and
+            // record that its native closure is not observable.
+            surfaces.retainUnobservable();
+          }
+        }
         throw error;
       }
     })();
@@ -173,6 +245,10 @@ export function createLauncher({
   }
 
   function prewarmPluginLauncher(): void {
+    // A warm-up during handoff or shutdown would create a surface the app is
+    // about to drop. It is skipped silently instead of logging a refusal as a
+    // warm-up failure: no surface was requested by the user.
+    if (surfaces.isClosed()) return;
     void createPluginLauncherWindow().catch((error) => {
       logger.app("diagnostics", "warn", "plugin launcher warm-up failed", {
         data: String(error),
@@ -182,8 +258,13 @@ export function createLauncher({
 
   async function showPluginLauncher(): Promise<void> {
     if (!appState.applicationBooted) return;
+    const scope = surfaces.begin("plugin-launcher.show");
+    scope.assertFresh();
     const window = await createPluginLauncherWindow();
-    if (window.isDestroyed()) return;
+    // The creation resumed after an await: a closed admission, or a launcher
+    // that was replaced meanwhile, must not be shown by this stale callback.
+    scope.assertFresh();
+    if (window.isDestroyed() || state.pluginLauncherWindow !== window) return;
     window.setBounds(pluginLauncherBounds(), false);
     window.show();
     // `show()` already activates and focuses a macOS panel. Avoid a second
@@ -212,6 +293,10 @@ export function createLauncher({
       (candidate) => candidate.id === "openPluginLauncher",
     );
     if (!shortcut || !app.isReady()) return;
+    // A fresh process-wide registration is a native effect the app is about to
+    // lose track of during handoff or shutdown. The existing accelerator is
+    // left untouched instead of being re-registered or silently replaced.
+    if (surfaces.isClosed()) return;
     const platform: ShortcutPlatform =
       process.platform === "darwin"
         ? "darwin"
@@ -234,7 +319,8 @@ export function createLauncher({
     }
 
     if (launcherState.pluginLauncherAccelerator && launcherState.pluginLauncherAccelerator !== accelerator) {
-      globalShortcut.unregister(launcherState.pluginLauncherAccelerator);
+      unregisterAccelerator(launcherState.pluginLauncherAccelerator, pluginLauncherShortcutSurface);
+      pluginLauncherShortcutSurface = null;
       launcherState.pluginLauncherAccelerator = null;
     }
 
@@ -252,6 +338,10 @@ export function createLauncher({
     });
     if (registered) {
       launcherState.pluginLauncherAccelerator = accelerator;
+      pluginLauncherShortcutSurface = retainAccelerator(
+        "global-shortcut.plugin-launcher",
+        accelerator,
+      );
     } else {
       logger.app("diagnostics", "error", "plugin launcher shortcut unavailable", {
         data: { accelerator, platform: process.platform },
@@ -272,6 +362,9 @@ export function createLauncher({
       (candidate) => candidate.id === "toggleWindow",
     );
     if (!shortcut || !app.isReady()) return;
+    // Same rule as the launcher: no fresh process-wide registration while the
+    // app is being handed off or shut down.
+    if (surfaces.isClosed()) return;
     const platform: ShortcutPlatform =
       process.platform === "darwin"
         ? "darwin"
@@ -283,7 +376,8 @@ export function createLauncher({
     recordHostGlobalBinding("toggleWindow", binding);
 
     if (launcherState.toggleWindowAccelerator && launcherState.toggleWindowAccelerator !== accelerator) {
-      globalShortcut.unregister(launcherState.toggleWindowAccelerator);
+      unregisterAccelerator(launcherState.toggleWindowAccelerator, toggleWindowShortcutSurface);
+      toggleWindowShortcutSurface = null;
       launcherState.toggleWindowAccelerator = null;
     }
 
@@ -293,6 +387,10 @@ export function createLauncher({
     });
     if (registered) {
       launcherState.toggleWindowAccelerator = accelerator;
+      toggleWindowShortcutSurface = retainAccelerator(
+        "global-shortcut.toggle-window",
+        accelerator,
+      );
     } else {
       logger.app("diagnostics", "warn", "window toggle shortcut unavailable", {
         data: { accelerator, platform: process.platform },

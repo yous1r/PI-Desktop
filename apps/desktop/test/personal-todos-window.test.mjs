@@ -35,21 +35,27 @@ await build({entryPoints:[join(root,"apps/desktop/electron/main/personal-todos/r
  alias:{electron:stub,"@pi-desktop/shared":join(root,"packages/shared/src"),"@pi-desktop/i18n":join(root,"packages/i18n/src")},
  plugins:[{name:"external-test-electron",setup(b){b.onResolve({filter:/^electron$/},()=>({path:pathToFileURL(stub).href,external:true}));}}]});
 const {createPersonalTodos}=await import(pathToFileURL(out).href);
-const {BrowserWindow,windows,clipboard,screen}=await import(pathToFileURL(stub).href);
+const {BrowserWindow,windows,clipboard,screen,dialog}=await import(pathToFileURL(stub).href);
+const ticks=async(count=12)=>{for(let i=0;i<count;i++)await Promise.resolve();};
 const channel=(name)=>`pi-desktop/personalTodos/${name}`;
 let counter=0;
 function fixture(){
- const main=new BrowserWindow();const handlers=new Map();const writes=[];
- let doc={schemaVersion:1,revision:0,updatedAt:null,items:[]};let fail=false;
- const runtime=createPersonalTodos({dataDir:join(temp,`profile-${++counter}`),getMainWindow:()=>main,log(){},getHost:()=>({call:async(method,input)=>{
- if(method==='settings.get')return {theme:'dark',language:'en'};
- if(method==='personalTodos.get')return doc;
- if(fail)throw Error('storage unavailable');
- doc={schemaVersion:1,revision:doc.revision+1,updatedAt:1,items:input.items};writes.push(doc);return doc;
- }})});
+ const main=new BrowserWindow();const handlers=new Map();const writes=[];const gate={closed:false};
+ let doc={schemaVersion:1,revision:0,updatedAt:null,items:[]};let fail=false;let reads=0;let settingsReads=0;
+ // A stable Host object with one execution generation, as production provides.
+ const host={generation:"generation-1",isAvailable:()=>true,call:async(method,input)=>{
+  if(method==='settings.get'){settingsReads++;return {theme:'dark',language:'en'};}
+  if(method==='personalTodos.get'){reads++;return doc;}
+  if(fail)throw Error('storage unavailable');
+  doc={schemaVersion:1,revision:doc.revision+1,updatedAt:1,items:input.items};writes.push(doc);return doc;
+ }};
+ let current=host;
+ const runtime=createPersonalTodos({dataDir:join(temp,`profile-${++counter}`),getMainWindow:()=>main,log(){},
+  isAdmissionClosed:()=>gate.closed,getHost:()=>current});
  runtime.register({handleWithEvent:(c,h)=>handlers.set(c,h)});
  const invoke=(name,sender,raw,frame=sender.webContents.mainFrame)=>handlers.get(channel(name))({sender:sender.webContents,senderFrame:frame},raw);
- return {main,runtime,invoke,writes,setFail:value=>{fail=value;}};
+ return {main,runtime,invoke,writes,gate,host,setFail:value=>{fail=value;},reads:()=>reads,settingsReads:()=>settingsReads,
+  replaceHost:value=>{current=value;}};
 }
 test('singleton native window is independent, pinned by default, and its close collapses',async()=>{
  const f=fixture();const before=windows.length;await Promise.all([f.runtime.open(false),f.runtime.open(false)]);
@@ -153,4 +159,58 @@ test('fractional-DPI native rounding does not accumulate across collapse and reo
    assert.deepEqual(widget.getBounds(),expanded);
   }
  }finally{f.runtime.dispose();}
+});
+
+test('native surface and display listeners stay counted until they are actually released',async()=>{
+ const f=fixture();
+ await f.runtime.open(false);await ticks();
+ const widget=windows.at(-1);
+ // One native surface plus the two display listeners installed on first show.
+ assert.deepEqual(f.runtime.getHandoffActivity(),{operations:0,resources:3,uncontainedResources:0});
+ widget.close();await ticks();
+ assert.equal(widget.dead,false);
+ assert.deepEqual(f.runtime.getHandoffActivity(),{operations:0,resources:3,uncontainedResources:0},
+  'a collapsed editor still owns its native surface and listeners');
+ f.runtime.dispose();
+ assert.deepEqual(f.runtime.getHandoffActivity(),{operations:0,resources:0,uncontainedResources:0});
+ assert.equal(widget.dead,true);
+ assert.equal(screen.listenerCount('display-removed'),0);
+});
+test('a closed gate creates no native surface and reads no appearance or board',async()=>{
+ const f=fixture();const before=windows.length;
+ f.gate.closed=true;
+ await assert.rejects(f.runtime.open(),{errorCode:'HOST_BUSY'});
+ assert.equal(windows.length,before,'a closed gate must not allocate a native window');
+ assert.equal(f.settingsReads(),0);
+ assert.equal(f.reads(),0);
+ assert.deepEqual(f.runtime.getHandoffActivity(),{operations:0,resources:0,uncontainedResources:0});
+ f.gate.closed=false;
+ await f.runtime.open(false);
+ assert.equal(windows.length,before+1);
+ assert.equal(f.settingsReads(),1);
+ f.runtime.dispose();
+});
+test('blur after admission closed starts no Host write and keeps the draft',async()=>{
+ const f=fixture();await f.runtime.open();const widget=windows.at(-1);
+ await f.invoke('edit',widget,{items:[{id:'a',title:'blur draft',note:'',completed:false}],expectedEditVersion:0});
+ f.gate.closed=true;
+ widget.emit('blur');await ticks();
+ assert.equal(f.writes.length,0);
+ // The gate refuses fresh reads too; reopen to prove the draft was retained.
+ f.gate.closed=false;
+ assert.equal((await f.invoke('get',widget)).items[0].title,'blur draft');
+ f.runtime.dispose();
+ assert.deepEqual(f.runtime.getHandoffActivity().uncontainedResources,1,'the retained draft is reported as uncertainty, not success');
+});
+test('dispose rejects a pending editor drain and never claims an unconfirmed native close',async()=>{
+ const f=fixture();await f.runtime.open();const widget=windows.at(-1);
+ dialog.response=0;
+ widget.destroy=()=>{};
+ const quit=f.runtime.prepareQuit();
+ assert.equal(f.runtime.getHandoffActivity().operations,1,'the quit drain is counted while it waits');
+ f.runtime.dispose();
+ assert.equal(await quit,false,'a refused quit keeps the application open');
+ // The surface never reported destruction, so its handle stays counted next to
+ // the uncertainty: releasing it would claim a native close nobody observed.
+ assert.deepEqual(f.runtime.getHandoffActivity(),{operations:0,resources:1,uncontainedResources:1});
 });

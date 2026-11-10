@@ -20786,3 +20786,131 @@ delivery and deterministic plugin process ports remain fixture boundaries.
 - **Boundary:** These are Main integration tests with isolated files and Host RPC
   fixtures. They do not qualify a native process family, full nineteen-family
   inventory, Rust status transport or complete ownership transfer.
+
+### H1-R01 model-catalog admission and retained loading
+
+- **Entry:** `apps/desktop/test/handoff-model-catalog.test.mjs`, existing
+  `models-dev-catalog.test.mjs`, inventory/coordinator consumers and isolated
+  `scripts/e2e-owner-inspection.mjs` with an explicit scratch Host profile.
+- **Steps:** Load the local bundled snapshot and refresh through controlled
+  fetch/body boundaries. Close admission before I/O, join concurrent/reentrant
+  callers, close after admission, abort during a pending fetch, dispose while a
+  result is delayed, and hold error-body cancellation unresolved. Observe the
+  actual original owner's report through Desktop inventory. Replace/remove the
+  catalog during inspection and supply incomplete reports.
+- **Expected:** No fresh I/O after closure; one underlying flight counts once;
+  started work remains counted until settlement; cancelled/disposed results do
+  not replace the snapshot. Failed/synchronous fetches permit a fresh retry.
+  Ordinary parsing, cached metadata and memory-only refresh remain compatible.
+  Missing/replaced reports refuse. Unconfirmed transport resources remain
+  visible after response settlement, and all fixed qualification gaps remain.
+- **Boundary:** Controlled network and filesystem fixtures are not native
+  connection-pool closure proof. No real provider, model download, Voice or
+  running Desktop profile is used; complete transfer is the later H5 join.
+
+### H1-R02/R04 updater and inbound MCP ownership
+
+- **Preconditions:** isolated scratch directories; controlled updater/Electron
+  edges; MCP binds only an ephemeral loopback port. No feed, installer, user
+  browser/account or running Desktop is used.
+- **Entry:** `handoff-updater.test.mjs`, `handoff-mcp-control.test.mjs`,
+  `handoff-mcp-registry.test.mjs`, `mcp-control.test.mjs` and
+  `handoff-inventory.test.mjs`, followed by the isolated owner-inspection suite.
+- **Steps:** close admission before an automatic/manual update; replace the
+  original Host while settings are pending; enqueue dismissal writes; retain a
+  check after waiter timeout/dispose; overlap original transport events. Start
+  an MCP server, hold a request/post-effect, disconnect its caller, race startup
+  with stop, and keep an old instance in the registry after replacement.
+- **Expected:** no fresh external effect crosses closed admission or a replaced
+  owner. Outstanding work remains visible to inventory through real settlement.
+  Ambiguous updater events cannot persist or launch an installer. MCP preserves
+  authentication and protocol refusal ordering; live listeners/sockets count;
+  bounded stop never reports unresolved handlers as idle. Malformed/missing
+  producers refuse inspection. The production updater binding and real loopback
+  listener both feed the actual 19-field inventory.
+- **Specs:** process model updater/inbound MCP ownership; H1 remaining task list.
+- **Acceptance:** targeted producer/consumer suites and exact clean-candidate
+  isolated process regression. Fixture closure does not clear native gaps.
+- **Milestone/status:** H1 adapter implementation; final candidate validation
+  pending. H2 source transactions and H5 complete transfer are separate.
+
+### H1-R06 collaboration admission and original-owner dispatch
+
+- **Entry:** `handoff-worker-dispatch.test.mjs`,
+  `session-collaboration-service.test.mjs`, `session-collaboration-ipc.test.mjs`
+  and the inventory/coordinator consumers.
+- **Steps:** spawn/send through the public collaboration interface; pause the
+  ledger reply and replace the Host, its generation, bridge or Sidecar; close
+  admission before dispatch; return `HOST_BUSY` for a queued message; settle an
+  admitted turn while the gate is closed; replace the owner during drain, then
+  explicitly retry through a new drain.
+- **Expected:** old operations never dispatch or write failure through replacement
+  owners. Temporary busy refusal keeps the message queued. Admitted settlement
+  remains counted and may finish while admission is closed, without launching
+  another queued turn. An interrupted pass retains its receipt for a new drain.
+  Inventory distinguishes durable Workers, child delegations and native sessions.
+- **Boundary:** controlled Host/runtime edges; no real provider or remote service.
+  These tests preserve the existing native Worker qualification gap. The isolated
+  owner-inspection suite separately validates the original Rust/Desktop exchange.
+- **Acceptance:** relevant service, IPC and consumer checks pass on the same
+  candidate as the remaining H1 adapters; full source transfer remains H2-H5.
+
+### H1-R05 personal-todo persistence and quit admission
+
+- **Entry:** `personal-todos-main.test.mjs`, `personal-todos-window.test.mjs`,
+  `personal-todos-preload.test.mjs`, `handoff-personal-todos.test.mjs` and the
+  shutdown/inventory consumers. Electron and storage edges are controlled.
+- **Steps:** open/edit a board, debounce/flush, hold an original RPC, close
+  admission, time out the caller, replace or restart the Host, and explicitly
+  retry. Close admission or replace the Host during editor quit drain; start an
+  open/quit sequence without storage and introduce a Host only after its wait.
+  Dispose during appearance read or before the window confirms closure.
+- **Expected:** fresh I/O never bypasses admission, including quit. Old sequences
+  keep their captured owner or refusal; an explicit new retry retains the draft's
+  original mutation ID and expected revision. Actual RPC settlement governs
+  activity counts. A clean board does not trap quit after a failed initial read.
+  Late disposed state is not published and unclosed surfaces remain obstructing.
+- **Acceptance:** representative edit/save/quit and race tests pass, with the
+  personal-todos native gap retained. No user's board, live Desktop or default
+  profile is accessed.
+
+### H1-R07 Electron surfaces and listener admission
+
+- **Entry:** `handoff-electron-surfaces.test.mjs` plus existing tray, launcher,
+  shortcut, bounds, work-panel, traffic-light and topmost lifecycle tests.
+- **Steps:** create a main window and hold its renderer load; queue a bounds
+  write; prewarm then show/re-show the launcher; close admission during load or
+  before creation/registration; replace the original Host or surface slot; fire
+  the Windows Alt+Space event while closed; retain a tray, display listeners and
+  accelerators until controlled native cleanup is observed.
+- **Expected:** no fresh effects cross closed admission or stale attribution.
+  Prewarmed reuse remains functional. The keyboard callback observes refusal
+  without an unhandled rejection. Pending loads/writes and original handles
+  remain counted, while failed probes keep uncertainty. Production composition
+  injects one shared surface owner into lifecycle, window, launcher and inventory.
+- **Boundary:** these are executing production-module tests with Electron edge
+  fixtures, including the Windows keyboard branch. They do not launch or attach
+  to Desktop and do not certify native/compositor closure. Voice is paused.
+- **Acceptance:** targeted user-path/compatibility tests, current-source types,
+  lint and inventory consumers pass on the recorded candidate; native qualification
+  remains a separate explicit refusal.
+
+### H1-R03 vendor OAuth and discovery refusal
+
+- **Entry:** `handoff-vendor-oauth.test.mjs`, vendor/plugin OAuth compatibility
+  suites, `provider-model-list-refresh.test.mjs` and production factory-to-inventory
+  scenarios. Vendor flows, HTTP, browser and Host secrets use controlled fixtures.
+- **Steps:** sign in/respond/cancel, dispose during a detached login or model read,
+  replace the Host or its generation during identity/credential waits, reload a
+  plugin before refresh/write, and delay model publication or browser completion.
+  Retry a new operation against the current owner. Return `HOST_BUSY` or
+  `HOST_UNAVAILABLE` from account discovery through its real IPC entry.
+- **Expected:** original pending work remains visible until settlement; delayed
+  credentials, prompts, browser URLs and model publications cannot adopt a new
+  Host/runtime. Original-ID terminal events still close the existing dialog.
+  Identity reads/writes are owner-bound. IPC refusal does not fall through to
+  secret lookup, HTTP probing or model-cache writes. Production gate/disposal
+  wiring feeds the required inventory source and preserves native uncertainty.
+- **Acceptance:** focused races, representative login/refresh and IPC discovery
+  checks pass with the integrated current-source type/static checks. No real
+  account/provider/browser or native closure claim is part of this acceptance.

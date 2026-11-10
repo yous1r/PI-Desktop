@@ -367,6 +367,7 @@ export function registerApplicationStartup(deps: StartupDependencies): void {
       try {
         state.mcpControl = new McpControlServer({
           dataDir,
+          isAdmissionClosed: () => state.handoffAdmission.isClosed(),
           invoke: invokeIpc,
           channels: IPC.invoke,
           version: APP_VERSION,
@@ -381,7 +382,7 @@ export function registerApplicationStartup(deps: StartupDependencies): void {
         logger.app("runtime", "warn", "MCP control server failed to start", {
           data: String(error),
         });
-        state.mcpControl = null;
+        // Keep the failed original instance available for cleanup and inspection.
       }
     }
     // GitHub discovery is delayed and time-bounded. Never start it before the

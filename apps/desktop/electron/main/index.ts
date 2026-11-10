@@ -38,8 +38,8 @@ import {
   ModelsDevCatalog,
   catalogModelConfigFor,
 } from "./models-dev-catalog";
-import { VendorOAuth } from "./oauth";
-import { AppUpdaterController } from "./updater";
+import { createDesktopVendorOAuth } from "./bootstrap/oauth";
+import { createDesktopUpdater } from "./bootstrap/updater";
 import {
   WINDOW_MIN_HEIGHT,
   WINDOW_MIN_WIDTH,
@@ -242,30 +242,10 @@ const inflightCheckpointer = new InflightCheckpointer(async (checkpoint) => {
   );
 });
 
-const updater = new AppUpdaterController({
-  logger,
-  send: sendToRenderer,
-  currentVersion: APP_VERSION,
-  isPackaged: !isDevelopmentBuild,
-  getLocale: () => mainState.updaterLocale,
-  readUpdateSettings: async () => {
-    const host = getHost();
-    if (!host?.isAvailable()) throw new Error("host unavailable");
-    return host.call<{
-      updatePreference?: unknown;
-      lastNotifiedUpdateVersion?: unknown;
-    }>("settings.get");
-  },
-  persistLastNotifiedVersion: async (version) => {
-    const host = getHost();
-    if (!host?.isAvailable()) throw new Error("host unavailable");
-    await host.call("settings.set", { lastNotifiedUpdateVersion: version });
-  },
-  persistDismissedVersion: async (version) => {
-    const host = getHost();
-    if (!host?.isAvailable()) throw new Error("host unavailable");
-    await host.call("settings.set", { updateDismissedVersion: version });
-  },
+const updater = createDesktopUpdater({
+  logger, send: sendToRenderer, currentVersion: APP_VERSION, isPackaged: !isDevelopmentBuild,
+  getLocale: () => mainState.updaterLocale, getHost,
+  isAdmissionClosed: () => mainState.handoffAdmission.isClosed(),
 });
 
 /**
@@ -273,18 +253,14 @@ const updater = new AppUpdaterController({
  * this process; the renderer sees progress events and the sidecar sees only
  * resolved request auth.
  */
-const modelsDevCatalog = new ModelsDevCatalog({
+const modelsDevCatalog = new ModelsDevCatalog({ isAdmissionClosed: () => mainState.handoffAdmission.isClosed(),
   catalogPath: app.isPackaged
     ? join(process.resourcesPath, "models.dev", "api.json")
     : join(app.getAppPath(), "resources", "models.dev", "api.json"),
 });
 
-const vendorOAuth = new VendorOAuth({
-  call: <T,>(method: string, params?: unknown): Promise<T> => {
-    const currentHost = getHost();
-    if (!currentHost) throw new Error("host unavailable");
-    return currentHost.call<T>(method, params);
-  },
+const vendorOAuth = createDesktopVendorOAuth({
+  getHost, isAdmissionClosed: () => mainState.handoffAdmission.isClosed(),
   emit: (event) => sendToRenderer(IPC.event.providersOauth, event),
   openExternal: async (url) => {
     await safeOpenExternal(url);
@@ -494,6 +470,7 @@ function sendToRenderer(channel: string, payload: unknown) {
 installInsecureEndpointNotice(sendToRenderer);
 
 applicationLifecycle = createApplicationLifecycle({
+  surfaces: mainState.surfaces,
   getRunningSessionIds: () => activeTurns.keys(),
   openPersonalTodos: () => { void personalTodos.open().catch((error: unknown) => logger.app("lifecycle", "warn", "personal todo open failed", { data: String(error) })); },
   onAppearanceChanged: () => { void personalTodos.refreshAppearance(); },
@@ -572,6 +549,7 @@ const {
 } = closeBehaviorRuntime;
 
 const createdLauncher = createLauncher({
+  surfaces: mainState.surfaces,
   state: windowLifecycleState,
   launcherState,
   appState: applicationLifecycleState,
@@ -681,6 +659,7 @@ let emitAgentEvent: (envelope: AgentEventEnvelope) => void = () => undefined;
 
 const sessionCollaboration = createSessionCollaborationService({
   getHost,
+  isAdmissionClosed: () => mainState.handoffAdmission.isClosed(),
   getSidecar,
   getBridge: () => mainState.agentHostBridge,
   getActiveTurn: (sessionId) => activeTurns.get(sessionId),
@@ -802,7 +781,9 @@ const handoff = createDesktopHandoffService(mainState.handoffAdmission, () => {
     agentHost: agentHostBridge.agentHost, plans: planRuntime, modes: modeServices.runs,
     coordination: sessionCoordination, events: eventPersistence, outbox: persistenceOutbox, checkpointer: inflightCheckpointer,
     scheduler: scheduledRunner, scheduledRuns: scheduledRunsBySession, activeTurns, activeTools: activeToolCalls,
-    plugins, browser: browserHost, terminals: getWorkspaceTerminalHandoffOwner(), userMcp, mcpOAuth, speech };
+    plugins, browser: browserHost, terminals: getWorkspaceTerminalHandoffOwner(), userMcp, mcpOAuth, speech,
+    modelCatalog: modelsDevCatalog, updater, mcpControl: mainState.mcpControlHandoff,
+    vendorOAuth, personalTodos, collaboration: sessionCollaboration, surfaces: mainState.surfaces };
 }, getHost);
 const hostRuntime = createHostRuntime({
   runtimeState, dataDir, logger, persistenceOutbox, activeToolCalls, activeToolCallKey,
@@ -854,7 +835,8 @@ voiceServiceReference = voiceService;
 // The docked call widget: a desktop-level window that shows the call chrome
 // wherever the user put it and sends every action back to this window, which
 // stays the Live Voice owner (media, microphone lease, work scope).
-const personalTodos = createPersonalTodos({ dataDir, getHost, getMainWindow, log: (message, error) => logger.app("lifecycle", "warn", message, { data: String(error) }) });
+const personalTodos = createPersonalTodos({ dataDir, getHost, getMainWindow,
+  isAdmissionClosed: () => mainState.handoffAdmission.isClosed(), log: (message, error) => logger.app("lifecycle", "warn", message, { data: String(error) }) });
 const liveVoiceWidget = createLiveVoiceWidget({
   getMainWindow,
   dataDir,
@@ -1044,7 +1026,7 @@ void app.whenReady().then(() => {
 });
 
 // The widget is chrome for a call this window owns; it must never outlive the app.
-app.once("will-quit", () => { liveVoiceWidget.close(); personalTodos.dispose(); });
+app.once("will-quit", () => { mainState.surfaces.seal(); vendorOAuth.dispose(); modelsDevCatalog.dispose(); liveVoiceWidget.close(); personalTodos.dispose(); });
 
 registerApplicationStartup({
   hasSingleInstanceLock,
@@ -1074,7 +1056,7 @@ registerApplicationStartup({
   applyPluginLauncherShortcut,
   applyToggleWindowShortcut,
   ensureWindow,
-  openPersonalTodos: () => personalTodos.open(false),
+  openPersonalTodos: () => personalTodos.open(false).catch((error: unknown) => logger.app("lifecycle", "warn", "personal todo activation failed", { data: String(error) })),
   bootHostStatus,
   flushPendingApplicationMenuCommands,
   invokeSessionCollaboration: sessionCollaboration.invoke,

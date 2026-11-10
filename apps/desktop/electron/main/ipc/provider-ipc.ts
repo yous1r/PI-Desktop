@@ -238,6 +238,12 @@ export function registerProviderIpc({
         await vendorOAuth.resolveAuth(id);
         return { ok: true, network: "ok" };
       } catch (e) {
+        // Admission and ownership refusals are not an auth verdict: reporting
+        // them as unauthorized would send the user to sign in again while the
+        // real work was simply not admitted.
+        const code = (e as { code?: unknown; errorCode?: unknown } | null);
+        const refusal = code?.errorCode ?? code?.code;
+        if (refusal === "HOST_BUSY" || refusal === "HOST_UNAVAILABLE") throw e;
         return {
           ok: false,
           network: "failed",
@@ -578,6 +584,10 @@ export function registerProviderIpc({
             };
           }
         } catch (e) {
+          // Admission/owner refusal cannot authorize a second discovery path.
+          const code = (e as { code?: unknown; errorCode?: unknown } | null);
+          const refusal = code?.errorCode ?? code?.code;
+          if (refusal === "HOST_BUSY" || refusal === "HOST_UNAVAILABLE") throw e;
           logger.app("provider", "warn", "vendor account model list failed", {
             data: {
               providerId: provider.id,

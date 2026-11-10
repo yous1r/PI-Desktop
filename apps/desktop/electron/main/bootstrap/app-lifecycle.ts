@@ -32,6 +32,7 @@ import type { HostProcess } from "../host-process";
 import { syncPluginDisplayLocale } from "../plugin-display-locale";
 import { createPowerSaveBlockerController } from "../keep-awake";
 import type { PluginAppearance } from "../../shared/plugin-panel-chrome";
+import type { SurfaceActivityOwner } from "../surface-activity";
 
 export type ApplicationLifecycleState = {
   windowCreationPromise: Promise<void> | null;
@@ -51,6 +52,7 @@ export type ApplicationLifecycleDependencies = {
   state: WindowLifecycleState;
   appState: ApplicationLifecycleState;
   appearanceState: ApplicationAppearanceState;
+  surfaces: SurfaceActivityOwner;
   dataDir: string;
   isDevelopmentBuild: boolean;
   windowsAllowedToClose: WeakSet<BrowserWindow>;
@@ -87,6 +89,7 @@ export function createApplicationLifecycle({
   appState,
   appearanceState,
   dataDir,
+  surfaces,
   isDevelopmentBuild,
   windowsAllowedToClose,
   windowMinWidth,
@@ -256,6 +259,13 @@ export function createApplicationLifecycle({
 
   function createTray() {
     if (state.tray) return;
+    // A fresh native status item is a surface the app must not create while the
+    // admission is closed for handoff or shutdown. The caller keeps its own
+    // fallback (close-to-tray falls back to a real quit when no tray exists).
+    if (surfaces.isClosed()) {
+      logger.app("lifecycle", "warn", "tray creation refused while host admission is closed");
+      return;
+    }
     const iconPath = trayIconPath();
     if (!iconPath) {
     logger.app("lifecycle", "warn", "tray icon missing", {
@@ -277,7 +287,19 @@ export function createApplicationLifecycle({
     });
     if (process.platform === "darwin") icon.setTemplateImage(true);
 
-    state.tray = new Tray(icon);
+    const tray = new Tray(icon);
+    // The tray is retained until Electron reports the native icon destroyed;
+    // an unobservable admission is refused instead of being left untracked.
+    try {
+      surfaces.attach("tray", "tray", () => !tray.isDestroyed());
+    } catch (error) {
+      tray.destroy();
+      logger.app("lifecycle", "warn", "tray creation refused", {
+        data: String(error),
+      });
+      return;
+    }
+    state.tray = tray;
     state.tray.setToolTip(APP_NAME);
     // macOS single-click opens its attached menu without focusing/reading a conversation.
     // mouse-enter/move/leave replace the native NSStatusItem with a custom view,
@@ -340,6 +362,7 @@ export function createApplicationLifecycle({
       windowMinHeight,
       windowBoundsSettleMs,
       workPanelNativeResizeSettleMs,
+      surfaces,
       windowsAllowedToClose,
       applyWorkPanelReservation,
       markWorkPanelChatResizeActive,
@@ -370,6 +393,17 @@ export function createApplicationLifecycle({
     try {
       await creation;
       return true;
+    } catch (error) {
+      // A closed admission is a refusal, not a boot failure: nothing was
+      // created. Callers keep their existing "no window" branch instead of
+      // receiving an unhandled rejection from startup.
+      if ((error as { errorCode?: unknown } | null)?.errorCode === "HOST_BUSY") {
+        logger.app("lifecycle", "warn", "main window creation refused", {
+          data: String(error),
+        });
+        return false;
+      }
+      throw error;
     } finally {
       if (appState.windowCreationPromise === creation) appState.windowCreationPromise = null;
     }

@@ -58,6 +58,9 @@ async function fixture() {
     remote: reporter(external()), browser: reporter({ operations: 0, pages: 0, uncontainedResources: 0 }),
     terminals: reporter({ terminals: 0, uncontainedResources: 0 }),
     userMcp: reporter({ mcp: 0, uncontainedResources: 0 }), mcpOAuth: reporter(external()), speech: reporter(external()),
+    modelCatalog: reporter(external()), updater: reporter(external()), mcpControl: reporter(external()),
+    vendorOAuth: reporter(external()), personalTodos: reporter(external()), collaboration: reporter(external()),
+    surfaces: reporter(external()),
   };
   let current = original;
   return { original, response, host, sidecar, unqualified: DESKTOP_HANDOFF_UNQUALIFIED_SOURCES,
@@ -200,6 +203,13 @@ for (const [label, replace] of [
   ["profile", (f) => { f.original.binding.profileId = "b".repeat(64); }],
   ["resource owner", (f) => { f.original.remote = reporter(external()); }],
   ["backend owner", (f) => { f.original.backends = { ...f.original.backends }; }],
+  ["model catalog", (f) => { f.original.modelCatalog = reporter(external()); }],
+  ["updater", (f) => { f.original.updater = reporter(external()); }],
+  ["MCP control", (f) => { f.original.mcpControl = reporter(external()); }],
+  ["vendor OAuth", (f) => { f.original.vendorOAuth = reporter(external()); }],
+  ["personal todos", (f) => { f.original.personalTodos = reporter(external()); }],
+  ["collaboration", (f) => { f.original.collaboration = reporter(external()); }],
+  ["Electron surfaces", (f) => { f.original.surfaces = reporter(external()); }],
 ]) {
   test(`Desktop inventory refuses a changed ${label} during original Rust inspection`, async () => {
     const f = await fixture(); f.onInspect(() => { replace(f); });
@@ -368,4 +378,220 @@ test("Desktop inventory follows real backend restart retention until original ex
   old.pending = 0;
   const settled = await f.inspect();
   assert.equal(settled.admissions, 0); assert.equal(settled.uncontainedResources, f.unqualified.length);
+});
+
+test("Desktop inventory requires a complete model-catalog owner report", async () => {
+  const f = await fixture(); delete f.original.modelCatalog;
+  await assert.rejects(f.inspect(), code("HANDOFF_INVENTORY_UNAVAILABLE"));
+  f.original.modelCatalog = reporter({ operations: 0, resources: 0 });
+  await assert.rejects(f.inspect(), code("HANDOFF_INVENTORY_UNAVAILABLE"));
+});
+
+test("Desktop inventory follows a real model refresh until body settlement and retains native uncertainty", async () => {
+  const { ModelsDevCatalog } = await import("../electron/main/models-dev-catalog.ts");
+  const f = await fixture(), entered = Promise.withResolvers(), release = Promise.withResolvers();
+  const catalog = new ModelsDevCatalog({ catalogPath: "unused.json", providers: [],
+    isAdmissionClosed: () => f.original.admission.isClosed(), fetchImpl: async () => {
+      entered.resolve(); return { ok: true, json: () => release.promise };
+    } });
+  f.original.modelCatalog = catalog;
+  const loading = catalog.refresh();
+  try {
+    await entered.promise;
+    const busy = await f.inspect();
+    assert.equal(busy.admissions, 1);
+    assert.ok(busy.uncontainedResources > f.unqualified.length);
+    await assert.rejects(f.original.admission.gate.acquireHandoff(randomUUID(), f.inspect), /HOST_BUSY/);
+  } finally { release.resolve({ fixture: { name: "Fixture", models: { model: { id: "model", name: "Fixture model" } } } }); }
+  assert.equal(await loading, true);
+  const settled = await f.inspect();
+  assert.equal(settled.admissions, 0);
+  assert.ok(settled.uncontainedResources > f.unqualified.length);
+  catalog.dispose();
+});
+
+for (const source of ["updater", "mcpControl", "vendorOAuth", "personalTodos", "collaboration", "surfaces"]) {
+  test(`Desktop inventory requires a complete ${source} producer`, async () => {
+    const f = await fixture(); delete f.original[source];
+    await assert.rejects(f.inspect(), code("HANDOFF_INVENTORY_UNAVAILABLE"));
+    f.original[source] = reporter({ operations: 0, resources: 0 });
+    await assert.rejects(f.inspect(), code("HANDOFF_INVENTORY_UNAVAILABLE"));
+  });
+  test(`Desktop inventory includes actual ${source} work and resources`, async () => {
+    const f = await fixture();
+    f.original[source] = reporter({ operations: 2, resources: 3, uncontainedResources: 4 });
+    const observed = await f.inspect();
+    assert.equal(observed.admissions, 2);
+    assert.equal(observed.uncontainedResources, f.unqualified.length + 7);
+  });
+}
+
+test("Desktop inventory retains replaced MCP listeners and unfinished handlers", async () => {
+  const { createMcpControlHandoffOwner } = await import("../electron/main/mcp-control-lifecycle.ts");
+  const f = await fixture(), registry = createMcpControlHandoffOwner();
+  const original = { operations: 1, resources: 1, uncontainedResources: 1 };
+  registry.retain(reporter(original));
+  registry.retain(reporter({ operations: 0, resources: 1, uncontainedResources: 0 }));
+  f.original.mcpControl = registry;
+  assert.equal((await f.inspect()).admissions, 1);
+  original.operations = 0; original.resources = 0;
+  const settled = await f.inspect();
+  assert.equal(settled.admissions, 0);
+  assert.equal(settled.uncontainedResources, f.unqualified.length + 2);
+});
+
+test("production updater wiring keeps the original Host while inventory observes its settings read", async () => {
+  const { register } = await import("node:module");
+  register(new URL("./helpers/updater-module-stubs.mjs", import.meta.url));
+  const { createDesktopUpdater } = await import("../electron/main/bootstrap/updater.ts");
+  const f = await fixture(), pending = Promise.withResolvers();
+  let current = { generation: 1, isAvailable: () => true, call: () => pending.promise };
+  const controller = createDesktopUpdater({ logger: { app() {} }, send() {}, currentVersion: "0.16.0",
+    isPackaged: true, getLocale: () => "en", getHost: () => current, isAdmissionClosed: () => false });
+  f.original.updater = controller;
+  const checking = controller.check({ manual: true });
+  const rejected = assert.rejects(checking, code("HOST_BUSY"));
+  assert.equal((await f.inspect()).admissions, 1);
+  current = { generation: 2, isAvailable: () => true, call: () => assert.fail("replacement Host must not be called") };
+  pending.resolve({ updatePreference: "manual" });
+  try { await rejected; assert.equal((await f.inspect()).admissions, 0); }
+  finally { controller.dispose(); }
+});
+
+test("production updater transport stays in inventory until actual check settlement", async t => {
+  const { register } = await import("node:module");
+  register(new URL("./helpers/updater-module-stubs.mjs", import.meta.url));
+  const { autoUpdater } = await import("./helpers/updater-electron-updater-stub.mjs");
+  const { createDesktopUpdater } = await import("../electron/main/bootstrap/updater.ts");
+  const f = await fixture(), started = Promise.withResolvers(), pending = Promise.withResolvers();
+  const previous = Object.getOwnPropertyDescriptor(autoUpdater, "checkForUpdates");
+  autoUpdater.checkForUpdates = () => { started.resolve(); return pending.promise; };
+  t.after(() => { if (previous) Object.defineProperty(autoUpdater, "checkForUpdates", previous); else delete autoUpdater.checkForUpdates; });
+  const host = { generation: 1, isAvailable: () => true, call: async () => ({ updatePreference: "manual" }) };
+  const controller = createDesktopUpdater({ logger: { app() {} }, send() {}, currentVersion: "0.16.0",
+    isPackaged: true, getLocale: () => "en", getHost: () => host, isAdmissionClosed: () => false });
+  f.original.updater = controller;
+  const checking = controller.check({ manual: true });
+  try {
+    await started.promise;
+    assert.equal((await f.inspect()).admissions, 1);
+    controller.dispose();
+    assert.equal((await f.inspect()).admissions, 1);
+  } finally { pending.resolve(); await checking; controller.dispose(); }
+  const settled = await f.inspect();
+  assert.equal(settled.admissions, 0);
+  assert.ok(settled.uncontainedResources > f.unqualified.length);
+});
+
+test("a real loopback MCP listener obstructs inventory until its original stop completes", async () => {
+  const { McpControlServer } = await import("../electron/main/mcp-control.ts");
+  const { createMcpControlHandoffOwner } = await import("../electron/main/mcp-control-lifecycle.ts");
+  const f = await fixture(), dir = await mkdtemp(join(tmpdir(), "h1-inventory-mcp-"));
+  const registry = createMcpControlHandoffOwner();
+  const server = new McpControlServer({ dataDir: dir, port: 0, channels: {}, invoke: async () => undefined,
+    isAdmissionClosed: () => f.original.admission.isClosed() });
+  registry.retain(server); f.original.mcpControl = registry;
+  try {
+    await server.start();
+    assert.equal((await f.inspect()).uncontainedResources, f.unqualified.length + 1);
+    await assert.rejects(f.original.admission.gate.acquireHandoff("mcp-listener", f.inspect), { code: "HOST_BUSY" });
+    await server.stop();
+    assert.equal((await f.inspect()).uncontainedResources, f.unqualified.length);
+  } finally { await server.stop(); await rm(dir, { recursive: true, force: true }); }
+});
+
+for (const change of ["replacement", "generation", "gate", "dispose"]) {
+  test(`production OAuth wiring retains the pending original call after ${change}`, async t => {
+    const { createDesktopVendorOAuth } = await import("../electron/main/bootstrap/oauth.ts");
+    const f = await fixture(), pending = Promise.withResolvers(), entered = Promise.withResolvers();
+    let closed = false;
+    let current = { generation: 1, isAvailable: () => true, call: method => {
+      assert.equal(method, "providers.list"); entered.resolve(); return pending.promise;
+    } };
+    const oauth = createDesktopVendorOAuth({ getHost: () => current, isAdmissionClosed: () => closed,
+      emit: () => assert.fail("retired operation must not publish"),
+      openExternal: () => assert.fail("fixture must not open a browser") });
+    t.after(() => oauth.dispose());
+    f.original.vendorOAuth = oauth;
+    const resolving = oauth.resolveAuth("fixture-account");
+    const rejected = assert.rejects(resolving, error => ["HOST_BUSY", "HOST_UNAVAILABLE"].includes(error.errorCode ?? error.code));
+    await entered.promise;
+    if (change === "replacement") current = { generation: 1, isAvailable: () => true,
+      call: () => assert.fail("replacement Host must not be called") };
+    if (change === "generation") current.generation += 1;
+    if (change === "gate") closed = true;
+    if (change === "dispose") oauth.dispose();
+    try { assert.ok((await f.inspect()).admissions > 0); }
+    finally { pending.resolve({ providers: [] }); }
+    await rejected;
+    assert.equal((await f.inspect()).admissions, 0);
+  });
+}
+
+test("Desktop inventory retains an actual todo draft until its writer commits", async () => {
+  const { createTodoActivity } = await import("../electron/main/personal-todos/activity.ts");
+  const { createTodoCoordinator } = await import("../electron/main/personal-todos/coordinator.ts");
+  const f = await fixture(), pending = Promise.withResolvers(), entered = Promise.withResolvers();
+  const activity = createTodoActivity(), timers = new Set();
+  const coordinator = createTodoCoordinator({ activity, publish() {},
+    clock: { now: () => 0, set: callback => { timers.add(callback); return callback; }, clear: timer => timers.delete(timer) },
+    persistence: { get: async () => ({ schemaVersion: 1, revision: 0, updatedAt: null, items: [] }),
+      replace: request => { entered.resolve(request); return activity.track(() => pending.promise); } } });
+  f.original.personalTodos = { getHandoffActivity: () => activity.snapshot() };
+  await coordinator.get();
+  coordinator.edit({ items: [], expectedEditVersion: 0 });
+  assert.equal((await f.inspect()).admissions, 1, "draft alone obstructs idle");
+  const saving = coordinator.flush();
+  const request = await entered.promise;
+  try { assert.equal((await f.inspect()).admissions, 2, "draft and original write both remain visible"); }
+  finally { pending.resolve({ schemaVersion: 1, revision: 1, updatedAt: 1, items: request.items }); }
+  await saving;
+  assert.equal((await f.inspect()).admissions, 0);
+  coordinator.dispose();
+  assert.equal(timers.size, 0);
+});
+
+test("Desktop inventory follows actual collaboration receipt replay through settlement", async () => {
+  const { createSessionCollaborationService } = await import("../electron/main/services/session-collaboration.ts");
+  const f = await fixture(), pending = Promise.withResolvers(), entered = Promise.withResolvers();
+  let mayFlush = false;
+  const host = { generation: 1, isAvailable: () => true, call: async method => {
+    assert.equal(method, "session.collaboration.settle"); entered.resolve(); await pending.promise; return {};
+  } };
+  const service = createSessionCollaborationService({ getHost: () => host, getSidecar: () => null,
+    getBridge: () => null, getActiveTurn: () => undefined, flushTranscript: async () => mayFlush,
+    isPluginLoaded: () => true, isQuitting: () => false, isAdmissionClosed: () => true, onChanged() {}, log() {} });
+  f.original.collaboration = service;
+  await service.settle("fixture-session", "fixture-turn");
+  assert.equal((await f.inspect()).uncontainedResources, f.unqualified.length + 1);
+  mayFlush = true;
+  const draining = service.drain();
+  await entered.promise;
+  try { assert.ok((await f.inspect()).admissions > 0); }
+  finally { pending.resolve(); }
+  await draining;
+  const settled = await f.inspect();
+  assert.equal(settled.admissions, 0);
+  assert.equal(settled.uncontainedResources, f.unqualified.length);
+});
+
+test("Desktop inventory follows original surface work through seal and observed cleanup", async () => {
+  const { createSurfaceActivity } = await import("../electron/main/surface-activity.ts");
+  const f = await fixture(), pending = Promise.withResolvers();
+  const surfaces = createSurfaceActivity({ isAdmissionClosed: () => false,
+    getHost: () => ({ host: f.host, generation: f.host.generation }) });
+  f.original.surfaces = surfaces;
+  let alive = true;
+  const work = surfaces.begin("fixture-window-load").track(() => pending.promise);
+  surfaces.attach("main-window", "fixture-window", () => alive);
+  surfaces.seal();
+  try {
+    const busy = await f.inspect();
+    assert.equal(busy.admissions, 1);
+    assert.equal(busy.uncontainedResources, f.unqualified.length + 1);
+  } finally { pending.resolve(); }
+  await work;
+  assert.equal((await f.inspect()).uncontainedResources, f.unqualified.length + 1);
+  alive = false;
+  assert.equal((await f.inspect()).uncontainedResources, f.unqualified.length);
 });

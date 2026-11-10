@@ -48,6 +48,11 @@ import {
   mainWindowBackgroundOptions,
 } from "../window-background";
 import { recoverRendererAfterGone } from "../renderer-recovery";
+import type {
+  SurfaceActivityOwner,
+  SurfaceHold,
+  SurfaceRetention,
+} from "../surface-activity";
 
 function windowsIconPath(): string | undefined {
   if (process.platform !== "win32") return undefined;
@@ -106,6 +111,7 @@ export type WindowLifecycleDependencies = {
   windowMinHeight: number;
   windowBoundsSettleMs: number;
   workPanelNativeResizeSettleMs: number;
+  surfaces: SurfaceActivityOwner;
   windowsAllowedToClose: WeakSet<BrowserWindow>;
   applyWorkPanelReservation: () => WorkPanelReservationState;
   markWorkPanelChatResizeActive: () => void;
@@ -130,6 +136,7 @@ export async function createWindow({
   windowMinHeight,
   windowBoundsSettleMs,
   workPanelNativeResizeSettleMs,
+  surfaces,
   windowsAllowedToClose,
   applyWorkPanelReservation,
   markWorkPanelChatResizeActive,
@@ -146,6 +153,13 @@ export async function createWindow({
   pluginViews,
   logger,
 }: WindowLifecycleDependencies): Promise<void> {
+  // The shared surface owner is consulted before any fresh native creation and
+  // again after every await on the way there. Its token is frozen at entry, so
+  // a continuation that resumes after a replacement can never create one.
+  const surfaceOperation = surfaces.begin("main-window.create", {
+    create: "main-window",
+  });
+  surfaceOperation.assertFresh();
 
   windowState.notificationViewingSessionId = null;
   windowState.requestedWorkPanelReservation = 0;
@@ -160,11 +174,12 @@ export async function createWindow({
   windowState.workPanelChatResizeTimer = null;
   windowState.workPanelChatResizeActive = false;
   windowState.setWorkPanelChatWidthForWindow = null;
-  const savedState = await readWindowState(
-    dataDir,
-    windowMinWidth,
-    windowMinHeight,
+  const savedState = await surfaceOperation.track(() =>
+    readWindowState(dataDir, windowMinWidth, windowMinHeight),
   );
+  // The admission can close, or another creation can take the slot, while the
+  // settings read is pending. Creating a window now would escape the handoff.
+  surfaceOperation.assertFresh();
   // A persisted rect can exceed the current work area when the display scale or
   // the Windows accessibility "text size" changed since it was saved: fit it
   // back inside the target display so the window never restores off-screen
@@ -245,6 +260,19 @@ export async function createWindow({
     },
   });
   const window = windowState.mainWindow;
+  // Adopt the surface synchronously, in the same step that created it. A
+  // refusal here (closed gate or a live occupant) destroys this window instead
+  // of rebinding the slot to a replacement.
+  let mainWindowSurface: SurfaceRetention;
+  try {
+    mainWindowSurface = surfaces.attach("main-window", "main-window", () =>
+      !window.isDestroyed(),
+    );
+  } catch (error) {
+    windowState.mainWindow = null;
+    window.destroy();
+    throw error;
+  }
   if (process.platform === "win32") {
     if (windows11NativeCorners) {
       await installWindows11CornerController(
@@ -594,7 +622,14 @@ export async function createWindow({
       // Keep a focused-window fallback if the host's Windows hook could not
       // be installed. The frameless shell has no system menu of its own.
       event.preventDefault();
-      void showPluginLauncher();
+      // The launcher refuses itself while the admission is closed for handoff
+      // or shutdown. That refusal is not a renderer failure and must not
+      // surface as an unhandled rejection from a keyboard chord.
+      void showPluginLauncher().catch((error) => {
+        logger.app("diagnostics", "warn", "plugin launcher refused", {
+          data: String(error),
+        });
+      });
       return;
     }
     if (input.type !== "keyDown" || !windowState.developerMode) return;
@@ -755,6 +790,19 @@ export async function createWindow({
     }
     reconcileWorkPanelDisplay();
   };
+  // Screen listeners are registrations this window owns. They are retained as
+  // concrete resources and released only where they are actually detached.
+  const displayListenerSurfaces = [
+    surfaces.retain("main-window.screen.display-metrics-changed", () =>
+      !window.isDestroyed(),
+    ),
+    surfaces.retain("main-window.screen.display-added", () =>
+      !window.isDestroyed(),
+    ),
+    surfaces.retain("main-window.screen.display-removed", () =>
+      !window.isDestroyed(),
+    ),
+  ];
   screen.on("display-metrics-changed", reconcileDisplayTopology);
   screen.on("display-added", reconcileDisplayTopology);
   screen.on("display-removed", reconcileDisplayTopology);
@@ -766,9 +814,11 @@ export async function createWindow({
     () => pluginViews.hideVisibleView(),
   );
   window.on("closed", () => {
+    mainWindowSurface.release();
     screen.removeListener("display-metrics-changed", reconcileDisplayTopology);
     screen.removeListener("display-added", reconcileDisplayTopology);
     screen.removeListener("display-removed", reconcileDisplayTopology);
+    for (const listener of displayListenerSurfaces) listener.release();
     if (nativeWorkPanelResize?.settleTimer) {
       clearTimeout(nativeWorkPanelResize.settleTimer);
     }
@@ -984,6 +1034,13 @@ export async function createWindow({
 
   // Persist last good user bounds so relaunch restores them.
   let saveTimer: NodeJS.Timeout | null = null;
+  // A pending debounced write is real work: it stays an operation until the
+  // write actually happens or the timer is cancelled without writing.
+  let stateSaveHold: SurfaceHold | null = null;
+  const releaseStateSaveHold = () => {
+    stateSaveHold?.release();
+    stateSaveHold = null;
+  };
   const persistNormalWindowState = () => {
     if (
       !isLiveWindow() ||
@@ -1028,9 +1085,11 @@ export async function createWindow({
   };
   const scheduleStateSave = () => {
     if (saveTimer) clearTimeout(saveTimer);
+    stateSaveHold ??= surfaces.hold();
     saveTimer = setTimeout(() => {
       saveTimer = null;
       persistNormalWindowState();
+      releaseStateSaveHold();
     }, 600);
   };
   window.on("resize", scheduleStateSave);
@@ -1041,6 +1100,7 @@ export async function createWindow({
       saveTimer = null;
     }
     persistNormalWindowState();
+    releaseStateSaveHold();
     // Windows/Linux close-behavior: "tray" hides the window and keeps the
     // app running under the tray icon, "ask" prompts on the first close,
     // and "quit" (plus macOS and explicit-quit closes) falls through to the
@@ -1140,6 +1200,7 @@ export async function createWindow({
       clearTimeout(saveTimer);
       saveTimer = null;
     }
+    releaseStateSaveHold();
     if (workPanelMoveSettleTimer) {
       clearTimeout(workPanelMoveSettleTimer);
       workPanelMoveSettleTimer = null;
@@ -2227,14 +2288,21 @@ export async function createWindow({
     }
   });
 
+  // The initial renderer load is part of the admitted creation: it stays a
+  // counted operation until the load actually settles, not until a caller
+  // stops waiting for `createWindow`.
   if (process.env.ELECTRON_RENDERER_URL) {
-    await window.loadURL(process.env.ELECTRON_RENDERER_URL);
+    await surfaceOperation.track(() =>
+      window.loadURL(process.env.ELECTRON_RENDERER_URL!),
+    );
     if (process.env.PI_DESKTOP_DEVTOOLS === "1") {
       window.webContents.openDevTools({ mode: "detach" });
     }
   } else {
-    await window.loadFile(
-      join(getModuleDirectory(import.meta.url), "../renderer/index.html"),
+    await surfaceOperation.track(() =>
+      window.loadFile(
+        join(getModuleDirectory(import.meta.url), "../renderer/index.html"),
+      ),
     );
   }
 }

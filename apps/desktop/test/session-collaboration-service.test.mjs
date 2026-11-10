@@ -63,12 +63,16 @@ function sessionMessage(overrides = {}) {
   };
 }
 
+/** One stable runtime identity, as `mainState.sidecar` is between restarts: a
+ * fresh object per read would describe a runtime this operation never saw. */
+const SIDECAR = {};
+
 function createService(overrides = {}) {
   const logs = [];
   const changes = [];
   const deps = {
     getHost: overrides.getHost ?? (() => overrides.host ?? null),
-    getSidecar: () => (overrides.sidecar === undefined ? {} : overrides.sidecar),
+    getSidecar: () => (overrides.sidecar === undefined ? SIDECAR : overrides.sidecar),
     getBridge: () => overrides.bridge ?? null,
     getActiveTurn: (sessionId) => (overrides.activeTurns ?? {})[sessionId],
     flushTranscript: overrides.flushTranscript ?? (async () => true),

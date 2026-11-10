@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { createServer as createProbeServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { register } from "node:module";
@@ -923,4 +924,153 @@ test("plugin-only session collaboration operations stay off the external MCP sur
     result: { ok: true, channel: "pi-desktop/app/getVersion" },
   });
   assert.deepEqual(calls.at(-1), { channel: "pi-desktop/app/getVersion", args: [] });
+});
+
+/** Observe an externally caused state change with a bounded poll. */
+async function eventually(predicate, label) {
+  for (let attempt = 0; attempt < 400; attempt += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  assert.fail(`condition was not reached: ${label}`);
+}
+
+/** Reserve then release a loopback port so the probe can prove it stays free. */
+async function reservePort() {
+  const probe = createProbeServer();
+  await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
+  const { port } = probe.address();
+  await new Promise((resolve) => probe.close(resolve));
+  return port;
+}
+
+test("a closed host admission refuses MCP requests before any tool effect", async (t) => {
+  const dataDir = mkdtempSync(join(tmpdir(), "pi-mcp-control-gate-"));
+  let closed = false;
+  const calls = [];
+  const events = [];
+  const server = new McpControlServer({
+    dataDir,
+    port: 0,
+    isAdmissionClosed: () => closed,
+    channels: fixtureChannels,
+    invoke: async (channel, args) => {
+      calls.push({ channel, args });
+      return { ok: true };
+    },
+    onOperationComplete: () => {
+      events.push("effect");
+    },
+  });
+  t.after(() => server.stop());
+  const info = await server.start();
+  const initialized = await post(info.url, info.token, {
+    jsonrpc: "2.0",
+    id: 1,
+    method: "initialize",
+    params: { protocolVersion: "2025-06-18" },
+  });
+  assert.equal(initialized.response.status, 200);
+  const sessionId = initialized.response.headers.get("mcp-session-id");
+
+  closed = true;
+  const refused = await post(
+    info.url,
+    info.token,
+    {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "tools/call",
+      params: { name: "pi_desktop_invoke", arguments: { operation: "app/getVersion", args: [] } },
+    },
+    { "Mcp-Session-Id": sessionId },
+  );
+  assert.equal(refused.response.status, 503);
+  assert.equal(refused.body.error.data.errorCode, "HOST_BUSY");
+  assert.deepEqual(calls, [], "no tool effect is attempted after closure");
+  assert.deepEqual(events, [], "no renderer post-effect runs after closure");
+  await eventually(
+    () => server.getHandoffActivity().operations === 0,
+    "the refused handler releases its operation",
+  );
+
+  // Origin and authentication keep their own contracts ahead of the gate.
+  const unauthorized = await fetch(info.url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 3, method: "tools/list" }),
+  });
+  assert.equal(unauthorized.status, 401);
+  const rejectedOrigin = await fetch(info.url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${info.token}`,
+      Origin: "https://attacker.example",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 4, method: "tools/list" }),
+  });
+  assert.equal(rejectedOrigin.status, 403);
+  const refusedInitialize = await post(info.url, info.token, {
+    jsonrpc: "2.0",
+    id: 5,
+    method: "initialize",
+    params: { protocolVersion: "2025-06-18" },
+  });
+  assert.equal(refusedInitialize.response.status, 503, "no new session starts after closure");
+
+  closed = false;
+  const allowed = await post(
+    info.url,
+    info.token,
+    {
+      jsonrpc: "2.0",
+      id: 6,
+      method: "tools/call",
+      params: { name: "pi_desktop_invoke", arguments: { operation: "app/getVersion", args: [] } },
+    },
+    { "Mcp-Session-Id": sessionId },
+  );
+  assert.equal(allowed.response.status, 200);
+  assert.equal(calls.length, 1, "ordinary requests resume when the host reopens admission");
+});
+
+test("a start refused by a closed admission closes its own listener and publishes nothing", async () => {
+  for (const [closedAt, stage] of [[2, "token"], [3, "listen"]]) {
+    let probes = 0;
+    const dataDir = mkdtempSync(join(tmpdir(), `pi-mcp-control-start-${stage}-`));
+    const port = await reservePort();
+    const server = new McpControlServer({
+      dataDir,
+      port,
+      isAdmissionClosed: () => {
+        probes += 1;
+        return probes >= closedAt;
+      },
+      channels: { appGetVersion: "pi-desktop/app/getVersion" },
+      invoke: async () => ({}),
+    });
+    await assert.rejects(
+      () => server.start(),
+      (error) => error.code === "HOST_BUSY",
+      `${stage}: the start is refused`,
+    );
+    const activity = server.getHandoffActivity();
+    assert.equal(activity.resources, 0, `${stage}: no listener is retained`);
+    assert.equal(activity.operations, 0, `${stage}: the start effect released`);
+    assert.equal(activity.uncontainedResources, 0, `${stage}: the created transport closed`);
+    await assert.rejects(
+      () => fetch(`http://127.0.0.1:${port}/mcp`, { method: "POST" }),
+      `${stage}: no listener survives the refused start`,
+    );
+    const manifest = join(dataDir, "mcp-control.json");
+    if (stage === "token") {
+      assert.equal(existsSync(manifest), false, "nothing is published before listen");
+    } else {
+      const record = JSON.parse(readFileSync(manifest, "utf8"));
+      assert.equal(record.active, false, "a bound attempt is withdrawn, never published active");
+      assert.equal(record.url, `http://127.0.0.1:${port}/mcp`);
+    }
+    await server.stop();
+  }
 });

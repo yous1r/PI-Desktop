@@ -39,6 +39,13 @@ import {
 } from "./update-cache";
 import { UpdateCacheMaintenance } from "./update-cache-maintenance";
 import {
+  UpdaterActivity,
+  type UpdaterHandoffActivity,
+  type UpdaterOwnerGuard,
+  type UpdaterScope,
+  type UpdaterStream,
+} from "./updater-activity";
+import {
   raceWithTimeout,
   UPDATE_CHECK_TIMEOUT_CODE,
 } from "./update-timeout";
@@ -107,11 +114,31 @@ export type UpdaterOptions = {
    * download cache out of the user cache directory. Empty keeps the default.
    */
   updateCacheDirOverride?: string | null;
+  /**
+   * The shared Desktop admission gate. Once it closes, no new check, download,
+   * cache pass, settings write or installer handoff may start; already admitted
+   * work keeps running and keeps reporting until it actually settles.
+   */
+  isAdmissionClosed?: () => boolean;
+  /**
+   * Captures the original Host/generation that admitted this work at an entry
+   * point. Late settings writes and renderer pushes revalidate it so a replaced
+   * Host never receives a previous generation's persistence.
+   */
+  captureOwner?: () => () => boolean;
+  /** Test seam for cache maintenance; Main composition keeps the real service. */
+  cacheMaintenance?: UpdateCacheMaintenancePort;
   /** Overrides for tests. */
   platform?: NodeJS.Platform;
   isPackaged?: boolean;
   distribution?: WindowsDistribution;
 };
+
+/** Cache filesystem passes the controller owns and reports. */
+export type UpdateCacheMaintenancePort = Pick<
+  UpdateCacheMaintenance,
+  "discardDownloadedInstaller" | "reclaimLegacyCache"
+>;
 
 export class AppUpdaterController {
   private readonly logger: Logger;
@@ -134,7 +161,11 @@ export class AppUpdaterController {
   private preferenceRevision = 0;
   private settingsReady: Promise<void> | null = null;
   private autoCheckStarted = false;
-  private disposed = false;
+  /** Admission, original-owner and activity accounting owned by this producer. */
+  private readonly activity: UpdaterActivity;
+  /** Bounds a reentrant check/download to one handoff of hidden work. */
+  private checkPending = false;
+  private downloadPending = false;
   private state: UpdateState;
   /** Version whose notice the user dismissed; cleared when a new one appears. */
   private dismissedVersion?: string;
@@ -146,6 +177,8 @@ export class AppUpdaterController {
   private initialTimer: NodeJS.Timeout | null = null;
   private intervalTimer: NodeJS.Timeout | null = null;
   private listenersAttached = false;
+  /** Removes only the listeners this controller registered on the shared emitter. */
+  private readonly listenerRemovals: Array<() => void> = [];
   /**
    * Set before a downloaded update is handed to the platform installer.
    *
@@ -155,7 +188,7 @@ export class AppUpdaterController {
    */
   private installRequested = false;
   private readonly autoUpdater: AppUpdater;
-  private readonly cacheMaintenance: UpdateCacheMaintenance;
+  private readonly cacheMaintenance: UpdateCacheMaintenancePort;
 
   private readPackagedDistribution(
     isPackaged: boolean,
@@ -187,6 +220,11 @@ export class AppUpdaterController {
   constructor(options: UpdaterOptions) {
     this.logger = options.logger;
     this.send = options.send;
+    this.activity = new UpdaterActivity({
+      logger: this.logger,
+      isAdmissionClosed: options.isAdmissionClosed,
+      captureOwner: options.captureOwner,
+    });
     this.getLocale = options.getLocale ?? (() => "en");
     const platform = options.platform ?? process.platform;
     const isPackaged = options.isPackaged ?? app.isPackaged;
@@ -247,12 +285,14 @@ export class AppUpdaterController {
       );
     }
     this.autoUpdater = options.autoUpdater ?? relocated ?? autoUpdater;
-    this.cacheMaintenance = new UpdateCacheMaintenance({
-      resourcesPath: process.resourcesPath,
-      activeBasePath,
-      legacyBasePath,
-      logger: this.logger,
-    });
+    this.cacheMaintenance =
+      options.cacheMaintenance ??
+      new UpdateCacheMaintenance({
+        resourcesPath: process.resourcesPath,
+        activeBasePath,
+        legacyBasePath,
+        logger: this.logger,
+      });
     this.state = {
       mode,
       preference: this.preference,
@@ -272,17 +312,27 @@ export class AppUpdaterController {
     return formatChangelogNotes(version, this.getLocale());
   }
 
-  private ensureSettingsLoaded(): Promise<void> {
-    if (this.settingsReady) return this.settingsReady;
+  /**
+   * Loads stored update settings once. The read is counted to settlement and its
+   * result is applied only while the entry that started it still owns the work;
+   * a read admitted by a replaced owner is discarded so its successor re-reads.
+   */
+  private loadSettings(scope: UpdaterScope): Promise<void> {
     const preferenceRevision = this.preferenceRevision;
-    this.settingsReady = (async () => {
-      if (!this.readUpdateSettings) {
-        this.applyPreference(this.preference, false);
+    return (async () => {
+      const readSettings = this.readUpdateSettings;
+      if (!readSettings) {
+        this.applyPreference(this.preference, false, scope);
         return;
       }
       try {
-        const settings = await this.readUpdateSettings();
-        if (this.disposed) return;
+        // Counted to settlement: a caller that stops waiting keeps this visible.
+        const settings = await scope.track(() => readSettings());
+        if (!scope.current()) {
+          // The replacement owner must not inherit this read as its own state.
+          this.settingsReady = null;
+          return;
+        }
         const lastNotifiedVersion = settings.lastNotifiedUpdateVersion;
         if (
           typeof lastNotifiedVersion === "string" &&
@@ -299,7 +349,7 @@ export class AppUpdaterController {
         ) {
           this.dismissedVersion = dismissedVersion;
           if (this.state.availableVersion === dismissedVersion) {
-            this.setState({ dismissed: true });
+            this.setState({ dismissed: true }, scope.owner);
           }
         }
         const preference = resolveStoredUpdatePreference(
@@ -307,35 +357,83 @@ export class AppUpdaterController {
           this.defaultPreference,
         );
         if (preferenceRevision === this.preferenceRevision) {
-          this.applyPreference(preference, false);
+          this.applyPreference(preference, false, scope);
         }
       } catch (error) {
         this.logger.app("updater", "warn", "update preferences unavailable", {
           data: { detail: String(error) },
         });
+        if (!scope.current()) {
+          this.settingsReady = null;
+          return;
+        }
         if (preferenceRevision === this.preferenceRevision) {
-          this.applyPreference("manual", false);
+          this.applyPreference("manual", false, scope);
         }
       }
     })();
-    return this.settingsReady;
   }
 
-  private manualReminderFor(version: string): boolean {
-    const decision = this.manualReminderTracker.observe(version);
-    if (decision.persist && this.persistLastNotifiedVersion) {
-      void this.persistLastNotifiedVersion(version).catch((error) => {
-        this.logger.app("updater", "warn", "manual update reminder persistence failed", {
-          data: { detail: String(error), version },
-        });
-      });
+  private async ensureSettingsLoaded(scope: UpdaterScope): Promise<void> {
+    // A discarded result leaves `settingsReady` null, so a live entry retries
+    // once with its own scope and reads the settings of the owner it belongs to.
+    // A replaced entry reads nothing at all.
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      if (!scope.current()) return;
+      const ready =
+        this.settingsReady ?? (this.settingsReady = this.loadSettings(scope));
+      await ready;
+      if (this.settingsReady !== null) return;
     }
+  }
+
+  private manualReminderFor(
+    version: string,
+    owner: UpdaterOwnerGuard | null,
+  ): boolean {
+    // An unattributable event must not consume the reminder decision for a
+    // version this owner cannot prove it discovered.
+    if (owner === null) {
+      this.activity.refuse("manual update reminder", "unattributed");
+      return false;
+    }
+    const decision = this.manualReminderTracker.observe(version);
+    if (decision.persist) this.persistLastNotified(version, owner);
     return decision.show;
+  }
+
+  /** Reminder bookkeeping is a settings write: gated, attributed and counted. */
+  private persistLastNotified(
+    version: string,
+    owner: UpdaterOwnerGuard | null,
+  ): void {
+    const persist = this.persistLastNotifiedVersion;
+    if (!persist) return;
+    if (!this.activity.canPersist(owner)) {
+      this.activity.refuse(
+        "update reminder persistence",
+        owner ? "closed" : "unattributed",
+      );
+      return;
+    }
+    void this.activity
+      .track(async () => {
+        // Revalidated at the write: nothing admitted here crosses a replacement.
+        if (!this.activity.canPersist(owner)) {
+          this.activity.refuse("update reminder persistence", "replaced");
+          return;
+        }
+        await persist(version);
+      })
+      .catch((error: unknown) =>
+        this.activity.lateFailure("update reminder persistence", error),
+      );
   }
 
   private applyPreference(
     preference: UpdatePreference,
     checkImmediately: boolean,
+    scope: UpdaterScope,
   ): void {
     const previousMode = this.state.mode;
     const effectivePreference = resolveEffectiveUpdatePreference(
@@ -355,8 +453,11 @@ export class AppUpdaterController {
     const dismissed =
       this.state.availableVersion !== undefined &&
       this.dismissedVersion === this.state.availableVersion;
-    this.autoUpdater.autoDownload = mode === "in-app" && !dismissed;
-    this.autoUpdater.autoInstallOnAppQuit = mode === "in-app" && !dismissed;
+    // A latched deferred effect: after disposal it must never re-enable the
+    // installer electron-updater runs on quit.
+    const latched = !this.activity.sealed();
+    this.autoUpdater.autoDownload = mode === "in-app" && !dismissed && latched;
+    this.autoUpdater.autoInstallOnAppQuit = mode === "in-app" && !dismissed && latched;
     if (!preferenceChanged) return;
 
     const patch: Partial<UpdateState> = {
@@ -375,23 +476,28 @@ export class AppUpdaterController {
       if (this.state.availableVersion) {
         patch.manualReminder = this.manualReminderFor(
           this.state.availableVersion,
+          scope.owner,
         );
       }
     }
-    this.setState(patch);
+    this.setState(patch, scope.owner);
     if (
       checkImmediately &&
       previousMode === "manual" &&
       mode === "in-app"
     ) {
-      void this.check().catch(() => undefined);
+      // The user action that changed the preference owns the check it triggers.
+      void this.runCheck(scope, {}).catch((error: unknown) =>
+        this.activity.noteFailure("preference update check", error),
+      );
     }
   }
 
   setPreference(preference: UpdatePreference): void {
     if (preference !== "automatic" && preference !== "manual") return;
+    const scope = this.activity.begin("update preference");
     this.preferenceRevision += 1;
-    this.applyPreference(preference, true);
+    this.applyPreference(preference, true, scope);
   }
 
   /**
@@ -400,6 +506,10 @@ export class AppUpdaterController {
    * the pushed `dismissed` flag, so the decision survives restarts.
    */
   async dismiss(): Promise<void> {
+    const scope = this.activity.begin("dismiss update");
+    // The decision itself is the fresh effect (a settings write); refuse it
+    // rather than record a dismissal the original owner can no longer persist.
+    scope.assertFresh();
     const version = this.state.availableVersion;
     if (!version) return;
     this.dismissedVersion = version;
@@ -407,35 +517,59 @@ export class AppUpdaterController {
       this.autoUpdater.autoDownload = false;
       this.autoUpdater.autoInstallOnAppQuit = false;
     }
-    this.setState({
-      status:
-        this.state.status === "downloading" || this.state.status === "downloaded"
-          ? "available"
-          : this.state.status,
-      progressPercent: undefined,
-      dismissed: true,
-    });
+    this.setState(
+      {
+        status:
+          this.state.status === "downloading" ||
+          this.state.status === "downloaded"
+            ? "available"
+            : this.state.status,
+        progressPercent: undefined,
+        dismissed: true,
+      },
+      scope.owner,
+    );
     if (this.activeDownloadCancellation?.version === version) {
       this.activeDownloadCancellation.cancel();
       this.activeDownloadCancellation = undefined;
     }
-    await this.persistDismissedVersionInOrder(version);
+    await this.persistDismissedVersionInOrder(scope.owner, version);
   }
 
-  private persistDismissedVersionInOrder(version: string | null): Promise<void> {
-    if (!this.persistDismissedVersion) return Promise.resolve();
-    const write = this.dismissedVersionPersistence.then(() =>
-      this.persistDismissedVersion?.(version),
-    );
-    this.dismissedVersionPersistence = write.catch((error: unknown) => {
-      this.logger.app("updater", "warn", "update dismissal persistence failed", {
-        data: { detail: String(error), version },
-      });
+  private persistDismissedVersionInOrder(
+    owner: UpdaterOwnerGuard | null,
+    version: string | null,
+  ): Promise<void> {
+    const persist = this.persistDismissedVersion;
+    if (!persist) return Promise.resolve();
+    if (!this.activity.canPersist(owner)) {
+      this.activity.refuse(
+        "update dismissal persistence",
+        owner ? "closed" : "unattributed",
+      );
+      return Promise.resolve();
+    }
+    // The head is read now so the chain below never awaits itself. The count
+    // starts at enqueue, not when the queue finally reaches this write, so a
+    // queued write stays visible for its whole life.
+    const head = this.dismissedVersionPersistence;
+    const queued = this.activity.track(async () => {
+      await head;
+      // Revalidated at execution: the original owner may be gone by now.
+      if (!this.activity.canPersist(owner)) {
+        this.activity.refuse("update dismissal persistence", "replaced");
+        return;
+      }
+      await persist(version);
+    });
+    this.dismissedVersionPersistence = queued.catch((error: unknown) => {
+      this.activity.lateFailure("update dismissal persistence", error);
     });
     return this.dismissedVersionPersistence;
   }
 
   private trackAutomaticDownload(
+    scope: UpdaterScope,
     result: Awaited<ReturnType<AppUpdater["checkForUpdates"]>>,
   ): void {
     const downloadPromise = result?.downloadPromise;
@@ -445,9 +579,17 @@ export class AppUpdaterController {
       version: result.updateInfo.version,
       cancel: () => cancellationToken.cancel(),
     };
-    // electron-updater emits `error` or `update-cancelled` before rejecting
-    // this promise. The event handlers own diagnostics and state transitions.
-    void downloadPromise.catch(() => undefined);
+    // The download belongs to the check that started it, so its events keep that
+    // operation's original owner; a later entry cannot adopt it.
+    const stream = this.activity.openStream(scope.owner);
+    // Counted until it really settles: a dismissal, a timeout or a dispose never
+    // releases it.
+    void scope
+      .track(() => downloadPromise)
+      .catch((error: unknown) =>
+        this.activity.lateFailure("update download", error),
+      )
+      .finally(() => stream.close());
     if (this.dismissedVersion === result.updateInfo.version) {
       cancellationToken.cancel();
     }
@@ -486,94 +628,180 @@ export class AppUpdaterController {
           data: { detail: String(m) },
         }),
     };
-
-    this.autoUpdater.on("checking-for-update", () => {
-      this.setState({ status: "checking", error: undefined });
-    });
-    this.autoUpdater.on("update-available", (info: UpdateInfo) => {
+    const onCheckingForUpdate = (): void => {
+      this.setState(
+        { status: "checking", error: undefined },
+        this.activity.eventOwner(),
+      );
+    };
+    const onUpdateAvailable = (info: UpdateInfo): void => {
+      // electron-updater is a shared emitter: the event belongs to the live
+      // transport that produced it, and `null` means two transports overlap.
+      const owner = this.activity.eventOwner();
       // A newly discovered version supersedes any earlier dismissal.
       if (this.dismissedVersion && this.dismissedVersion !== info.version) {
         this.dismissedVersion = undefined;
-        void this.persistDismissedVersionInOrder(null);
+        void this.persistDismissedVersionInOrder(owner, null);
       }
       const dismissed = this.dismissedVersion === info.version;
-      const automatic = this.state.mode === "in-app" && !dismissed;
+      // An unattributable event never enables a deferred installer, never claims
+      // a download this owner cannot prove it started, and never pushes state.
+      const automatic =
+        owner !== null && this.state.mode === "in-app" && !dismissed;
       this.autoUpdater.autoDownload = automatic;
       this.autoUpdater.autoInstallOnAppQuit = automatic;
-      this.setState({
-        status: automatic ? "downloading" : "available",
-        availableVersion: info.version,
-        releaseNotes: this.notesFor(info.version),
-        progressPercent: automatic ? 0 : undefined,
-        dismissed,
-        manualReminder: automatic
-          ? false
-          : this.manualReminderFor(info.version),
-      });
-    });
-    this.autoUpdater.on("update-not-available", () => {
-      this.setState({
-        status: "up-to-date",
-        availableVersion: undefined,
-        releaseNotes: undefined,
-        progressPercent: undefined,
-        manualReminder: false,
-      });
+      this.setState(
+        {
+          status: automatic ? "downloading" : "available",
+          availableVersion: info.version,
+          releaseNotes: this.notesFor(info.version),
+          progressPercent: automatic ? 0 : undefined,
+          dismissed,
+          manualReminder: automatic
+            ? false
+            : this.manualReminderFor(info.version, owner),
+        },
+        owner,
+      );
+    };
+    const onUpdateNotAvailable = (): void => {
+      const owner = this.activity.eventOwner();
+      this.setState(
+        {
+          status: "up-to-date",
+          availableVersion: undefined,
+          releaseNotes: undefined,
+          progressPercent: undefined,
+          manualReminder: false,
+        },
+        owner,
+      );
       // In-app installs have no newer staged installer after the feed reports
       // current. Keep the differential baselines for the next update. Manual
       // delivery modes may share a cache with an installed NSIS copy.
       if (this.state.mode === "in-app") {
-        void this.cacheMaintenance.discardDownloadedInstaller();
+        void this.discardDownloadedInstaller(owner);
       }
-    });
-    this.autoUpdater.on("download-progress", (progress: ProgressInfo) => {
+    };
+    const onDownloadProgress = (progress: ProgressInfo): void => {
+      const owner = this.activity.eventOwner();
+      // A progress event from an unattributable transport claims nothing.
+      if (owner === null) return;
       if (this.state.mode !== "in-app") return;
       if (this.dismissedVersion === this.state.availableVersion) return;
-      this.setState({
-        status: "downloading",
-        // Preserve notes already attached when discovery advanced to download.
-        releaseNotes:
-          this.state.releaseNotes ?? this.notesFor(this.state.availableVersion),
-        progressPercent: Math.round(progress.percent),
-      });
-    });
-    this.autoUpdater.on("update-downloaded", (info: UpdateInfo) => {
+      this.setState(
+        {
+          status: "downloading",
+          // Preserve notes already attached when discovery advanced to download.
+          releaseNotes:
+            this.state.releaseNotes ??
+            this.notesFor(this.state.availableVersion),
+          progressPercent: Math.round(progress.percent),
+        },
+        owner,
+      );
+    };
+    const onUpdateDownloaded = (info: UpdateInfo): void => {
+      const owner = this.activity.eventOwner();
       const dismissed = this.dismissedVersion === info.version;
-      const automatic = this.state.mode === "in-app" && !dismissed;
+      const automatic =
+        owner !== null && this.state.mode === "in-app" && !dismissed;
       this.activeDownloadCancellation = undefined;
       this.autoUpdater.autoInstallOnAppQuit = automatic;
-      this.setState({
-        status: automatic ? "downloaded" : "available",
-        availableVersion: info.version,
-        releaseNotes: this.notesFor(info.version),
-        progressPercent: automatic ? 100 : undefined,
-        dismissed,
-        manualReminder: automatic
-          ? false
-          : this.manualReminderFor(info.version),
-      });
-    });
-    this.autoUpdater.on("update-cancelled", (info: UpdateInfo) => {
+      this.setState(
+        {
+          status: automatic ? "downloaded" : "available",
+          availableVersion: info.version,
+          releaseNotes: this.notesFor(info.version),
+          progressPercent: automatic ? 100 : undefined,
+          dismissed,
+          manualReminder: automatic
+            ? false
+            : this.manualReminderFor(info.version, owner),
+        },
+        owner,
+      );
+    };
+    const onUpdateCancelled = (info: UpdateInfo): void => {
+      const owner = this.activity.eventOwner();
       if (this.activeDownloadCancellation?.version === info.version) {
         this.activeDownloadCancellation = undefined;
       }
       if (this.dismissedVersion !== info.version) return;
-      this.setState({
-        status: "available",
-        progressPercent: undefined,
-        dismissed: true,
-      });
-    });
-    this.autoUpdater.on("error", (error: Error) => {
+      this.setState(
+        {
+          status: "available",
+          progressPercent: undefined,
+          dismissed: true,
+        },
+        owner,
+      );
+    };
+    const onUpdaterError = (error: Error): void => {
       // Auto checks fail quietly (offline, private repo, rate limits);
       // the renderer only surfaces errors when `manual` is set.
       this.logger.app("updater", "warn", "updater error", { data: String(error) });
-      this.setState({ status: "error", error: error.message });
-    });
+      this.setState(
+        { status: "error", error: error.message },
+        this.activity.eventOwner(),
+      );
+    };
+    this.autoUpdater.on("checking-for-update", onCheckingForUpdate);
+    this.autoUpdater.on("update-available", onUpdateAvailable);
+    this.autoUpdater.on("update-not-available", onUpdateNotAvailable);
+    this.autoUpdater.on("download-progress", onDownloadProgress);
+    this.autoUpdater.on("update-downloaded", onUpdateDownloaded);
+    this.autoUpdater.on("update-cancelled", onUpdateCancelled);
+    this.autoUpdater.on("error", onUpdaterError);
+    // Only these registrations belong to this controller; a shared emitter may
+    // carry third-party listeners that disposal must never remove.
+    this.listenerRemovals.push(
+      () => this.autoUpdater.removeListener("checking-for-update", onCheckingForUpdate),
+      () => this.autoUpdater.removeListener("update-available", onUpdateAvailable),
+      () => this.autoUpdater.removeListener("update-not-available", onUpdateNotAvailable),
+      () => this.autoUpdater.removeListener("download-progress", onDownloadProgress),
+      () => this.autoUpdater.removeListener("update-downloaded", onUpdateDownloaded),
+      () => this.autoUpdater.removeListener("update-cancelled", onUpdateCancelled),
+      () => this.autoUpdater.removeListener("error", onUpdaterError),
+    );
   }
 
-  private setState(patch: Partial<UpdateState>) {
+  /** Removes exactly the listeners registered by `attachListeners()`. */
+  private detachListeners(): void {
+    if (!this.listenersAttached) return;
+    this.listenersAttached = false;
+    for (const remove of this.listenerRemovals.splice(0)) remove();
+  }
+
+  /** Detached cache pass: attributed, gated, skipped after closure, counted. */
+  private discardDownloadedInstaller(
+    owner: UpdaterOwnerGuard | null,
+  ): Promise<void> {
+    if (!this.activity.canPersist(owner)) {
+      this.activity.refuse(
+        "update cache discard",
+        owner ? "closed" : "unattributed",
+      );
+      return Promise.resolve();
+    }
+    return this.activity
+      .track(() => this.cacheMaintenance.discardDownloadedInstaller())
+      .catch((error: unknown) => {
+        this.activity.lateFailure("update cache discard", error);
+      });
+  }
+
+  /**
+   * Applies a state patch and pushes it only to the owner that produced it.
+   * Read-only pushes cross a temporary admission inspection, but never a sealed
+   * owner, a replaced origin, or an unattributable (ambiguous) event.
+   */
+  private setState(
+    patch: Partial<UpdateState>,
+    owner: UpdaterOwnerGuard | null,
+  ) {
     this.state = { ...this.state, ...patch, manual: this.manualRequested };
+    if (!this.activity.canPublish(owner)) return;
     this.send(IPC.event.updatesState, this.state);
   }
 
@@ -589,13 +817,27 @@ export class AppUpdaterController {
     if (!this.state.availableVersion) return this.state;
     const next = this.notesFor(this.state.availableVersion);
     if (next === this.state.releaseNotes) return this.state;
-    this.setState({ releaseNotes: next });
+    // A locale refresh is a read-only push for whichever owner asks for it.
+    this.setState({ releaseNotes: next }, this.activity.captureOwnerNow());
     return this.state;
   }
 
   /** User- or schedule-triggered check. Resolves with the settled state. */
   async check(options: { manual?: boolean } = {}): Promise<UpdateState> {
-    await this.ensureSettingsLoaded();
+    return this.runCheck(this.activity.begin("update check"), options);
+  }
+
+  /**
+   * One check entry with an immutable attribution. The settings read and the
+   * transport handoff are both revalidated against that same original owner, so
+   * a replacement that appears during an await is refused rather than served.
+   */
+  private async runCheck(
+    scope: UpdaterScope,
+    options: { manual?: boolean },
+  ): Promise<UpdateState> {
+    scope.assertFresh();
+    await this.ensureSettingsLoaded(scope);
     if (this.state.mode === "disabled") {
       throw new Error("updates are disabled in development builds");
     }
@@ -606,26 +848,50 @@ export class AppUpdaterController {
     ) {
       return this.state;
     }
+    // A reentrant caller in the same tick would otherwise hand the same hidden
+    // work to electron-updater twice; only one handoff may start.
+    if (this.checkPending) return this.state;
+    // The settings wait above may have crossed a replacement: refuse the
+    // handoff and leave the replacement to its own entry.
+    scope.assertFresh();
     this.manualRequested = Boolean(options.manual);
     const timeoutMs = this.manualRequested
       ? MANUAL_CHECK_TIMEOUT_MS
       : AUTO_CHECK_TIMEOUT_MS;
+    this.checkPending = true;
+    let stream: UpdaterStream | null = null;
+    let handedOff = false;
+    const closeStream = (): void => stream?.close();
     try {
       // Fire-and-forget relative to boot: callers must not await this from the
       // first-window path. The race only bounds *our* wait; electron-updater
-      // may still finish later and emit available/up-to-date.
-      const checkPromise = this.autoUpdater.checkForUpdates();
-      void checkPromise.then(
-        (result) => this.trackAutomaticDownload(result),
-        () => undefined,
+      // may still finish later and emit available/up-to-date. The counted
+      // operation is the real check, so a timed-out wait keeps it visible.
+      stream = this.activity.openStream(scope.owner);
+      const checkPromise = scope.attemptNative(() =>
+        this.autoUpdater.checkForUpdates(),
       );
+      handedOff = true;
+      void checkPromise
+        .then(
+          (result) => this.trackAutomaticDownload(scope, result),
+          (error: unknown) => this.activity.lateFailure("update check", error),
+        )
+        .finally(closeStream);
       await raceWithTimeout(checkPromise, timeoutMs, "update check");
     } catch (error) {
+      // A bounded wait that expired leaves the transport running: only its own
+      // settlement may close the attribution, so a straggler cannot silently
+      // adopt a later entry's owner.
+      if (!handedOff) closeStream();
       const timedOut =
         (error as { code?: unknown } | null)?.code === UPDATE_CHECK_TIMEOUT_CODE;
       if (timedOut) {
         if (this.manualRequested) {
-          this.setState({ status: "error", error: "update check timed out" });
+          this.setState(
+            { status: "error", error: "update check timed out" },
+            scope.owner,
+          );
           throw error;
         }
         // Auto checks fail quietly. Drop "checking" so a 60s GitHub hang
@@ -634,13 +900,16 @@ export class AppUpdaterController {
         // away from "checking", but the checking-for-update listener can set
         // it during the awaited race.
         if (this.getState().status === "checking") {
-          this.setState({ status: "idle", error: undefined });
+          this.setState({ status: "idle", error: undefined }, scope.owner);
         }
         return this.state;
       }
-      // The 'error' listener already recorded state; rethrow for manual
-      // callers so the invoke rejects and the UI can toast it.
+      // A refused handoff stays diagnosable and must never be reported as a
+      // quiet success; the 'error' listener already recorded real failures.
+      this.activity.noteFailure("update check", error);
       if (options.manual) throw error;
+    } finally {
+      this.checkPending = false;
     }
     return this.state;
   }
@@ -650,11 +919,31 @@ export class AppUpdaterController {
     if (this.state.mode !== "in-app") {
       throw new Error("in-app download is not supported on this install");
     }
-    if (this.state.status === "downloading" || this.state.status === "downloaded") {
+    if (
+      this.downloadPending ||
+      this.state.status === "downloading" ||
+      this.state.status === "downloaded"
+    ) {
       return this.state;
     }
-    await this.autoUpdater.downloadUpdate();
-    return this.state;
+    const scope = this.activity.begin("update download");
+    scope.assertFresh();
+    this.downloadPending = true;
+    let stream: UpdaterStream | null = null;
+    try {
+      stream = this.activity.openStream(scope.owner);
+      const started = scope.attemptNative(() =>
+        this.autoUpdater.downloadUpdate(),
+      );
+      await started.finally(() => stream?.close());
+      return this.state;
+    } catch (error) {
+      stream?.close();
+      this.activity.noteFailure("update download", error);
+      throw error;
+    } finally {
+      this.downloadPending = false;
+    }
   }
 
   /**
@@ -673,48 +962,123 @@ export class AppUpdaterController {
     if (this.state.mode !== "in-app" || this.state.status !== "downloaded") {
       throw new Error("no downloaded update to install");
     }
+    const scope = this.activity.begin("install update");
+    // IPC already admitted the caller, but the installer is spawned from this
+    // entry, so a closed gate or a replaced original must refuse here before
+    // any latch is set. The latch stays clear for the shutdown handler.
+    scope.assertFresh();
     // Marked before the call: quitAndInstall spawns the installer itself, so
     // the shutdown handler must already know this quit is the update restart.
     this.installRequested = true;
-    // Fires 'before-quit' first, so host/sidecar shutdown still runs.
-    this.autoUpdater.quitAndInstall(false, true);
+    // Fires 'before-quit' first, so host/sidecar shutdown still runs. The
+    // spawned installer never reports exit: the attempt stays uncontained.
+    scope.attemptNativeEffect(() =>
+      this.autoUpdater.quitAndInstall(false, true),
+    );
   }
+
   /** Adopt legacy NSIS cache files before the first update check. */
   reclaimRelocatedUpdateCache(): Promise<void> {
     if (this.state.mode === "disabled") return Promise.resolve();
-    return this.cacheMaintenance.reclaimLegacyCache();
+    const scope = this.activity.begin("update cache reclaim");
+    if (!scope.current()) {
+      // Boot wiring chains `.finally()` only; refuse without rejecting.
+      this.activity.refuse(
+        "update cache reclaim",
+        this.activity.gateClosed() ? "closed" : "replaced",
+      );
+      return Promise.resolve();
+    }
+    return scope
+      .track(() => this.cacheMaintenance.reclaimLegacyCache())
+      .catch((error: unknown) => {
+        this.activity.lateFailure("update cache reclaim", error);
+      });
   }
 
   async openReleases(): Promise<void> {
+    const scope = this.activity.begin("open update releases");
     const url = parseAllowedExternalUrl(RELEASES_URL);
     if (!url) throw new Error("DISALLOWED_EXTERNAL_URL");
-    await shell.openExternal(url);
+    // The system browser is a real external launch: gated against this entry's
+    // original owner, counted for the awaited call, and reported as uncontained
+    // because that process never reports its exit. It is never killed.
+    await scope.attemptNative(() => shell.openExternal(url));
   }
 
   /**
    * Schedule background GitHub feed checks. Never await this from boot: the
    * first check is delayed and time-bounded so a hung feed cannot block the
    * first window or pin the updater on `checking`.
+   *
+   * The timers stay contained: `dispose()` clears them, and each tick is its own
+   * entry that refuses before any transport or filesystem effect once the gate
+   * closes or its captured owner is replaced. A retained timer is therefore
+   * reported through no counter.
    */
   startAutoCheck() {
     if (this.autoCheckStarted || this.state.mode === "disabled") return;
+    const scope = this.activity.begin("automatic update checks");
+    if (!scope.current()) {
+      this.activity.refuse(
+        "automatic update checks",
+        this.activity.gateClosed() ? "closed" : "replaced",
+      );
+      return;
+    }
     this.autoCheckStarted = true;
-    void this.ensureSettingsLoaded().then(() => {
-      if (this.disposed || this.state.mode === "disabled") return;
-      this.initialTimer = setTimeout(() => {
-        void this.check().catch(() => undefined);
-      }, AUTO_CHECK_INITIAL_DELAY_MS);
-      this.intervalTimer = setInterval(() => {
-        void this.check().catch(() => undefined);
-      }, AUTO_CHECK_INTERVAL_MS);
-    });
+    void this.ensureSettingsLoaded(scope).then(
+      () => {
+        if (this.activity.sealed() || this.state.mode === "disabled") return;
+        this.initialTimer = setTimeout(() => {
+          void this.check().catch((error: unknown) =>
+            this.activity.noteFailure("automatic update check", error),
+          );
+        }, AUTO_CHECK_INITIAL_DELAY_MS);
+        this.intervalTimer = setInterval(() => {
+          void this.check().catch((error: unknown) =>
+            this.activity.noteFailure("automatic update check", error),
+          );
+        }, AUTO_CHECK_INTERVAL_MS);
+      },
+      (error: unknown) =>
+        this.activity.noteFailure("automatic update checks", error),
+    );
+  }
+
+  /**
+   * Synchronous, side-effect-free activity for the Desktop handoff inventory.
+   *
+   * Unsettled work stays counted after disposal, so this never claims that a
+   * sealed owner released a check, download, cache pass or installer handoff.
+   */
+  getHandoffActivity(): UpdaterHandoffActivity {
+    return this.activity.snapshot(this.installRequested ? 1 : 0);
   }
 
   dispose() {
-    this.disposed = true;
+    // Seal first: timers, listeners and late continuations must not start work
+    // from here on. Settled counters are not rewritten.
+    this.activity.seal();
     if (this.initialTimer) clearTimeout(this.initialTimer);
     if (this.intervalTimer) clearInterval(this.intervalTimer);
     this.initialTimer = null;
     this.intervalTimer = null;
+    // Cancel the download this controller owns; the token only exists for
+    // downloads electron-updater started from a check. Its settlement stays
+    // counted until the real promise reports it.
+    const cancellation = this.activeDownloadCancellation;
+    this.activeDownloadCancellation = undefined;
+    if (cancellation) {
+      try {
+        cancellation.cancel();
+      } catch (error) {
+        this.activity.lateFailure("update download cancellation", error);
+      }
+    }
+    this.detachListeners();
+    this.logger.app("updater", "info", "updater sealed; unsettled work retained", {
+      data: this.getHandoffActivity(),
+    });
   }
 }

@@ -1,5 +1,17 @@
 # Unreleased changes
 
+- Track original model-catalog file and network loading through actual response
+  settlement. Shared admission prevents fresh loads while closed; disposal
+  suppresses late snapshots and retains pending/uncertain resources in Desktop
+  handoff inventory. Ordinary cached lookups and memory-only refresh remain intact.
+- Bind updater, vendor-account OAuth, personal todos and Worker dispatch to their
+  original Host/runtime across waits. Shared handoff admission blocks new effects;
+  cancellation, timeout and disposal retain unfinished work. Busy Worker delivery
+  stays retryable and todo retries preserve their original mutation identity.
+- Include retained inbound MCP instances and concrete Electron surfaces/listeners
+  in the required Desktop inventory. Preserve launcher prewarm/reuse and refuse
+  OAuth discovery fallbacks after admission/owner loss. Native qualification gaps
+  remain explicit; these adapters do not enable complete source transfer.
 - Preserve sequential private handoff exchanges when Rust sends the next
   notification before the preceding completion acknowledgement. Desktop retains
   one validated successor during acknowledgement only, preserves its deadline

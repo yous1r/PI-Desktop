@@ -7,11 +7,18 @@ import type { AgentSidecar } from "../agent-sidecar";
 import type { RemoteHostsBoot } from "../bootstrap/remote-hosts";
 import type { BrowserHost } from "../browser-host";
 import type { McpOAuthManager } from "../mcp-oauth";
+import type { McpControlServer } from "../mcp-control";
+import type { ModelsDevCatalog } from "../models-dev-catalog";
+import type { VendorOAuth } from "../oauth";
+import type { PersonalTodosRuntime } from "../personal-todos/runtime";
+import type { createSessionCollaborationService } from "../services/session-collaboration";
+import type { SurfaceActivityOwner } from "../surface-activity";
 import type { PersistenceOutbox } from "../persistence-outbox";
 import type { PluginRuntime } from "../plugin-runtime";
 import type { SpeechService } from "../services/speech-service";
 import type { WorkspaceTerminalRegistry } from "../terminal/workspace-terminal-registry";
 import type { UserMcpRuntime } from "../user-mcp";
+import type { AppUpdaterController } from "../updater";
 import type { DesktopBackendOwner } from "./backend-owner";
 import type { createEventPersistence } from "./event-persistence";
 import type { DesktopHandoffAdmission } from "./handoff-admission";
@@ -44,6 +51,13 @@ export type DesktopHandoffSources = {
   userMcp: ActivityOwner<UserMcpRuntime>;
   mcpOAuth: ActivityOwner<McpOAuthManager>;
   speech: ActivityOwner<SpeechService>;
+  modelCatalog: ActivityOwner<ModelsDevCatalog>;
+  updater: ActivityOwner<AppUpdaterController>;
+  mcpControl: ActivityOwner<McpControlServer>;
+  vendorOAuth: ActivityOwner<VendorOAuth>;
+  personalTodos: ActivityOwner<PersonalTodosRuntime>;
+  collaboration: ActivityOwner<ReturnType<typeof createSessionCollaborationService>>;
+  surfaces: ActivityOwner<SurfaceActivityOwner>;
 };
 
 /** These are actual uncovered producers, not caller-supplied qualification flags.
@@ -58,7 +72,7 @@ export const DESKTOP_HANDOFF_UNQUALIFIED_SOURCES = Object.freeze([
 ] as const);
 
 const sourceKeys = ["backends", "admission", "agentHost", "plans", "modes", "coordination", "events", "outbox", "checkpointer",
-  "scheduler", "scheduledRuns", "activeTurns", "activeTools", "plugins", "remote", "browser", "terminals", "userMcp", "mcpOAuth", "speech"] as const;
+  "scheduler", "scheduledRuns", "activeTurns", "activeTools", "plugins", "remote", "browser", "terminals", "userMcp", "mcpOAuth", "speech", "modelCatalog", "updater", "mcpControl", "vendorOAuth", "personalTodos", "collaboration", "surfaces"] as const;
 const externalKeys = ["operations", "resources", "uncontainedResources"] as const;
 const writesKeys = ["writes", "uncontainedResources"] as const;
 function failure(errorCode: string, source?: string): Error {
@@ -170,6 +184,13 @@ export async function inspectDesktopHandoff(current: () => DesktopHandoffSources
     const userMcp = report("userMcp", () => sources.userMcp.getHandoffActivity(), ["mcp", "uncontainedResources"]);
     const oauth = report("mcpOAuth", () => sources.mcpOAuth.getHandoffActivity(), externalKeys);
     const speech = report("speech", () => sources.speech.getHandoffActivity(), externalKeys);
+    const modelCatalog = report("modelCatalog", () => sources.modelCatalog.getHandoffActivity(), externalKeys);
+    const updater = report("updater", () => sources.updater.getHandoffActivity(), externalKeys);
+    const mcpControl = report("mcpControl", () => sources.mcpControl.getHandoffActivity(), externalKeys);
+    const vendorOAuth = report("vendorOAuth", () => sources.vendorOAuth.getHandoffActivity(), externalKeys);
+    const personalTodos = report("personalTodos", () => sources.personalTodos.getHandoffActivity(), externalKeys);
+    const collaboration = report("collaboration", () => sources.collaboration.getHandoffActivity(), externalKeys);
+    const surfaces = report("surfaces", () => sources.surfaces.getHandoffActivity(), externalKeys);
     const retained = retainedSidecars(sources, binding.sidecar);
     const backends = report("backends", () => sources.backends.getHandoffActivity(), ["operations", "retiredSidecars", "uncontainedResources"]);
     if (backends.retiredSidecars !== retained.length - 1) throw unavailable("backends.sidecars");
@@ -190,7 +211,8 @@ export async function inspectDesktopHandoff(current: () => DesktopHandoffSources
       terminals: terminals.terminals,
       plugins: sum(plugins.plugins, ...extensions.map(value => value.runtimes), Number(runtime.pluginExecutions)),
       admissions: sum(admissions, agent.admissions, modes.operations, coordination.admissions, backends.operations,
-        plugins.operations, remote.operations, browser.operations, oauth.operations, speech.operations,
+        plugins.operations, remote.operations, browser.operations, oauth.operations, speech.operations, modelCatalog.operations, updater.operations, mcpControl.operations,
+        vendorOAuth.operations, personalTodos.operations, collaboration.operations, surfaces.operations,
         ...[...extensions, ...processes, ...services].map(value => value.operations), activity.requests, activity.backgroundTasks, Number(durable.worktrees)),
       // Event and coordination finalizations can overlap; both retain work the
       // other cannot see. Their sum is an obligation bound, not turn occupancy.
@@ -206,9 +228,10 @@ export async function inspectDesktopHandoff(current: () => DesktopHandoffSources
       inputs: sum(agent.inputs, ...services.map(value => value.inputs)),
       mcp: sum(userMcp.mcp, oauth.resources),
       uncontainedResources: sum(DESKTOP_HANDOFF_UNQUALIFIED_SOURCES.length, Number(activity.uncertain),
-        ...[modes, coordination, events, outbox, checkpoint, plugins, remote, browser, terminals, userMcp, oauth, speech,
+        ...[modes, coordination, events, outbox, checkpoint, plugins, remote, browser, terminals, userMcp, oauth, speech, modelCatalog, updater, mcpControl, vendorOAuth, personalTodos, collaboration, surfaces,
           backends, ...extensions, ...processes, ...services].map(value => value.uncontainedResources),
-        backends.retiredSidecars, browser.pages, speech.resources),
+        backends.retiredSidecars, browser.pages, speech.resources, modelCatalog.resources, updater.resources, mcpControl.resources,
+        vendorOAuth.resources, personalTodos.resources, collaboration.resources, surfaces.resources),
     };
     if (!Value.Check(OwnerHandoffInventorySchema, result)) throw unavailable("inventory");
     const liveRetained = retainedSidecars(sources, binding.sidecar);

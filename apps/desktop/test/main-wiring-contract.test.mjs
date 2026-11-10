@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import ts from "typescript";
 
 // Wiring in the composition root and in the plugin services factory is not
 // covered by any behavioural test: those modules import Electron, so they cannot
@@ -63,6 +64,19 @@ function requiredKeys(body) {
     .map((member) => member.name);
 }
 
+/** Parse top-level object members without depending on their line wrapping. */
+function wiredMembers(source, callee) {
+  const body = callArgument(source, callee);
+  const file = ts.createSourceFile("wiring.ts", `const value = {${body}};`, ts.ScriptTarget.Latest, true);
+  const initializer = file.statements[0].declarationList.declarations[0].initializer;
+  assert.ok(ts.isObjectLiteralExpression(initializer));
+  return initializer.properties.flatMap(member => {
+    if (!member.name || !ts.isIdentifier(member.name)) return [];
+    return [{ name: member.name.text, undefined: ts.isPropertyAssignment(member)
+      && ts.isIdentifier(member.initializer) && member.initializer.text === "undefined" }];
+  });
+}
+
 /**
  * A dependency wired as an explicit `undefined` type-checks and then fails the
  * first time it is called, which is how a dropped argument is usually written
@@ -75,12 +89,9 @@ function assertNoUndefinedMember(interfaceSource, interfaceName, callSource, cal
       (member) => member.name,
     ),
   );
-  const argument = callArgument(callSource, callee);
-  const wiredUndefined = [
-    ...argument.matchAll(/(^|\n)\s*([A-Za-z_$][\w$]*)\s*:\s*undefined\s*[,}]/g),
-  ]
-    .map((match) => match[2])
-    .filter((key) => declared.has(key));
+  const wiredUndefined = wiredMembers(callSource, callee)
+    .filter(member => member.undefined && declared.has(member.name))
+    .map(member => member.name);
   assert.deepEqual(
     wiredUndefined,
     [],
@@ -91,16 +102,22 @@ function assertNoUndefinedMember(interfaceSource, interfaceName, callSource, cal
 function assertPassesRequiredKeys(interfaceSource, interfaceName, callSource, callee) {
   const keys = requiredKeys(interfaceBody(interfaceSource, interfaceName));
   assert.ok(keys.length > 3, `${interfaceName} should declare several members`);
-  const argument = callArgument(callSource, callee);
-  const missing = keys.filter(
-    (key) => !new RegExp(`(^|\\n)\\s*${key}\\s*[,:]`, "m").test(argument),
-  );
+  const wired = new Set(wiredMembers(callSource, callee).map(member => member.name));
+  const missing = keys.filter(key => !wired.has(key));
   assert.deepEqual(
     missing,
     [],
     `${callee} must pass every required ${interfaceName} member`,
   );
 }
+
+test("dependency checks accept inline members but reject nested substitutes and undefined", () => {
+  const shape = "export type Fixture = {\n  first: unknown;\n  second: unknown;\n  third: unknown;\n  fourth: unknown;\n}";
+  assertPassesRequiredKeys(shape, "Fixture", "make({ first, second, third, fourth });", "make");
+  assert.throws(() => assertPassesRequiredKeys(shape, "Fixture", "make({ first, second, third, nested: { fourth } });", "make"), /must pass every required/);
+  assert.throws(() => assertNoUndefinedMember(shape, "Fixture", "make({ first, second: undefined, third, fourth });", "make"), /must not wire/);
+  assertNoUndefinedMember(shape, "Fixture", "make({ first, second, third, fourth, nested: { second: undefined } });", "make");
+});
 
 test("the composition root passes every required factory dependency", () => {
   const index = read("index.ts");

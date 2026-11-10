@@ -2864,3 +2864,75 @@ The next implementation sequence remains:
 H1 is not complete. H2-H5 and the remaining approved C/M/U/N/W/Q/R/X stages remain
 ordered behind their dependencies. Preserve isolated worktrees/profiles, reuse
 provisioned dependencies, and do not push, deploy or test a running user instance.
+
+## Authoritative H1/H2 boundary and remaining H1 adapters
+
+The original work-package table assigns Desktop admission/resource adapters to
+H1 and Rust source prepare/cancel/fencing/release to H2. Recent checkpoints used
+H1 as a broader integration label; their evidence stays valid for the stated
+scope, but does not change the original package ownership. The next H1 work is
+now enumerated in [H1 remaining tasks](./ai-command-center-h1-remaining.md), with
+IDs, files, outputs, acceptance and explicit deferred/external dependencies.
+Voice remains paused. Source mutations remain H2, and complete transfer joins H5.
+
+H1-R01 model-catalog loading now has an original lifetime and synchronous report.
+Closed fresh ingress starts no file/network I/O; cached/shared reads preserve
+ordinary behavior. Underlying reads, fetches and response-body completion stay
+counted; cancellation does not clear them. Disposal prevents late publication.
+Native transport uncertainty remains explicit and no fixed gap is removed.
+The 69 existing catalog cases and eight lifecycle cases passed (77 total).
+Initial inventory/coordinator validation passed 109 cases; later adapter
+composition validation supersedes that count rather than adding overlapping
+runs. Loader-only failures from missing worktree dist/old dependency resolution
+were fixed with scratch aliases and the provisioned dependency overlay.
+
+### H1 Desktop adapter integration development checkpoint
+
+The model catalog, updater and inbound MCP producers are now required by the
+Desktop inventory. Updater operation scopes capture the original Host generation;
+settings reads, queued writes, checks/downloads and external browser handoffs stay
+counted through actual settlement. Main injects the shared admission and original
+Host checks through `bootstrap/updater.ts`. MCP MainState registers every created
+transport, retains old/failed instances, and counts listeners/sockets as resources.
+Failed startup does not discard the original instance. The ten fixed qualification
+gaps remain unchanged.
+
+Development verification passed 170 combined cases before three additional
+production-wiring consumer cases were added. The resulting inventory-only suite
+passed 79 cases. These runs overlap and must not be summed. The separate R08
+backend/resource selection passed 189 cases. Its evidence map is
+[H1 native coverage](./ai-command-center-h1-native-coverage.md).
+
+All seven non-Voice adapter implementations and their production inventory
+wiring are now present. OAuth captures original Host/plugin identities and guards
+credential/installation/model/browser continuations; IPC discovery propagates
+admission refusal. Personal-todo sequences retain either their original Host or
+their original capture failure through editor/window waits. Explicit retries
+preserve mutation identity. Worker busy refusal remains queued and a new drain
+can replay retained settlement. Shared surface ownership preserves launcher
+prewarm/reuse and observes keyboard-triggered refusal.
+
+Development results include 129 OAuth/compatibility, 42 todo, 32 Worker service,
+20 surface and 69 existing window cases. The 98-case inventory suite includes
+real catalog/updater/MCP/OAuth/todo/Worker/surface consumers. These selections
+overlap; final candidate totals are recorded separately. A source-based wiring
+contract now parses top-level object members instead of assuming one property
+per line. The expanded lint selection covers the new adapters; the unchanged
+catalog body stays outside that selection because two existing unused functions
+fail lint. Its changed loading behavior remains covered by tests and types.
+
+Final clean-candidate acceptance is pending. `origin/main` advanced to
+`e977efc96b6b735aeef5066a0b66c6565ad5691f`; implementation must incorporate it
+before acceptance. Release Cargo inputs changed, requiring a fresh isolated
+Host build. Direct package tests/types may resolve stale shared build outputs;
+current-source aliases and the provisioned dependency overlay are required for
+this linked worktree. Voice remains paused, all ten qualification gaps remain,
+and authenticated source mutations belong to H2.
+
+The converged development selection passed 792/792 tests across 51 files, with
+current-source Desktop types, lint, architecture, policy and documentation checks
+passing. The standalone model-discovery test exposed stale Vite shared-package
+resolution; explicit current-source aliases now make its independent execution
+use the same source contract. The old wiring parser and OAuth IPC refusal each
+have discriminating failure evidence followed by corrected checks. Candidate
+refresh, fresh Host build and isolated process acceptance follow this checkpoint.
