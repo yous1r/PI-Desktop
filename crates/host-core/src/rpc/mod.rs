@@ -315,6 +315,7 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
     let request_slots = Arc::new(Semaphore::new(MAX_IN_FLIGHT_RPC));
     let mut request_tasks = tokio::task::JoinSet::new();
     let activity = state.lock().await.handoff_activity.clone();
+    let handoff_release = state.lock().await.handoff_release.clone();
     let _admission_lifetime = activity.lifetime();
 
     // Keep stdio off Tokio's blocking pool. Under process/thread pressure,
@@ -383,6 +384,7 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
     let mut writer_done = false;
     'serve: loop {
         tokio::select! {
+            _ = handoff_release.requested() => break 'serve,
             event = input_rx.recv() => {
                 let Some(event) = event else {
                     break 'serve;

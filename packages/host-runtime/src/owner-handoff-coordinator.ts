@@ -64,7 +64,7 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
     if (!Value.Check(OwnerHandoffQuiescenceRequestSchema, value)) throw failure("HANDOFF_INVALID_REQUEST");
     const request = { ...value };
     if (this.disposed) throw failure("HANDOFF_UNAVAILABLE");
-    if (this.pending) throw failure("HANDOFF_BUSY");
+    if (this.pending) throw failure(request.operation === "hold" && this.entry ? "HANDOFF_UNAVAILABLE" : "HANDOFF_BUSY");
     const current = this.options.current();
     if (!current || current.sourceEpoch !== request.sourceEpoch || !current.host.isAvailable() ||
         !/^[0-9a-f]{64}$/.test(current.profileId)) throw failure("HANDOFF_STALE");
@@ -144,6 +144,14 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
       }
       const state = entry.sealing ? "sealed" : "held";
       return this.report(entry, request, state, counts);
+    } catch (error) {
+      // Rust may treat only a confirmed no-hold refusal as safe to continue.
+      // A busy reinspection after acquisition retains both local and Sidecar
+      // admission, so its outcome must remain explicitly uncertain.
+      if (request.operation === "hold" && this.entry && codeOf(error) === "HANDOFF_BUSY") {
+        throw failure("HANDOFF_UNAVAILABLE");
+      }
+      throw error;
     } finally { this.pending = false; }
   }
 

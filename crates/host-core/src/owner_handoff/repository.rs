@@ -151,6 +151,15 @@ impl Journal {
     pub fn transfer(&self, id: &str) -> Result<Transfer> {
         read_transfer(&self.conn, id)
     }
+    pub fn find_transfer(&self, id: &str) -> Result<Option<Transfer>> {
+        super::model::uuid(id)?;
+        let present: bool = self.conn.query_row(
+            "SELECT EXISTS(SELECT 1 FROM owner_handoffs WHERE id=?1)",
+            [id],
+            |row| row.get(0),
+        )?;
+        present.then(|| read_transfer(&self.conn, id)).transpose()
+    }
     pub fn active_transfer(&self, profile: &str) -> Result<Option<Transfer>> {
         let id: Option<String> = self.conn.query_row("SELECT id FROM owner_handoffs WHERE profile=?1 AND phase NOT IN ('ready','cancelled')", [profile], |row| row.get(0)).optional()?;
         id.map(|id| self.transfer(&id)).transpose()

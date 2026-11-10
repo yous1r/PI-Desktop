@@ -61,7 +61,7 @@ describe("original coordinator handoff", () => {
     const f = build(); const pending = deferred<OwnerHandoffInventory>(); f.inspect(() => pending.promise);
     const exchange = f.coordinator.exchange(hold);
     expect(f.gate.isClosed()).toBe(true);
-    await expect(f.coordinator.exchange(hold)).rejects.toMatchObject({ errorCode: "HANDOFF_BUSY" });
+    await expect(f.coordinator.exchange(hold)).rejects.toMatchObject({ errorCode: "HANDOFF_UNAVAILABLE" });
     pending.resolve(idle());const result = await exchange;
     expect(result.state).toBe("held");expect(Object.values(result.counts).every(value => value === 0)).toBe(true);
     await expect(f.sidecarGate.run("agent.prompt", async () => true)).rejects.toMatchObject({ errorCode: "HANDOFF_BUSY" });
@@ -214,4 +214,27 @@ it("never substitutes the first observed native generation for the captured bind
   const f = build(); f.replaceGeneration();
   await expect(f.coordinator.exchange(hold)).rejects.toMatchObject({ errorCode: "HANDOFF_OWNER_CHANGED" });
   expect(f.sent).toEqual([]); expect(f.gate.isClosed()).toBe(true); f.coordinator.dispose();
+});
+
+it("never reports a clean busy refusal after the Sidecar has acquired its hold", async () => {
+  const f = build();
+  f.beforeSidecar(async operation => {
+    if (operation === "acquire") f.inspect(async () => ({ ...idle(), writes: 1 }));
+  });
+  await expect(f.coordinator.exchange(hold)).rejects.toMatchObject({ errorCode: "HANDOFF_UNAVAILABLE" });
+  expect(f.gate.isClosed()).toBe(true);
+  await expect(f.sidecarGate.run("agent.prompt", async () => true)).rejects.toMatchObject({ errorCode: "HANDOFF_BUSY" });
+  f.inspect(async () => idle());
+  expect((await f.coordinator.exchange(hold)).state).toBe("held");
+  expect(f.sent.filter(operation => operation === "acquire")).toHaveLength(1);
+  f.coordinator.dispose();
+});
+
+it("never reports a clean busy refusal when a retained hold's native check becomes busy", async () => {
+  const f = build();
+  await f.coordinator.exchange(hold);
+  f.beforeNative(async () => { throw Object.assign(new Error("HANDOFF_BUSY"), { errorCode: "HANDOFF_BUSY" }); });
+  await expect(f.coordinator.exchange(hold)).rejects.toMatchObject({ errorCode: "HANDOFF_UNAVAILABLE" });
+  expect(f.gate.isClosed()).toBe(true);
+  f.coordinator.dispose();
 });

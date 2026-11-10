@@ -70,7 +70,7 @@ try {
   Object.assign(record, { id: randomUUID(), profile: identity.profileId, sourceEpoch: identity.sourceEpoch,
     targetEpoch: randomUUID(), phase: 'cancelled', revision: 2, requester: owner.host,
     sourceBuild: request.command.targetBuild, targetBuild: request.command.targetBuild });
-  // Test-only terminal record injection; the source API has no mutation path.
+  // Test-only terminal record injection for the read-only status scenario.
   database(profile, db => db.prepare('INSERT INTO owner_handoffs(id,profile,source_epoch,target_epoch,revision,phase,record_json) VALUES(?,?,?,?,?,?,?)')
     .run(record.id, record.profile, record.sourceEpoch, record.targetEpoch, record.revision, record.phase, JSON.stringify(record)), false);
   const status = { ...request, command: { version: 1, requestId: randomUUID(), operation: 'status',
@@ -79,7 +79,7 @@ try {
   assert.deepEqual(parseOwnerHandoffSourceReply(await query(profile, status), status, identity.profileId).result.record, record);
   assert.deepEqual(rows(profile), recorded);
   passed('authenticated status returns the exact original-owner terminal record without advancing or replaying it');
-  passed('stale epochs, mismatched builds, absent transfers, caller inventory, mutation commands and oversized input refuse without writes');
+  passed('stale epochs, mismatched builds, absent transfers, caller inventory, malformed mutation envelopes and oversized input refuse without writes');
   const socket = createConnection(`\\\\.\\pipe\\pi-desktop-transfer-v1-${identity.profileId}`);
   let received = 0; socket.on('data', bytes => { received += bytes.length; });
   try {

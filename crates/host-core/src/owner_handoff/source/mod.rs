@@ -1,13 +1,23 @@
-//! Authenticated running-source reads. The source retains its data-directory
-//! lock; the query client never opens AppState, SQLite or an execution runtime.
+//! Authenticated running-source control. The source retains its data-directory
+//! lock; the client never opens AppState, SQLite or an execution runtime.
+#[cfg(any(windows, test))]
+mod controller;
+#[cfg(any(windows, test))]
+mod journal;
+#[cfg(any(windows, test))]
+mod operations;
+#[cfg(windows)]
+mod ports;
 #[cfg(any(windows, test))]
 mod protocol;
+mod release;
 #[cfg(windows)]
 mod service;
 #[cfg(windows)]
 mod windows;
 use crate::state::AppState;
 use anyhow::Result;
+pub(crate) use release::Release;
 use std::{path::Path, sync::Arc};
 use tokio::sync::Mutex;
 

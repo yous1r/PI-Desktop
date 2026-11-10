@@ -82,6 +82,8 @@
 			"packages/host-runtime/src/owner-handoff*.ts",
 			"scripts/e2e-owner-handoff-client.mjs",
 			"scripts/e2e-owner-inspection.mjs",
+			"scripts/e2e-owner-source*.mjs",
+			"scripts/e2e/owner-source-mutations.mjs",
 			"scripts/e2e/desktop-handoff-inventory.mjs",
 			"scripts/e2e/owner-query.mjs",
 			"scripts/e2e/desktop-sidecar-factory.mjs",

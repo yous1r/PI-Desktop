@@ -1,3 +1,6 @@
+mod handoff;
+pub use handoff::SourceOwner;
+
 use super::native::{self, Coordinator, Job};
 use crate::owner_control::identity::{
     authenticate_with_access, Identity, Peer, SecurityDescriptor,

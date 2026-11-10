@@ -20094,10 +20094,10 @@ session data is used.
   Changed authority after gate closure leaves it permanently closed. Cancellation
   and fencing still require original durable journal confirmation.
 - **Boundary:** Application registration and the private exchange layer are now
-  implemented; authenticated source initiation/journal orchestration remains
-  pending. The process path uses real Rust identity/status/inspection and
-  persistence with fixtures for other producers. Full handoff and native families
-  remain unqualified; Voice remains paused.
+  implemented; authenticated source initiation and durable journal orchestration
+  are implemented but unaccepted. The process path uses real Rust
+  identity/status/inspection and persistence with fixtures for other producers.
+  Full handoff and native families remain unqualified; Voice remains paused.
 - **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
 
 ### Original stdio coordinator exchange and application registration (H1 partial)
@@ -20139,18 +20139,54 @@ session data is used.
   preflight through the same Host executable's private `--owner-source` mode while
   the original owns the lock. Query a test-injected terminal record and compare
   all ownership/journal rows before and after. Refuse changed epochs/builds,
-  absent records, caller inventory, mutation commands, malformed/oversized frames,
-  idle clients, and unexpected peer images. Exercise lock contention, retired
-  authority, endpoint conflict, original shutdown and restart with a new epoch.
+  absent records, caller inventory, malformed mutation envelopes and oversized
+  frames, idle clients, and unexpected peer images. Exercise lock contention,
+  retired authority, endpoint conflict, original shutdown and restart with a new
+  epoch.
 - **Expected:** Strict shared fixtures, bounded native queries, original retained
   process handles, no request replay, no new owner/transfer/receipt, and no leaked
   error payload. Untrusted executables receive no greeting. Ordinary RPC remains
   available. Closing joins the listener and releases its endpoint.
 - **Boundary:** Preflight reports compatibility and `requiresIdle:true`; it does
-  not acquire admission or call `Exchange::request`. Authenticated prepare,
-  source journal orchestration and complete native qualification remain pending.
-  The terminal record is injected only by the test; no production mutation seam
-  is exposed. No live Desktop/default profile/provider/Voice operation is used.
+  not acquire admission or call `Exchange::request`. This suite sends only reads
+  and malformed mutation frames, so accepted source mutations belong to the
+  scenario below. The terminal record is injected only by the test. No live
+  Desktop/default profile/provider/Voice operation is used.
+- **Spec:** [Process ownership](../03-runtime/07-process-model.md#desktop-admission-composition).
+
+### E2E-HOST-owner-source-mutations
+
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> node scripts/e2e-owner-source-mutations.mjs`
+  with `PI_SCRATCH_DIR` and Node `node:sqlite` on Windows.
+- **Steps:** Start a fenced Host in an explicit scratch profile and bind one real
+  native execution generation. Bundle the current production Desktop coordinator,
+  exchange subscription and inventory, with the remaining Desktop resource owners
+  as explicit idle fixtures. Send one framed `--owner-source` request per fresh
+  client. Refuse a drifted `prepare` and `preflight` target build, then send a
+  well-formed `prepare` whose Desktop hold the coordinator refuses because all ten
+  declared gaps are present. Repeat that identical request, then a stale source
+  epoch, then valid `cancel`/`fence`/`release` for a transfer this source never
+  owned. Confirm ordinary session persistence still works. Finally abandon a
+  client during the held inventory read while the source still owns the
+  operation, then send the next request.
+- **Expected:** Every request that reaches the exchange produces exactly one
+  quiescence notification and one accepted completion reply; `HANDOFF_BUSY` for
+  the held gaps and `HANDOFF_INVALID_TRANSITION` for the unowned transitions; no
+  owner, transfer or receipt row is written; Desktop admission reopens after a
+  confirmed refusal and no Sidecar hold is acquired.
+  Build drift, stale epoch and unowned transitions never reach the exchange. A
+  lost waiter commits nothing, receives no reply frame, and leaves both admissions
+  open so the next request reaches the exchange again. The original Host, source
+  epoch and bound native generation stay unchanged.
+- **Status:** Implementation is complete but not accepted. A development run of
+  this scenario passed its eight checks against a Host binary built before the
+  final controller changes, so that result is development evidence only and
+  candidate acceptance is still owed.
+- **Boundary:** This suite proves refusal only. It never completes a handoff, never
+  certifies native closure, never acquires a Sidecar, and does not exercise
+  accepted prepare, fence or release. Native coverage stays
+  `execution_generation_only`, the ten qualification gaps remain declared, and no
+  successor readiness or full positive transfer is claimed.
 - **Spec:** [Process ownership](../03-runtime/07-process-model.md#desktop-admission-composition).
 
 ### Rust ingress and admitted continuations (H1 partial)
@@ -20171,8 +20207,9 @@ session data is used.
   until actual settlement. Cancellation and poisoned state cannot reopen ingress;
   overflow and failed/abandoned work retain uncertainty.
 - **Boundary:** Internal gate tests do not expose a source mutation RPC, clear
-  the ten qualification gaps, or certify native closure. Full authenticated
-  prepare/cancel/fence/release orchestration and Voice remain pending/paused.
+  the ten qualification gaps, or certify native closure. Authenticated
+  prepare/cancel/fence/release orchestration now exists but is unaccepted here;
+  Voice remains paused.
 - **Spec:** [Process ownership](../03-runtime/07-process-model.md#desktop-admission-composition).
 
 ### Desktop admission integration prerequisites (H1 partial)
@@ -20192,7 +20229,8 @@ session data is used.
   cancelled confirmation remains usable and existing transcript saving completes.
 - **Boundary:** These component/service fixtures qualify the application gate
   composition, not real Desktop ownership transfer or native process closure.
-  H1 resource inventory and H2-H5 integration still require process acceptance.
+  H1 resource inventory and H2-H5 integration still require process acceptance;
+  the H2 source operations are implemented but unaccepted.
 - **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
 
 ### Desktop approved-plan admission and original-owner cleanup (H1 partial)

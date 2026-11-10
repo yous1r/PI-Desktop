@@ -1,6 +1,6 @@
 # AI command center: idle handoff protocol design
 
-- Status: Proposed S03b implementation contract; no endpoint, journal migration or ownership transfer is implemented by this document.
+- Status: S03b implementation contract. S03b-1/-2/-3 and the H2 original-source `prepare`/`cancel`/`fence`/`release` operations are implemented on Windows; source fencing acceptance, successor readiness and complete Desktop transfer are not.
 - Source inspected: `d6a648fd5` (Windows ownership, relocation and Stop prerequisites included).
 - Basis: [architecture decision](../adr/ai-command-center.md), [requirements](ai-command-center-requirements.md), [control identities](ai-command-center-control-contracts.md), [capability inventory](ai-command-center-host-parity.md).
 - First supported direction: explicit, same-machine Desktop-to-current-user background Host, only while idle. Reverse transfer and other platforms need their own acceptance.
@@ -27,10 +27,11 @@ durable owner records and the transfer protocol below remain unimplemented.
 S03b-1 discovery is now implemented behind explicit `--owner-control` and
 `--owner-status` modes on Windows; see the [discovery ADR](../adr/windows-owner-discovery.md).
 The current-user discovery channel validates both executable identities and
-advertises only `status`. Fenced Hosts additionally provide authenticated
-`owner-transfer` compatibility preflight and original-owner status queries.
-Prepare/fence/release orchestration remains future work; successful discovery or
-preflight is not execution-transfer readiness.
+advertises only `status`. Fenced Hosts additionally serve authenticated
+`owner-transfer` compatibility preflight, original-owner status and the
+`prepare`/`cancel`/`fence`/`release` source operations described below.
+Successful discovery, preflight or a source receipt is still not
+execution-transfer readiness.
 
 The first transfer must refuse a pre-existing source that lacks the execution
 fence capability. Restarting an updated source while idle may be required before
@@ -62,9 +63,12 @@ Rust authenticates the request and owns the journal; the existing Node
 coordinator still owns execution admission. Use a bounded internal control
 exchange over their existing stdio relationship to request quiescence and return
 owner-reported idle/exit results. Bind every exchange to transfer ID, source
-epoch and transition revision. Rust cannot commit `prepared` before Node has
-closed admission and completed its inventory. Missing/late acknowledgements do
-not authorize native fencing or reopening; reconcile against the durable phase.
+epoch and its own fixed hold revision: the exchanged hold is revision 1 while the
+durable journal revision advances independently, so a hold is never bound to a
+later journal revision. Rust cannot commit `prepared` before Node has closed
+admission, completed its inventory and held its own ingress. Missing/late
+acknowledgements do not authorize native fencing or reopening; reconcile against
+the durable phase.
 This adds no Agent scheduler inside Rust and no second admission authority.
 
 | Alternative | Assessment |
@@ -101,11 +105,14 @@ Each mutation names the transfer ID, source epoch and expected journal revision.
 The same request ID and fingerprint returns the recorded operation; a different
 fingerprint conflicts. A stale epoch or transition revision has no effect.
 
-Proposed operations are `preflight`, `prepare`, `status`, `cancel`, explicit
-current-user `recover` and private successor `claim`. `preflight` performs no
-shutdown. `cancel` is allowed only before native fencing begins and only by the
-still-authoritative source. A request timeout does not cancel or replay the
-operation. Reconnect queries its existing ID before any deliberate new request.
+The implemented source operations are `preflight`, `prepare`, `status`, `cancel`,
+`fence` and `release`. `preflight` and `status` perform no shutdown.
+`fence` and `release` are separate durable requests, and `cancel` is allowed only
+before native fencing begins and only by the still-authoritative source. A request
+timeout does not cancel or replay the operation; the source keeps one owned
+operation after a lost waiter and never resends automatically. The later
+current-user `recover` and private successor `claim` operations remain future
+S03b-4 work. Reconnect queries its existing ID before any deliberate new request.
 
 ## Idle proof and execution fencing
 
@@ -177,7 +184,7 @@ and transfer versions rather than automatically launching such a binary.
 | `prepared` | Admissions closed, idle inventory settled, target version/capabilities accepted | Cancel safely or begin native fencing |
 | `source_fencing` | Durable intent written before stopping registered resources | Confirm containment empty; otherwise remain blocked |
 | `source_fenced` | Exact source runtime/process closure confirmed; Rust still owns the directory | Persist release intent |
-| `release_pending` | Successor launch identity reserved; no source execution can restart | Source Rust exits and releases its OS lock |
+| `release_pending` | Durable release intent written after source fencing; the successor launch identity reservation lands with the successor slice | Source Rust exits and releases its OS lock |
 | `target_claimed` | Target holds the OS lock, validates capability/journal, and proves old containment ended | Recover metadata while all execution admissions remain closed |
 | `ready` | Recovery complete, target epoch/capabilities published | Open target admission and permit fresh client attachment |
 | `cancelled` | Source still owns the directory; no native fencing effects occurred | Restore source admission exactly once |
@@ -187,6 +194,13 @@ failure is not an alternate phase that permits admission. `release_pending` is
 an intent, not a claim that the source has already exited. `ready` is the only
 successor-admission transition. Acquire of a data-directory lock alone does not
 make a successor ready.
+
+The implemented source operations commit only their own phase: `prepare` writes
+`prepared` (revision 1), `fence` writes `source_fencing` before any native effect
+and `source_fenced` only after the original generation is proven closed, `release`
+writes `release_pending` before requesting ordinary process cleanup, and `cancel`
+writes the terminal `cancelled`. `target_claimed` and `ready` stay successor work,
+so no source receipt makes a target ready or reopens target admission.
 
 Lost replies are reconciled from the same journal ID and revision. No transition
 replays a model/tool call, silently releases unknown reservations or changes a
@@ -250,8 +264,11 @@ and must be unavailable when that session cannot provide them.
 | HT-14 | Journal tampering, corruption or unsupported version | Classified refusal before migration/recovery/admission; preserve evidence |
 | HT-15 | Target capability lost or target crashes before ready | Explicit authenticated recovery proves old owners ended, CAS-rotates target/capability, and rejects the old claim without replay |
 
-These are acceptance requirements, not passed tests. S03a ownership, the focused
-Windows Stop regression and the one-hour synthetic soak do not satisfy them.
+These are acceptance requirements, not passed tests. The H2 source operations now
+implement parts of HT-01, HT-04, HT-08, HT-09, HT-10 and HT-11, and the negative
+source scenario records only refusal behaviour; none of the HT cases above is
+accepted. S03a ownership, the focused Windows Stop regression and the one-hour
+synthetic soak do not satisfy them either.
 Full M0 still needs the frozen reference workload/hardware and platform inputs
 listed in the [remaining-work register](ai-command-center-remaining-work.md).
 No service rollout or change to existing session ownership is authorized by a
@@ -271,9 +288,48 @@ inventory are integrated. See [the execution-fence decision](../adr/windows-exec
 S03b-3 durable owner/containment registration, the pre-AppState ordinary-startup
 guard and explicit restricted claim/recover are accepted on this Windows
 development host at clean candidate `7a03eda09`. Named Jobs retain the native
-recovery identity. Source prepare/phase orchestration remains test-only until
-S03b-4 supplies complete idle inventory; restricted recovery never declares
-readiness or admits execution. The 11-check recovery suite uses injected durable
-phases and production restricted bootstrap, so it does not qualify complete
-Desktop handoff. Reports and remaining gates are tracked in the
+recovery identity. Source prepare/phase orchestration is now implemented (see the
+H2 checkpoint below) but is not accepted; S03b-4 still needs the complete idle
+inventory, and restricted recovery never declares readiness or admits execution.
+The 11-check recovery suite uses injected durable phases and production restricted
+bootstrap, so it does not qualify complete Desktop handoff. Reports and remaining
+gates are tracked in the
 [remaining-work register](ai-command-center-remaining-work.md).
+
+## H2 original-source orchestration checkpoint
+
+The original source now serves `prepare`, `cancel`, `fence` and `release` beside
+`preflight`/`status` over the authenticated transfer pipe. All six commands use
+strict deny-unknown-field schemas bounded to 16 KiB with UUID identities, build
+identity and safe-integer revisions; mutations get a 45-second budget while reads
+keep two seconds. Ordering that is now implemented rather than proposed:
+
+- Desktop-admission hold first, original Rust ingress hold second, then the idle
+  snapshot (activity, runtime and durable reports from one SQLite read) before one
+  transaction commits `prepared` (revision 1) with its source receipt.
+- The exchanged hold carries its own fixed revision 1; durable journal revisions
+  advance independently, so no hold is bound to a later journal revision.
+- An ambiguous hold failure keeps the owned ingress capability where possible so a
+  later durable cancel can still run; only a confirmed no-hold busy reply clears
+  the entry and leaves ordinary admission open.
+- `cancel` commits `cancelled` before any reopen, resumes Rust first, and lets the
+  Desktop completion read that cancellation independently. A cancel seen before
+  `prepared` commits prepare and cancel together, leaving only revision 2.
+- `fence` commits `source_fencing` before any irreversible effect, seals Rust and
+  Desktop, and only then stops the exact retained original lease. `source_fenced`
+  requires original-generation proof: retained root exit, empty owned Job, settled
+  registration task, live coordinator and unchanged generation, closed in the same
+  transaction as the receipt.
+- `release` commits `release_pending` before requesting the ordinary RPC cleanup
+  path; the intent is not an exit or lock-release receipt.
+- One owned operation survives a lost waiter. A retry with the same principal,
+  request ID and fingerprint joins it; no queue, resend or replay is added.
+
+Native coverage is still `execution_generation_only`: no full positive native
+transfer, successor readiness or complete Desktop handoff is claimed, the ten
+declared qualification gaps are unchanged, and Voice/LiveVoice remain
+unimplemented. The negative process scenario in the
+[E2E plan](../spec/06-delivery/04-e2e-test-plan.md#e2e-host-owner-source-mutations)
+reaches the real source, Rust exchange and production Desktop coordinator, but its
+recorded 8-check run used a Host binary built before the final controller changes,
+so it is development evidence and not candidate acceptance.

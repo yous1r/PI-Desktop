@@ -2959,3 +2959,41 @@ directly with Node and passed. No completed installation is claimed. Known prior
 test/lint/loader issues are listed in the acceptance record. The earlier
 default-profile isolation incident remains unresolved; this isolated validation
 does not prove that earlier user data was unaffected.
+
+### Continuation order: finish non-Voice work before Voice
+
+The user directs the remaining implementation and integration to continue, with
+Voice placed at the final stage. The accepted H1 non-Voice adapters and evidence
+remain the baseline. H2 authenticated source mutations and durable release,
+H3 restricted successor readiness and H4 epoch-aware client reattachment converge
+at H5. C1 contracts are committed at `decb07c4c`; C2 storage and U1 V3 component
+implementations are handed back for integration. C3-C4, M1, N1/W1/W2 and Q/R
+follow their existing dependencies, with Q0 preparation remaining independent.
+layout and all data/ownership/security contracts. Native Mac/Linux and nominated
+hardware/device acceptance require their own environments; local fixtures do not
+replace those results.
+
+H2 source mutations are now implemented through the authenticated native pipe,
+original Rust controller and original stdio exchange. Desktop-first quiescence,
+owned work after caller disconnect, durable cancellation before reopening,
+fencing intent before native stop and release intent before ordinary RPC cleanup
+are implemented. The hold revision stays at 1 while journal revisions advance.
+All ten qualification gaps remain; `execution_generation_only` is not full
+native qualification. H3/H4/H5 acceptance remains open.
+
+H2 development validation passes 118 handoff, 9 execution-fence, 8 owner-control
+and 6 RPC-lifetime tests after splitting recovery scenarios from the controller
+fixture/user path. Shared contracts pass 70 tests (including 47 C1 tests), and
+coordinator/exchange/query tests pass 80. Current-source shared/Desktop types,
+selected lint, architecture, policy and Rust formatting/Clippy pass; only the
+two existing `ToolPolicy` warnings remain. A fresh isolated production binary
+passes 5 source-query, 8 source-mutation negative-path and 10 inspection/restart
+checks, with cleanup confirmed. Exact committed-candidate acceptance follows.
+
+Earlier 60/90-second combined Rust attempts were interrupted and are retained
+as failures, never aggregate passes. A timed complete run passed all 118 tests
+in 81.16 seconds; the final rebuilt run passed them in 64.59 seconds. The timed
+run observed two existing AppState tests taking about 29 and 25 seconds. There
+is no demonstrated source-close defect; no speculative lifecycle change was
+made. Locale parity still reports the pre-existing error-code/E2E table drift.
+The earlier default-profile isolation incident remains unresolved.

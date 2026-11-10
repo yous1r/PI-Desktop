@@ -88,7 +88,7 @@ impl Durable {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Runtime {
     tools: bool,
@@ -127,6 +127,18 @@ struct Report {
     native_coverage: &'static str,
     durable: Durable,
     native: Value,
+}
+
+/// Used only under the source's retained ingress hold. This checks Rust
+/// obligations; the Desktop exchange supplies its separate inventory proof.
+pub(super) fn require_idle(state: &AppState) -> Result<()> {
+    if state.handoff_activity.snapshot() != Snapshot::default()
+        || Runtime::read(state) != Runtime::default()
+        || Durable::read(&state.db)? != Durable::default()
+    {
+        bail!("HANDOFF_BUSY");
+    }
+    Ok(())
 }
 
 pub async fn handle(state: Arc<Mutex<AppState>>, value: Value) -> Result<Value> {

@@ -1,6 +1,6 @@
 //! One bounded native exchange at a time, with a retained replacement listener.
 use super::{
-    protocol::{Reply, Request},
+    protocol::{Reply, Request, MUTATION_TIMEOUT_MS},
     service::Service,
 };
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
     owner_handoff::model,
 };
 use anyhow::{bail, Context, Result};
-use std::{os::windows::io::AsRawHandle, path::Path, time::Duration};
+use std::{os::windows::io::AsRawHandle, path::Path, sync::Arc, time::Duration};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::windows::named_pipe::{ClientOptions, NamedPipeClient, NamedPipeServer, ServerOptions},
@@ -72,6 +72,8 @@ impl Endpoint {
         if service.profile != profile {
             bail!("HANDOFF_OWNER_CHANGED");
         }
+        let service = Arc::new(service);
+        let owned = service.clone();
         let task = tokio::spawn(async move {
             let mut next = first;
             loop {
@@ -79,47 +81,74 @@ impl Endpoint {
                 let mut connected = next;
                 next = listener(&name, &identity, false)?;
                 let exchange = async {
-                    let peer = authenticate_with_access(
-                        connected.as_raw_handle(),
-                        true,
-                        &identity,
-                        PROCESS_SYNCHRONIZE,
-                    )?;
-                    live(&peer)?;
-                    connected.write_u8(1).await?;
-                    let request = Request::parse(&read_frame(&mut connected).await?)?;
-                    live(&peer)?;
-                    let reply = service.execute(&request);
+                    let (peer, request) = tokio::time::timeout(BUDGET, async {
+                        let peer = Arc::new(authenticate_with_access(
+                            connected.as_raw_handle(),
+                            true,
+                            &identity,
+                            PROCESS_SYNCHRONIZE,
+                        )?);
+                        live(&peer)?;
+                        connected.write_u8(1).await?;
+                        let request = Request::parse(&read_frame(&mut connected).await?)?;
+                        live(&peer)?;
+                        Ok::<_, anyhow::Error>((peer, request))
+                    })
+                    .await
+                    .context("HANDOFF_SOURCE_TIMEOUT")??;
+                    let reply = if request.command.is_mutation() {
+                        tokio::time::timeout(
+                            Duration::from_millis(MUTATION_TIMEOUT_MS),
+                            service.mutation(&request, peer.clone()),
+                        )
+                        .await
+                        .context("HANDOFF_SOURCE_TIMEOUT")?
+                    } else {
+                        service.execute(&request)
+                    };
                     reply.validate(&request, &profile)?;
-                    live(&peer)?;
-                    write_frame(&mut connected, model::encode(&reply)?.as_bytes()).await?;
-                    if connected.read_u8().await? != 0 {
-                        bail!("HANDOFF_INVALID_ACK");
-                    }
-                    live(&peer)
+                    tokio::time::timeout(BUDGET, async {
+                        live(&peer)?;
+                        write_frame(&mut connected, model::encode(&reply)?.as_bytes()).await?;
+                        if connected.read_u8().await? != 0 {
+                            bail!("HANDOFF_INVALID_ACK");
+                        }
+                        live(&peer)
+                    })
+                    .await
+                    .context("HANDOFF_SOURCE_TIMEOUT")?
                 };
-                if !matches!(tokio::time::timeout(BUDGET, exchange).await, Ok(Ok(()))) {
-                    tracing::debug!("owner-transfer query refused or timed out");
+                if let Err(error) = exchange.await {
+                    tracing::debug!(%error, "owner-transfer exchange refused or timed out");
                 }
-                connected.disconnect()?;
+                if let Err(error) = connected.disconnect() {
+                    tracing::debug!(%error, "owner-transfer client already disconnected");
+                }
             }
         });
-        Ok(Source { task })
+        Ok(Source {
+            task,
+            service: owned,
+        })
     }
 }
 pub(super) struct Source {
     pub task: tokio::task::JoinHandle<Result<()>>,
+    service: Arc<Service>,
 }
 impl Source {
     pub async fn close(&mut self) {
+        self.service.seal();
         if !self.task.is_finished() {
             self.task.abort();
             let _ = (&mut self.task).await;
         }
+        self.service.close().await;
     }
 }
 impl Drop for Source {
     fn drop(&mut self) {
+        self.service.seal();
         self.task.abort();
     }
 }
@@ -155,8 +184,15 @@ pub(super) async fn query(directory: &Path, request: &Request) -> Result<Reply> 
     request.validate()?;
     let identity = Identity::current()?;
     let profile = crate::owner_control::profile_id(directory)?;
-    tokio::time::timeout(BUDGET, async {
-        let (mut pipe, peer) = connect(&address(&profile), &identity).await?;
+    let (mut pipe, peer) = tokio::time::timeout(BUDGET, connect(&address(&profile), &identity))
+        .await
+        .context("HANDOFF_SOURCE_TIMEOUT")??;
+    let budget = if request.command.is_mutation() {
+        Duration::from_millis(MUTATION_TIMEOUT_MS) + BUDGET
+    } else {
+        BUDGET
+    };
+    tokio::time::timeout(budget, async {
         live(&peer)?;
         write_frame(&mut pipe, model::encode(request)?.as_bytes()).await?;
         let bytes = read_frame(&mut pipe).await?;

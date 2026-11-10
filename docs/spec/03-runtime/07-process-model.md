@@ -730,24 +730,88 @@ composition. A stale successful or rejected response cannot authorize a new Host
 Windows fenced Hosts also reserve a separate `pi-desktop-transfer-v1-<profile>`
 named pipe after native prior-owner inspection and before committing recovery or
 opening AppState. The source binds the original Registry after journal registration.
-It owns one two-second query at a time and retains a replacement listener, with
-current-user DACL, remote rejection and first-instance ownership. Both peers
+It serves one authenticated exchange at a time and retains a replacement listener,
+with current-user DACL, remote rejection and first-instance ownership. Both peers
 authenticate kernel-derived PID, SID and canonical Host image, retaining original
 process handles with query/synchronize rights through the exchange. A standalone
 `--owner-source` client uses private framed stdin and does not acquire the data
-lock or open AppState. It never retries after transmitting a request.
+lock or open AppState. It never resends after transmitting a request.
 
 The negotiated envelope is `{protocol:"owner-transfer",version:1,command}` with
-strict existing `preflight` or `status` command fields. Replies correlate protocol,
-version, request ID, source epoch and trusted profile, plus a validated result.
-Preflight requires the exact current executable SHA-256/schema/protocol and returns
-`requiresIdle:true`; this is compatibility advice, not idle or readiness proof.
+strict deny-unknown-field command schemas bounded to 16 KiB, UUID identities,
+build identity (executable SHA-256, schema and protocol versions) and
+JavaScript-safe revision integers. Reads are `preflight` and `status`; the
+mutations are `prepare`, `cancel`, `fence` and `release`, where `prepare` requires
+revision 0 and a target epoch distinct from the source. Replies correlate
+protocol, version, request ID, source epoch and trusted profile, plus a validated
+result. Preflight requires the exact current executable SHA-256/schema/protocol
+and returns `requiresIdle:true`; this is compatibility advice, not idle or
+readiness proof.
 Status reads only the original owner's transfer using bounded Journal inspection.
 Missing state, contention and unknown records refuse; retired/replaced owners and
-incompatible builds return fixed codes. No query creates an Owner, receipt or
-transfer, closes admission, or calls the stdio quiescence exchange. Source mutation
-commands remain unavailable. Ordinary unfenced Hosts create no new listener;
-the existing discovery pipe still advertises only `status`.
+incompatible builds return fixed codes. No read creates an Owner, receipt or
+transfer, closes admission, or calls the stdio quiescence exchange. A mutation
+refuses an unknown or unowned transition with a fixed code, invents no receipt and
+advances no revision it did not commit; a recorded receipt may legitimately replay
+an older revision than the caller expected, and only the same operation replays
+idempotently on an already terminal transfer. The `--owner-source` client allows
+two seconds for connect and request framing, and 45 seconds plus one reply budget
+only for a mutation; reads keep the two-second query budget. Ordinary unfenced
+Hosts create no new listener; the existing discovery pipe still advertises only
+`status`.
+
+Each mutating command is owned by the source, not the caller. The source runs at
+most one mutating operation and never queues a second. A retry with the same
+authenticated principal, request ID and command fingerprint joins the owned
+flight; a different payload for that identity returns
+`HANDOFF_REQUEST_CONFLICT`, and a different identity while a flight runs returns
+`HANDOFF_BUSY`. Losing the requesting client cancels neither the flight nor its
+committed effects, and no resend happens automatically. Sealing refuses new
+operations and then joins the actual task, so an admitted mutation finishes
+before the listener reports closure. The source receipt fingerprint domain is
+separate from the frozen claim/recovery receipt format, and no business RPC adds
+a mutation namespace.
+
+`prepare` holds Desktop before Rust, because Desktop admission must close and its
+inventory settle first. It refuses a target build that is not its own, a transfer
+ID that already has a journal row, and a second distinct request while an entry is
+retained. It requests the Desktop quiescence hold over the original stdio
+exchange, takes the Rust ingress hold, then requires the idle snapshot from
+activity, runtime and durable reports in one SQLite read before one transaction
+commits `prepared` (revision 1) and its receipt. The exchanged hold ID
+is always revision 1; journal revisions advance independently, so a hold is never
+bound to a later journal revision. A confirmed no-hold `HANDOFF_BUSY` reply clears
+the local entry and leaves ordinary admission open. An ambiguous hold failure
+retains the owned ingress capability where possible instead of discarding it:
+ingress stays closed, Desktop can still be reconciled and a later durable cancel
+can still run, and a later `HANDOFF_BUSY` with a retained Rust hold reports
+`HANDOFF_UNAVAILABLE` rather than a safe refusal.
+
+`cancel` requires both holds retained and neither side sealed. It commits
+`cancelled` before any reopen, resumes the Rust hold first, then requests Desktop
+cancellation, whose completion independently reads the durable cancellation
+instead of trusting the reply. A cancel observed before `prepared` commits prepare
+and cancel in one transaction, so only the terminal revision 2 row and one cancel
+receipt become visible; a later prepare with that terminal transfer ID refuses,
+and a deliberate fresh transfer needs fresh IDs and a fresh target epoch. An
+unconfirmed cancel keeps ingress closed.
+
+`fence` commits the durable `source_fencing` intent before any native effect,
+seals the Rust hold, re-proves idle and seals Desktop, and only then stops the
+exact retained original lease. A failure records its classified
+`HANDOFF_FENCE_UNCONFIRMED` failure and leaves the transfer fencing; once Desktop
+is sealed, a retry never contacts the Sidecar again. Confirmation re-reads the
+original owner generation and requires the retained root handle to have signalled
+exit, the owned Job to hold no process, the registration task to have settled and
+the retained coordinator to be live and unchanged. Only then does the same
+transaction close that exact generation and commit `source_fenced`. A generation
+the caller already closed is still the original, never a replacement. This native
+proof covers the execution generation only.
+
+`release` commits `release_pending` before requesting process release, so the
+intent is never evidence of exit or of the OS lock being released. The request
+trips a retained release signal that selects the ordinary RPC cleanup path; it is
+not a future cancellation, a forced exit or an exit receipt.
 
 Rust business RPC and automatic configuration-sync admission share the original
 Activity mutex with obligation reservation. A local hold closes ingress before
@@ -755,8 +819,9 @@ inspection; outstanding requests, setup/cleanup continuations and deferred disk
 writes remain counted and finish normally. A held capability belongs to that
 exact Activity. Dropping it or losing a waiter never reopens ingress. Sealing,
 serving cancellation and AppState shutdown permanently close that owner. Only
-the source controller may explicitly reopen its own unsealed hold after proving
-a safe refusal or durable cancellation; no such external mutation is exposed yet.
+the source controller may explicitly reopen its own unsealed hold, and only after
+a safe refusal or a committed durable cancellation; the authenticated source
+`cancel` command is its sole external trigger, and no business RPC can reopen it.
 
 While closed, new business RPC returns fixed `HANDOFF_BUSY` (-32000) before
 handler dispatch. Only exact `ownerHandoff.identity`, `readTransfer`, `inspect`,
@@ -791,10 +856,12 @@ The application service now registers this adapter with each original Host's
 It captures the notifying Host/profile before resolution and keeps channel
 validity in every original-binding check, including late work after timeout.
 Ordinary unheld restart retires only its subscription; confirmed quit disposes
-the application coordinator. Authenticated source initiation and journal phase
-orchestration remain pending. An idle or still-preparing channel owns no handoff
-hold, so its loss preserves any separate ordinary maintenance lease. Only the
-selected original Host's held handoff is revoked.
+the application coordinator. Authenticated source initiation and durable journal
+phase orchestration are implemented through the original-source operations above;
+a complete positive transfer, successor readiness and native closure beyond the
+execution generation remain unqualified. An idle or still-preparing channel owns
+no handoff hold, so its loss preserves any separate ordinary maintenance lease.
+Only the selected original Host's held handoff is revoked.
 
 The Desktop inventory reader captures exact Host, native generation, Sidecar
 binding token and concrete resource owners before reading Rust. It checks the

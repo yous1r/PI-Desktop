@@ -34,6 +34,7 @@
     "test:e2e:owner-handoff-client": "node scripts/e2e-owner-handoff-client.mjs",
     "test:e2e:owner-inspection": "node scripts/e2e-owner-inspection.mjs",
     "test:e2e:owner-source": "node scripts/e2e-owner-source.mjs",
+    "test:e2e:owner-source-mutations": "node scripts/e2e-owner-source-mutations.mjs",
     "test:e2e:owner-idle-admission": "node scripts/e2e-owner-idle-admission.mjs",
     "test:e2e:sidecar-handoff": "node scripts/e2e-sidecar-handoff.mjs",
     "test:e2e:desktop-plan-handoff": "node scripts/e2e-desktop-plan-handoff.mjs",

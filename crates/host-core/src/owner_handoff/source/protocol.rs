@@ -1,10 +1,19 @@
-//! Versioned running-source queries. Mutations remain unavailable until the
-//! source admission and durable transition workflow is implemented.
-use super::super::model::{self, Build, Transfer, VERSION};
+//! Versioned running-source wire contract. Reads stay side-effect free; the
+//! mutation commands are only the transport envelope. Admission closure,
+//! durable journal transitions, native closure, receipts and idempotency
+//! remain the source service's responsibility, so accepting a well-formed
+//! mutation request never implies that the transfer advanced.
+use super::super::model::{self, Build, Phase, Transfer, VERSION};
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
 pub const PROTOCOL: &str = "owner-transfer";
+/// Mutation exchanges may close admission, stop registered resources and
+/// commit a durable receipt, so they get their own transport budget; the
+/// two-second query budget stays with the native listener owner.
+pub const MUTATION_TIMEOUT_MS: u64 = 45_000;
+/// JavaScript safe-integer bound shared with every H0 revision field.
+const REVISION_MAX: u64 = 9_007_199_254_740_991;
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(
     tag = "operation",
@@ -19,11 +28,42 @@ pub enum Command {
         source_epoch: String,
         target_build: Build,
     },
+    Prepare {
+        version: u32,
+        request_id: String,
+        source_epoch: String,
+        transfer_id: String,
+        expected_revision: u64,
+        target_epoch: String,
+        capability_hash: String,
+        target_build: Build,
+    },
     Status {
         version: u32,
         request_id: String,
         source_epoch: String,
         transfer_id: String,
+    },
+    Cancel {
+        version: u32,
+        request_id: String,
+        source_epoch: String,
+        transfer_id: String,
+        expected_revision: u64,
+    },
+    Fence {
+        version: u32,
+        request_id: String,
+        source_epoch: String,
+        transfer_id: String,
+        expected_revision: u64,
+    },
+    Release {
+        version: u32,
+        request_id: String,
+        source_epoch: String,
+        transfer_id: String,
+        expected_revision: u64,
     },
 }
 impl Command {
@@ -35,7 +75,31 @@ impl Command {
                 source_epoch,
                 ..
             }
+            | Self::Prepare {
+                version,
+                request_id,
+                source_epoch,
+                ..
+            }
             | Self::Status {
+                version,
+                request_id,
+                source_epoch,
+                ..
+            }
+            | Self::Cancel {
+                version,
+                request_id,
+                source_epoch,
+                ..
+            }
+            | Self::Fence {
+                version,
+                request_id,
+                source_epoch,
+                ..
+            }
+            | Self::Release {
                 version,
                 request_id,
                 source_epoch,
@@ -43,7 +107,36 @@ impl Command {
             } => (*version, request_id, source_epoch),
         }
     }
-    fn validate(&self) -> Result<()> {
+    pub fn transfer_id(&self) -> Option<&str> {
+        match self {
+            Self::Preflight { .. } => None,
+            Self::Prepare { transfer_id, .. }
+            | Self::Status { transfer_id, .. }
+            | Self::Cancel { transfer_id, .. }
+            | Self::Fence { transfer_id, .. }
+            | Self::Release { transfer_id, .. } => Some(transfer_id),
+        }
+    }
+    /// Only these commands close admission or advance the durable journal, so
+    /// only they may use the mutation transport budget.
+    pub fn is_mutation(&self) -> bool {
+        matches!(
+            self,
+            Self::Prepare { .. } | Self::Cancel { .. } | Self::Fence { .. } | Self::Release { .. }
+        )
+    }
+    /// Durable phase a fresh receipt must show. `None` means any valid phase;
+    /// `status` observes whatever phase the journal currently holds.
+    pub fn expected_phase(&self) -> Option<Phase> {
+        match self {
+            Self::Prepare { .. } => Some(Phase::Prepared),
+            Self::Cancel { .. } => Some(Phase::Cancelled),
+            Self::Fence { .. } => Some(Phase::SourceFenced),
+            Self::Release { .. } => Some(Phase::ReleasePending),
+            Self::Status { .. } | Self::Preflight { .. } => None,
+        }
+    }
+    pub fn validate(&self) -> Result<()> {
         let (version, id, epoch) = self.identity();
         if version != VERSION {
             bail!("HANDOFF_INVALID_REQUEST");
@@ -53,6 +146,44 @@ impl Command {
         match self {
             Self::Preflight { target_build, .. } => target_build.validate(),
             Self::Status { transfer_id, .. } => model::uuid(transfer_id),
+            Self::Prepare {
+                transfer_id,
+                expected_revision,
+                target_epoch,
+                capability_hash,
+                target_build,
+                ..
+            } => {
+                model::uuid(transfer_id)?;
+                model::uuid(target_epoch)?;
+                model::hash(capability_hash)?;
+                target_build.validate()?;
+                if *expected_revision != 0 || target_epoch.as_str() == epoch {
+                    bail!("HANDOFF_INVALID_REQUEST");
+                }
+                Ok(())
+            }
+            Self::Cancel {
+                transfer_id,
+                expected_revision,
+                ..
+            }
+            | Self::Fence {
+                transfer_id,
+                expected_revision,
+                ..
+            }
+            | Self::Release {
+                transfer_id,
+                expected_revision,
+                ..
+            } => {
+                model::uuid(transfer_id)?;
+                if !(1..=REVISION_MAX).contains(expected_revision) {
+                    bail!("HANDOFF_INVALID_REQUEST");
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -112,6 +243,18 @@ pub enum Code {
     OwnerChanged,
     #[serde(rename = "HANDOFF_INCOMPATIBLE_BUILD")]
     IncompatibleBuild,
+    #[serde(rename = "HANDOFF_BUSY")]
+    Busy,
+    #[serde(rename = "HANDOFF_REQUEST_CONFLICT")]
+    RequestConflict,
+    #[serde(rename = "HANDOFF_STALE_REVISION")]
+    StaleRevision,
+    #[serde(rename = "HANDOFF_INVALID_TRANSITION")]
+    InvalidTransition,
+    #[serde(rename = "HANDOFF_CANCEL_UNCONFIRMED")]
+    CancelUnconfirmed,
+    #[serde(rename = "HANDOFF_FENCE_UNCONFIRMED")]
+    FenceUnconfirmed,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -174,12 +317,41 @@ impl Reply {
                     version: VERSION,
                     record,
                 },
-                Command::Status { transfer_id, .. },
+                command,
             ) => {
+                let Some(transfer_id) = command.transfer_id() else {
+                    bail!("HANDOFF_INVALID_RESPONSE");
+                };
                 record.validate()?;
-                if record.id != *transfer_id
+                if record.id.as_str() != transfer_id
                     || record.source_epoch != epoch
                     || record.profile != profile
+                {
+                    bail!("HANDOFF_INVALID_RESPONSE");
+                }
+                // Prepare pins the reserved successor exactly; the later
+                // transitions keep the same transfer, source and profile.
+                if let Command::Prepare {
+                    target_epoch,
+                    capability_hash,
+                    target_build,
+                    ..
+                } = command
+                {
+                    if record.target_epoch != *target_epoch
+                        || record.capability_hash != *capability_hash
+                        || record.target_build != *target_build
+                    {
+                        bail!("HANDOFF_INVALID_RESPONSE");
+                    }
+                }
+                // A replayed historic receipt may carry an older revision than
+                // the caller's expectation, so revision progression stays with
+                // the source service; only the operation's durable phase is
+                // bound here.
+                if command
+                    .expected_phase()
+                    .is_some_and(|phase| record.phase != phase)
                 {
                     bail!("HANDOFF_INVALID_RESPONSE");
                 }

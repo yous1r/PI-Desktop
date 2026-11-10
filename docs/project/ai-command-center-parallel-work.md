@@ -5,6 +5,18 @@
 - Basis: [remaining work](ai-command-center-remaining-work.md), [requirements](ai-command-center-requirements.md), [idle handoff](ai-command-center-idle-handoff.md), [control contracts](ai-command-center-control-contracts.md), [Host capability matrix](ai-command-center-host-parity.md).
 - Priority names below follow the active delivery sequence (P0 handoff, P1 control/quota, P2 monitoring/Desktop, P3 native/browser/mobile, P4 qualification), not the older proposal's phase numbering.
 
+## Active continuation priority
+
+The user has directed completion of the remaining non-Voice functionality and
+verification before Voice implementation/integration. H1 non-Voice adapters are
+accepted at `a360fc5050e8cb751386819dbee9f1cb20b364d1` (evidence commit
+`558116dcdc7221aef79de8dd3d18db1229169b33`). Continue H2-H5 and independent
+C1/Q0, then the dependent control, monitoring, V3 UI, native/browser/mobile and
+qualification lanes below. Voice is the final stage; its existing refusal remains
+until that stage is implemented and qualified. This changes scheduling, not the
+native proof requirements or authority boundaries. External environment gates
+remain explicit and do not block independent local implementation.
+
 ## Current evidence and immediate dependency
 
 Windows owner discovery, native execution fencing, durable restricted recovery

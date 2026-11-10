@@ -122,9 +122,14 @@ async fn source_close_joins_an_idle_exchange_and_releases_endpoint() {
     let identity = Identity::current().unwrap();
     let name = address(&crate::owner_control::profile_id(directory.path()).unwrap());
     let (mut client, _peer) = connect(&name, &identity).await.unwrap();
-    source.close().await;
+    tokio::time::timeout(BUDGET, source.close())
+        .await
+        .expect("source close must join the idle listener");
     assert!(source.task.is_finished());
-    assert!(read_frame(&mut client).await.is_err());
+    assert!(tokio::time::timeout(BUDGET, read_frame(&mut client))
+        .await
+        .expect("closed source must disconnect the client")
+        .is_err());
     drop(client);
     assert!(Endpoint::claim(directory.path()).is_ok());
 }
