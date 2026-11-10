@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "tasks": [
+    { "target": { "kind": "session", "sessionId": "session:part" }, "key": "[\"session\",\"session:part\"]" },
+    { "target": { "kind": "delegation", "parentSessionId": "parent:part", "delegationId": "child" }, "key": "[\"delegation\",\"parent:part\",\"child\"]" },
+    { "target": { "kind": "delegation", "parentSessionId": "parent", "delegationId": "part:child" }, "key": "[\"delegation\",\"parent\",\"part:child\"]" }
+  ],
+  "executions": [
+    { "target": { "kind": "session", "sessionId": "session:part", "turnId": "turn" }, "key": "[\"session\",\"session:part\",\"turn\"]" },
+    { "target": { "kind": "session", "sessionId": "session", "turnId": "part:turn" }, "key": "[\"session\",\"session\",\"part:turn\"]" },
+    { "target": { "kind": "delegation", "parentSessionId": "parent:part", "parentTurnId": "turn", "delegationId": "child", "executionGeneration": 1 }, "key": "[\"delegation\",\"parent:part\",\"turn\",\"child\",1]" },
+    { "target": { "kind": "delegation", "parentSessionId": "parent", "parentTurnId": "part:turn", "delegationId": "child", "executionGeneration": 1 }, "key": "[\"delegation\",\"parent\",\"part:turn\",\"child\",1]" }
+  ]
+}

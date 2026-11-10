@@ -99,3 +99,4 @@ export * from "./storage.js";
 
 export * from "./workspace-plugin.js";
 export * from "./workspace-process.js";
+export * from "./command-center/index.js";

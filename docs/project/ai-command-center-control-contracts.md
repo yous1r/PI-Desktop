@@ -1,6 +1,6 @@
 # AI command center: P0 control contracts, version 1 draft
 
-- Status: Reviewable S02 design output. This is not a shipped schema, capability advertisement, migration or M0 approval.
+- Status: C1 versioned shared schemas and producer/consumer fixtures are implemented. Runtime registration, persistence, authorization, dispatch and full product qualification are separate C2-C4/M1 work; no capability is advertised by this contract change.
 - Basis: [requirements](ai-command-center-requirements.md), [development design](ai-command-center-development-design.md), [schedule](ai-command-center-schedule.md).
 - Existing runtime evidence: [1 MiB validation](ai-command-center-1mib-validation.md).
 - Compatibility: keep the existing session, turn, delegation, permissions and transcript authorities. No new executor or transcript store.
@@ -17,6 +17,35 @@ S02 can supply concrete contracts while S01 load qualification runs. It cannot
 close M0 without the representative main/child/Worker workload, native/mobile
 matrix, interactive feasibility and unresolved policy decisions. No migration
 version is assigned in advance.
+
+### Executable C1 boundary
+
+`packages/shared/src/command-center/` exports strict version-1 workspace, task,
+execution, goal, intervention, receipt, summary and capability contracts. The
+shared fixtures under `packages/shared/test/fixtures/command-center-*.json` pin
+both producer and consumer inputs, canonical payload hashes and identity keys.
+
+Interventions are limited to 256 KiB of UTF-8 JSON, receipts to 16 KiB, and
+summary pages to 100 rows and 256 KiB. Additional fields, caller-supplied roles
+or principals, nil identities and out-of-range revisions are rejected. Stop
+omits goal-revision CAS while retaining Host epoch, workspace, membership and
+concrete execution checks. The first-release quotas remain 3 enabled workspaces,
+12 live Agent slots per workspace and 36 per Host; existing child ceiling 10 is
+unchanged. Receipts are retained without automatic deletion.
+
+Task and execution lookup keys are compact JSON tuples. Identifier components
+are never joined with an ambiguous separator: `["session",sessionId]` and
+`["delegation",parentSessionId,delegationId]` identify tasks; their execution
+forms add `turnId`, or `parentTurnId` before the delegation and numeric execution
+generation after it. Canonical request fingerprints instead use recursively
+sorted object keys and preserved array order before SHA-256. These two encodings
+serve different purposes. Incompatible wire changes require a new version.
+
+No RACP operation or IPC channel is registered from these exports. Advertised
+command-center capability flags remain absent until authoritative producers,
+runtime consumers and their authorization tests are integrated. A true flag is
+currently rejected instead of implying an available implementation.
+
 
 ## Identity and authority
 

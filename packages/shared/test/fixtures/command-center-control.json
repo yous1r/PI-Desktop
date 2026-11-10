@@ -1,0 +1,228 @@
+{
+  "version": 1,
+  "targets": {
+    "task": {
+      "kind": "delegation",
+      "parentSessionId": "sess-parent-1",
+      "delegationId": "del-chain-7"
+    },
+    "execution": {
+      "kind": "delegation",
+      "parentSessionId": "sess-parent-1",
+      "parentTurnId": "turn-parent-3",
+      "delegationId": "del-chain-7",
+      "executionGeneration": 2
+    },
+    "replacementExecution": {
+      "kind": "delegation",
+      "parentSessionId": "sess-parent-1",
+      "parentTurnId": "turn-parent-4",
+      "delegationId": "del-chain-7",
+      "executionGeneration": 3
+    },
+    "sessionExecution": {
+      "kind": "session",
+      "sessionId": "sess-main-1",
+      "turnId": "turn-main-4"
+    }
+  },
+  "request": {
+    "version": 1,
+    "requestId": "b4a1c8d2-5e6f-4a70-8b93-1c2d3e4f5a60",
+    "hostId": "host_7c1e0a93b4d2f681",
+    "expectedHostEpoch": "3f6b2a90-1c4d-4e88-9a71-5b2c8d0e6f14",
+    "commandWorkspaceId": "7d1e4c20-8a3b-4f56-9c12-2e7a9b0d4f31",
+    "expectedMembershipRevision": 7,
+    "expectedGoalRevision": 4,
+    "target": {
+      "kind": "delegation",
+      "parentSessionId": "sess-parent-1",
+      "parentTurnId": "turn-parent-3",
+      "delegationId": "del-chain-7",
+      "executionGeneration": 2
+    },
+    "intent": {
+      "kind": "reviseGoal",
+      "objective": "Ship the bounded command-center control contracts with executable fixtures.",
+      "constraints": [
+        "Do not add Rust persistence in C1",
+        "Keep existing IPC and RACP behavior unchanged"
+      ]
+    }
+  },
+  "stopRequest": {
+    "version": 1,
+    "requestId": "c5b2d9e3-6f70-4b81-9ca4-2d3e4f5a6b71",
+    "hostId": "host_7c1e0a93b4d2f681",
+    "expectedHostEpoch": "3f6b2a90-1c4d-4e88-9a71-5b2c8d0e6f14",
+    "commandWorkspaceId": "7d1e4c20-8a3b-4f56-9c12-2e7a9b0d4f31",
+    "expectedMembershipRevision": 7,
+    "target": {
+      "kind": "delegation",
+      "parentSessionId": "sess-parent-1",
+      "parentTurnId": "turn-parent-3",
+      "delegationId": "del-chain-7",
+      "executionGeneration": 2
+    },
+    "intent": {
+      "kind": "stop",
+      "scope": "subtree"
+    }
+  },
+  "goalHead": {
+    "version": 1,
+    "target": {
+      "kind": "delegation",
+      "parentSessionId": "sess-parent-1",
+      "delegationId": "del-chain-7"
+    },
+    "desiredRevision": 5,
+    "effectiveRevision": 4
+  },
+  "consumption": {
+    "version": 1,
+    "requestId": "b4a1c8d2-5e6f-4a70-8b93-1c2d3e4f5a60",
+    "target": {
+      "kind": "delegation",
+      "parentSessionId": "sess-parent-1",
+      "parentTurnId": "turn-parent-3",
+      "delegationId": "del-chain-7",
+      "executionGeneration": 2
+    },
+    "consumedRevision": 5,
+    "boundary": "model_step"
+  },
+  "receipt": {
+    "version": 1,
+    "requestId": "b4a1c8d2-5e6f-4a70-8b93-1c2d3e4f5a60",
+    "fingerprint": "cfa2ae39ace9ef06c93907866b0f1c33e3f887599cc5b75c43a1f1d9febe911c",
+    "target": {
+      "kind": "delegation",
+      "parentSessionId": "sess-parent-1",
+      "parentTurnId": "turn-parent-3",
+      "delegationId": "del-chain-7",
+      "executionGeneration": 2
+    },
+    "operation": "reviseGoal",
+    "status": "recorded",
+    "revision": 1,
+    "desiredGoalRevision": 5,
+    "effectiveGoalRevision": 4
+  },
+  "receipts": {
+    "accepted": {
+      "version": 1,
+      "requestId": "b4a1c8d2-5e6f-4a70-8b93-1c2d3e4f5a60",
+      "fingerprint": "cfa2ae39ace9ef06c93907866b0f1c33e3f887599cc5b75c43a1f1d9febe911c",
+      "target": {
+        "kind": "delegation",
+        "parentSessionId": "sess-parent-1",
+        "parentTurnId": "turn-parent-3",
+        "delegationId": "del-chain-7",
+        "executionGeneration": 2
+      },
+      "operation": "reviseGoal",
+      "status": "accepted",
+      "revision": 2,
+      "desiredGoalRevision": 5,
+      "effectiveGoalRevision": 4
+    },
+    "consumed": {
+      "version": 1,
+      "requestId": "b4a1c8d2-5e6f-4a70-8b93-1c2d3e4f5a60",
+      "fingerprint": "cfa2ae39ace9ef06c93907866b0f1c33e3f887599cc5b75c43a1f1d9febe911c",
+      "target": {
+        "kind": "delegation",
+        "parentSessionId": "sess-parent-1",
+        "parentTurnId": "turn-parent-3",
+        "delegationId": "del-chain-7",
+        "executionGeneration": 2
+      },
+      "operation": "reviseGoal",
+      "status": "consumed",
+      "revision": 3,
+      "desiredGoalRevision": 5,
+      "effectiveGoalRevision": 5
+    },
+    "completed": {
+      "version": 1,
+      "requestId": "b4a1c8d2-5e6f-4a70-8b93-1c2d3e4f5a60",
+      "fingerprint": "cfa2ae39ace9ef06c93907866b0f1c33e3f887599cc5b75c43a1f1d9febe911c",
+      "target": {
+        "kind": "delegation",
+        "parentSessionId": "sess-parent-1",
+        "parentTurnId": "turn-parent-3",
+        "delegationId": "del-chain-7",
+        "executionGeneration": 2
+      },
+      "operation": "reviseGoal",
+      "status": "completed",
+      "revision": 4,
+      "desiredGoalRevision": 5,
+      "effectiveGoalRevision": 5
+    },
+    "conflicted": {
+      "version": 1,
+      "requestId": "b4a1c8d2-5e6f-4a70-8b93-1c2d3e4f5a60",
+      "fingerprint": "cfa2ae39ace9ef06c93907866b0f1c33e3f887599cc5b75c43a1f1d9febe911c",
+      "target": {
+        "kind": "delegation",
+        "parentSessionId": "sess-parent-1",
+        "parentTurnId": "turn-parent-3",
+        "delegationId": "del-chain-7",
+        "executionGeneration": 2
+      },
+      "operation": "reviseGoal",
+      "status": "conflicted",
+      "revision": 2,
+      "desiredGoalRevision": 5,
+      "effectiveGoalRevision": 4,
+      "error": {
+        "code": "CONFLICT",
+        "message": "host epoch changed before dispatch"
+      }
+    }
+  },
+  "stopReceipt": {
+    "version": 1,
+    "requestId": "c5b2d9e3-6f70-4b81-9ca4-2d3e4f5a6b71",
+    "fingerprint": "c3b196827ee3be29bf6a8a7198a2ee6e29b9fef39c878c59b46bb44664003018",
+    "target": {
+      "kind": "delegation",
+      "parentSessionId": "sess-parent-1",
+      "parentTurnId": "turn-parent-3",
+      "delegationId": "del-chain-7",
+      "executionGeneration": 2
+    },
+    "operation": "stop",
+    "status": "accepted",
+    "revision": 2,
+    "desiredGoalRevision": 5,
+    "effectiveGoalRevision": 4
+  },
+  "canonicalPayload": "{\"commandWorkspaceId\":\"7d1e4c20-8a3b-4f56-9c12-2e7a9b0d4f31\",\"expectedGoalRevision\":4,\"expectedHostEpoch\":\"3f6b2a90-1c4d-4e88-9a71-5b2c8d0e6f14\",\"expectedMembershipRevision\":7,\"hostId\":\"host_7c1e0a93b4d2f681\",\"intent\":{\"constraints\":[\"Do not add Rust persistence in C1\",\"Keep existing IPC and RACP behavior unchanged\"],\"kind\":\"reviseGoal\",\"objective\":\"Ship the bounded command-center control contracts with executable fixtures.\"},\"requestId\":\"b4a1c8d2-5e6f-4a70-8b93-1c2d3e4f5a60\",\"target\":{\"delegationId\":\"del-chain-7\",\"executionGeneration\":2,\"kind\":\"delegation\",\"parentSessionId\":\"sess-parent-1\",\"parentTurnId\":\"turn-parent-3\"},\"version\":1}",
+  "fingerprint": "cfa2ae39ace9ef06c93907866b0f1c33e3f887599cc5b75c43a1f1d9febe911c",
+  "stopCanonicalPayload": "{\"commandWorkspaceId\":\"7d1e4c20-8a3b-4f56-9c12-2e7a9b0d4f31\",\"expectedHostEpoch\":\"3f6b2a90-1c4d-4e88-9a71-5b2c8d0e6f14\",\"expectedMembershipRevision\":7,\"hostId\":\"host_7c1e0a93b4d2f681\",\"intent\":{\"kind\":\"stop\",\"scope\":\"subtree\"},\"requestId\":\"c5b2d9e3-6f70-4b81-9ca4-2d3e4f5a6b71\",\"target\":{\"delegationId\":\"del-chain-7\",\"executionGeneration\":2,\"kind\":\"delegation\",\"parentSessionId\":\"sess-parent-1\",\"parentTurnId\":\"turn-parent-3\"},\"version\":1}",
+  "stopFingerprint": "c3b196827ee3be29bf6a8a7198a2ee6e29b9fef39c878c59b46bb44664003018",
+  "failures": [
+    { "reason": "invalid_request", "code": "INVALID_ARGUMENT" },
+    { "reason": "payload_too_large", "code": "PAYLOAD_TOO_LARGE" },
+    { "reason": "forbidden_role", "code": "FORBIDDEN" },
+    { "reason": "capability_unavailable", "code": "CAPABILITY_UNAVAILABLE" },
+    { "reason": "target_not_found", "code": "NOT_FOUND" },
+    { "reason": "target_settled", "code": "CONFLICT" },
+    { "reason": "execution_replaced", "code": "CONFLICT" },
+    { "reason": "host_epoch_conflict", "code": "CONFLICT" },
+    { "reason": "membership_revision_conflict", "code": "CONFLICT" },
+    { "reason": "goal_revision_conflict", "code": "CONFLICT" },
+    { "reason": "request_fingerprint_conflict", "code": "IDEMPOTENCY_CONFLICT" },
+    { "reason": "quota_exceeded", "code": "LIMIT_EXCEEDED" },
+    { "reason": "host_unavailable", "code": "HOST_UNAVAILABLE" },
+    { "reason": "host_overloaded", "code": "HOST_OVERLOADED" },
+    { "reason": "monitor_cursor_expired", "code": "CURSOR_EXPIRED" },
+    { "reason": "monitor_client_too_slow", "code": "CLIENT_TOO_SLOW" }
+  ],
+  "capabilities": {
+    "advertised": {}
+  }
+}

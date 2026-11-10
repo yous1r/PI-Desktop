@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "workspaces": {
+    "version": 1,
+    "workspaces": [
+      {
+        "id": "1a2b3c4d-5e6f-4a70-8b91-0c1d2e3f4a50",
+        "name": "Delivery",
+        "enabled": true,
+        "revision": 4
+      },
+      {
+        "id": "2b3c4d5e-6f70-4b81-9ca2-1d2e3f4a5b61",
+        "name": "Research",
+        "enabled": true,
+        "revision": 2
+      },
+      {
+        "id": "3c4d5e6f-7081-4c92-adb3-2e3f4a5b6c72",
+        "name": "Operations",
+        "enabled": true,
+        "revision": 1
+      },
+      {
+        "id": "4d5e6f70-8192-4da3-bec4-3f4a5b6c7d83",
+        "name": "Archive",
+        "enabled": false,
+        "revision": 1
+      }
+    ],
+    "quota": {
+      "maxEnabledWorkspaces": 3,
+      "maxAgentsPerWorkspace": 12,
+      "maxAgentsPerHost": 36
+    }
+  },
+  "snapshot": {
+    "version": 1,
+    "cursor": {
+      "epoch": "monitor-epoch-0001",
+      "sequence": 42
+    },
+    "generatedAt": "2026-01-01T00:00:00.000Z",
+    "rows": [
+      {
+        "target": {
+          "kind": "session",
+          "sessionId": "sess-main-1"
+        },
+        "execution": {
+          "kind": "session",
+          "sessionId": "sess-main-1",
+          "turnId": "turn-main-4"
+        },
+        "commandWorkspaceId": "1a2b3c4d-5e6f-4a70-8b91-0c1d2e3f4a50",
+        "projectId": "project-42",
+        "label": "Deliver control contracts",
+        "status": "running",
+        "activity": "Editing shared schemas",
+        "desiredGoalRevision": 5,
+        "effectiveGoalRevision": 4,
+        "pendingApprovals": 0,
+        "pendingInputs": 0,
+        "usage": {
+          "inputTokens": 4200,
+          "outputTokens": 1800
+        },
+        "updatedAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "target": {
+          "kind": "delegation",
+          "parentSessionId": "sess-main-1",
+          "delegationId": "del-chain-7"
+        },
+        "execution": {
+          "kind": "delegation",
+          "parentSessionId": "sess-main-1",
+          "parentTurnId": "turn-main-4",
+          "delegationId": "del-chain-7",
+          "executionGeneration": 2
+        },
+        "commandWorkspaceId": "1a2b3c4d-5e6f-4a70-8b91-0c1d2e3f4a50",
+        "parent": {
+          "kind": "session",
+          "sessionId": "sess-main-1"
+        },
+        "label": "Review child fixtures",
+        "status": "waiting_human",
+        "waitingReason": "approval pending",
+        "desiredGoalRevision": 2,
+        "effectiveGoalRevision": 2,
+        "pendingApprovals": 1,
+        "pendingInputs": 0,
+        "updatedAt": "2026-01-01T00:00:01.000Z"
+      },
+      {
+        "target": {
+          "kind": "session",
+          "sessionId": "sess-settled-9"
+        },
+        "commandWorkspaceId": "2b3c4d5e-6f70-4b81-9ca2-1d2e3f4a5b61",
+        "label": "Settled audit",
+        "status": "completed",
+        "desiredGoalRevision": 3,
+        "effectiveGoalRevision": 3,
+        "pendingApprovals": 0,
+        "pendingInputs": 0,
+        "updatedAt": "2026-01-01T00:00:02.000Z"
+      }
+    ],
+    "nextPage": "page-2"
+  }
+}
