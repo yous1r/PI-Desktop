@@ -64,6 +64,7 @@ export async function bindDesktopHandoffOwner(current: () => DesktopHandoffOwner
   assertCurrent();
   const bound = () => { assertCurrent(); return snapshot; };
   return Object.freeze({
+    host: sources.host,
     current: bound,
     inspect: () => inspectDesktopHandoff(bound),
     readTransfer: (transferId: string) => readOwnerHandoffTransfer(() => bound().binding, transferId),
@@ -141,13 +142,19 @@ export class DesktopHandoffCoordinator implements OwnerHandoffCoordinatorPort {
       return await this.coordinator.exchange(request);
     } finally {
       try { assertOrigin(); } catch (error) {
-        if (this.admission.isClosed()) this.admission.dispose();
+        if (original) this.channelUnavailable(original.host);
         throw error;
       } finally {
         if (!this.admission.isClosed()) this.selected = undefined;
         this.pending = false;
       }
     }
+  }
+
+  channelUnavailable(host: DesktopHandoffOwners["host"]): void {
+    // A merely subscribed or still-preparing channel owns no handoff hold.
+    // Its loss must not dispose an unrelated maintenance lease.
+    if (this.selected?.host === host && this.admission.isClosed()) this.admission.dispose();
   }
 
   dispose(): void { this.disposed = true; this.coordinator.dispose(); }

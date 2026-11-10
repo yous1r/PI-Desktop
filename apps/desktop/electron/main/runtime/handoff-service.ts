@@ -17,7 +17,7 @@ export function createDesktopHandoffService(admission: DesktopHandoffAdmission,
         isCurrent: () => !disposed && currentHost() === host,
         exchange: (notification, assertCurrent) => coordinator.exchange(notification.request,
           { host, profileId: notification.profileId, assertCurrent }),
-        unavailable: () => { if (admission.isClosed()) admission.dispose(); },
+        unavailable: () => coordinator.channelUnavailable(host),
       });
       binding = { host, channel };
     },

@@ -302,3 +302,21 @@ test("application service preserves closed admission when notifying Host exits d
   assert.equal(f.admission.isClosed(), true); assert.equal(wire.handlers.size + wire.exits.size, 0);
   service.dispose();
 });
+
+for (const preparing of [false, true]) {
+  test(`unheld channel loss preserves ordinary maintenance lease during ${preparing ? "identity preparation" : "idle subscription"}`, async () => {
+    const { createDesktopHandoffService } = await import("../electron/main/runtime/handoff-service.ts");
+    const f = fixture(), wire = wireFixture(f), entered = deferred(), release = deferred();
+    f.before(async method => { if (method === "ownerHandoff.identity") { entered.resolve(); await release.promise; } });
+    const service = createDesktopHandoffService(f.admission, f.current, () => f.host);
+    service.wireHost(f.host);
+    try {
+      if (preparing) { wire.emit(); await entered.promise; }
+      await f.admission.gate.acquire("ordinary-maintenance", async () => ({ clients: 0, turns: 0, queuedTurns: 0, plans: 0, tools: 0, processes: 0, terminals: 0, plugins: 0 }));
+      for (const exit of wire.exits) exit(); release.resolve();
+      await new Promise(resolve => setImmediate(resolve));
+      f.admission.gate.release("ordinary-maintenance");
+      assert.equal(f.admission.isClosed(), false, "an unheld optional channel cannot dispose a separate maintenance lease");
+    } finally { release.resolve(); service.dispose(); }
+  });
+}

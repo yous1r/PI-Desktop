@@ -20104,6 +20104,8 @@ session data is used.
   Route a private notification through the real Desktop service/coordinator and
   inventory, then replace an unheld backend and confirm ordinary refusal remains
   usable. Lose the original channel while admission is held and confirm quit order.
+  Also lose an idle or identity-preparing channel while a separate ordinary
+  maintenance lease exists; releasing that lease must remain valid.
 - **Expected:** One original exchange, bounded deadlines, no replacement calls,
   no leaked error payloads, and no renderer event. Cancellation closes the Rust
   waiter/output; lost held authority keeps Desktop admission closed. Actual Host

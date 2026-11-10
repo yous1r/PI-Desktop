@@ -2640,3 +2640,20 @@ that Rust-owned source service, then close Rust background admission and qualify
 Workers/remaining native families. The fixed ten gaps still refuse all holds.
 Voice remains paused. The earlier default-profile incident and unknown data
 effects remain unresolved; current tests use explicit scratch profiles.
+
+#### Preserve unrelated maintenance on optional channel loss
+
+The first clean exchange candidate `6202c492d91f49241ebb903fb3e4b3e7747ebaaf`
+passed its 136 Desktop, 77 runtime, 14 shared, 56 Rust and nine native checks.
+Review then identified an uncovered compatibility defect: closing a merely
+subscribed or identity-preparing channel disposed a separate ordinary maintenance
+lease. Two added regressions reproduced `HOST_AUTH_FAILED` when releasing that
+lease. The original passing evidence and failing regression log are retained.
+
+Channel loss now delegates to the application coordinator and only revokes a
+held handoff belonging to its selected original Host. Unheld preparation and idle
+subscriptions do not own another maintenance lease. Confirmed quit still disposes
+the complete coordinator. All 44 coordinator/quit cases, types and lint passed
+after this correction. Final candidate validation follows; Rust inputs and build
+are unchanged and require equality-checked evidence reuse rather than a new
+Rust execution claim.

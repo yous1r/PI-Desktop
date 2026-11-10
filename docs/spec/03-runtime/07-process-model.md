@@ -748,7 +748,9 @@ It captures the notifying Host/profile before resolution and keeps channel
 validity in every original-binding check, including late work after timeout.
 Ordinary unheld restart retires only its subscription; confirmed quit disposes
 the application coordinator. Authenticated source initiation and journal phase
-orchestration are still required before any production transfer can begin.
+orchestration remain pending. An idle or still-preparing channel owns no handoff
+hold, so its loss preserves any separate ordinary maintenance lease. Only the
+selected original Host's held handoff is revoked.
 
 The Desktop inventory reader captures exact Host, native generation, Sidecar
 binding token and concrete resource owners before reading Rust. It checks the
