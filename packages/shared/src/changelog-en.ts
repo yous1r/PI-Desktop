@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const enEntries: ChangelogEntry[] = [
   {
+    version: "0.22.4",
+    date: "2026-11-10",
+    highlights: [
+      "Create reusable custom modes with staged workflows, saved artifacts and approval gates.",
+      "Set Goal budgets, pause or edit running goals, and receive completion notices.",
+      "Keep recovery replies in the correct order after changing instructions during a turn.",
+      "Open native Pi session files through their original workspace.",
+      "File-manager Git checks return at their deadline even when child processes keep output pipes open.",
+    ],
+  },
+  {
     version: "0.22.3",
     date: "2026-11-07",
     highlights: [

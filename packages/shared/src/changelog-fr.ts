@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const frEntries: ChangelogEntry[] = [
   {
+    version: "0.22.4",
+    date: "2026-11-10",
+    highlights: [
+      "Créez des modes personnalisés réutilisables avec des workflows par étapes, des artefacts enregistrés et des validations.",
+      "Définissez les budgets Goal, mettez en pause ou modifiez les objectifs en cours et recevez des notifications de fin.",
+      "Les réponses de récupération restent dans le bon ordre après une modification des instructions pendant un tour.",
+      "Ouvrez les fichiers des sessions Pi natives depuis leur espace de travail d’origine.",
+      "Les vérifications Git du gestionnaire de fichiers se terminent à l’échéance, même si des processus enfants gardent les canaux de sortie ouverts.",
+    ],
+  },
+  {
     version: "0.22.3",
     date: "2026-11-07",
     highlights: [

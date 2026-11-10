@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const koEntries: ChangelogEntry[] = [
   {
+    version: "0.22.4",
+    date: "2026-11-10",
+    highlights: [
+      "단계별 워크플로, 저장된 산출물, 승인 단계를 포함하는 재사용 가능한 사용자 지정 모드를 만드세요.",
+      "Goal 예산을 설정하고, 실행 중인 목표를 일시 중지하거나 편집하며, 완료 알림을 받으세요.",
+      "턴 도중 지침을 변경해도 복구 응답이 올바른 순서로 표시됩니다.",
+      "원래 작업 공간을 통해 네이티브 Pi 세션 파일을 여세요.",
+      "하위 프로세스가 출력 파이프를 열어 두어도 파일 관리자의 Git 검사는 제한 시간에 반환됩니다.",
+    ],
+  },
+  {
     version: "0.22.3",
     date: "2026-11-07",
     highlights: [

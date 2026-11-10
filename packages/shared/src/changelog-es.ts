@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const esEntries: ChangelogEntry[] = [
   {
+    version: "0.22.4",
+    date: "2026-11-10",
+    highlights: [
+      "Crea modos personalizados reutilizables con flujos por etapas, artefactos guardados y controles de aprobación.",
+      "Configura presupuestos de Goal, pausa o edita objetivos en curso y recibe avisos de finalización.",
+      "Las respuestas de recuperación mantienen el orden correcto tras cambiar las instrucciones durante un turno.",
+      "Abre archivos de sesiones nativas de Pi desde su espacio de trabajo original.",
+      "Las comprobaciones de Git del gestor de archivos terminan al vencer el plazo, aunque los procesos secundarios mantengan abiertos los canales de salida.",
+    ],
+  },
+  {
     version: "0.22.3",
     date: "2026-11-07",
     highlights: [

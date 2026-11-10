@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const trEntries: ChangelogEntry[] = [
   {
+    version: "0.22.4",
+    date: "2026-11-10",
+    highlights: [
+      "Aşamalı iş akışları, kaydedilen çıktılar ve onay kapıları içeren yeniden kullanılabilir özel modlar oluşturun.",
+      "Goal bütçelerini ayarlayın, çalışan hedefleri duraklatın veya düzenleyin ve tamamlanma bildirimleri alın.",
+      "Bir tur sırasında talimatlar değiştirildiğinde kurtarma yanıtları doğru sırada gösterilir.",
+      "Yerel Pi oturum dosyalarını özgün çalışma alanları üzerinden açın.",
+      "Dosya yöneticisindeki Git denetimleri, alt süreçler çıktı kanallarını açık tutsa bile süre sınırında döner.",
+    ],
+  },
+  {
     version: "0.22.3",
     date: "2026-11-07",
     highlights: [

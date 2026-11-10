@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const deEntries: ChangelogEntry[] = [
   {
+    version: "0.22.4",
+    date: "2026-11-10",
+    highlights: [
+      "Erstelle wiederverwendbare benutzerdefinierte Modi mit mehrstufigen Abläufen, gespeicherten Artefakten und Freigaben.",
+      "Lege Goal-Budgets fest, pausiere oder bearbeite laufende Ziele und erhalte Abschlussmeldungen.",
+      "Antworten nach einer Wiederherstellung erscheinen in der richtigen Reihenfolge, wenn Anweisungen während eines Durchlaufs geändert werden.",
+      "Öffne Dateien nativer Pi-Sitzungen über ihren ursprünglichen Arbeitsbereich.",
+      "Git-Prüfungen im Dateimanager kehren nach Ablauf der Frist zurück, auch wenn Kindprozesse Ausgabepipes offen halten.",
+    ],
+  },
+  {
     version: "0.22.3",
     date: "2026-11-07",
     highlights: [
