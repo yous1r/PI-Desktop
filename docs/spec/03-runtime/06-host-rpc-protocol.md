@@ -1677,8 +1677,15 @@ unavailable` errors. There is no renderer IPC or external discovery advertisemen
 
 The application-owned Desktop service subscribes to each original Host and
 captures its concrete identity before optional coordinator resolution. It allows
-25 seconds for coordinator work and 2.5 seconds for the complete RPC including
-overload retries. Late continuations see a revoked original-channel assertion;
+25 seconds from notification receipt for coordinator work and 2.5 seconds for the
+complete RPC including overload retries. Rust can consume completion and send a
+following notification before the previous ACK arrives. Desktop retains at most
+one validated, immutable following notification during that ACK only, bound to
+the same profile and source epoch with a different exchange ID. It executes
+only after the previous ACK validates; waiting consumes its original deadline.
+Notifications during coordinator work, duplicates, extra queued notifications,
+malformed identities, failed ACKs and owner loss close the channel and discard
+queued work. Late continuations see a revoked original-channel assertion;
 no replacement transport or automatic operation replay is used. Private events
 do not enter renderer dispatch. Ordinary unheld backend replacement retires only
 the old subscription; lost held authority and confirmed quit close admission.

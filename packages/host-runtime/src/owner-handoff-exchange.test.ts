@@ -12,7 +12,8 @@ function setup(overrides: Partial<OwnerHandoffExchangeOptions> = {}) {
   const host = { generation: "original", isAvailable: vi.fn(() => true),
     onNotification: (handler: (method: string, value: unknown) => void) => { handlers.add(handler); return () => { handlers.delete(handler); }; },
     onExit: (handler: () => void) => { exits.add(handler); return () => { exits.delete(handler); }; },
-    call: vi.fn(async <T>(_method: string, value?: unknown): Promise<T> => { completed.resolve(value as OwnerHandoffCompletion); return fixture.ack as T; }),
+    call: vi.fn(async <T>(_method: string, value?: unknown): Promise<T> => { const completion = value as OwnerHandoffCompletion;
+      completed.resolve(completion); return { ...fixture.ack, exchangeId: completion.request.exchangeId } as T; }),
   };
   const options = { host, isCurrent: vi.fn(() => true), exchange: vi.fn(async () => structuredClone(fixture.success.outcome.report)), unavailable: vi.fn(), ...overrides };
   const channel = bindOwnerHandoffExchange(options);
@@ -101,4 +102,89 @@ it("revokes the original continuation assertion after the channel deadline", asy
   f.emit(); await vi.advanceTimersByTimeAsync(25000);
   expect(() => original()).toThrow("HANDOFF_OWNER_CHANGED"); work.reject(new Error("late")); await vi.runAllTimersAsync();
   expect(f.host.call).not.toHaveBeenCalled();
+});
+
+function followingNotification() {
+  const next = structuredClone(fixture.notification);
+  next.request = { ...next.request, operation: "inspect", holdId: fixture.success.outcome.report.holdId,
+    exchangeId: "55555555-5555-4555-8555-555555555555" };
+  return next;
+}
+async function awaitingAcknowledgement() {
+  vi.useFakeTimers();
+  const f = setup(), ack = deferred<unknown>();
+  f.options.exchange.mockImplementation(async notification => ({ ...fixture.success.outcome.report,
+    exchangeId: notification.request.exchangeId }));
+  f.host.call.mockImplementationOnce(() => ack.promise as Promise<never>);
+  f.emit(); await vi.advanceTimersByTimeAsync(0);
+  expect(f.host.call).toHaveBeenCalledOnce();
+  return { ...f, ack, next: followingNotification() };
+}
+
+describe("notifications preceding the previous completion acknowledgement", () => {
+  it("holds one immutable next notification until ACK, then continues through the original coordinator", async () => {
+    const f = await awaitingAcknowledgement();
+    const expected = structuredClone(f.next);
+    f.emit(f.next);
+    f.next.request.sourceEpoch = "66666666-6666-4666-8666-666666666666";
+    expect(f.options.exchange).toHaveBeenCalledOnce();
+    expect(f.options.unavailable).not.toHaveBeenCalled();
+    f.ack.resolve(fixture.ack); await vi.advanceTimersByTimeAsync(0);
+    expect(f.options.exchange).toHaveBeenCalledTimes(2);
+    expect(f.options.exchange.mock.calls[1]?.[0]).toEqual(expected);
+    expect(f.host.call).toHaveBeenCalledTimes(2);
+    expect(f.host.call.mock.calls[1]?.[1]).toMatchObject({ request: expected.request });
+    expect(f.options.unavailable).not.toHaveBeenCalled();
+    f.channel.dispose();
+  });
+
+  for (const reason of ["bad-ack", "rejected-ack", "timeout", "generation", "current", "exit", "dispose",
+    "overflow", "duplicate", "queued-duplicate", "malformed", "profile", "epoch", "reentry"] as const) {
+    it(`discards a waiting notification after ${reason} without another coordinator effect`, async () => {
+      const f = await awaitingAcknowledgement();
+      if (reason === "duplicate") f.next.request.exchangeId = fixture.notification.request.exchangeId;
+      if (reason === "malformed") f.next.extra = true;
+      if (reason === "profile") f.next.profileId = "b".repeat(64);
+      if (reason === "epoch") f.next.request.sourceEpoch = "66666666-6666-4666-8666-666666666666";
+      if (reason === "reentry") f.options.isCurrent.mockImplementationOnce(() => { f.emit(f.next); return true; });
+      f.emit(f.next);
+      if (reason === "overflow") f.emit({ ...f.next, request: { ...f.next.request, exchangeId: "77777777-7777-4777-8777-777777777777" } });
+      if (reason === "queued-duplicate") f.emit(f.next);
+      if (reason === "generation") f.host.generation = "replacement";
+      if (reason === "current") f.options.isCurrent.mockReturnValue(false);
+      if (reason === "exit") for (const handler of f.exits) handler();
+      if (reason === "dispose") f.channel.dispose();
+      if (reason === "timeout") await vi.advanceTimersByTimeAsync(2500);
+      if (reason === "rejected-ack") f.ack.reject(new Error("late acknowledgement failure"));
+      else f.ack.resolve(reason === "bad-ack" ? { ...fixture.ack, accepted: false } : fixture.ack);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(f.options.exchange).toHaveBeenCalledOnce();
+      expect(f.host.call).toHaveBeenCalledOnce();
+      expect(f.options.unavailable).toHaveBeenCalledOnce();
+      expect(f.handlers.size + f.exits.size).toBe(0);
+    });
+  }
+
+  it("refuses another notification while the coordinator itself is still running", async () => {
+    vi.useFakeTimers(); const work = deferred<typeof fixture.success.outcome.report>();
+    const f = setup({ exchange: () => work.promise });
+    f.emit(); f.emit(followingNotification());
+    work.resolve(fixture.success.outcome.report); await vi.advanceTimersByTimeAsync(0);
+    expect(f.host.call).not.toHaveBeenCalled();
+    expect(f.options.unavailable).toHaveBeenCalledOnce();
+  });
+
+  it("charges acknowledgement waiting time to the next notification deadline", async () => {
+    const f = await awaitingAcknowledgement(), work = deferred<typeof fixture.success.outcome.report>();
+    f.emit(f.next); await vi.advanceTimersByTimeAsync(2000);
+    f.options.exchange.mockImplementationOnce(() => work.promise);
+    f.ack.resolve(fixture.ack); await vi.advanceTimersByTimeAsync(0);
+    expect(f.options.exchange).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(22999);
+    expect(f.options.unavailable).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(f.options.unavailable).toHaveBeenCalledOnce();
+    work.reject(new Error("late next operation")); await vi.advanceTimersByTimeAsync(0);
+    expect(f.host.call).toHaveBeenCalledOnce();
+  });
 });

@@ -320,3 +320,34 @@ for (const preparing of [false, true]) {
     } finally { release.resolve(); service.dispose(); }
   });
 }
+
+test("application service serializes notifications arriving before the preceding completion ACK", { timeout: 5000 }, async () => {
+  const { createDesktopHandoffService } = await import("../electron/main/runtime/handoff-service.ts");
+  const f = fixture(), wire = wireFixture(f), entered = deferred(), release = deferred(), completed = deferred();
+  const ordinaryCall = f.host.call, outcomes = [], firstId = f.request.exchangeId;
+  f.host.call = async (method, value) => {
+    if (method !== "ownerHandoff.completeQuiescence") return ordinaryCall(method, value);
+    outcomes.push(value);
+    if (outcomes.length === 1) {
+      // Match Rust consuming completion before its ordinary stdio reply is sent.
+      f.request = { ...f.request, exchangeId: randomUUID() };
+      wire.emit(); entered.resolve(); await release.promise;
+    } else { completed.resolve(value); }
+    return { version: 1, exchangeId: value.request.exchangeId, accepted: true };
+  };
+  const service = createDesktopHandoffService(f.admission, f.current, () => f.host);
+  try {
+    service.wireHost(f.host); wire.emit(); await entered.promise;
+    assert.equal(outcomes.length, 1);
+    assert.equal(wire.handlers.size, 1, "the following notification must not revoke the original subscription");
+    assert.equal(f.admission.isClosed(), false);
+    release.resolve(); await completed.promise;
+    assert.deepEqual(outcomes.map(value => value.request.exchangeId), [firstId, f.request.exchangeId]);
+    assert.deepEqual(outcomes.map(value => value.outcome), [
+      { error: { code: "HANDOFF_BUSY" } }, { error: { code: "HANDOFF_BUSY" } },
+    ]);
+    assert.equal(f.admission.isClosed(), false);
+    assert.equal(f.calls.filter(method => method === "ownerHandoff.inspect").length, 2);
+    assert.equal(wire.handlers.size, 1);
+  } finally { release.resolve(); service.dispose(); }
+});

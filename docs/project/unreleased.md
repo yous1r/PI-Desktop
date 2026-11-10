@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Preserve sequential private handoff exchanges when Rust sends the next
+  notification before the preceding completion acknowledgement. Desktop retains
+  one validated successor during acknowledgement only, preserves its deadline
+  and discards it on invalid input or lost authority. Full handoff remains gated.
 - Include linked Worker sessions in Rust owner inspection and Desktop handoff
   inventory, including tasks queued before Desktop dispatch. Missing or invalid
   counts refuse inspection. Resource qualification and source mutation wiring

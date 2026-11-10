@@ -2818,3 +2818,18 @@ Authenticated source orchestration remains open. Its next prerequisite is a
 regression-tested acknowledgement ordering fix: retain at most one following
 notification during completion ACK, without concurrent coordinator execution,
 deadline extension, duplicate acceptance or continuation after owner loss.
+
+### H1 stdio acknowledgement ordering
+
+A controlled regression reproduced two failures when the next Rust notification
+arrived before the previous completion ACK. Desktop now retains at most one
+immutable validated successor during ACK, runs it after ACK validation, and
+includes the wait in its original deadline. Coordinator work remains serialized.
+Bad/rejected/timed-out ACKs, source/profile changes, duplicate/extra notifications
+and synchronous reentry revoke the channel and discard queued work.
+
+Development validation passed 78 runtime tests and 40 Desktop coordinator tests,
+including the application service routing two real inventory refusals while the
+RPC fixture delays the first ACK. Types and lint passed. Exact clean-candidate
+acceptance follows separately. This does not implement authenticated source
+mutations, grant journal/native authority or clear any fixed qualification gap.

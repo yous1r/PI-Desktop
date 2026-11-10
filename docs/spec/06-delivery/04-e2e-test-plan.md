@@ -20114,6 +20114,12 @@ session data is used.
   usable. Lose the original channel while admission is held and confirm quit order.
   Also lose an idle or identity-preparing channel while a separate ordinary
   maintenance lease exists; releasing that lease must remain valid.
+  Deliver a second valid notification before the first completion ACK. Retain
+  exactly one immutable successor and execute it only after ACK validation,
+  charging the wait against its original deadline. Cover bad/rejected/timed-out
+  ACKs, owner loss, synchronous reentry, duplicate/overflow notifications and
+  profile/epoch mismatch. The actual application service must return both fixed
+  inventory refusals without revoking an unheld original subscription.
 - **Expected:** One original exchange, bounded deadlines, no replacement calls,
   no leaked error payloads, and no renderer event. Cancellation closes the Rust
   waiter/output; lost held authority keeps Desktop admission closed. Actual Host
