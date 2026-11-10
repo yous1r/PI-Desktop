@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Include linked Worker sessions in Rust owner inspection and Desktop handoff
+  inventory, including tasks queued before Desktop dispatch. Missing or invalid
+  counts refuse inspection. Resource qualification and source mutation wiring
+  remain pending; full handoff is not enabled.
 - Add original Rust-owner ingress control for business RPC and automatic config
   sync. Already admitted persistence and detached worktree setup/cleanup retain
   their lifetime; cancellation cannot reopen a held gate. Authenticated source

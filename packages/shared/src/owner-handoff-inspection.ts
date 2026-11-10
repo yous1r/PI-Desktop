@@ -13,7 +13,9 @@ export const OwnerHandoffInspectionSchema = Type.Object({
   ...identity,
   activity: Type.Object({ requests: count, backgroundTasks: count, writes: count, uncertain: Type.Boolean() }, { additionalProperties: false }),
   durable: Type.Object({ turns: Type.Boolean(), queuedTurns: Type.Boolean(), plans: Type.Boolean(), approvals: Type.Boolean(),
-    scheduledRuns: Type.Boolean(), modeClaims: Type.Boolean(), modeWaits: Type.Boolean(), worktrees: Type.Boolean() }, { additionalProperties: false }),
+    scheduledRuns: Type.Boolean(), modeClaims: Type.Boolean(), modeWaits: Type.Boolean(), worktrees: Type.Boolean(),
+    /** Distinct linked Worker sessions with a running turn or a queued/running delivery. */
+    workers: count }, { additionalProperties: false }),
   runtime: Type.Object({ tools: Type.Boolean(), backgroundProcesses: Type.Boolean(), remoteExecutions: Type.Boolean(),
     pluginExecutions: Type.Boolean(), permissions: Type.Boolean(), configSync: Type.Boolean() }, { additionalProperties: false }),
   nativeCoverage: Type.Literal("execution_generation_only"), native: ExecutionFenceStatusSchema,

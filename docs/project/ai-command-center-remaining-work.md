@@ -2772,3 +2772,20 @@ artifact hashes and clean before/after state. See [Rust ingress verification](./
 Development tests overlap this acceptance. This is not a full Rust-suite or
 warning-free result. The source endpoint still accepts only preflight/status;
 durable source orchestration is next, with all fixed qualification gaps retained.
+
+### H1 linked Worker obligation inspection
+
+Rust and Desktop inspection now include a required safe `durable.workers` count.
+The original database snapshot counts each collaboration-linked session once
+when it has a running turn or queued/running message, including tasks queued
+before Desktop dispatch. The same predicate preserves existing Worker limits.
+Missing/invalid counts refuse; Sidecar children and native sessions remain
+separate. All nineteen inventory fields and ten qualification gaps are retained.
+
+Development checks passed seven new Rust Worker cases and the twelve existing
+collaboration cases, plus 122 JS cases across shared/consumer/Desktop suites.
+Rust format, ordinary Clippy, types, lint, architecture, policy, docs and base
+checks passed. The new isolated process scenario covers public spawn, queued
+inspection, ordinary-session exclusion, running deduplication, settle and cancel;
+its exact-candidate execution is pending. Count coverage does not prove native
+closure or enable transfer. Voice and the earlier isolation incident are unchanged.

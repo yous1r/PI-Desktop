@@ -20008,6 +20008,10 @@ session data is used.
   it. Exercise real Desktop outbox/checkpoint disposal and admission refusal
   through the Rust report. Resolve the Desktop coordinator binding through actual
   Rust identity and native status queries; verify fixed gaps still refuse hold.
+  Spawn a linked Worker through the real collaboration RPC and leave its task
+  queued without provider dispatch. Both Rust durable inspection and Desktop
+  inventory report one Worker; cancelling that delivery restores zero. Ordinary
+  sessions and Sidecar children/native sessions do not substitute for this count.
   Other Desktop resource owners and the inventory Sidecar facade are fixtures.
   Inject valid but mismatched root metadata only into the isolated journal;
   restore the fixture, test stale identity/caller inventory and an unfenced Host.
@@ -20019,6 +20023,10 @@ session data is used.
   Host replacement on success and rejection, timeout/late failure, real SQLite
   read-only approval preservation and missing source refusal, scan/lock budget
   restoration, original background/write lifetime and cancellation uncertainty.
+  Worker cases cover queued-only, running-only, distinct linked sessions,
+  queued/running deduplication, terminal deliveries, unlinked ordinary sessions,
+  missing tables and required safe-count validation. All ten qualification gaps
+  remain present after the count is connected.
   `handoff-sidecar-factory.test.mjs` also covers concrete subclass capabilities,
   original parameters across preparation awaits, lost replies, partial constructor
   failure, cleanup rejection and unconfirmed original-child exit. Its OS/Rust

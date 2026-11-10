@@ -6,7 +6,7 @@ const request = { version: 1 as const, requestId: "11111111-1111-4111-8111-11111
   generation: "33333333-3333-4333-8333-333333333333" };
 const response = { ...request, activity: { requests: 0, backgroundTasks: 0, writes: 0, uncertain: false },
   durable: { turns: false, queuedTurns: false, plans: false, approvals: false, scheduledRuns: false,
-    modeClaims: false, modeWaits: false, worktrees: false },
+    modeClaims: false, modeWaits: false, worktrees: false, workers: 0 },
   runtime: { tools: false, backgroundProcesses: false, remoteExecutions: false, pluginExecutions: false, permissions: false, configSync: false },
   nativeCoverage: "execution_generation_only", native: { generation: request.generation,
     state: "running", activeProcesses: 1, rootExited: false, confirmed: false } };
@@ -15,6 +15,7 @@ describe("Rust owner inspection contract", () => {
   it("accepts complete facts without certifying whole-owner native closure", () => {
     expect(parseOwnerHandoffInspection(response, request)).toEqual(response);
     expect(parseOwnerHandoffInspection({ ...response, activity: { ...response.activity, uncertain: true, writes: 2 } }, request).activity.uncertain).toBe(true);
+    expect(parseOwnerHandoffInspection({ ...response, durable: { ...response.durable, workers: 3 } }, request).durable.workers).toBe(3);
   });
   it("requires canonical bounded identities and never accepts caller supplied inventory", () => {
     for (const invalid of [{ ...request, idle: true }, { ...request, counts: {} }, { ...request, version: 2 },
@@ -38,6 +39,9 @@ describe("Rust owner inspection contract", () => {
     }
     for (const writes of [-1, 0.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1]) {
       expect(() => parseOwnerHandoffInspection({ ...response, activity: { ...response.activity, writes } }, request)).toThrow("HANDOFF_INVALID_INSPECTION");
+    }
+    for (const workers of [-1, 0.5, Number.NaN, Number.MAX_SAFE_INTEGER + 1, true, "1"]) {
+      expect(() => parseOwnerHandoffInspection({ ...response, durable: { ...response.durable, workers } }, request)).toThrow("HANDOFF_INVALID_INSPECTION");
     }
     expect(() => parseOwnerHandoffInspection({ ...response, nativeCoverage: "complete" }, request)).toThrow("HANDOFF_INVALID_INSPECTION");
   });

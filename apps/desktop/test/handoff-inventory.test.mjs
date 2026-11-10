@@ -25,7 +25,7 @@ async function fixture() {
   const response = {
     activity: { requests: 0, backgroundTasks: 0, writes: 0, uncertain: false },
     durable: { turns: false, queuedTurns: false, plans: false, approvals: false, scheduledRuns: false,
-      modeClaims: false, modeWaits: false, worktrees: false },
+      modeClaims: false, modeWaits: false, worktrees: false, workers: 0 },
     runtime: { tools: false, backgroundProcesses: false, remoteExecutions: false,
       pluginExecutions: false, permissions: false, configSync: false },
     nativeCoverage: "execution_generation_only",
@@ -75,9 +75,10 @@ test("Desktop inventory reports all nineteen families and retains explicit quali
   assert.ok(f.unqualified.includes("voice-and-live-voice"));
   assert.equal(result.uncontainedResources, f.unqualified.length);
   assert.ok(f.unqualified.includes("worker-execution-classification"));
+  assert.equal(f.unqualified.length, 10, "all ten qualification gaps are still retained");
   assert.ok(Object.isFrozen(f.unqualified));
   assert.equal(result.children, 0);
-  assert.equal(result.workers, 0);
+  assert.equal(result.workers, 0, "no durable Worker obligation in this fixture");
   assert.equal(result.nativeSessions, 0, "the running Sidecar root is not a user execution");
   await assert.rejects(f.original.admission.gate.acquireHandoff(randomUUID(), f.inspect), /HOST_BUSY/);
   assert.equal(f.original.admission.isClosed(), false);
@@ -122,15 +123,43 @@ test("Desktop inventory preserves local turns, plans, modes, tools and scheduled
 test("Desktop inventory maps original Rust durable and runtime obligations without claiming native coverage", async () => {
   const f = await fixture();
   f.response.activity = { requests: 2, backgroundTasks: 3, writes: 4, uncertain: true };
-  for (const key of Object.keys(f.response.durable)) f.response.durable[key] = true;
+  for (const key of Object.keys(f.response.durable)) {
+    if (typeof f.response.durable[key] === "boolean") f.response.durable[key] = true;
+  }
+  f.response.durable.workers = 4;
   for (const key of Object.keys(f.response.runtime)) f.response.runtime[key] = true;
   const result = await f.inspect();
   assert.equal(result.turns, 1); assert.equal(result.queuedTurns, 1); assert.equal(result.plans, 3);
   assert.equal(result.approvals, 2); assert.equal(result.schedules, 2); assert.equal(result.tools, 1);
   assert.equal(result.processes, 1); assert.equal(result.clients, 1); assert.equal(result.plugins, 1);
   assert.equal(result.admissions, 6); assert.equal(result.writes, 4);
+  assert.equal(result.workers, 4, "the durable Worker count is propagated unchanged");
   assert.equal(result.uncontainedResources, f.unqualified.length + 1);
 });
+
+test("Desktop inventory counts durable Workers without merging Sidecar families or dropping the gap", async () => {
+  const f = await fixture();
+  f.response.durable.workers = 2;
+  const result = await f.inspect();
+  assert.equal(result.workers, 2);
+  assert.equal(result.children, 0, "subagent delegations are not Worker sessions");
+  assert.equal(result.nativeSessions, 0, "native Pi sessions are not Worker sessions");
+  assert.equal(result.turns, 0, "a queued-only Worker adds no Agent Host turn");
+  assert.ok(f.unqualified.includes("worker-execution-classification"),
+    "the count alone does not qualify the Worker execution classification");
+  assert.equal(result.uncontainedResources, f.unqualified.length);
+  assert.ok(Value.Check(OwnerHandoffInventorySchema, result));
+  await assert.rejects(f.original.admission.gate.acquireHandoff(randomUUID(), f.inspect), /HOST_BUSY/);
+});
+
+for (const [label, workers] of [["missing", undefined], ["negative", -1], ["fractional", 0.5],
+  ["unsafe", Number.MAX_SAFE_INTEGER + 1], ["non-numeric", true]]) {
+  test(`Desktop inventory refuses a ${label} durable Worker count instead of reporting idle`, async () => {
+    const f = await fixture();
+    f.response.durable.workers = workers;
+    await assert.rejects(f.inspect(), (error) => error.message === "HANDOFF_INVALID_INSPECTION");
+  });
+}
 
 for (const name of ["backends", "admission", "agentHost", "plans", "modes", "coordination", "events", "outbox", "checkpointer",
   "scheduler", "scheduledRuns", "activeTurns", "activeTools", "plugins", "remote", "browser", "terminals", "userMcp", "mcpOAuth", "speech"]) {

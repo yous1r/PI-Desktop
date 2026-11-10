@@ -19,6 +19,15 @@ pub use repository::{get, Message};
 pub use settlement::{begin_turn, recover, settle_turn};
 pub const SCHEMA: &str = include_str!("schema.sql");
 
+/// One linked Worker session is active while it has a running turn or a
+/// queued/running collaboration message. This covers a spawned Worker whose
+/// task is still queued in Rust before Agent Host has dispatched it. The spawn
+/// limit and the read-only owner-handoff obligation count share one rule.
+pub(crate) const ACTIVE_WORKER_CONDITION: &str =
+    "EXISTS(SELECT 1 FROM turns t WHERE t.session_id=l.session_id AND t.status='running')
+     OR EXISTS(SELECT 1 FROM session_collaboration_messages m
+               WHERE m.target_session_id=l.session_id AND m.status IN ('queued','running'))";
+
 pub(super) fn string<'a>(input: &'a Value, key: &str, limit: usize) -> Result<&'a str> {
     let value = input
         .get(key)
@@ -127,11 +136,15 @@ fn spawn(db: &Database, input: &Value) -> Result<Value> {
     if is_worker {
         return Err(anyhow!("PERMISSION_DENIED: workers may message existing sessions but cannot create further workers"));
     }
-    let (parent_active,plugin_active): (i64,i64) = db.conn().query_row(
+    let limits = format!(
         "SELECT COALESCE(SUM(l.created_by_session_id=?1),0),COUNT(*) FROM session_collaboration_links l
-        WHERE l.plugin_id=?2 AND (EXISTS(SELECT 1 FROM turns t WHERE t.session_id=l.session_id AND t.status='running')
-        OR EXISTS(SELECT 1 FROM session_collaboration_messages m WHERE m.target_session_id=l.session_id AND m.status IN ('queued','running')))",
-        params![source,plugin],|row|Ok((row.get(0)?,row.get(1)?)))?;
+        WHERE l.plugin_id=?2 AND ({ACTIVE_WORKER_CONDITION})"
+    );
+    let (parent_active, plugin_active): (i64, i64) =
+        db.conn()
+            .query_row(&limits, params![source, plugin], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })?;
     if parent_active >= 4 || plugin_active >= 16 {
         return Err(anyhow!("LIMIT_EXCEEDED: active worker limit reached"));
     }

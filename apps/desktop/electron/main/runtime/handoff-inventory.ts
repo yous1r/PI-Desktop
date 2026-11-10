@@ -48,6 +48,8 @@ export type DesktopHandoffSources = {
 
 /** These are actual uncovered producers, not caller-supplied qualification flags.
  * Remove a gap only with its production owner/admission/native proof wired here.
+ * The durable Worker count covers obligations; original-owner admission and
+ * native closure still need qualification before removing the Worker gap.
  * Voice remains paused; reading other owners must not initialize its runtime. */
 export const DESKTOP_HANDOFF_UNQUALIFIED_SOURCES = Object.freeze([
   "rust-background-admission", "native-resources-outside-execution-generation",
@@ -196,7 +198,9 @@ export async function inspectDesktopHandoff(current: () => DesktopHandoffSources
       writes: sum(coordination.writes, events.writes, outbox.writes, checkpoint.writes, activity.writes),
       // The coordinator merges Sidecar children/native sessions. Independent
       // Worker classification and other native families remain unqualified.
-      children: 0, workers: 0, nativeSessions: 0,
+      // The Worker count is the original Rust durable count, so a spawned
+      // Worker whose task is still queued counts before Desktop dispatch.
+      children: 0, workers: Number(durable.workers), nativeSessions: 0,
       schedules: sum(schedules, size("scheduledRuns", sources.scheduledRuns), plugins.schedules, Number(durable.scheduledRuns), Number(runtime.configSync)),
       approvals: sum(agent.approvals, Number(durable.approvals), Number(runtime.permissions)),
       inputs: sum(agent.inputs, ...services.map(value => value.inputs)),

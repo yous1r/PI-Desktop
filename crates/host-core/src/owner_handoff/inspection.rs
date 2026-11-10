@@ -37,10 +37,11 @@ impl Request {
     }
 }
 
-/// Existence bits are conservative obligations, not execution counts. All
-/// reads share one SQLite statement snapshot and never expire approvals or
-/// recover/replay work. Configured schedules and paused, unclaimed modes do
-/// not by themselves represent an executing task.
+/// Existence bits are conservative obligations, not execution counts; the
+/// linked Worker count is the one durable count and covers Rust-only queued
+/// tasks. All reads share one SQLite statement snapshot and never expire
+/// approvals or recover/replay work. Configured schedules and paused, unclaimed
+/// modes do not by themselves represent an executing task.
 #[derive(Debug, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Durable {
@@ -52,11 +53,12 @@ pub struct Durable {
     mode_claims: bool,
     mode_waits: bool,
     worktrees: bool,
+    workers: i64,
 }
 impl Durable {
     fn read(db: &crate::db::Database) -> Result<Self> {
         super::read_budget::bounded_read(db.conn(), || {
-            Ok(db.conn().query_row(
+            let sql = format!(
             "SELECT
              EXISTS(SELECT 1 FROM turns WHERE ended_at IS NULL OR status NOT IN ('completed','aborted','error')),
              EXISTS(SELECT 1 FROM turn_queue),
@@ -65,14 +67,23 @@ impl Durable {
              EXISTS(SELECT 1 FROM task_runs WHERE ended_at IS NULL OR status NOT IN ('completed','aborted','error')),
              EXISTS(SELECT 1 FROM mode_runs WHERE active_turn_id IS NOT NULL OR active_origin IS NOT NULL),
              EXISTS(SELECT 1 FROM mode_runs WHERE state IN ('running','waiting') OR pending_gate IS NOT NULL),
-             EXISTS(SELECT 1 FROM worktrees WHERE status='creating' OR setup_status='running' OR session_id IS NULL)",
-            [],
-            |row| Ok(Self {
-                turns: row.get(0)?, queued_turns: row.get(1)?, plans: row.get(2)?,
-                approvals: row.get(3)?, scheduled_runs: row.get(4)?, mode_claims: row.get(5)?,
-                mode_waits: row.get(6)?, worktrees: row.get(7)?,
-            }),
-        )?)
+             EXISTS(SELECT 1 FROM worktrees WHERE status='creating' OR setup_status='running' OR session_id IS NULL),
+             (SELECT COUNT(*) FROM session_collaboration_links l WHERE {})",
+            crate::session_collaboration::ACTIVE_WORKER_CONDITION
+        );
+            Ok(db.conn().query_row(&sql, [], |row| {
+                Ok(Self {
+                    turns: row.get(0)?,
+                    queued_turns: row.get(1)?,
+                    plans: row.get(2)?,
+                    approvals: row.get(3)?,
+                    scheduled_runs: row.get(4)?,
+                    mode_claims: row.get(5)?,
+                    mode_waits: row.get(6)?,
+                    worktrees: row.get(7)?,
+                    workers: row.get(8)?,
+                })
+            })?)
         })
     }
 }

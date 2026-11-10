@@ -60,6 +60,7 @@ fn durable_inspection_preserves_pending_approvals_and_reports_original_obligatio
             mode_claims: true,
             mode_waits: true,
             worktrees: true,
+            workers: 0,
         }
     );
     assert_eq!(db.conn().total_changes(), before);
@@ -95,6 +96,256 @@ fn missing_durable_source_is_an_error_not_an_idle_report() {
     let directory = tempfile::tempdir().unwrap();
     let db = Database::open_in_dir(directory.path()).unwrap();
     db.conn().execute_batch("DROP TABLE turn_queue").unwrap();
+    assert!(Durable::read(&db).is_err());
+}
+
+/// Collaboration delivery requires Agent mode on both sides, so the fixture
+/// parent is an ordinary Agent session like the real sender.
+fn collaboration_parent(db: &Database) -> String {
+    sessions::create_session(db, None, Some("agent".into()), None, None, None)
+        .unwrap()
+        .id
+}
+
+/// Real public entry points: `spawn` creates the session, the link and the
+/// queued task; later states come from the same settlement helpers production
+/// uses, so the fixture never invents a Worker row.
+fn spawn_worker(db: &Database, parent: &str, key: &str) -> (String, String) {
+    let spawned = crate::session_collaboration::handle(
+        db,
+        "session.collaboration.spawn",
+        &json!({"sourceSessionId":parent,"pluginId":"pi.session-orchestrator",
+            "content":"Review the change","idempotencyKey":key,"title":key}),
+    )
+    .unwrap();
+    (
+        spawned["sessionId"].as_str().unwrap().to_owned(),
+        spawned["message"]["id"].as_str().unwrap().to_owned(),
+    )
+}
+
+fn message_status(db: &Database, id: &str) -> String {
+    db.conn()
+        .query_row(
+            "SELECT status FROM session_collaboration_messages WHERE id=?1",
+            rusqlite::params![id],
+            |row| row.get(0),
+        )
+        .unwrap()
+}
+
+#[test]
+fn durable_workers_count_a_queued_spawn_before_desktop_dispatch() {
+    let directory = tempfile::tempdir().unwrap();
+    let db = Database::open_in_dir(directory.path()).unwrap();
+    let parent = collaboration_parent(&db);
+    assert_eq!(Durable::read(&db).unwrap().workers, 0);
+    let (worker, task) = spawn_worker(&db, &parent, "queued-worker");
+    assert_eq!(message_status(&db, &task), "queued");
+    let before = db.conn().total_changes();
+    db.conn().execute_batch("PRAGMA query_only=ON").unwrap();
+    let queued = Durable::read(&db).unwrap();
+    db.conn().execute_batch("PRAGMA query_only=OFF").unwrap();
+    assert_eq!(
+        queued.workers, 1,
+        "a Worker whose task is still queued in Rust is already work"
+    );
+    assert!(
+        !queued.turns && !queued.queued_turns,
+        "Agent Host has neither a turn nor a queued turn for this Worker"
+    );
+    assert_eq!(db.conn().total_changes(), before, "the count is read-only");
+    assert_eq!(
+        db.conn()
+            .query_row(
+                "SELECT created_by_session_id FROM session_collaboration_links WHERE session_id=?1",
+                rusqlite::params![worker],
+                |row| row.get::<_, String>(0)
+            )
+            .unwrap(),
+        parent,
+        "the link is the Worker identity"
+    );
+}
+
+#[test]
+fn durable_workers_count_a_running_turn_after_its_queued_task_settles() {
+    let directory = tempfile::tempdir().unwrap();
+    let db = Database::open_in_dir(directory.path()).unwrap();
+    let parent = collaboration_parent(&db);
+    let (worker, task) = spawn_worker(&db, &parent, "running-worker");
+    crate::session_collaboration::handle(
+        &db,
+        "session.collaboration.cancel",
+        &json!({"sessionId":worker,"pluginId":"pi.session-orchestrator","sourceSessionId":parent}),
+    )
+    .unwrap();
+    assert_eq!(message_status(&db, &task), "cancelled");
+    assert_eq!(
+        Durable::read(&db).unwrap().workers,
+        0,
+        "a cancelled queued task leaves no active Worker"
+    );
+    let turn = sessions::begin_turn(&db, &worker, None, None).unwrap();
+    assert_eq!(
+        Durable::read(&db).unwrap().workers,
+        1,
+        "a running turn keeps the linked Worker active"
+    );
+    sessions::end_turn(&db, &turn, "completed", None, None, false).unwrap();
+    assert_eq!(Durable::read(&db).unwrap().workers, 0);
+}
+
+#[test]
+fn durable_workers_count_one_worker_once_while_its_task_runs() {
+    let directory = tempfile::tempdir().unwrap();
+    let db = Database::open_in_dir(directory.path()).unwrap();
+    let parent = collaboration_parent(&db);
+    let (worker, task) = spawn_worker(&db, &parent, "claimed-worker");
+    let turn = crate::session_collaboration::begin_turn(&db, &worker, &task, None, None).unwrap();
+    assert_eq!(message_status(&db, &task), "running");
+    assert_eq!(
+        Durable::read(&db).unwrap().workers,
+        1,
+        "one link is one Worker, not one per matching obligation"
+    );
+    sessions::end_turn(&db, &turn, "aborted", None, None, false).unwrap();
+    assert_eq!(
+        Durable::read(&db).unwrap().workers,
+        1,
+        "the delivery is still running until it settles"
+    );
+    crate::session_collaboration::settle_turn(&db, &turn).unwrap();
+    assert_eq!(message_status(&db, &task), "cancelled");
+    assert_eq!(Durable::read(&db).unwrap().workers, 0);
+}
+
+#[test]
+fn durable_workers_count_distinct_linked_sessions_across_creators() {
+    let directory = tempfile::tempdir().unwrap();
+    let db = Database::open_in_dir(directory.path()).unwrap();
+    let parent = collaboration_parent(&db);
+    let other = collaboration_parent(&db);
+    let (first, _) = spawn_worker(&db, &parent, "first-worker");
+    let (second, _) = spawn_worker(&db, &parent, "second-worker");
+    let (third, _) = spawn_worker(&db, &other, "third-worker");
+    assert!(first != second && second != third && first != third);
+    assert_eq!(Durable::read(&db).unwrap().workers, 3);
+    let (links, distinct): (i64, i64) = db
+        .conn()
+        .query_row(
+            "SELECT COUNT(*),COUNT(DISTINCT session_id) FROM session_collaboration_links",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(links, distinct, "one link per Worker session");
+    // The spawn limit and the obligation count must classify the same rows.
+    let limited: i64 = db
+        .conn()
+        .query_row(
+            &format!(
+                "SELECT COUNT(*) FROM session_collaboration_links l
+                 WHERE l.plugin_id=?1 AND ({})",
+                crate::session_collaboration::ACTIVE_WORKER_CONDITION
+            ),
+            rusqlite::params!["pi.session-orchestrator"],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(limited, 3);
+    let per_creator: i64 = db
+        .conn()
+        .query_row(
+            &format!(
+                "SELECT COUNT(*) FROM session_collaboration_links l
+                 WHERE l.created_by_session_id=?1 AND ({})",
+                crate::session_collaboration::ACTIVE_WORKER_CONDITION
+            ),
+            rusqlite::params![parent],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(per_creator, 2, "the per-parent limit counts the same links");
+}
+
+#[test]
+fn durable_workers_exclude_settled_cancelled_and_interrupted_deliveries() {
+    let directory = tempfile::tempdir().unwrap();
+    let db = Database::open_in_dir(directory.path()).unwrap();
+    let parent = collaboration_parent(&db);
+    let (cancelled_worker, _) = spawn_worker(&db, &parent, "cancelled-worker");
+    crate::session_collaboration::handle(
+        &db,
+        "session.collaboration.cancel",
+        &json!({"sessionId":cancelled_worker}),
+    )
+    .unwrap();
+    assert_eq!(Durable::read(&db).unwrap().workers, 0);
+    let (settled_worker, settled_task) = spawn_worker(&db, &parent, "settled-worker");
+    let settled =
+        crate::session_collaboration::begin_turn(&db, &settled_worker, &settled_task, None, None)
+            .unwrap();
+    sessions::end_turn(&db, &settled, "completed", None, None, false).unwrap();
+    crate::session_collaboration::settle_turn(&db, &settled).unwrap();
+    assert_eq!(Durable::read(&db).unwrap().workers, 0);
+    let (interrupted_worker, interrupted_task) = spawn_worker(&db, &parent, "interrupted-worker");
+    let interrupted = crate::session_collaboration::begin_turn(
+        &db,
+        &interrupted_worker,
+        &interrupted_task,
+        None,
+        None,
+    )
+    .unwrap();
+    sessions::end_turn(
+        &db,
+        &interrupted,
+        "error",
+        Some("fixture failure"),
+        None,
+        false,
+    )
+    .unwrap();
+    crate::session_collaboration::recover(&db).unwrap();
+    assert_eq!(message_status(&db, &interrupted_task), "interrupted");
+    assert_eq!(Durable::read(&db).unwrap().workers, 0);
+}
+
+#[test]
+fn durable_workers_exclude_sessions_without_a_collaboration_link() {
+    let directory = tempfile::tempdir().unwrap();
+    let db = Database::open_in_dir(directory.path()).unwrap();
+    let parent = collaboration_parent(&db);
+    let plain = collaboration_parent(&db);
+    let turn = sessions::begin_turn(&db, &plain, None, None).unwrap();
+    crate::session_collaboration::handle(
+        &db,
+        "session.collaboration.send",
+        &json!({"sessionId":plain,"sourceSessionId":parent,
+            "pluginId":"pi.session-orchestrator","content":"Review the change",
+            "idempotencyKey":"plain-session-task","kind":"task"}),
+    )
+    .unwrap();
+    let durable = Durable::read(&db).unwrap();
+    assert!(
+        durable.turns,
+        "the unlinked session really has a running turn"
+    );
+    assert_eq!(
+        durable.workers, 0,
+        "a task delivered to an ordinary session is not a Worker"
+    );
+    sessions::end_turn(&db, &turn, "completed", None, None, false).unwrap();
+}
+
+#[test]
+fn missing_worker_link_source_is_an_error_not_an_idle_report() {
+    let directory = tempfile::tempdir().unwrap();
+    let db = Database::open_in_dir(directory.path()).unwrap();
+    db.conn()
+        .execute_batch("DROP TABLE session_collaboration_links")
+        .unwrap();
     assert!(Durable::read(&db).is_err());
 }
 

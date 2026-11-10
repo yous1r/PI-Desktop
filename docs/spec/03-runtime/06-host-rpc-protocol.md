@@ -1599,7 +1599,11 @@ The response echoes those fields and returns required groups:
 - `activity`: safe nonnegative `requests`, `backgroundTasks`, `writes`, and
   sticky `uncertain` evidence from the original Rust owner.
 - `durable`: boolean `turns`, `queuedTurns`, `plans`, `approvals`,
-  `scheduledRuns`, `modeClaims`, `modeWaits`, `worktrees` from one SQLite statement.
+  `scheduledRuns`, `modeClaims`, `modeWaits`, `worktrees`, plus safe nonnegative
+  `workers`, from one SQLite statement. Workers count distinct linked sessions
+  with a running turn or a queued/running collaboration message, including tasks
+  queued in Rust before Desktop dispatch. This is an obligation count, not native
+  closure evidence; missing or invalid counts refuse inspection.
 - `runtime`: boolean `tools`, `backgroundProcesses`, `remoteExecutions`,
   `pluginExecutions`, `permissions`, `configSync` from their current Rust owners.
 - `nativeCoverage: "execution_generation_only"` and `native`, the original

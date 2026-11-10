@@ -23,7 +23,7 @@ function fixture() {
     assert.equal(method, "ownerHandoff.inspect");
     return { ...request, native: { ...native }, nativeCoverage: "execution_generation_only",
       activity: { requests: 0, backgroundTasks: 0, writes: 0, uncertain: false },
-      durable: { turns: false, queuedTurns: false, plans: false, approvals: false, scheduledRuns: false, modeClaims: false, modeWaits: false, worktrees: false },
+      durable: { turns: false, queuedTurns: false, plans: false, approvals: false, scheduledRuns: false, modeClaims: false, modeWaits: false, worktrees: false, workers: 0 },
       runtime: { tools: false, backgroundProcesses: false, remoteExecutions: false, pluginExecutions: false, permissions: false, configSync: false } };
   } };
   const sidecar = {

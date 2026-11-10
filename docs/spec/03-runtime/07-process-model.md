@@ -818,7 +818,11 @@ and remote-boot reports already include their nested resources and retired
 owners; the reader does not add those children again. Event/coordination writes
 and finalizations can overlap and remain conservative obstruction bounds, not
 execution occupancy. Sidecar child/native-session counts are merged by
-`OwnerHandoffCoordinator`; independent Worker classification is still uncovered.
+`OwnerHandoffCoordinator`. The reader takes `workers` from the original Rust
+durable count of linked sessions with a running turn or queued/running
+collaboration message, including Rust-only queued tasks before Desktop dispatch.
+Worker admission and native closure remain unqualified; neither Sidecar children
+nor native-session counts substitute for Worker obligations.
 
 The application-owned service consumes this reader through the coordinator.
 Missing startup producers refuse; no empty-source substitute is installed.

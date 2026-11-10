@@ -7,8 +7,10 @@ import { PersistenceOutbox } from '../../apps/desktop/electron/main/persistence-
 import { InflightCheckpointer } from '../../packages/host-runtime/src/inflight-checkpoint.ts';
 
 /** Actual Rust/persistence/gate composition. Other Desktop owners are explicit
- * idle fixtures; this does not qualify full Desktop startup or native closure. */
-export async function verifyDesktopInventory(host, binding, directory) {
+ * idle fixtures; this does not qualify full Desktop startup or native closure.
+ * `inspectRust` is the production `ownerHandoff.inspect` read for the same
+ * binding, used to check the durable linked-Worker count before Desktop maps it. */
+export async function verifyDesktopInventory(host, binding, directory, inspectRust) {
   const reporter = value => ({ getHandoffActivity: () => ({ ...value }) });
   const external = () => reporter({ operations: 0, resources: 0, uncontainedResources: 0 });
   const sidecar = {
@@ -74,6 +76,62 @@ export async function verifyDesktopInventory(host, binding, directory) {
     assert.equal(original.current().binding.profileId, binding.profileId);
     assert.equal(original.current().binding.generation, binding.generation);
     assert.equal((await original.inspect()).uncontainedResources, DESKTOP_HANDOFF_UNQUALIFIED_SOURCES.length);
+
+    // Durable linked-Worker obligation through the real public Host API. A
+    // spawned Worker task is queued in Rust before any Desktop/AgentHost turn
+    // exists, so this count cannot come from Sidecar children or native sessions.
+    assert.equal(typeof inspectRust, 'function', 'the Worker scenario needs original Rust inspection');
+    const { session: workerParent } = await host.call('session.create', { title: 'Worker inventory parent', mode: 'agent' });
+    const spawnWorker = async title => {
+      const spawned = await host.call('session.collaboration.spawn', { sourceSessionId: workerParent.id,
+        pluginId: 'pi.session-orchestrator', content: 'Queued-only Worker inventory fixture',
+        idempotencyKey: randomUUID(), notifyOnCompletion: false, title });
+      assert.equal(spawned.message.status, 'queued', 'a spawned Worker task is queued before Desktop dispatches it');
+      return spawned;
+    };
+    const queuedWorker = await spawnWorker('Queued-only Worker');
+    const rustQueued = await inspectRust();
+    assert.equal(rustQueued.durable.workers, 1, 'Rust counts the linked Worker before Desktop dispatch');
+    assert.equal(rustQueued.durable.turns, false, 'the queued Worker owns no Host turn yet');
+    const observedQueued = await inspect();
+    assert.equal(Object.keys(observedQueued).length, 19, 'the public inventory keeps all nineteen families');
+    assert.equal(observedQueued.workers, 1, 'Desktop maps the original durable Worker count');
+    assert.equal(observedQueued.turns, 0, 'a queued-only Worker adds no turn obligation');
+    assert.equal(observedQueued.children, 0, 'subagent delegations are not Worker sessions');
+    assert.equal(observedQueued.nativeSessions, 0, 'native Pi sessions are not Worker sessions');
+    assert.equal(observedQueued.uncontainedResources, DESKTOP_HANDOFF_UNQUALIFIED_SOURCES.length);
+
+    // An unrelated ordinary session with a real running turn is not a Worker.
+    const { session: unlinked } = await host.call('session.create', { title: 'Unlinked inventory session', mode: 'agent' });
+    const { turnId: unlinkedTurn } = await host.call('session.beginTurn', { sessionId: unlinked.id });
+    const withUnlinkedTurn = await inspect();
+    assert.ok(withUnlinkedTurn.turns > 0, 'the unlinked session really has a running turn');
+    assert.equal(withUnlinkedTurn.workers, 1, 'an unlinked running session never becomes a Worker');
+    await host.call('session.endTurn', { turnId: unlinkedTurn, status: 'aborted', createNotification: false, recoverInflight: true });
+    assert.equal((await inspect()).turns, 0);
+
+    // Claiming the queued task keeps one Worker counted once, then settles it.
+    const { turnId: workerTurn } = await host.call('session.beginTurn', { sessionId: queuedWorker.sessionId,
+      sessionMessageId: queuedWorker.message.id });
+    assert.equal((await inspectRust()).durable.workers, 1, 'a queued and running Worker is one session, not two');
+    await host.call('session.endTurn', { turnId: workerTurn, status: 'completed', createNotification: false });
+    await host.call('session.collaboration.settle', { turnId: workerTurn });
+    assert.equal((await inspectRust()).durable.workers, 0, 'settling the delivery releases the Worker');
+    assert.equal((await inspect()).workers, 0);
+
+    // Cancelling a still-queued delivery through the public API releases it too.
+    const cancelledWorker = await spawnWorker('Cancelled Worker');
+    assert.equal((await inspectRust()).durable.workers, 1);
+    const released = await host.call('session.collaboration.cancel', { sessionId: cancelledWorker.sessionId,
+      pluginId: 'pi.session-orchestrator', sourceSessionId: workerParent.id });
+    assert.deepEqual(released.messageIds, [cancelledWorker.message.id]);
+    assert.deepEqual(released.runningTurnIds, []);
+    assert.equal((await inspectRust()).durable.workers, 0, 'a cancelled queued delivery is not an active Worker');
+    const releasedInventory = await inspect();
+    assert.equal(releasedInventory.workers, 0);
+    assert.equal(releasedInventory.uncontainedResources, DESKTOP_HANDOFF_UNQUALIFIED_SOURCES.length,
+      'all fixed qualification gaps, including Worker classification, are retained');
+
     const coordinator = new DesktopHandoffCoordinator(admission, current);
     try {
       await assert.rejects(coordinator.exchange({ version: 1, operation: 'hold', exchangeId: randomUUID(),

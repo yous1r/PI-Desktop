@@ -5,7 +5,7 @@ const epoch = "22222222-2222-4222-8222-222222222222";
 const generation = "33333333-3333-4333-8333-333333333333";
 function report(request: unknown) {
   return { ...(request as object), activity: { requests: 0, backgroundTasks: 0, writes: 0, uncertain: false },
-    durable: { turns: false, queuedTurns: false, plans: false, approvals: false, scheduledRuns: false, modeClaims: false, modeWaits: false, worktrees: false },
+    durable: { turns: false, queuedTurns: false, plans: false, approvals: false, scheduledRuns: false, modeClaims: false, modeWaits: false, worktrees: false, workers: 0 },
     runtime: { tools: false, backgroundProcesses: false, remoteExecutions: false, pluginExecutions: false, permissions: false, configSync: false },
     nativeCoverage: "execution_generation_only", native: { generation, state: "running", activeProcesses: 1, rootExited: false, confirmed: false } };
 }

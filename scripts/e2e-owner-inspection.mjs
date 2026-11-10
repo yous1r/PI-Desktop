@@ -114,8 +114,9 @@ try {
   assert.equal(detail.session.messages[0].status, 'aborted');
   passed('real begin/checkpoint/end/recovery path updates read-only obligations and preserves the reply');
 
-  await verifyDesktopInventory(source, binding, join(directory, 'desktop-persistence'));
+  await verifyDesktopInventory(source, binding, join(directory, 'desktop-persistence'), () => inspectOwnerHandoff(current));
   passed('Desktop inventory retains real writes; the coordinator resolves original Rust identity and generation and refuses handoff after settlement while qualification is incomplete');
+  passed('real session.collaboration.spawn, claim, settle and cancel move the original Rust and Desktop durable Worker count from one to zero while unlinked sessions and Sidecar families stay unchanged');
 
   const generation = database(profile, db => db.prepare('SELECT record_json FROM execution_generations WHERE id=?').get(ticket.generation).record_json);
   const replaceRoot = root => database(profile, db => db.prepare('UPDATE execution_generations SET record_json=? WHERE id=?')
