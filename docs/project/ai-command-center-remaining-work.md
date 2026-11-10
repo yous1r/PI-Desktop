@@ -2787,8 +2787,9 @@ collaboration cases, plus 122 JS cases across shared/consumer/Desktop suites.
 Rust format, ordinary Clippy, types, lint, architecture, policy, docs and base
 checks passed. The new isolated process scenario covers public spawn, queued
 inspection, ordinary-session exclusion, running deduplication, settle and cancel;
-its exact-candidate execution is pending. Count coverage does not prove native
-closure or enable transfer. Voice and the earlier isolation incident are unchanged.
+its exact-candidate execution passed as recorded below. Count coverage does not
+prove native closure or enable transfer. Voice and the earlier isolation incident
+are unchanged.
 
 ### H1 explicit source journal steps
 
@@ -2806,3 +2807,14 @@ rolls back the phase and permits the exact request to retry. An initial test-bui
 command omitted Cargo's `--tests` option and failed to link dev dependencies;
 the corrected isolated build and all selected tests passed. Existing warnings
 remain. Full authenticated source orchestration is still the next H1 step.
+
+#### Exact Worker and source-step acceptance
+
+Candidate `b189901bbc1931f15a6e010021d006e469f24597` passed 102 unique Rust tests,
+141 JS cases and 15 isolated native process scenarios. Independent verification
+confirmed 2,888 unchanged source inputs, 42 artifact hashes, cleanup and clean
+before/after state. See [Worker/source-step evidence](./ai-command-center-p0-evidence/worker-steps-verification.md).
+Authenticated source orchestration remains open. Its next prerequisite is a
+regression-tested acknowledgement ordering fix: retain at most one following
+notification during completion ACK, without concurrent coordinator execution,
+deadline extension, duplicate acceptance or continuation after owner loss.
