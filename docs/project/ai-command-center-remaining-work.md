@@ -2756,3 +2756,19 @@ architecture, agent-policy, documentation and base checks. The initial feature
 baseline failed on missing admission APIs; a test-module path resolution error
 was fixed before building the passing test executable. Existing warnings remain.
 Exact clean-candidate/native process acceptance follows in a separate record.
+
+#### Exact Rust ingress acceptance
+
+Candidate `142308a5cb25ee1a0b8930d8b9ffd4ac8858a465` against freshly fetched
+`7e493e8b18d277d8d13f682cf250604ed94fb00d` passed 110 unique Rust tests
+(70 handoff, 8 discovery, 1 RPC-budget, 31 ingress/persistence/config-sync/worktree)
+and 19 shared contract tests. Fresh Host binaries passed five native source-query
+scenarios (12 children) and nine inspection/startup/restart scenarios (4 Hosts),
+with cleanup confirmed. Rust format, ordinary Clippy, types, lint, architecture,
+policy, documentation, base and whitespace checks all exited zero.
+
+Independent verification confirmed 2,887 unchanged source inputs, 35 distinct
+artifact hashes and clean before/after state. See [Rust ingress verification](./ai-command-center-p0-evidence/rust-ingress-verification.json).
+Development tests overlap this acceptance. This is not a full Rust-suite or
+warning-free result. The source endpoint still accepts only preflight/status;
+durable source orchestration is next, with all fixed qualification gaps retained.
