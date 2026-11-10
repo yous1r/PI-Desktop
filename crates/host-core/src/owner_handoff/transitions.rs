@@ -14,6 +14,10 @@ pub enum Mutation {
     Prepare {
         record: Transfer,
     },
+    BeginFencing,
+    ConfirmFenced,
+    Release,
+    Cancel,
     #[cfg(test)]
     Advance {
         phase: Phase,
@@ -60,6 +64,10 @@ impl Journal {
                     if record.requester.sid != principal { bail!("HANDOFF_PRINCIPAL_MISMATCH"); }
                     if record.phase.terminal() { bail!("HANDOFF_TERMINAL"); }
                     match mutation {
+                        Mutation::BeginFencing => source_step(conn, principal, &mut record, Phase::Prepared, Phase::SourceFencing)?,
+                        Mutation::ConfirmFenced => source_step(conn, principal, &mut record, Phase::SourceFencing, Phase::SourceFenced)?,
+                        Mutation::Release => source_step(conn, principal, &mut record, Phase::SourceFenced, Phase::ReleasePending)?,
+                        Mutation::Cancel => source_step(conn, principal, &mut record, Phase::Prepared, Phase::Cancelled)?,
                         #[cfg(test)]
                         Mutation::Advance { phase } => {
                             if *phase == Phase::TargetClaimed || !record.phase.can_advance(*phase) {
@@ -122,6 +130,31 @@ impl Journal {
             Ok(record)
         })
     }
+}
+/// Journal authorization complements, but never substitutes for, the source
+/// controller's original native handles and quiescence proof.
+fn source_step(
+    conn: &Connection,
+    principal: &str,
+    record: &mut Transfer,
+    from: Phase,
+    to: Phase,
+) -> Result<()> {
+    if record.phase != from {
+        bail!("HANDOFF_INVALID_TRANSITION");
+    }
+    let owner = read_owner(conn, &record.source_epoch)?;
+    let retired: bool = conn.query_row(
+        "SELECT retired FROM execution_owners WHERE epoch=?1",
+        [&owner.epoch],
+        |row| row.get(0),
+    )?;
+    if retired || owner.profile != record.profile || owner.host.sid != principal {
+        bail!("HANDOFF_OWNER_CHANGED");
+    }
+    record.phase = to;
+    record.last_failure = None;
+    Ok(())
 }
 fn validate_request(principal: &str, request: &Request) -> Result<()> {
     model::uuid(&request.id)?;

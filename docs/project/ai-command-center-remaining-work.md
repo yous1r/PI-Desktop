@@ -2789,3 +2789,20 @@ checks passed. The new isolated process scenario covers public spawn, queued
 inspection, ordinary-session exclusion, running deduplication, settle and cancel;
 its exact-candidate execution is pending. Count coverage does not prove native
 closure or enable transfer. Voice and the earlier isolation incident are unchanged.
+
+### H1 explicit source journal steps
+
+The internal journal now has explicit BeginFencing, ConfirmFenced, Release and
+Cancel operations. Each admits only its specified predecessor, requires the
+original unretired source owner for a new transition, and commits the phase and
+receipt atomically. Historical receipt replay leaves current state untouched;
+Claim/Recover serialization and fingerprints are unchanged. Generic phase changes
+and Prepare remain test-only, and no new external source command is exposed.
+
+The feature baseline failed on the four absent operations. After implementation,
+all 93 selected Rust tests passed (81 handoff including four new transition tests
+and seven new Worker cases, plus 12 collaboration cases). Receipt-insert failure
+rolls back the phase and permits the exact request to retry. An initial test-build
+command omitted Cargo's `--tests` option and failed to link dev dependencies;
+the corrected isolated build and all selected tests passed. Existing warnings
+remain. Full authenticated source orchestration is still the next H1 step.

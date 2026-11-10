@@ -617,3 +617,6 @@ fn upstream_schema_without_owner_tables_can_reach_additive_migration() {
 }
 
 mod source_read;
+
+#[path = "tests/source_transitions.rs"]
+mod source_transitions;
