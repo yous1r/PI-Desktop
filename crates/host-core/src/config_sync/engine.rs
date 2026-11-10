@@ -51,7 +51,9 @@ mod s3_tests;
 #[cfg(test)]
 pub(crate) use apply::validate_application_references;
 pub(crate) use apply::{apply_bundle, recover_import_journal};
-pub(crate) use coordinator::{sync_if_enabled, sync_now};
+pub(crate) use coordinator::sync_now;
+#[path = "scheduled.rs"]
+mod scheduled;
 pub(crate) use handlers::{
     approve, change_password, configure, disconnect, get_state, list_history, map_project, pause,
     reject, restore, test, unlock,
@@ -62,6 +64,7 @@ use remote::{
     publish_head, read_remote_head, read_remote_manifest, read_remote_revision, upload_snapshot,
     validate_remote_id,
 };
+pub(crate) use scheduled::ScheduledSync;
 
 const CONFIG_NS: &str = "configSyncS3";
 const CONFIG_KEY: &str = "config";

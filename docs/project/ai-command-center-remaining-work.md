@@ -2728,3 +2728,31 @@ Development results overlap this acceptance and are not additional coverage.
 This accepts authenticated readonly source queries only. Continue with Rust
 background admission and durable prepare orchestration; fixed native/resource
 gaps and the earlier isolation incident remain unresolved.
+
+### H1 original Rust-owner ingress control
+
+The original Activity now synchronizes gate checks and reservations under one
+mutex. Business RPC and the entire automatic config-sync tick use this ingress;
+exact handoff query/completion and native status/stop methods keep ordinary RPC
+slots, deadlines and accounting. Held capabilities are original-owner bound;
+drop/timeout never reopens them, and seal/serving cancellation/shutdown revoke
+them permanently. The inspection Snapshot wire shape is unchanged.
+
+Already admitted requests can finish their deferred transcript writes after
+closure. Startup sweeps/reconciliation reserve before the source listener binds.
+Detached delegate setup and orphan worktree cleanup reserve before spawn and
+remain visible through actual completion. Configuration sync is gated before
+domain capture and local debounce persistence, retaining its ordinary cadence.
+
+This is an internal prerequisite, not an authenticated transfer operation.
+Source commands remain preflight/status-only and `Exchange::request` still has
+no production initiator. Durable source orchestration, remaining native/resource
+qualification and the approved H2-H5/C/M/U/N/W/Q/R/X tasks remain open. All ten
+fixed gaps stay in place and Voice stays paused. The earlier isolation incident
+and unknown default-profile effects remain unresolved.
+
+Development validation passed 43 focused Rust tests, ordinary Clippy, Rust format,
+architecture, agent-policy, documentation and base checks. The initial feature
+baseline failed on missing admission APIs; a test-module path resolution error
+was fixed before building the passing test executable. Existing warnings remain.
+Exact clean-candidate/native process acceptance follows in a separate record.

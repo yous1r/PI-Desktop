@@ -133,6 +133,13 @@ async fn run(
     execution_fence::bind_journal(&mut execution_fence, &data_dir)?;
     app_state.execution_fence = execution_fence;
     let state = Arc::new(Mutex::new(app_state));
+    // Reserve startup work before the native source endpoint can accept a
+    // request. The reservation covers sweeps and the spawned reconciliation.
+    let startup = state
+        .lock()
+        .await
+        .handoff_activity
+        .begin(owner_handoff::activity::Kind::Background);
     let source = source_endpoint.bind(state.clone())?;
     tracing::info!(path = %data_dir.display(), "host-core starting");
     {
@@ -152,11 +159,6 @@ async fn run(
     }
     // Drop half-created worktrees, mark vanished ones, repair links after a
     // moved data directory, and remove orphans (ADR 0329).
-    let startup = state
-        .lock()
-        .await
-        .handoff_activity
-        .begin(owner_handoff::activity::Kind::Background);
     let startup_state = state.clone();
     tokio::spawn(async move {
         session_worktrees::lifecycle::reconcile(

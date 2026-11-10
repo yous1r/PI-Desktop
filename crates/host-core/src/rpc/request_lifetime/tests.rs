@@ -211,3 +211,43 @@ async fn checkpoint_rpc_user_path_commits_and_recovers_the_original_reply() {
     assert_eq!(results[1]["recovered"]["content"], "partial reply");
     assert_eq!(results[2]["session"]["messages"][0]["status"], "aborted");
 }
+
+#[tokio::test]
+async fn an_admitted_request_can_enqueue_and_commit_its_checkpoint_after_closure() {
+    use crate::owner_handoff::activity::Ingress;
+    let root = tempfile::tempdir().unwrap();
+    let activity = Activity::default();
+    let request = activity.admit(Ingress::Request).unwrap();
+    let (started, ready) = oneshot::channel();
+    let (release, wait) = oneshot::channel();
+    let original = activity.clone();
+    let directory = root.path().to_path_buf();
+    let task = tokio::spawn(async move {
+        let result = execute(&original, None, async {
+            started.send(()).unwrap();
+            wait.await.unwrap();
+            transcripts::write_inflight(&directory, "s1", &checkpoint()).unwrap();
+            Ok(json!("persisted"))
+        })
+        .await;
+        request.finish(true);
+        result
+    });
+    ready.await.unwrap();
+    let held = activity.hold().unwrap();
+    assert!(activity.admit(Ingress::Request).is_err());
+    release.send(()).unwrap();
+    let (handled, committed) = task.await.unwrap();
+    assert_eq!(handled.unwrap(), json!("persisted"));
+    committed.unwrap();
+    assert_eq!(
+        transcripts::read_inflight(root.path(), "s1")
+            .unwrap()
+            .unwrap()
+            .message
+            .id,
+        "m1"
+    );
+    assert_eq!(activity.snapshot(), Snapshot::default());
+    held.reopen().unwrap();
+}

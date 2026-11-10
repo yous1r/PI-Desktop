@@ -332,7 +332,7 @@ pub async fn create_delegate_worktree(
         return Err(error);
     }
 
-    let (row, command) = {
+    let (row, command, activity) = {
         let st = state.lock().await;
         registry::set_status(&st.db, &row.id, WorktreeStatus::Active)?;
         let command = match project_path.as_deref() {
@@ -345,10 +345,19 @@ pub async fn create_delegate_worktree(
             SetupStatus::None
         };
         registry::set_setup_status(&st.db, &row.id, status, None)?;
-        (registry::get(&st.db, &row.id)?.unwrap_or(row), command)
+        (
+            registry::get(&st.db, &row.id)?.unwrap_or(row),
+            command,
+            st.handoff_activity.clone(),
+        )
     };
     if let (Some(command), Some(project)) = (command, project_path) {
-        tokio::spawn(run_setup(state.clone(), row.clone(), project, command));
+        let obligation = activity.begin(crate::owner_handoff::activity::Kind::Background);
+        let (setup_state, setup_row) = (state.clone(), row.clone());
+        tokio::spawn(async move {
+            run_setup(setup_state, setup_row, project, command).await;
+            obligation.finish(true);
+        });
     }
     Ok(summary(&row))
 }

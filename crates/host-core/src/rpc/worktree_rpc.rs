@@ -254,10 +254,15 @@ pub(super) async fn remove_before_delete(
 }
 
 /// After any deletion, remove worktrees orphaned by other deletion paths.
-pub(super) fn spawn_orphan_cleanup(state: &Arc<Mutex<AppState>>) {
+pub(super) fn spawn_orphan_cleanup(
+    state: &Arc<Mutex<AppState>>,
+    activity: &crate::owner_handoff::activity::Activity,
+) {
     let state = state.clone();
+    let obligation = activity.begin(crate::owner_handoff::activity::Kind::Background);
     tokio::spawn(async move {
         lifecycle::cleanup_orphans(&state, &GitRunner::default()).await;
+        obligation.finish(true);
     });
 }
 

@@ -401,3 +401,45 @@ async fn a_subagent_folder_replaced_by_a_link_is_reattached_without_its_target()
     assert_eq!(read(&outside.join("KEEP_ME.txt")), "keep");
     assert!(!outside.join("g.txt").exists());
 }
+
+#[tokio::test]
+async fn admitted_delegate_setup_remains_counted_after_its_request_returns() {
+    use crate::owner_handoff::activity::{Ingress, Snapshot};
+    let env = env().await;
+    let activity = {
+        let st = env.state.lock().await;
+        assert!(lifecycle::set_setup_command(
+            &st.db,
+            &env.project.to_string_lossy(),
+            Some("echo prepared")
+        )
+        .unwrap());
+        st.handoff_activity.clone()
+    };
+    let request = activity.admit(Ingress::Request).unwrap();
+    let held = activity.hold().unwrap();
+    let created = create_delegate_worktree(&env.state, &env.git, &env.session, "setup-admitted")
+        .await
+        .unwrap();
+    assert_eq!(created.setup_status, Some(SetupStatus::Running));
+    request.finish(true);
+    assert_eq!(activity.snapshot().background_tasks, 1);
+    assert!(activity.admit(Ingress::Request).is_err());
+    tokio::time::timeout(std::time::Duration::from_secs(20), async {
+        while activity.snapshot().background_tasks != 0 {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    let row = env.row("setup-admitted").await.unwrap();
+    assert_eq!(
+        row.setup_status,
+        Some(SetupStatus::Ok),
+        "{:?}",
+        row.setup_log
+    );
+    assert!(row.setup_log.unwrap().contains("prepared"));
+    assert_eq!(activity.snapshot(), Snapshot::default());
+    held.reopen().unwrap();
+}

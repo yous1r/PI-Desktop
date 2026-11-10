@@ -505,3 +505,26 @@ async fn deleting_with_a_locked_file_fails_visibly_and_can_be_retried() {
     assert!(!root.exists());
     assert_eq!(session_branches(&project).trim(), "");
 }
+
+#[tokio::test]
+async fn orphan_cleanup_reserves_before_spawn_and_survives_admission_closure() {
+    use crate::owner_handoff::activity::{Ingress, Snapshot};
+    let root = tempfile::tempdir().unwrap();
+    let state = Arc::new(Mutex::new(AppState::open(root.path()).unwrap()));
+    let st = state.lock().await;
+    let activity = st.handoff_activity.clone();
+    let held = activity.hold().unwrap();
+    super::spawn_orphan_cleanup(&state, &activity);
+    assert_eq!(activity.snapshot().background_tasks, 1);
+    assert!(activity.admit(Ingress::Background).is_err());
+    drop(st);
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        while activity.snapshot().background_tasks != 0 {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(activity.snapshot(), Snapshot::default());
+    held.reopen().unwrap();
+}

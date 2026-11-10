@@ -432,6 +432,7 @@ impl AppState {
 
     pub fn shutdown(&mut self) {
         self.shutting_down = true;
+        self.handoff_activity.close();
         if let Some(channel) = self.handoff_exchange.take() {
             channel.close();
         }

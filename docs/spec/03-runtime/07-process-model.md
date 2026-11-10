@@ -749,6 +749,28 @@ transfer, closes admission, or calls the stdio quiescence exchange. Source mutat
 commands remain unavailable. Ordinary unfenced Hosts create no new listener;
 the existing discovery pipe still advertises only `status`.
 
+Rust business RPC and automatic configuration-sync admission share the original
+Activity mutex with obligation reservation. A local hold closes ingress before
+inspection; outstanding requests, setup/cleanup continuations and deferred disk
+writes remain counted and finish normally. A held capability belongs to that
+exact Activity. Dropping it or losing a waiter never reopens ingress. Sealing,
+serving cancellation and AppState shutdown permanently close that owner. Only
+the source controller may explicitly reopen its own unsealed hold after proving
+a safe refusal or durable cancellation; no such external mutation is exposed yet.
+
+While closed, new business RPC returns fixed `HANDOFF_BUSY` (-32000) before
+handler dispatch. Only exact `ownerHandoff.identity`, `readTransfer`, `inspect`,
+`completeQuiescence`, `executionFence.status` and `executionFence.stop` continue;
+there is no namespace bypass. All retain ordinary semaphore/deadline rules and
+request accounting, except inspection's existing self-exclusion. Already
+admitted request continuations can enqueue and finish their original disk writes.
+The automatic sync tick reserves before domain capture or local debounce writes;
+a refused tick does no work and does not change its normal 30-second cadence.
+Startup reconciliation reserves before the native source listener is bound.
+Detached delegate setup and orphan cleanup retain their original obligations
+after the triggering RPC returns. These controls do not prove native-family
+closure or clear the fixed Rust-background qualification gap by themselves.
+
 The Desktop coordinator adapter resolves identity only for an explicit handoff
 exchange. Construction performs no startup query. Before identity/native awaits,
 it captures the exact Host, Host generation, Sidecar binding token and every

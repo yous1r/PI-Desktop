@@ -20139,6 +20139,28 @@ session data is used.
   is exposed. No live Desktop/default profile/provider/Voice operation is used.
 - **Spec:** [Process ownership](../03-runtime/07-process-model.md#desktop-admission-composition).
 
+### Rust ingress and admitted continuations (H1 partial)
+
+- **Entry:** Rust `owner_handoff::activity`, `rpc::admission`,
+  `rpc::request_lifetime`, `config_sync::engine::scheduled`, and the focused
+  worktree RPC/delegate tests. Re-run isolated source/inspection process suites
+  with the newly built candidate Host for ordinary startup/restart compatibility.
+- **Steps:** Race a new reservation against a hold, drop or seal the hold, cancel
+  serving, and attempt fresh RPC/background admission. Complete a previously
+  admitted session creation and enqueue its real transcript checkpoint after
+  closure. Hold AppState while a sync tick is refused, then admit a tick before
+  closure and let its real local debounce write finish. Run actual delegate setup
+  and orphan cleanup after their triggering request has returned.
+- **Expected:** New work is refused atomically; exact control exceptions remain
+  counted within ordinary RPC slots and deadlines. No rejected tick changes
+  configuration or emits notifications. Admitted writes/cleanup remain visible
+  until actual settlement. Cancellation and poisoned state cannot reopen ingress;
+  overflow and failed/abandoned work retain uncertainty.
+- **Boundary:** Internal gate tests do not expose a source mutation RPC, clear
+  the ten qualification gaps, or certify native closure. Full authenticated
+  prepare/cancel/fence/release orchestration and Voice remain pending/paused.
+- **Spec:** [Process ownership](../03-runtime/07-process-model.md#desktop-admission-composition).
+
 ### Desktop admission integration prerequisites (H1 partial)
 
 - **Entry:** `node --test apps/desktop/test/handoff-admission.test.mjs apps/desktop/test/handoff-lifecycle.test.mjs apps/desktop/test/agent-host-bridge-work-ack.test.mjs apps/desktop/test/scheduled-runner.test.mjs apps/desktop/test/shutdown-regenerate-persistence.test.mjs apps/desktop/test/plugin-restore-notifies-renderer.test.mjs`.

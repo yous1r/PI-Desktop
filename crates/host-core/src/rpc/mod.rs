@@ -301,6 +301,7 @@ fn spawn_stdout_writer(
         })
 }
 
+mod admission;
 mod request_lifetime;
 #[cfg(test)]
 use request_lifetime::with_request_budget;
@@ -314,6 +315,7 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
     let request_slots = Arc::new(Semaphore::new(MAX_IN_FLIGHT_RPC));
     let mut request_tasks = tokio::task::JoinSet::new();
     let activity = state.lock().await.handoff_activity.clone();
+    let _admission_lifetime = activity.lifetime();
 
     // Keep stdio off Tokio's blocking pool. Under process/thread pressure,
     // Tokio's stdio adapter can panic while trying to create a worker thread;
@@ -362,7 +364,7 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
     let config_sync_scheduler = tokio::spawn({
         let state = state.clone();
         let tx = tx.clone();
-        let activity = activity.clone();
+        let scheduled = crate::config_sync::engine::ScheduledSync::capture(state.clone()).await;
         async move {
             // The host owns a short local debounce clock; remote polling is
             // gated inside the engine to five minutes when no local change is
@@ -372,10 +374,7 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
             loop {
                 interval.tick().await;
-                let obligation = activity.begin(crate::owner_handoff::activity::Kind::Background);
-                let result =
-                    crate::config_sync::engine::sync_if_enabled(state.clone(), tx.clone()).await;
-                obligation.finish(result.is_ok());
+                scheduled.tick(tx.clone()).await;
             }
         }
     });
@@ -463,8 +462,16 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
                         continue 'serve;
                     }
                 };
-                let obligation = (method != crate::owner_handoff::inspection::METHOD)
-                    .then(|| activity.begin(crate::owner_handoff::activity::Kind::Request));
+                let obligation = match admission::admit(&activity, &method) {
+                    Ok(obligation) => obligation,
+                    Err(error) => {
+                        let response = response_for(id, Err(error), Ok(()));
+                        if let Ok(raw) = serde_json::to_string(&response) {
+                            let _ = tx.send(format!("{raw}\n"));
+                        }
+                        continue 'serve;
+                    }
+                };
                 let activity = activity.clone();
 
                 request_tasks.spawn(async move {
@@ -503,6 +510,7 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
             }
         }
     }
+    activity.close();
     drop(handoff_lifetime);
     drop(handoff_exchange);
 
@@ -2965,8 +2973,9 @@ async fn handle_request(
             if ok {
                 drop_session_side_data(&st, id);
             }
+            let activity = st.handoff_activity.clone();
             drop(st);
-            worktree_rpc::spawn_orphan_cleanup(&state);
+            worktree_rpc::spawn_orphan_cleanup(&state, &activity);
             Ok(json!({ "ok": ok }))
         }
         "session.rename" => {
