@@ -20095,7 +20095,7 @@ session data is used.
   and fencing still require original durable journal confirmation.
 - **Boundary:** Application registration and the private exchange layer are now
   implemented; authenticated source initiation and durable journal orchestration
-  are implemented but unaccepted. The process path uses real Rust
+  are accepted within the H2 source-operation boundary. The process path uses real Rust
   identity/status/inspection and persistence with fixtures for other producers.
   Full handoff and native families remain unqualified; Voice remains paused.
 - **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
@@ -20125,9 +20125,9 @@ session data is used.
   waiter/output; lost held authority keeps Desktop admission closed. Actual Host
   stdio refuses unknown/oversized completions without journal mutation.
 - **Boundary:** Rust unit tests exercise real registration/journal authority;
-  process tests exercise completion refusal. Successful authenticated source
-  initiation over the native control channel and full transfer are still pending.
-  Fixed resource gaps cannot be overridden; Voice remains paused.
+  process tests exercise completion refusal. H2 source initiation is accepted
+  through the negative process chain below; full positive transfer and native
+  qualification remain pending. Voice implementation/integration is last.
 - **Spec:** [Private coordinator exchange](../03-runtime/06-host-rpc-protocol.md#private-coordinator-exchange-windows-h1-partial).
 
 ### Authenticated running-source queries (H1 partial)
@@ -20178,10 +20178,10 @@ session data is used.
   lost waiter commits nothing, receives no reply frame, and leaves both admissions
   open so the next request reaches the exchange again. The original Host, source
   epoch and bound native generation stay unchanged.
-- **Status:** Implementation is complete but not accepted. A development run of
-  this scenario passed its eight checks against a Host binary built before the
-  final controller changes, so that result is development evidence only and
-  candidate acceptance is still owed.
+- **Status:** Candidate `011a7dd59` passes all eight checks with confirmed cleanup,
+  alongside related Rust and query/inspection suites. See the
+  [H2 acceptance record](../../project/ai-command-center-p0-evidence/h2-source-verification.md)
+  for source/base/artifact identities and retained failed runs.
 - **Boundary:** This suite proves refusal only. It never completes a handoff, never
   certifies native closure, never acquires a Sidecar, and does not exercise
   accepted prepare, fence or release. Native coverage stays
@@ -20208,8 +20208,8 @@ session data is used.
   overflow and failed/abandoned work retain uncertainty.
 - **Boundary:** Internal gate tests do not expose a source mutation RPC, clear
   the ten qualification gaps, or certify native closure. Authenticated
-  prepare/cancel/fence/release orchestration now exists but is unaccepted here;
-  Voice remains paused.
+  prepare/cancel/fence/release orchestration is accepted within the separate H2
+  record; Voice implementation/integration remains the final stage.
 - **Spec:** [Process ownership](../03-runtime/07-process-model.md#desktop-admission-composition).
 
 ### Desktop admission integration prerequisites (H1 partial)
@@ -20229,8 +20229,8 @@ session data is used.
   cancelled confirmation remains usable and existing transcript saving completes.
 - **Boundary:** These component/service fixtures qualify the application gate
   composition, not real Desktop ownership transfer or native process closure.
-  H1 resource inventory and H2-H5 integration still require process acceptance;
-  the H2 source operations are implemented but unaccepted.
+  H2 source operations have their own accepted evidence. Complete H1 native
+  qualification and H3-H5 integration still require process acceptance.
 - **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
 
 ### Desktop approved-plan admission and original-owner cleanup (H1 partial)

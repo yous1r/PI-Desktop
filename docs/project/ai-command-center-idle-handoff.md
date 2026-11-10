@@ -1,6 +1,6 @@
 # AI command center: idle handoff protocol design
 
-- Status: S03b implementation contract. S03b-1/-2/-3 and the H2 original-source `prepare`/`cancel`/`fence`/`release` operations are implemented on Windows; source fencing acceptance, successor readiness and complete Desktop transfer are not.
+- Status: S03b implementation contract. S03b-1/-2/-3 and H2 original-source operations are accepted within their recorded Windows test boundaries. Full native fencing qualification, successor readiness and complete Desktop transfer remain open.
 - Source inspected: `d6a648fd5` (Windows ownership, relocation and Stop prerequisites included).
 - Basis: [architecture decision](../adr/ai-command-center.md), [requirements](ai-command-center-requirements.md), [control identities](ai-command-center-control-contracts.md), [capability inventory](ai-command-center-host-parity.md).
 - First supported direction: explicit, same-machine Desktop-to-current-user background Host, only while idle. Reverse transfer and other platforms need their own acceptance.
@@ -288,9 +288,9 @@ inventory are integrated. See [the execution-fence decision](../adr/windows-exec
 S03b-3 durable owner/containment registration, the pre-AppState ordinary-startup
 guard and explicit restricted claim/recover are accepted on this Windows
 development host at clean candidate `7a03eda09`. Named Jobs retain the native
-recovery identity. Source prepare/phase orchestration is now implemented (see the
-H2 checkpoint below) but is not accepted; S03b-4 still needs the complete idle
-inventory, and restricted recovery never declares readiness or admits execution.
+recovery identity. Source prepare/phase orchestration is accepted within the
+H2 checkpoint below; S03b-4 still needs complete native qualification and
+successor readiness. Restricted recovery alone never admits execution.
 The 11-check recovery suite uses injected durable phases and production restricted
 bootstrap, so it does not qualify complete Desktop handoff. Reports and remaining
 gates are tracked in the
@@ -330,6 +330,8 @@ transfer, successor readiness or complete Desktop handoff is claimed, the ten
 declared qualification gaps are unchanged, and Voice/LiveVoice remain
 unimplemented. The negative process scenario in the
 [E2E plan](../spec/06-delivery/04-e2e-test-plan.md#e2e-host-owner-source-mutations)
-reaches the real source, Rust exchange and production Desktop coordinator, but its
-recorded 8-check run used a Host binary built before the final controller changes,
-so it is development evidence and not candidate acceptance.
+reaches the real source, Rust exchange and production Desktop coordinator.
+Candidate `011a7dd59` passes all eight checks, alongside 141 related Rust tests
+and fifteen query/inspection process checks. See the
+[H2 acceptance record](ai-command-center-p0-evidence/h2-source-verification.md)
+for input/artifact identities, cleanup, retained failures and exact limits.

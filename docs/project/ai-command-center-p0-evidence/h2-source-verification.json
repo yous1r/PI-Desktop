@@ -1,0 +1,733 @@
+{
+  "version": 1,
+  "status": "PASS",
+  "candidate": "011a7dd592b3becba928fe29dd0d6a3fa6026e01",
+  "base": "e977efc96b6b735aeef5066a0b66c6565ad5691f",
+  "startedAt": "2026-11-10T13:43:12.241Z",
+  "trackedCleanBefore": true,
+  "untrackedBefore": [
+    "apps/desktop/electron/main/runtime/handoff-attachment.ts",
+    "apps/desktop/src/components/command-center/CommandCenterHistoryPage.tsx",
+    "apps/desktop/src/components/command-center/CommandCenterOverview.tsx",
+    "apps/desktop/src/components/command-center/CommandCenterReceipts.tsx",
+    "apps/desktop/src/components/command-center/CommandCenterSurface.tsx",
+    "apps/desktop/src/components/command-center/CommandCenterTaskList.tsx",
+    "apps/desktop/src/components/command-center/CommandCenterToolbar.tsx",
+    "apps/desktop/src/components/command-center/CommandCenterWorkspaceEntries.tsx",
+    "apps/desktop/src/components/command-center/CommandCenterWorkspacePage.tsx",
+    "apps/desktop/src/components/command-center/index.ts",
+    "apps/desktop/src/components/command-center/locales/en.json",
+    "apps/desktop/src/components/command-center/locales/zh-CN.json",
+    "apps/desktop/src/components/command-center/strings.ts",
+    "apps/desktop/src/components/command-center/view/command-center-view.ts",
+    "apps/desktop/src/components/command-center/view/use-command-center-view.ts",
+    "apps/desktop/test/command-center-components.test.mjs",
+    "apps/desktop/test/command-center-user-path.test.mjs",
+    "apps/desktop/test/command-center-view.test.mjs",
+    "apps/desktop/test/handoff-attachment.test.mjs",
+    "crates/host-core/src/command_center/fixture_tests.rs",
+    "crates/host-core/src/command_center/goal.rs",
+    "crates/host-core/src/command_center/goal_tests.rs",
+    "crates/host-core/src/command_center/identity.rs",
+    "crates/host-core/src/command_center/key_tests.rs",
+    "crates/host-core/src/command_center/limits.rs",
+    "crates/host-core/src/command_center/mod.rs",
+    "crates/host-core/src/command_center/notification.rs",
+    "crates/host-core/src/command_center/payload.rs",
+    "crates/host-core/src/command_center/receipt.rs",
+    "crates/host-core/src/command_center/receipt_tests.rs",
+    "crates/host-core/src/command_center/reservation.rs",
+    "crates/host-core/src/command_center/reservation_tests.rs",
+    "crates/host-core/src/command_center/schema.rs",
+    "crates/host-core/src/command_center/state.rs",
+    "crates/host-core/src/command_center/tests.rs",
+    "crates/host-core/src/command_center/tx.rs",
+    "crates/host-core/src/command_center/workspace.rs",
+    "crates/host-core/src/db/command_center_migration.rs",
+    "crates/host-core/src/db/command_center_tests.rs",
+    "crates/host-core/src/owner_handoff/target.rs",
+    "docs/project/ai-command-center-qualification-inputs.md",
+    "packages/host-runtime/src/attachment/ports.ts",
+    "packages/host-runtime/src/attachment/stream.ts",
+    "packages/host-runtime/src/owner-handoff-attachment.test.ts",
+    "packages/host-runtime/src/owner-handoff-attachment.ts",
+    "scripts/e2e/command-center/qualification-manifest.mjs",
+    "scripts/e2e/command-center/qualification-manifest.test.mjs",
+    "scripts/e2e/command-center/qualification-validation.mjs",
+    "scripts/e2e/command-center/qualification-validation.test.mjs"
+  ],
+  "scope": "H2 source operations; concurrent C2/U1/H3/H4/Q0 are unregistered and not accepted",
+  "inputs": {
+    "count": 4551,
+    "sha256": "0516b17a80c3d452e4edf7bb2376d9bf67563e05588f115339f29b5134b71fd7",
+    "manifest": {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-inputs.json",
+      "bytes": 787410,
+      "sha256": "59806d017f06d263e88445caa03c47423cc19b10512b932ea7799257eadbb8ff"
+    },
+    "unchanged": true
+  },
+  "checks": [
+    {
+      "label": "base",
+      "command": [
+        "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+        "scripts/check-pr-base-main.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 105,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-base.log",
+        "bytes": 88,
+        "sha256": "e3c4b830075768fe276409eea5af37ce9e5ee2b1ba58e519f9ebafdef4b7465a"
+      }
+    },
+    {
+      "label": "fmt",
+      "command": [
+        "C:\\Users\\Administrator\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\cargo.exe",
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 1431,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-fmt.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "label": "clippy",
+      "command": [
+        "C:\\Users\\Administrator\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\cargo.exe",
+        "clippy",
+        "-p",
+        "host-core",
+        "--all-targets",
+        "--locked",
+        "--offline",
+        "--target-dir",
+        "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\h1-clippy-target"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 305,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-clippy.log",
+        "bytes": 935,
+        "sha256": "7187f501d9e1f60619fc4343fcd3c84c1c47e1b7a9a04b9b403d2e9c8507fc6a"
+      }
+    },
+    {
+      "label": "test-build",
+      "command": [
+        "C:\\Users\\Administrator\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\cargo.exe",
+        "rustc",
+        "-p",
+        "host-core",
+        "--tests",
+        "--locked",
+        "--offline",
+        "--target-dir",
+        "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\h1-clippy-target",
+        "--",
+        "-o",
+        "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\h2-candidate03-tests.exe",
+        "-C",
+        "link-arg=/PDBPAGESIZE:16384",
+        "-C",
+        "link-arg=/PDB:C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\h2-candidate03-tests.pdb"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 32312,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-test-build.log",
+        "bytes": 825,
+        "sha256": "d96d7b732845fac9dab46c77e78b42e3fe86d321dd14c05294e3e2812abad4f3"
+      }
+    },
+    {
+      "label": "handoff",
+      "command": [
+        "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\h2-candidate03-tests-d58441dae579156c.exe",
+        "owner_handoff::",
+        "--test-threads=1"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 91988,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-handoff.log",
+        "bytes": 13275,
+        "sha256": "23c93b98fa68e498d6cd2752f5d494c339d6a670f0f3b769d86eaf4fff5e0ee6"
+      }
+    },
+    {
+      "label": "native",
+      "command": [
+        "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\h2-candidate03-tests-d58441dae579156c.exe",
+        "execution_fence::",
+        "--test-threads=1"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 387,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-native.log",
+        "bytes": 1062,
+        "sha256": "95509ca796ccdf8ee26e370f02a9ac140ca037a925aff780090951cdbebe4ca0"
+      }
+    },
+    {
+      "label": "control",
+      "command": [
+        "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\h2-candidate03-tests-d58441dae579156c.exe",
+        "owner_control::",
+        "--test-threads=1"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 2106,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-control.log",
+        "bytes": 951,
+        "sha256": "705ebce1274384a6590264528ef0ef6c0f031d058a7bd2b7778e1d68c669b3c0"
+      }
+    },
+    {
+      "label": "rpc-lifetime",
+      "command": [
+        "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\h2-candidate03-tests-d58441dae579156c.exe",
+        "rpc::request_lifetime::",
+        "--test-threads=1"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 2215,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-rpc-lifetime.log",
+        "bytes": 765,
+        "sha256": "4d8cbd30952a2e156c09b7125b3e2e875b0daff44c0ba895cea4aea53f296cc3"
+      }
+    },
+    {
+      "label": "host-build",
+      "command": [
+        "C:\\Users\\Administrator\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin\\cargo.exe",
+        "rustc",
+        "-p",
+        "host-core",
+        "--locked",
+        "--offline",
+        "--target-dir",
+        "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\h1-clippy-target",
+        "--",
+        "-o",
+        "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\h2-candidate03-host.exe",
+        "-C",
+        "link-arg=/PDBPAGESIZE:16384",
+        "-C",
+        "link-arg=/PDB:C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\h2-candidate03-host.pdb"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 20260,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-host-build.log",
+        "bytes": 1115,
+        "sha256": "e1dbff068cda9b372d2284c5619205f598cae6008010a109bd5a7b8aad9c96a8"
+      }
+    },
+    {
+      "label": "queries",
+      "command": [
+        "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+        "scripts/e2e-owner-source.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 32582,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-queries.log",
+        "bytes": 1927,
+        "sha256": "79cf35560d7c6bb614634bc50a4fa763de88ec5480f94eb70ebc00b8e7c8d00d"
+      }
+    },
+    {
+      "label": "mutations",
+      "command": [
+        "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+        "scripts/e2e-owner-source-mutations.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 32176,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-mutations.log",
+        "bytes": 3212,
+        "sha256": "9cfdc9fb461ab2117471f8042ff993288f8ebe633d4b902b4413a593592ffb6c"
+      }
+    },
+    {
+      "label": "inspection",
+      "command": [
+        "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+        "scripts/e2e-owner-inspection.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 90347,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-inspection.log",
+        "bytes": 3769,
+        "sha256": "0e0835e9a2e2261491670a6734e295f34a8cf54d408aeec8a0e4bdf6e5e3970f"
+      }
+    },
+    {
+      "label": "docs",
+      "command": [
+        "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+        "docs/scripts/check-docs.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 404,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-docs.log",
+        "bytes": 848,
+        "sha256": "fd516ac7c71716eb1a5e1f30c1918dbf43dce4b8404e03065522c4b3f633ea09"
+      }
+    },
+    {
+      "label": "policy",
+      "command": [
+        "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+        "scripts/check-agent-policy-sync.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 43,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-policy.log",
+        "bytes": 58,
+        "sha256": "58a9ee0870461c6f590356bb7f15372a9dac1bc2f0450ff6b731bb4996c1460c"
+      }
+    },
+    {
+      "label": "architecture",
+      "command": [
+        "D:\\mise_data\\installs\\node\\24.12.0\\node.exe",
+        "scripts/check-architecture.mjs"
+      ],
+      "status": 0,
+      "signal": null,
+      "milliseconds": 409,
+      "log": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-architecture.log",
+        "bytes": 1947,
+        "sha256": "be170ad5cfeb81093fbcee2fc62178f8d1a5d6924b1ceae3304c08934aa35fb0"
+      }
+    }
+  ],
+  "processReports": [
+    {
+      "status": "PASS",
+      "candidate": "011a7dd592b3becba928fe29dd0d6a3fa6026e01",
+      "base": "e977efc96b6b735aeef5066a0b66c6565ad5691f",
+      "dirty": true,
+      "binarySha256": "af68af31045dcc92f7534e3dbb5eec80e0fe824ad903534034d6284eea297d80",
+      "scriptSha256": "ed531a436905f49d83e446c00ad9e1939339f7141c669ff070d71e1d229bd7cf",
+      "checks": [
+        "same-image native source client preflights a running locked owner without a new owner, transfer or receipt",
+        "authenticated status returns the exact original-owner terminal record without advancing or replaying it",
+        "stale epochs, mismatched builds, absent transfers, caller inventory, malformed mutation envelopes and oversized input refuse without writes",
+        "non-Host executable receives no greeting and leaves ordinary original-owner RPC available",
+        "source exit removes its endpoint and a restarted owner rejects the previous epoch"
+      ],
+      "cleanupConfirmed": true,
+      "scope": "Authenticated running-source preflight/status only; no quiescence, journal transitions or transfer readiness",
+      "processes": 12,
+      "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\owner-source-BuxCJY\\report.json"
+    },
+    {
+      "status": "PASS",
+      "candidate": "011a7dd592b3becba928fe29dd0d6a3fa6026e01",
+      "base": "e977efc96b6b735aeef5066a0b66c6565ad5691f",
+      "dirty": true,
+      "binarySha256": "af68af31045dcc92f7534e3dbb5eec80e0fe824ad903534034d6284eea297d80",
+      "scriptSha256": "2179f86544d158ba907693569fd70c3c06cdfa0da985167897b3e3e8c4bd273a",
+      "helperSha256": "b9649ac757af0b83f850175c13e98a079a490bee04dfba609e06d35fbfd585a3",
+      "checks": [
+        "a real fenced Host binds one original generation and the real Desktop inventory reports all ten declared gaps",
+        "a drifted target build is refused by the original source before any stdio exchange, for prepare and preflight",
+        "all ten qualification gaps refuse the real source hold with HANDOFF_BUSY over one notified and acknowledged exchange, without a transfer, receipt or Sidecar acquire",
+        "the identical request after a confirmed busy is refused busy again with no durable record and an open admission",
+        "a stale source epoch is refused by the original source without an exchange or a durable write",
+        "valid cancel, fence and release without a retained entry change no durable state and contact no owner",
+        "both admissions stay open, the source epoch and bound generation are unchanged and ordinary session persistence still works",
+        "a lost framed waiter commits nothing: the original source completes the exchange, keeps both admissions open and refuses the next request"
+      ],
+      "cleanupConfirmed": true,
+      "scope": "original Rust source -> authenticated framed stdio -> real Rust exchange -> Desktop coordinator negative path only; no handoff is completed, no native closure is certified and no Sidecar is acquired",
+      "bundleSha256": "4d9a915728c51d498f02f527c82a68e61f1a321175a8770a9149f58f2684340a",
+      "inputs": 1471,
+      "inputsSha256": "0f56080bf56ea338269c1cc705de586e8bf64e1e114df77f391c4043ac7b434d",
+      "nativeClosure": true,
+      "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\owner-source-mutations-jSNksh\\report.json"
+    },
+    {
+      "status": "PASS",
+      "candidate": "011a7dd592b3becba928fe29dd0d6a3fa6026e01",
+      "base": "e977efc96b6b735aeef5066a0b66c6565ad5691f",
+      "dirty": true,
+      "binarySha256": "af68af31045dcc92f7534e3dbb5eec80e0fe824ad903534034d6284eea297d80",
+      "scriptSha256": "321df677c726dbf32babdba6170bed3c5c13b23fba2296083f5cba4f74bc5e3a",
+      "bundleSha256": "6fe85b3e066a984bf7a4d777092cb667e36d3f593046a61f876e9edc24792407",
+      "inputs": 1479,
+      "inputsSha256": "7a0a7d2cf487bd8a5f05d4f3808bb6da23b3156b6bdaba0a5acd8a71d410f681",
+      "checks": [
+        "production owner identity and transfer queries bind original journal authority before Sidecar startup and refuse mismatched records",
+        "normal stdio rejects unknown, repeated, extra-field and oversized quiescence completions without journal mutation",
+        "real Desktop Sidecar factory retains subclass tracking and confirms original native cleanup after success, binding failure and derived constructor failure",
+        "real Desktop backend owner serializes startup and restart, closes original descendant generations and verifies Rust owner recovery before replacement",
+        "production stdio inspection excludes its own admission and binds a real live native generation",
+        "real begin/checkpoint/end/recovery path updates read-only obligations and preserves the reply",
+        "Desktop inventory retains real writes; the coordinator resolves original Rust identity and generation and refuses handoff after settlement while qualification is incomplete",
+        "real session.collaboration.spawn, claim, settle and cancel move the original Rust and Desktop durable Worker count from one to zero while unlinked sessions and Sidecar families stay unchanged",
+        "missing or mismatched journal roots refuse the original live native generation",
+        "stale identities, caller inventory and absent native authority refuse; original native closure is confirmed"
+      ],
+      "cleanupConfirmed": true,
+      "scope": "Production Rust inspection, Desktop inventory, persistence and admission; other Desktop owners are fixtures, not complete startup or handoff readiness",
+      "hostProcesses": 4,
+      "report": "C:\\Users\\Administrator\\.pi-desktop\\scratch\\233744ff-b9c5-46dd-9a91-5169100d5569\\owner-inspection-yI98cf\\report.json"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-source-BuxCJY/report.json",
+      "bytes": 1205,
+      "sha256": "6ec28c98bee41f3ccce9f8e22785ddf74e3ca2a63928e8ab1efe2284e2263208"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-source-BuxCJY/source-contract.mjs",
+      "bytes": 382408,
+      "sha256": "a229941732744cf245fb43ab0f9ce3e6e9ceb688a71b78f3eeda4a530e7f8856"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-source-mutations-jSNksh/report.json",
+      "bytes": 2040,
+      "sha256": "8117acde7fc218b32248581fb7aaef500294851f677a65f37349db40bfd818ca"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-source-mutations-jSNksh/build-inputs.json",
+      "bytes": 287230,
+      "sha256": "8688b0efc83057eacea9230ccb4264cc73a07222f5184fbfa5bf9f7b1d234f46"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-source-mutations-jSNksh/candidate.mjs",
+      "bytes": 912144,
+      "sha256": "4d9a915728c51d498f02f527c82a68e61f1a321175a8770a9149f58f2684340a"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-source-mutations-jSNksh/runtime-exports.mjs",
+      "bytes": 765,
+      "sha256": "9b0e5626f2aaff24d6b36b58a06fdef653be0b122d3d299323fa30a97d4982a4"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-inspection-yI98cf/report.json",
+      "bytes": 2248,
+      "sha256": "8dfb40747e351ab7bc0972b2b3c2b1d4d10c41a3253921700ad093d14e0ec3de"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-inspection-yI98cf/build-inputs.json",
+      "bytes": 288460,
+      "sha256": "15a46f2cccabf30551134986023542eb06402ee30f98830d9193cab0e3dd062f"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-inspection-yI98cf/consumer.mjs",
+      "bytes": 969014,
+      "sha256": "6fe85b3e066a984bf7a4d777092cb667e36d3f593046a61f876e9edc24792407"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-inspection-yI98cf/runtime-exports.mjs",
+      "bytes": 754,
+      "sha256": "6b9ca89a8e2621dc38f61eebf3bb80bcfd462fa7321e21ca2f102b2acd56b96c"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-inputs.json",
+      "bytes": 787410,
+      "sha256": "59806d017f06d263e88445caa03c47423cc19b10512b932ea7799257eadbb8ff"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-host.exe",
+      "bytes": 34409984,
+      "sha256": "af68af31045dcc92f7534e3dbb5eec80e0fe824ad903534034d6284eea297d80"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-tests-d58441dae579156c.exe",
+      "bytes": 48839680,
+      "sha256": "01232a682cea5ae9d6e50a8304dbeb3fab1183c867837280c2acb6d5cde03319"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03.mjs",
+      "bytes": 6303,
+      "sha256": "2f2d6ceb96680d764122cc0edfb81c1ab9eeb442ef68b7e83e2b24a5d76bb4f2"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-base.log",
+      "bytes": 88,
+      "sha256": "e3c4b830075768fe276409eea5af37ce9e5ee2b1ba58e519f9ebafdef4b7465a"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-clippy.log",
+      "bytes": 935,
+      "sha256": "7187f501d9e1f60619fc4343fcd3c84c1c47e1b7a9a04b9b403d2e9c8507fc6a"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-test-build.log",
+      "bytes": 825,
+      "sha256": "d96d7b732845fac9dab46c77e78b42e3fe86d321dd14c05294e3e2812abad4f3"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-handoff.log",
+      "bytes": 13275,
+      "sha256": "23c93b98fa68e498d6cd2752f5d494c339d6a670f0f3b769d86eaf4fff5e0ee6"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-native.log",
+      "bytes": 1062,
+      "sha256": "95509ca796ccdf8ee26e370f02a9ac140ca037a925aff780090951cdbebe4ca0"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-control.log",
+      "bytes": 951,
+      "sha256": "705ebce1274384a6590264528ef0ef6c0f031d058a7bd2b7778e1d68c669b3c0"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-rpc-lifetime.log",
+      "bytes": 765,
+      "sha256": "4d8cbd30952a2e156c09b7125b3e2e875b0daff44c0ba895cea4aea53f296cc3"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-host-build.log",
+      "bytes": 1115,
+      "sha256": "e1dbff068cda9b372d2284c5619205f598cae6008010a109bd5a7b8aad9c96a8"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-queries.log",
+      "bytes": 1927,
+      "sha256": "79cf35560d7c6bb614634bc50a4fa763de88ec5480f94eb70ebc00b8e7c8d00d"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-mutations.log",
+      "bytes": 3212,
+      "sha256": "9cfdc9fb461ab2117471f8042ff993288f8ebe633d4b902b4413a593592ffb6c"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-inspection.log",
+      "bytes": 3769,
+      "sha256": "0e0835e9a2e2261491670a6734e295f34a8cf54d408aeec8a0e4bdf6e5e3970f"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-docs.log",
+      "bytes": 848,
+      "sha256": "fd516ac7c71716eb1a5e1f30c1918dbf43dce4b8404e03065522c4b3f633ea09"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-policy.log",
+      "bytes": 58,
+      "sha256": "58a9ee0870461c6f590356bb7f15372a9dac1bc2f0450ff6b731bb4996c1460c"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-architecture.log",
+      "bytes": 1947,
+      "sha256": "be170ad5cfeb81093fbcee2fc62178f8d1a5d6924b1ceae3304c08934aa35fb0"
+    }
+  ],
+  "testBinary": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-tests-d58441dae579156c.exe",
+    "bytes": 48839680,
+    "sha256": "01232a682cea5ae9d6e50a8304dbeb3fab1183c867837280c2acb6d5cde03319"
+  },
+  "binary": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03-host.exe",
+    "bytes": 34409984,
+    "sha256": "af68af31045dcc92f7534e3dbb5eec80e0fe824ad903534034d6284eea297d80"
+  },
+  "trackedCleanAfter": true,
+  "endedAt": "2026-11-10T13:48:21.159Z",
+  "acceptedScope": "H2 authenticated original-source operations, retained authority, durable receipts and ordinary release cleanup; full H3/H4/H5/native qualification remains open",
+  "artifactVerification": {
+    "count": 29,
+    "allRehashed": true,
+    "trackedInputsCompared": 4551
+  },
+  "testCounts": {
+    "rust": {
+      "handoff": 118,
+      "executionFence": 9,
+      "ownerControl": 8,
+      "rpcLifetime": 6,
+      "totalDistinct": 141
+    },
+    "javascriptDevelopment": {
+      "sharedIncludingC1": 70,
+      "coordinatorExchangeQuery": 80,
+      "totalDistinct": 150
+    },
+    "processChecks": {
+      "queries": 5,
+      "mutationsNegativeOnly": 8,
+      "inspectionAndRestart": 10,
+      "totalDistinct": 23
+    }
+  },
+  "qualification": {
+    "nativeCoverage": "execution_generation_only",
+    "remainingGaps": [
+      "rust-background-admission",
+      "native-resources-outside-execution-generation",
+      "updater",
+      "model-catalog",
+      "vendor-oauth",
+      "mcp-control",
+      "personal-todos",
+      "electron-surfaces-and-listeners",
+      "worker-execution-classification",
+      "voice-and-live-voice"
+    ],
+    "voiceOrder": "last after independent non-Voice implementation and available verification",
+    "fullNativeTransfer": false,
+    "defaultProfileIncident": "unresolved: rust-inspection-isolation-incident.json"
+  },
+  "developmentArtifacts": [
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-timed05-report.json",
+      "bytes": 2550,
+      "sha256": "4f6359ef0fcefb3725c53406c9ea2b4975bfb93362dd7e6231d9c3bd90c3fdf7"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-timed05-handoff-timeline.jsonl",
+      "bytes": 19263,
+      "sha256": "2494180655617ea9e67bbb379f8ee6c7cbb4d87ff308cf8fa259b687b00014b5"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-source-tests06-report.json",
+      "bytes": 2050,
+      "sha256": "0715ecb40c8aa8baf5ed8d401fefdeb5a51154ebd7e6973149db73f32b5e532d"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-js01-report.json",
+      "bytes": 1772,
+      "sha256": "7ab8d328bd06e354b5a30f28ee66cce81a2c3651af75798c6524688868e47325"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-js01-shared.log",
+      "bytes": 1740,
+      "sha256": "2de31174e1274e5c485d9f82b32779c534134739cb14dbeb4cc3b3b7bf760ec7"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-js01-host-runtime.log",
+      "bytes": 750,
+      "sha256": "fea9a13d455a29b2724484112d9374b407bebafbbc86f68645f53f08349ab243"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-js01-shared-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-js01-desktop-types.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-lint02.log",
+      "bytes": 43,
+      "sha256": "34daa7b74e5c8220fcac3ebd9b857f772ded1c76c4fe28d32ad949e501fd00a5"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-architecture02.log",
+      "bytes": 1947,
+      "sha256": "c5dccbf0a1ba9af74e02ea57ca7d446e021048eb0238d6bb2210510abf4392d9"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate01.json",
+      "bytes": 6711,
+      "sha256": "80af18680d126c9b9cb21ed531a39e220479c7b7b964b1bd06c4eb158cc92848"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate01-queries.log",
+      "bytes": 1873,
+      "sha256": "8092b362e5133844744946c822692dc703fa4f0c595b812fa4df4e2b23782e72"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate02.json",
+      "bytes": 5818,
+      "sha256": "ee91ce87d19c5ff00726d6724ca8bc59c5de31fa7bc1a6b047d3f296d327937f"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate02-queries.log",
+      "bytes": 1872,
+      "sha256": "d79edb9f751177c1ccd16bad60c86d44b4a85a0e4bf0093653ec1e478b7e49f3"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-busy-red01.log",
+      "bytes": 5891,
+      "sha256": "0630b0dfdebca514a2ce30bc7c4e4b58f2da42ffd0f434d970a6dab152852df8"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-busy-green01.log",
+      "bytes": 750,
+      "sha256": "c70803a387ef25621e742f1490d71a12f07fd9be0e7a877465c04368a9eeb4ab"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-hold-red01.log",
+      "bytes": 152,
+      "sha256": "15613a2ecea437762d8b139fe47e8c289067aa322187e5f2d0d459c7af8fe438"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-hold-red02.log",
+      "bytes": 874,
+      "sha256": "38849b0443265e37b96e85d6e27f008dc186d13f4267f32dcd568af65b839ca9"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-handoff-tests02.log",
+      "bytes": 9871,
+      "sha256": "76251704603c04d4c5b3c25857841f4a262fcc1b7b15d69c8d9bc55a4ea76e38"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-source-tests04-report.json",
+      "bytes": 1338,
+      "sha256": "fcd8dd9aa0bdd4174d816ee3dfdaa9edf9deac6c7212904f2ed3e40411f448ca"
+    },
+    {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-harness-query01.log",
+      "bytes": 1927,
+      "sha256": "42a14836293a7c86713a34bcbff561f9c3e0e4750598edd13140b3aa9f2908e6"
+    }
+  ],
+  "rawReport": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h2-candidate03.json",
+    "bytes": 26666,
+    "sha256": "6a5c7fb5826961f39d2ae3fd2a144c1cc3c02c0b67f2db2c115f4c28ba095ecf"
+  },
+  "limitations": [
+    "Tracked tree matched the candidate; concurrent unregistered C2/U1/H3/H4/Q0 files remain untracked and are listed explicitly. This was not a globally clean worktree.",
+    "No complete Rust suite, live Desktop, real provider, microphone, minimum hardware, native program matrix or mobile qualification was run.",
+    "Clippy retains existing ToolPolicy/tool_policy warnings. Locale parity retains pre-existing error-code/E2E table drift.",
+    "Prior combined Rust runs timed out; full timed runs subsequently completed without a production close fix.",
+    "Candidate01/02 failed before Host launch because esbuild could not write output. A minimal memory-output probe and harness-owned write succeeded; scripts were corrected and candidate03 passed."
+  ]
+}

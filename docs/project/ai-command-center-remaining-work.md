@@ -2988,7 +2988,7 @@ coordinator/exchange/query tests pass 80. Current-source shared/Desktop types,
 selected lint, architecture, policy and Rust formatting/Clippy pass; only the
 two existing `ToolPolicy` warnings remain. A fresh isolated production binary
 passes 5 source-query, 8 source-mutation negative-path and 10 inspection/restart
-checks, with cleanup confirmed. Exact committed-candidate acceptance follows.
+checks, with cleanup confirmed. Exact candidate acceptance is recorded below.
 
 Earlier 60/90-second combined Rust attempts were interrupted and are retained
 as failures, never aggregate passes. A timed complete run passed all 118 tests
@@ -2997,3 +2997,21 @@ run observed two existing AppState tests taking about 29 and 25 seconds. There
 is no demonstrated source-close defect; no speculative lifecycle change was
 made. Locale parity still reports the pre-existing error-code/E2E table drift.
 The earlier default-profile isolation incident remains unresolved.
+
+### H2 original-source candidate accepted
+
+Candidate `011a7dd592b3becba928fe29dd0d6a3fa6026e01`, based on
+`e977efc96b6b735aeef5066a0b66c6565ad5691f`, passes 141 related Rust tests and
+23 isolated process checks with confirmed cleanup. All 4,551 tracked regular
+inputs stayed unchanged and 29 acceptance artifacts were rehashed. Independent
+unregistered C2/U1/H3/H4/Q0 work was present and explicitly listed; this is not
+a globally clean-worktree claim. The [H2 acceptance record](ai-command-center-p0-evidence/h2-source-verification.md)
+binds commands, binaries, bundles, inputs and cleanup to this candidate.
+
+Implementation `9ff740d16` is followed by a three-script harness correction:
+esbuild memory output is written by the harness because direct compiler output
+was refused in scratch. Both failed launches are retained; the successful
+candidate changed no system permissions or shared dependencies. H3/H4 modules
+are in progress, C2 storage and U1 components await integration, and Q0 is being
+prepared. All ten native qualification gaps and H5 full transfer remain open.
+Continue all independent non-Voice work, then Voice last.
