@@ -47,7 +47,7 @@ await writeFile(runtimeExports, [
   'export { decodeBinaryStorage, encodeBinaryStorage } from ' + JSON.stringify(join(root, 'packages/host-runtime/src/binary-storage.ts').replaceAll('\\', '/')) + ';',
 ].join('\n'));
 const built = await esbuild({ absWorkingDir: root, bundle: true, format: 'esm', platform: 'node', metafile: true,
-  outfile: bundle, logLevel: 'warning',
+  outfile: bundle, write: false, logLevel: 'warning',
   stdin: { resolveDir: root, contents: [
     'export { HostProcess } from "./packages/host-runtime/src/host-process.ts";',
     'export { parseOwnerHandoffSourceRequest, parseOwnerHandoffSourceReply } from "./packages/shared/src/owner-handoff-source.ts";',
@@ -56,6 +56,8 @@ const built = await esbuild({ absWorkingDir: root, bundle: true, format: 'esm', 
   alias: { '@pi-desktop/shared': join(root, 'packages/shared/src/index.ts'),
     '@pi-desktop/host-runtime': runtimeExports,
     '@pi-desktop/agent-host': join(root, 'packages/agent-host/src/maintenance-admission.ts') } });
+assert.equal(built.outputFiles.length, 1);
+await writeFile(bundle, built.outputFiles[0].contents);
 const inputs = [];
 for (const input of Object.keys(built.metafile.inputs).filter(input => input !== '<stdin>').sort()) {
   inputs.push({ path: input.replaceAll('\\', '/'), sha256: hash(await readFile(resolve(root, input))) });

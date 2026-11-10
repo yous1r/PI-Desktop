@@ -29,10 +29,12 @@ await writeFile(runtimeExports, [
 ].join('\n'));
 const built = await build({ absWorkingDir: root, stdin: { resolveDir: root, contents:
   'export { HostProcess } from "./packages/host-runtime/src/host-process.ts"; export { AgentSidecar as DesktopSidecar } from "./apps/desktop/electron/main/agent-sidecar.ts"; export { DesktopBackendOwner } from "./apps/desktop/electron/main/runtime/backend-owner.ts"; export { DesktopHandoffAdmission } from "./apps/desktop/electron/main/runtime/handoff-admission.ts"; export { inspectOwnerHandoff } from "./packages/host-runtime/src/owner-handoff-inspection.ts"; export { queryOwnerHandoffIdentity, readOwnerHandoffTransfer } from "./packages/host-runtime/src/owner-handoff-query.ts"; export { verifyDesktopInventory } from "./scripts/e2e/desktop-handoff-inventory.mjs";' },
-  outfile: bundle, bundle: true, format: 'esm', platform: 'node', metafile: true,
+  outfile: bundle, write: false, bundle: true, format: 'esm', platform: 'node', metafile: true,
   alias: { '@pi-desktop/shared': join(root, 'packages/shared/src/index.ts'),
     '@pi-desktop/host-runtime': runtimeExports,
     '@pi-desktop/agent-host': join(root, 'packages/agent-host/src/maintenance-admission.ts') }, logLevel: 'warning' });
+assert.equal(built.outputFiles.length, 1);
+await writeFile(bundle, built.outputFiles[0].contents);
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const inputs = [];
 for (const input of Object.keys(built.metafile.inputs).filter(input => input !== '<stdin>').sort()) {

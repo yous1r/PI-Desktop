@@ -23,8 +23,10 @@ const report = { status: 'FAIL', candidate: git('rev-parse', 'HEAD'), base: git(
   scope: 'Authenticated running-source preflight/status only; no quiescence, journal transitions or transfer readiness' };
 const { build } = createRequire(join(root, 'packages/shared/package.json'))('esbuild');
 const bundle = join(directory, 'source-contract.mjs');
-await build({ absWorkingDir: root, entryPoints: ['packages/shared/src/owner-handoff-source.ts'], bundle: true,
-  platform: 'node', format: 'esm', outfile: bundle, logLevel: 'warning' });
+const built = await build({ absWorkingDir: root, entryPoints: ['packages/shared/src/owner-handoff-source.ts'], bundle: true,
+  platform: 'node', format: 'esm', outfile: bundle, write: false, logLevel: 'warning' });
+assert.equal(built.outputFiles.length, 1);
+await writeFile(bundle, built.outputFiles[0].contents);
 const { parseOwnerHandoffSourceRequest, parseOwnerHandoffSourceReply } = await import(pathToFileURL(bundle));
 const passed = text => { report.checks.push(text); console.error(`PASS: ${text}`); };
 async function query(profile, value, valid = true) {
