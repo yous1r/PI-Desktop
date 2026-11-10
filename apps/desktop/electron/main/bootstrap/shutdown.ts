@@ -49,6 +49,7 @@ export type ShutdownDependencies = {
   inflightCheckpointer: InflightCheckpointer;
   flushEventPersistence: () => Promise<void>;
   backends: Pick<DesktopBackendOwner<string>, "closeSidecar" | "closeHost">;
+  handoff?: { dispose(): void };
   pluginPanels: Pick<PluginPanelHost, "closeAll">;
   plugins: Pick<PluginRuntime, "disposeAll">;
   userMcp: Pick<UserMcpRuntime, "disposeAll">;
@@ -80,6 +81,7 @@ export function registerShutdownHandlers({
   inflightCheckpointer,
   flushEventPersistence,
   backends,
+  handoff,
   pluginPanels,
   plugins,
   userMcp,
@@ -173,6 +175,7 @@ export function registerShutdownHandlers({
     }
     state.quitting = true;
     state.handoffAdmission.dispose();
+    handoff?.dispose();
     state.planRuntime?.dispose();
     speech.dispose();
     // Persist the confirmed shutdown before any awaited cleanup so a forced

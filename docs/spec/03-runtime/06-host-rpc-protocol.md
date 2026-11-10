@@ -1645,6 +1645,41 @@ Consumers capture the original Host object/generation and source binding before
 awaiting, checking them on success and rejection. No JS SQLite lookup, discovery
 advertisement, admission hold, transfer mutation, cleanup or readiness follows.
 
+## Private coordinator exchange (Windows, H1 partial)
+
+Normal Host stdio owns one outstanding `ownerHandoff.quiescence` notification.
+Its strict 16 KiB payload contains `version: 1`, the original `profileId`, and
+the quiescence request (`exchangeId`, `transferId`, `sourceEpoch`, `revision`,
+`operation`, and `holdId` except for `hold`). Rust allocates a fresh exchange ID;
+the authenticated source service must supply the original owner and phase.
+That source initiation/journal workflow is not yet enabled by this transport.
+
+Desktop completes through `ownerHandoff.completeQuiescence`, echoing the exact
+profile and complete request, with either a correlated `report` or a fixed error
+code: `HANDOFF_BUSY`, `HANDOFF_OWNER_CHANGED`, or `HANDOFF_UNAVAILABLE`. Success
+requires all 19 safe-integer counts; hold/seal success requires all zero. Unknown
+fields, null holds, mixed outcomes, stale operations/holds and unknown, duplicate
+or late completions refuse. Rust revalidates the retained native coordinator and
+unretired journal owner before accepting a completion. Acceptance returns only
+`version: 1`, the `exchangeId`, and `accepted: true`; it grants no journal mutation.
+
+The original Rust exchange has a 30-second total deadline and remains reserved
+until its waiter consumes the result. Waiter cancellation, deadline, original
+stdio closure, or lost authority closes the exchange permanently. Scope cleanup
+also drops its output sender, including when the serving task is cancelled.
+The completion RPC retains ordinary activity accounting and the 32-slot limit,
+with a two-second Host budget and fixed `HANDOFF_UNAVAILABLE` / `owner exchange
+unavailable` errors. There is no renderer IPC or external discovery advertisement.
+
+The application-owned Desktop service subscribes to each original Host and
+captures its concrete identity before optional coordinator resolution. It allows
+25 seconds for coordinator work and 2.5 seconds for the complete RPC including
+overload retries. Late continuations see a revoked original-channel assertion;
+no replacement transport or automatic operation replay is used. Private events
+do not enter renderer dispatch. Ordinary unheld backend replacement retires only
+the old subscription; lost held authority and confirmed quit close admission.
+Required producers must exist, and fixed qualification gaps still refuse holds.
+
 ## Restricted owner-handoff bootstrap (Windows)
 
 `--owner-handoff` is an exclusive launch mode, before ordinary AppState and RPC.

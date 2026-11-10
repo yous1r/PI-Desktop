@@ -2601,3 +2601,42 @@ The adapter and failure-boundary correction are accepted within that scope.
 Next is the Rust-owned bounded private reverse exchange and application service
 registration, followed by Rust background admission and the remaining resource
 proofs. This does not qualify full H1 or resolve the earlier profile incident.
+
+### H1 original-stdio exchange and application registration
+
+The normal Rust stdio lifetime now owns one bounded reverse exchange and the
+private completion route. Shared strict 16 KiB contracts correlate the original
+profile and complete request, including operation/hold. Rust rechecks retained
+native coordinator and unretired journal authority; unknown, duplicate, stale,
+oversized and late completions refuse without mutation. The 30-second exchange
+survives only until its original waiter consumes the result. Waiter cancellation,
+stdio disposal, source loss or deadline permanently closes the channel, releases
+the original waiter and drops its output sender. Completion keeps ordinary RPC
+activity, the 32-slot cap, and a two-second budget with fixed payload-safe errors.
+
+Desktop now registers one application service with concrete existing owners.
+Each original Host has one subscription, and every notification retains that Host,
+profile and channel assertion before optional identity/native resolution. The
+service uses the real coordinator/inventory; unavailable startup producers refuse.
+Coordinator work has a 25-second deadline and completion has a 2.5-second total
+deadline including overload retries. Late work sees the revoked channel; no
+replacement RPC or operation replay is permitted. Ordinary unheld restart retires
+only its subscription, while lost held authority and confirmed quit keep admission
+closed. Private notifications are excluded from renderer dispatch. Main remains
+wiring-only and decreases from 1,127 to 1,121 lines.
+
+Development verification passed the shared contract selection (14), Node exchange
+(18), core coordinator (22), Desktop wiring/coordinator/quit/plugin paths (53),
+Rust owner-handoff selection (55), types, lint (423 files), architecture, policy
+and documentation checks. New Host build and isolated process validation passed
+nine checks across four Hosts with confirmed cleanup. Clippy passed with warnings;
+the new enum naming advisory was corrected while preserving serialized codes and
+is subject to clean-candidate rebuild. Development selections overlap acceptance.
+
+This is exchange infrastructure and production application registration. The
+authenticated running-source initiation and journal transition workflow are not
+yet enabled; a listener/completion route is not a complete transfer. Next: connect
+that Rust-owned source service, then close Rust background admission and qualify
+Workers/remaining native families. The fixed ten gaps still refuse all holds.
+Voice remains paused. The earlier default-profile incident and unknown data
+effects remain unresolved; current tests use explicit scratch profiles.

@@ -30,6 +30,7 @@ pub struct AppState {
     pub data_dir: std::path::PathBuf,
     pub execution_fence: Option<crate::execution_fence::Registry>,
     pub handoff_activity: crate::owner_handoff::activity::Activity,
+    pub handoff_exchange: Option<Arc<crate::owner_handoff::exchange::Exchange>>,
     pub db: Database,
     pub secrets: SecretStore,
     pub workspace: WorkspaceState,
@@ -172,6 +173,7 @@ impl AppState {
             data_dir: data_dir.to_path_buf(),
             execution_fence: None,
             handoff_activity,
+            handoff_exchange: None,
             db,
             secrets,
             workspace: WorkspaceState::default(),
@@ -430,6 +432,9 @@ impl AppState {
 
     pub fn shutdown(&mut self) {
         self.shutting_down = true;
+        if let Some(channel) = self.handoff_exchange.take() {
+            channel.close();
+        }
         self.execution_fence = None;
         for sender in self.active_bash_cancellations.values() {
             let _ = sender.send(true);

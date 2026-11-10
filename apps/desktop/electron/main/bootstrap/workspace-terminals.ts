@@ -9,6 +9,7 @@ import { getActiveRemoteHostsBoot } from "./remote-hosts";
 
 const terminals = new WorkspaceTerminalRegistry();
 export const getWorkspaceTerminalHandoffActivity = () => terminals.getHandoffActivity();
+export const getWorkspaceTerminalHandoffOwner = () => terminals;
 export const disposeWorkspaceTerminals = () => terminals.dispose();
 export function registerWorkspaceTerminals(deps: {
   registrar: IpcRegistrar;

@@ -85,7 +85,7 @@ async function fixture(t, configureFailure = false) {
     vendorOAuth: {}, listRuntimeProviders: async () => [],
     modelsDevCatalog: {}, effectiveSubagentModelConfig() {}, browserHost: {}, loadUserSkillBody: async () => null,
     activeUserSkills: async () => [], disabledBuiltinSkills: async () => [], currentNetworkProxy: () => ({ mode: "system" }) });
-  const host = createHostRuntime({ ...common, persistenceOutbox: { flush: async () => {} }, activeToolCalls: new Map(),
+  const host = createHostRuntime({ ...common, wireHandoff() {}, persistenceOutbox: { flush: async () => {} }, activeToolCalls: new Map(),
     activeToolCallKey: (s, c) => `${s}:${c}`, userMcp: {}, settleModeReturn: async () => false, emitAgentEvent() {},
     togglePluginLauncher: async () => {}, isTurnDispatchable: () => false, importLegacyScheduled: async () => {},
     ensureSystemProxyRelay: async () => "http://127.0.0.1:1" });

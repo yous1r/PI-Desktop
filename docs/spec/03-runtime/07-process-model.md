@@ -742,8 +742,13 @@ and shared admission is open. Concurrent/reentrant exchanges refuse before owner
 callbacks. Disposal permanently closes admission; optional preparation cannot
 proceed through quit or another maintenance hold. Once inspection closes the
 gate, a changed source keeps it permanently closed even when inspection fails.
-The adapter is available for composition; production service assembly and the
-Rust-owned private reverse exchange are still required before it is registered.
+The application service now registers this adapter with each original Host's
+[private coordinator exchange](06-host-rpc-protocol.md#private-coordinator-exchange-windows-h1-partial).
+It captures the notifying Host/profile before resolution and keeps channel
+validity in every original-binding check, including late work after timeout.
+Ordinary unheld restart retires only its subscription; confirmed quit disposes
+the application coordinator. Authenticated source initiation and journal phase
+orchestration are still required before any production transfer can begin.
 
 The Desktop inventory reader captures exact Host, native generation, Sidecar
 binding token and concrete resource owners before reading Rust. It checks the
@@ -769,16 +774,16 @@ and finalizations can overlap and remain conservative obstruction bounds, not
 execution occupancy. Sidecar child/native-session counts are merged by
 `OwnerHandoffCoordinator`; independent Worker classification is still uncovered.
 
-The reader is consumed by this coordinator adapter but is not yet registered
-with the production Desktop transfer transport. Fixed qualification gaps retain
-refusal for Rust background admission, native
+The application-owned service consumes this reader through the coordinator.
+Missing startup producers refuse; no empty-source substitute is installed.
+Fixed qualification gaps retain refusal for Rust background admission, native
 resources outside the execution generation, updater, model catalog, vendor
 OAuth, MCP control, personal todos, Electron surfaces/listeners, independent
 Worker classification, and paused Voice/LiveVoice. These gaps cannot be cleared
 by a caller flag or an empty known
 report. No Voice runtime is initialized by inspection. Production fenced startup
-is composed separately; complete inventory/coordinator composition and native
-closure of every required resource family remain necessary before handoff.
+is composed separately; authenticated source orchestration and native closure of
+every required resource family remain necessary before handoff.
 
 User-configured MCP uses the same application gate for discovery, connection
 tests, tool calls and status probes. Admitted work remains counted through OAuth,

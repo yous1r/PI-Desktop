@@ -67,6 +67,15 @@ try {
   assert.ok((await readFile(join(profile, 'pi.sqlite'))).length > 0, 'Host must create its database in the explicit isolated profile');
   const { identity, owner } = await verifyOwnerQueries(source, profile, queryOwnerHandoffIdentity, readOwnerHandoffTransfer);
   passed('production owner identity and transfer queries bind original journal authority before Sidecar startup and refuse mismatched records');
+  const completion = JSON.parse(await readFile(join(root, 'packages/shared/test/fixtures/owner-handoff-exchange.json'), 'utf8')).refusal;
+  completion.profileId = identity.profileId; completion.request.sourceEpoch = identity.sourceEpoch;
+  const transfersBefore = database(profile, db => db.prepare('SELECT COUNT(*) AS count FROM owner_handoffs').get().count);
+  for (const value of [completion, completion, { ...completion, extra: true }, { ...completion, payload: 'x'.repeat(17000) }]) {
+    await assert.rejects(source.call('ownerHandoff.completeQuiescence', value, 2000), error =>
+      error.errorCode === 'HANDOFF_UNAVAILABLE' && error.message === 'owner exchange unavailable');
+  }
+  assert.equal(database(profile, db => db.prepare('SELECT COUNT(*) AS count FROM owner_handoffs').get().count), transfersBefore);
+  passed('normal stdio rejects unknown, repeated, extra-field and oversized quiescence completions without journal mutation');
   await verifyDesktopSidecarFactory(DesktopSidecar, source, binary, { ...env, PI_DESKTOP_DATA_DIR: profile }, directory);
   passed('real Desktop Sidecar factory retains subclass tracking and confirms original native cleanup after success, binding failure and derived constructor failure');
   await verifyDesktopBackendOwner({ DesktopBackendOwner, DesktopSidecar, DesktopHandoffAdmission }, host, binary, env, directory);

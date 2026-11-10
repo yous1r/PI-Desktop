@@ -97,12 +97,15 @@ test(`quit settles a regenerated branch when the host is ${outcome}`, async (t) 
     pluginLauncherAccelerator: null, toggleWindowAccelerator: null,
   };
   const dispose = () => undefined;
+  let handoffDisposed = false;
   registerShutdownHandlers({
     hasSingleInstanceLock: true, state,
     getHost: () => host,
     getSidecar: () => null,
+    handoff: { dispose() { assert.equal(state.handoffAdmission.isClosed(), true); handoffDisposed = true; } },
     backends: { closeHost: () => host.dispose(), closeSidecar: async () => {
       assert.equal(pluginsDisposed, false, "extension shutdown requires live owner plugin services");
+      assert.equal(handoffDisposed, true, "private coordinator closes before resource teardown");
       assert.equal(hostDisposed, false, "extension shutdown requires live host context");
       sidecarStopped.resolve();
     } },

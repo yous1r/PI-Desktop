@@ -1,5 +1,11 @@
 # Unreleased changes
 
+- Register one Desktop handoff coordinator across ordinary Host restarts and
+  bind private stdio exchanges to the notifying original owner. Rust retains one
+  bounded exchange and validates completion against original native/journal
+  authority; timeout, cancellation and lost held authority fail closed. Source
+  initiation/journal orchestration and complete resource qualification remain
+  pending, so full handoff is not yet enabled.
 - Add on-demand Desktop coordinator binding to original Rust identity, native
   generation and concrete resource owners. Stale successful/rejected queries
   cannot acquire or reopen admission, and delayed callbacks cannot use replacement

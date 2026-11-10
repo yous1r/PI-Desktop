@@ -356,6 +356,9 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
             return Err(anyhow!("host stdin reader unavailable: {error}"));
         }
     };
+    let handoff_exchange = Arc::new(crate::owner_handoff::exchange::Exchange::new(tx.clone()));
+    let handoff_lifetime = handoff_exchange.lifetime();
+    state.lock().await.handoff_exchange = Some(handoff_exchange.clone());
     let config_sync_scheduler = tokio::spawn({
         let state = state.clone();
         let tx = tx.clone();
@@ -500,6 +503,8 @@ pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
             }
         }
     }
+    drop(handoff_lifetime);
+    drop(handoff_exchange);
 
     config_sync_scheduler.abort();
     let _ = config_sync_scheduler.await;
@@ -560,7 +565,9 @@ const RPC_PERMISSION_WAIT_CAP_MS: u64 = 120_000;
 fn request_budget_ms(method: &str, params: &Value) -> Option<u64> {
     if matches!(
         method,
-        crate::owner_handoff::query::IDENTITY | crate::owner_handoff::query::TRANSFER
+        crate::owner_handoff::query::IDENTITY
+            | crate::owner_handoff::query::TRANSFER
+            | crate::owner_handoff::exchange_protocol::COMPLETE
     ) {
         return Some(crate::owner_handoff::query::BUDGET_MS);
     }
@@ -1933,6 +1940,11 @@ async fn handle_request(
     }
 
     match method {
+        crate::owner_handoff::exchange_protocol::COMPLETE => {
+            crate::owner_handoff::exchange::complete(state, params)
+                .await
+                .map_err(|_| rpc_err(1000, "owner exchange unavailable", "HANDOFF_UNAVAILABLE"))
+        }
         crate::owner_handoff::query::IDENTITY | crate::owner_handoff::query::TRANSFER => {
             crate::owner_handoff::query::handle(state, method, params)
                 .await
@@ -5914,6 +5926,7 @@ mod tests {
             "ownerHandoff.identity",
             "ownerHandoff.readTransfer",
             "ownerHandoff.inspect",
+            "ownerHandoff.completeQuiescence",
         ] {
             assert_eq!(request_budget_ms(method, &json!({})), Some(2000));
         }

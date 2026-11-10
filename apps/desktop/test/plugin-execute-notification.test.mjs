@@ -106,6 +106,7 @@ function fixture({ activeTurn } = {}) {
   };
 
   const runtime = createHostRuntime({
+    wireHandoff() {},
     // The notification handler ignores anything from a host generation that is
     // no longer current, so the fake must be the live one.
     runtimeState: { host, sidecar: null, agentHostBridge: null },

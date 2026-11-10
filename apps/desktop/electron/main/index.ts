@@ -61,6 +61,8 @@ import { installLiveMicrophonePermissionHandlers } from "./live-voice/microphone
 import { MainProcessState } from "./bootstrap/main-state";
 import { registerApplicationActivation } from "./bootstrap/app-activation";
 import { createHostRuntime } from "./runtime/host";
+import { createDesktopHandoffService } from "./runtime/handoff-service";
+import { getWorkspaceTerminalHandoffOwner } from "./bootstrap/workspace-terminals";
 import { createSidecarRuntime } from "./runtime/sidecar";
 import { createEventPersistence } from "./runtime/event-persistence";
 import { createPlanRuntime } from "./runtime/plans";
@@ -346,18 +348,8 @@ const pluginServices = createPluginServices({
   isPluginActiveInProject: (pluginId, projectPath) => pluginActiveInProject(pluginId, projectPath === undefined ? currentWorkspacePath() : projectPath),
   vendorOAuth,
 });
-const {
-  plugins,
-  userMcp,
-  mcpOAuth,
-  pluginScopes,
-  sessionProjects,
-  pluginPanels,
-  pluginViews,
-  browserHost,
-  announceTurnEnded,
-  speech,
-} = pluginServices;
+const { plugins, userMcp, mcpOAuth, pluginScopes, sessionProjects, pluginPanels,
+  pluginViews, browserHost, announceTurnEnded, speech } = pluginServices;
 
 const providerCatalogRuntime = createProviderCatalogRuntime({
   getHost,
@@ -802,17 +794,19 @@ const sidecarRuntime = createSidecarRuntime({
 });
 emitAgentEvent = sidecarRuntime.emitAgentEvent;
 
+const handoff = createDesktopHandoffService(mainState.handoffAdmission, () => {
+  const { host, sidecar, agentHostBridge, scheduledRunner } = mainState;
+  const backends = runtimeLifecycle?.backends, remote = getActiveRemoteHostsBoot();
+  if (!host || !sidecar || !agentHostBridge || !scheduledRunner || !backends || !remote) return null;
+  return { host, sidecar, admission: mainState.handoffAdmission, backends, remote,
+    agentHost: agentHostBridge.agentHost, plans: planRuntime, modes: modeServices.runs,
+    coordination: sessionCoordination, events: eventPersistence, outbox: persistenceOutbox, checkpointer: inflightCheckpointer,
+    scheduler: scheduledRunner, scheduledRuns: scheduledRunsBySession, activeTurns, activeTools: activeToolCalls,
+    plugins, browser: browserHost, terminals: getWorkspaceTerminalHandoffOwner(), userMcp, mcpOAuth, speech };
+}, getHost);
 const hostRuntime = createHostRuntime({
-  runtimeState,
-  dataDir,
-  logger,
-  persistenceOutbox,
-  activeToolCalls,
-  activeToolCallKey,
-  sessionProjects,
-  plugins,
-  userMcp,
-  pluginActiveInProject,
+  runtimeState, dataDir, logger, persistenceOutbox, activeToolCalls, activeToolCallKey,
+  sessionProjects, plugins, userMcp, pluginActiveInProject, wireHandoff: handoff.wireHost,
   sendToRenderer,
   settleModeReturn: (sessionId, run) => modeServices.runs.settleReturn(sessionId, run),
   emitAgentEvent,
@@ -1101,7 +1095,7 @@ registerShutdownHandlers({
   persistenceOutbox,
   inflightCheckpointer,
   flushEventPersistence: eventPersistence.flush,
-  backends: runtimeLifecycle.backends,
+  backends: runtimeLifecycle.backends, handoff,
   pluginPanels,
   plugins,
   userMcp,

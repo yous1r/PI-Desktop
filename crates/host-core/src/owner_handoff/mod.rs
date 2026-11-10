@@ -2,6 +2,8 @@
 pub(crate) mod activity;
 #[cfg(windows)]
 mod cli;
+pub(crate) mod exchange;
+pub(crate) mod exchange_protocol;
 pub(crate) mod inspection;
 pub(crate) mod model;
 #[cfg(windows)]

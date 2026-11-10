@@ -20085,11 +20085,34 @@ session data is used.
   refuse before Sidecar holds; ordinary refusal leaves the unchanged gate usable.
   Changed authority after gate closure leaves it permanently closed. Cancellation
   and fencing still require original durable journal confirmation.
-- **Boundary:** Application registration and Rust-owned private reverse exchange
-  remain pending. The process path uses real Rust identity/status/inspection and
-  persistence, with explicit fixtures for other Desktop producers; it does not
-  qualify full handoff, Workers or native families. Voice remains paused.
+- **Boundary:** Application registration and the private exchange layer are now
+  implemented; authenticated source initiation/journal orchestration remains
+  pending. The process path uses real Rust identity/status/inspection and
+  persistence with fixtures for other producers. Full handoff and native families
+  remain unqualified; Voice remains paused.
 - **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
+
+### Original stdio coordinator exchange and application registration (H1 partial)
+
+- **Entry:** Shared/runtime `owner-handoff-exchange.test.ts`, Rust
+  `owner_handoff::exchange::tests`, Desktop `handoff-coordinator.test.mjs`, and
+  the isolated `scripts/e2e-owner-inspection.mjs` process path.
+- **Steps:** Exchange strict shared fixtures; reject malformed, stale, unknown,
+  duplicate and late completions. Cancel the original waiter and serving scope,
+  retire the registered Rust owner, change Desktop Host/profile during identity
+  resolution, reenter synchronous callbacks and deliver late rejected work.
+  Route a private notification through the real Desktop service/coordinator and
+  inventory, then replace an unheld backend and confirm ordinary refusal remains
+  usable. Lose the original channel while admission is held and confirm quit order.
+- **Expected:** One original exchange, bounded deadlines, no replacement calls,
+  no leaked error payloads, and no renderer event. Cancellation closes the Rust
+  waiter/output; lost held authority keeps Desktop admission closed. Actual Host
+  stdio refuses unknown/oversized completions without journal mutation.
+- **Boundary:** Rust unit tests exercise real registration/journal authority;
+  process tests exercise completion refusal. Successful authenticated source
+  initiation over the native control channel and full transfer are still pending.
+  Fixed resource gaps cannot be overridden; Voice remains paused.
+- **Spec:** [Private coordinator exchange](../03-runtime/06-host-rpc-protocol.md#private-coordinator-exchange-windows-h1-partial).
 
 ### Desktop admission integration prerequisites (H1 partial)
 

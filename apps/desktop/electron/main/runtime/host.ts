@@ -14,6 +14,7 @@ import type { DesktopBackendOwnerOptions } from "./backend-owner";
 export type HostRuntimeDependencies = {
   runtimeState: RuntimeState;
   dataDir: string;
+  wireHandoff: (host: HostProcess) => void;
   logger: Logger;
   persistenceOutbox: PersistenceOutbox;
   activeToolCalls: Map<string, any>;
@@ -52,6 +53,7 @@ export type HostRuntimeDependencies = {
 export function createHostRuntime({
   runtimeState,
   dataDir,
+  wireHandoff,
   logger,
   persistenceOutbox,
   activeToolCalls,
@@ -80,6 +82,7 @@ export function createHostRuntime({
   startup: DesktopBackendOwnerOptions<string>["host"];
 } {
   const wireHost = (h: HostProcess) => {
+  wireHandoff(h);
   const remoteTools = createRemoteWorkspaceToolRelay(h, {
     getBoot: getActiveRemoteHostsBoot,
     isCurrent: () => runtimeState.host === h,
@@ -91,6 +94,7 @@ export function createHostRuntime({
     // Notifications from a previous host generation must never reach the
     // current plugin/renderer bridge after a restart.
     if (runtimeState.host !== h) return;
+    if (method.startsWith("ownerHandoff.")) return;
     if (method === "tools.remoteExecute") {
       void remoteTools.execute(params as RemoteWorkspaceToolRequest);
       return;

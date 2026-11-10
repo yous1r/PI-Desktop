@@ -222,3 +222,83 @@ test("Desktop coordinator refuses malformed requests without starting identity r
   await assert.rejects(coordinator.exchange({ ...f.request, inventory: {} }), code("HANDOFF_INVALID_REQUEST"));
   assert.deepEqual(f.calls, []); assert.equal(f.admission.isClosed(), false); coordinator.dispose();
 });
+
+test("notifying Host is checked before optional identity resolution and refusal releases the pending slot", async () => {
+  const { DesktopHandoffCoordinator } = await import(implementation);
+  const f = fixture(), coordinator = new DesktopHandoffCoordinator(f.admission, f.current);
+  await assert.rejects(coordinator.exchange(f.request, { host: { ...f.host }, profileId: record.profile, assertCurrent() {} }), code("HANDOFF_OWNER_CHANGED"));
+  assert.deepEqual(f.calls, []);
+  await assert.rejects(coordinator.exchange(f.request, { host: f.host, profileId: record.profile, assertCurrent() {} }), error => error.code === "HOST_BUSY");
+  assert.equal(f.admission.isClosed(), false); coordinator.dispose();
+});
+
+test("notifying profile must match original Rust before admission closes", async () => {
+  const { DesktopHandoffCoordinator } = await import(implementation);
+  const f = fixture(), coordinator = new DesktopHandoffCoordinator(f.admission, f.current);
+  await assert.rejects(coordinator.exchange(f.request, { host: f.host, profileId: "f".repeat(64), assertCurrent() {} }), code("HANDOFF_OWNER_CHANGED"));
+  assert.equal(f.admission.isClosed(), false);
+  assert.deepEqual(f.calls, ["ownerHandoff.identity", "native"]); coordinator.dispose();
+});
+
+for (const boundary of ["ownerHandoff.identity", "ownerHandoff.inspect"]) {
+  test(`closed notifying channel cannot resume original work after ${boundary}`, async () => {
+    const { DesktopHandoffCoordinator } = await import(implementation);
+    const f = fixture(), entered = deferred(), released = deferred(); let valid = true;
+    const coordinator = new DesktopHandoffCoordinator(f.admission, f.current);
+    f.before(async method => { if (method === boundary) { entered.resolve(); await released.promise; } });
+    const result = coordinator.exchange(f.request, { host: f.host, profileId: record.profile,
+      assertCurrent() { if (!valid) throw Object.assign(new Error("lost channel"), { errorCode: "HANDOFF_OWNER_CHANGED" }); } });
+    const rejected = assert.rejects(result, code("HANDOFF_OWNER_CHANGED"));
+    await entered.promise; valid = false; released.resolve(); await rejected;
+    assert.equal(f.admission.isClosed(), boundary === "ownerHandoff.inspect"); coordinator.dispose();
+  });
+}
+
+function wireFixture(f) {
+  const handlers = new Set(), exits = new Set(), completed = deferred(), originalCall = f.host.call;
+  f.host.onNotification = handler => { handlers.add(handler); return () => handlers.delete(handler); };
+  f.host.onExit = handler => { exits.add(handler); return () => exits.delete(handler); };
+  f.host.call = async (method, value) => {
+    if (method !== "ownerHandoff.completeQuiescence") return originalCall(method, value);
+    completed.resolve(value); return { version: 1, exchangeId: value.request.exchangeId, accepted: true };
+  };
+  return { handlers, exits, completed, emit() {
+    for (const handler of handlers) handler("ownerHandoff.quiescence", { version: 1, profileId: record.profile, request: f.request });
+  } };
+}
+
+test("application service routes real inventory refusal to the notifying Host across ordinary backend restart", async () => {
+  const { createDesktopHandoffService } = await import("../electron/main/runtime/handoff-service.ts");
+  const f = fixture(), wire = wireFixture(f), service = createDesktopHandoffService(f.admission, f.current, () => f.current()?.host ?? null);
+  service.wireHost(f.host); service.wireHost(f.host);
+  assert.deepEqual(f.calls, []); assert.equal(wire.handlers.size, 1);
+  wire.emit(); assert.deepEqual((await wire.completed.promise).outcome, { error: { code: "HANDOFF_BUSY" } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.admission.isClosed(), false);
+  const next = fixture(), nextWire = wireFixture(next); next.original.admission = f.admission;
+  f.replace(next.original); service.wireHost(next.host);
+  assert.equal(wire.handlers.size + wire.exits.size, 0); assert.equal(f.admission.isClosed(), false);
+  nextWire.emit(); assert.deepEqual((await nextWire.completed.promise).outcome, { error: { code: "HANDOFF_BUSY" } });
+  assert.deepEqual(next.calls, ["ownerHandoff.identity", "native", "ownerHandoff.inspect"]);
+  service.dispose(); assert.equal(f.admission.isClosed(), true); assert.equal(nextWire.handlers.size + nextWire.exits.size, 0);
+});
+
+test("application service refuses incomplete startup sources without querying a replacement", async () => {
+  const { createDesktopHandoffService } = await import("../electron/main/runtime/handoff-service.ts");
+  const f = fixture(), wire = wireFixture(f), service = createDesktopHandoffService(f.admission, () => null, () => f.host);
+  service.wireHost(f.host); wire.emit();
+  assert.deepEqual((await wire.completed.promise).outcome, { error: { code: "HANDOFF_OWNER_CHANGED" } });
+  assert.deepEqual(f.calls, []); service.dispose();
+});
+
+test("application service preserves closed admission when notifying Host exits during inventory", async () => {
+  const { createDesktopHandoffService } = await import("../electron/main/runtime/handoff-service.ts");
+  const f = fixture(), wire = wireFixture(f), entered = deferred(), release = deferred();
+  f.before(async method => { if (method === "ownerHandoff.inspect") { entered.resolve(); await release.promise; } });
+  const service = createDesktopHandoffService(f.admission, f.current, () => f.host);
+  service.wireHost(f.host); wire.emit(); await entered.promise;
+  for (const exit of wire.exits) exit(); release.resolve();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.admission.isClosed(), true); assert.equal(wire.handlers.size + wire.exits.size, 0);
+  service.dispose();
+});

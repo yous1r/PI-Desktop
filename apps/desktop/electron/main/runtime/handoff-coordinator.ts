@@ -14,6 +14,7 @@ export type DesktopHandoffOwners = Omit<DesktopHandoffSources, "binding" | "admi
   host: DesktopHandoffSources["binding"]["host"];
   sidecar: DesktopHandoffSources["binding"]["sidecar"] & OwnerHandoffBinding["sidecar"];
 };
+type ExchangeOrigin = { host: DesktopHandoffOwners["host"]; profileId: string; assertCurrent(): void };
 type BoundSources = DesktopHandoffSources & { binding: DesktopHandoffSources["binding"] & OwnerHandoffBinding };
 function failure(errorCode: string): Error { return Object.assign(new Error(errorCode), { errorCode }); }
 
@@ -105,18 +106,28 @@ export class DesktopHandoffCoordinator implements OwnerHandoffCoordinatorPort {
     }
   }
 
-  async exchange(value: OwnerHandoffQuiescenceRequest) {
+  async exchange(value: OwnerHandoffQuiescenceRequest, origin?: ExchangeOrigin) {
     if (!Value.Check(OwnerHandoffQuiescenceRequestSchema, value)) throw failure("HANDOFF_INVALID_REQUEST");
     if (this.disposed) throw failure("HANDOFF_UNAVAILABLE");
     if (this.pending) throw failure("HANDOFF_BUSY");
     this.pending = true;
     const request = { ...value };
+    const original = origin ? { ...origin, generation: origin.host.generation } : undefined;
+    const assertOrigin = () => {
+      if (!original) return;
+      original.assertCurrent();
+      if (this.current()?.host !== original.host || original.host.generation !== original.generation || !original.host.isAvailable()) {
+        throw failure("HANDOFF_OWNER_CHANGED");
+      }
+    };
     try {
+      assertOrigin();
       if (!this.selected) {
         let preparing = true;
         try {
           this.selected = await bindDesktopHandoffOwner(() => {
             if (this.disposed) throw failure("HANDOFF_UNAVAILABLE");
+            assertOrigin();
             if (preparing && this.admission.isClosed()) throw failure("HANDOFF_BUSY");
             const live = this.current();
             if (live && live.admission !== this.admission) throw failure("HANDOFF_OWNER_CHANGED");
@@ -124,11 +135,18 @@ export class DesktopHandoffCoordinator implements OwnerHandoffCoordinatorPort {
           });
         } finally { preparing = false; }
       }
-      this.original();
+      assertOrigin();
+      const binding = this.original().current().binding;
+      if (original && (binding.host !== original.host || binding.profileId !== original.profileId)) throw failure("HANDOFF_OWNER_CHANGED");
       return await this.coordinator.exchange(request);
     } finally {
-      if (!this.admission.isClosed()) this.selected = undefined;
-      this.pending = false;
+      try { assertOrigin(); } catch (error) {
+        if (this.admission.isClosed()) this.admission.dispose();
+        throw error;
+      } finally {
+        if (!this.admission.isClosed()) this.selected = undefined;
+        this.pending = false;
+      }
     }
   }
 
