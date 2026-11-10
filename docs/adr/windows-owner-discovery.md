@@ -63,3 +63,20 @@ Tests cover native pipe lifecycle, duplicate owners, aliases, framing limits,
 stale epochs, restricted-token ACL refusal, counterfeit executables, normal/crash
 cleanup and shared wire fixtures. A separate-account login, remote Windows
 network transport and full handoff remain separate qualification boundaries.
+
+## Running-source query extension
+
+The selected owner-transfer binding now has a separate endpoint for fenced Hosts.
+This preserves discovery version 1 and its status-only advertisement. The source
+claims the endpoint before AppState/recovery and then binds its original Registry.
+Only compatibility preflight and original transfer status are implemented. The
+standalone `--owner-source` client authenticates the running Host without competing
+for its directory lock. Both sides retain the native process handle, adding only
+synchronize rights to the existing identity check. The same 16 KiB framing and
+two-second query budget apply; writes are never retried on another connection.
+
+This follows the native-pipe direction already selected in the idle-handoff
+design. It adds no storage authority or schema. Preparation, cancellation,
+fencing and release still require a separate durable source workflow and complete
+resource qualification. A successful preflight explicitly requires later idle
+proof; it cannot enable execution transfer.

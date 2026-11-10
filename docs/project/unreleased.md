@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Add authenticated Windows running-source compatibility/status queries over a
+  separate bounded native pipe. Query clients retain the original peer identity
+  and do not acquire the profile lock or open AppState. Preflight is advisory;
+  source mutations, background admission and full transfer remain unavailable.
 - Register one Desktop handoff coordinator across ordinary Host restarts and
   bind private stdio exchanges to the notifying original owner. Rust retains one
   bounded exchange and validates completion against original native/journal

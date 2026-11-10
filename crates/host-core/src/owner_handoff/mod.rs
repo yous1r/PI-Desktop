@@ -1,6 +1,8 @@
 //! Rust-owned execution registration and idle handoff journal.
 pub(crate) mod activity;
 #[cfg(windows)]
+mod build;
+#[cfg(windows)]
 mod cli;
 pub(crate) mod exchange;
 pub(crate) mod exchange_protocol;
@@ -13,6 +15,7 @@ pub(crate) mod read_budget;
 pub(crate) mod repository;
 #[cfg(any(windows, test))]
 mod service;
+pub(crate) mod source;
 mod source_read;
 pub(crate) mod startup;
 #[cfg(windows)]
@@ -22,6 +25,7 @@ mod transitions;
 
 pub fn validate_cli() -> anyhow::Result<()> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
+    source::validate_cli(&args)?;
     if args.iter().any(|arg| arg == "--owner-handoff")
         && (args.len() != 1 || args[0] != "--owner-handoff")
     {

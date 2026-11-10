@@ -727,6 +727,28 @@ single bounded Journal read snapshot; Node does not derive authority from SQLite
 These reads neither fence autonomous producers nor establish full lifecycle
 composition. A stale successful or rejected response cannot authorize a new Host.
 
+Windows fenced Hosts also reserve a separate `pi-desktop-transfer-v1-<profile>`
+named pipe after native prior-owner inspection and before committing recovery or
+opening AppState. The source binds the original Registry after journal registration.
+It owns one two-second query at a time and retains a replacement listener, with
+current-user DACL, remote rejection and first-instance ownership. Both peers
+authenticate kernel-derived PID, SID and canonical Host image, retaining original
+process handles with query/synchronize rights through the exchange. A standalone
+`--owner-source` client uses private framed stdin and does not acquire the data
+lock or open AppState. It never retries after transmitting a request.
+
+The negotiated envelope is `{protocol:"owner-transfer",version:1,command}` with
+strict existing `preflight` or `status` command fields. Replies correlate protocol,
+version, request ID, source epoch and trusted profile, plus a validated result.
+Preflight requires the exact current executable SHA-256/schema/protocol and returns
+`requiresIdle:true`; this is compatibility advice, not idle or readiness proof.
+Status reads only the original owner's transfer using bounded Journal inspection.
+Missing state, contention and unknown records refuse; retired/replaced owners and
+incompatible builds return fixed codes. No query creates an Owner, receipt or
+transfer, closes admission, or calls the stdio quiescence exchange. Source mutation
+commands remain unavailable. Ordinary unfenced Hosts create no new listener;
+the existing discovery pipe still advertises only `status`.
+
 The Desktop coordinator adapter resolves identity only for an explicit handoff
 exchange. Construction performs no startup query. Before identity/native awaits,
 it captures the exact Host, Host generation, Sidecar binding token and every

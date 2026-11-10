@@ -1,0 +1,15 @@
+{
+  "profileId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "preflight": {
+    "request": { "protocol": "owner-transfer", "version": 1, "command": { "operation": "preflight", "version": 1, "requestId": "44444444-4444-4444-8444-444444444444", "sourceEpoch": "22222222-2222-4222-8222-222222222222", "targetBuild": { "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "schema": 30, "protocol": 1 } } },
+    "reply": { "protocol": "owner-transfer", "version": 1, "requestId": "44444444-4444-4444-8444-444444444444", "sourceEpoch": "22222222-2222-4222-8222-222222222222", "profileId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "result": { "version": 1, "requestId": "44444444-4444-4444-8444-444444444444", "sourceEpoch": "22222222-2222-4222-8222-222222222222", "profileId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sourceBuild": { "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "schema": 30, "protocol": 1 }, "targetBuild": { "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "schema": 30, "protocol": 1 }, "requiresIdle": true } }
+  },
+  "status": {
+    "request": { "protocol": "owner-transfer", "version": 1, "command": { "operation": "status", "version": 1, "requestId": "44444444-4444-4444-8444-444444444444", "sourceEpoch": "22222222-2222-4222-8222-222222222222", "transferId": "11111111-1111-4111-8111-111111111111" } },
+    "reply": { "protocol": "owner-transfer", "version": 1, "requestId": "44444444-4444-4444-8444-444444444444", "sourceEpoch": "22222222-2222-4222-8222-222222222222", "profileId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "result": { "version": 1, "record": {
+      "version": 1, "id": "11111111-1111-4111-8111-111111111111", "profile": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "sourceEpoch": "22222222-2222-4222-8222-222222222222", "targetEpoch": "33333333-3333-4333-8333-333333333333",
+      "sourceBuild": { "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "schema": 30, "protocol": 1 }, "targetBuild": { "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "schema": 30, "protocol": 1 },
+      "requester": { "pid": 12, "createdAt": "134115649234567891", "sid": "S-1-5-21-1234", "image": "C:\\fixture\\host.exe" }, "capabilityHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "revision": 4, "phase": "release_pending", "recoveryAttempt": 0, "lastFailure": null
+    } } }
+  }
+}

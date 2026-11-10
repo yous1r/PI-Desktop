@@ -6,8 +6,6 @@ use crate::data_directory_owner::DataDirectoryOwner;
 use crate::execution_fence::native::{exited, Coordinator};
 use crate::owner_control::identity::Identity;
 use anyhow::{bail, Result};
-use sha2::{Digest, Sha256};
-use std::io::Read;
 use std::os::windows::io::AsRawHandle;
 use std::path::Path;
 
@@ -30,11 +28,7 @@ pub(super) async fn run(
             host: record(std::process::id(), &identity),
             coordinator: record(coordinator.pid, &coordinator.identity),
         },
-        build: Build {
-            sha256: executable_hash()?,
-            schema: crate::db::SCHEMA_VERSION as u32,
-            protocol: VERSION,
-        },
+        build: Build::current()?,
     };
     let path = directory.join("pi.sqlite");
     loop {
@@ -56,19 +50,6 @@ pub(super) async fn run(
         let encoded = model::encode(&reply)?;
         super::stdio::send(&coordinator, encoded.into_bytes()).await?;
     }
-}
-fn executable_hash() -> Result<String> {
-    let mut file = std::fs::File::open(std::env::current_exe()?)?;
-    let mut hash = Sha256::new();
-    let mut buffer = [0u8; 64 * 1024];
-    loop {
-        let count = file.read(&mut buffer)?;
-        if count == 0 {
-            break;
-        }
-        hash.update(&buffer[..count]);
-    }
-    Ok(hex::encode(hash.finalize()))
 }
 fn error_code(error: &anyhow::Error) -> String {
     let message = error.to_string();

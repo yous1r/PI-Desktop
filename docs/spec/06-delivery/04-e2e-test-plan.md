@@ -20116,6 +20116,29 @@ session data is used.
   Fixed resource gaps cannot be overridden; Voice remains paused.
 - **Spec:** [Private coordinator exchange](../03-runtime/06-host-rpc-protocol.md#private-coordinator-exchange-windows-h1-partial).
 
+### Authenticated running-source queries (H1 partial)
+
+- **Entry:** Shared `owner-handoff-source.test.ts`, Rust `owner_handoff::source`
+  and `owner_control` tests, plus `pnpm test:e2e:owner-source` with an explicitly
+  selected candidate Host and scratch directory.
+- **Steps:** Start a fenced Host with an explicit isolated data directory. Query
+  preflight through the same Host executable's private `--owner-source` mode while
+  the original owns the lock. Query a test-injected terminal record and compare
+  all ownership/journal rows before and after. Refuse changed epochs/builds,
+  absent records, caller inventory, mutation commands, malformed/oversized frames,
+  idle clients, and unexpected peer images. Exercise lock contention, retired
+  authority, endpoint conflict, original shutdown and restart with a new epoch.
+- **Expected:** Strict shared fixtures, bounded native queries, original retained
+  process handles, no request replay, no new owner/transfer/receipt, and no leaked
+  error payload. Untrusted executables receive no greeting. Ordinary RPC remains
+  available. Closing joins the listener and releases its endpoint.
+- **Boundary:** Preflight reports compatibility and `requiresIdle:true`; it does
+  not acquire admission or call `Exchange::request`. Authenticated prepare,
+  source journal orchestration and complete native qualification remain pending.
+  The terminal record is injected only by the test; no production mutation seam
+  is exposed. No live Desktop/default profile/provider/Voice operation is used.
+- **Spec:** [Process ownership](../03-runtime/07-process-model.md#desktop-admission-composition).
+
 ### Desktop admission integration prerequisites (H1 partial)
 
 - **Entry:** `node --test apps/desktop/test/handoff-admission.test.mjs apps/desktop/test/handoff-lifecycle.test.mjs apps/desktop/test/agent-host-bridge-work-ack.test.mjs apps/desktop/test/scheduled-runner.test.mjs apps/desktop/test/shutdown-regenerate-persistence.test.mjs apps/desktop/test/plugin-restore-notifies-renderer.test.mjs`.

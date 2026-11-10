@@ -26,9 +26,11 @@ durable owner records and the transfer protocol below remain unimplemented.
 
 S03b-1 discovery is now implemented behind explicit `--owner-control` and
 `--owner-status` modes on Windows; see the [discovery ADR](../adr/windows-owner-discovery.md).
-The current-user native channel validates both executable identities and
-advertises only `status`. The transfer operations and fencing/journal below
-remain future work; discovery is not execution-transfer readiness.
+The current-user discovery channel validates both executable identities and
+advertises only `status`. Fenced Hosts additionally provide authenticated
+`owner-transfer` compatibility preflight and original-owner status queries.
+Prepare/fence/release orchestration remains future work; successful discovery or
+preflight is not execution-transfer readiness.
 
 The first transfer must refuse a pre-existing source that lacks the execution
 fence capability. Restarting an updated source while idle may be required before

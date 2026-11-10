@@ -2681,3 +2681,32 @@ and maintenance compatibility within the documented scope. Continue with the
 authenticated running-source entry and Rust-owned journal transitions, then Rust
 background admission and remaining native/Worker proofs. Full H1 is incomplete,
 Voice remains paused, and the earlier default-profile data effects remain unknown.
+
+### H1 authenticated running-source query transport
+
+Implemented a separate Windows `owner-transfer` version 1 endpoint for fenced
+Hosts. The native endpoint is reserved before AppState/recovery and binds the
+original registered owner. Both peers authenticate SID/canonical Host image from
+kernel pipe identity and retain the original process handle. The standalone
+`--owner-source` client uses bounded private stdin and never takes the profile
+lock, opens AppState, or retries transmitted requests. Each query is bounded to
+two seconds with strict 16 KiB framing and a single served exchange.
+
+The implemented operations are compatibility `preflight` and original-owner
+`status`. Exact-build preflight returns `requiresIdle:true`. Status uses the
+existing bounded Journal read. Shared/Rust contracts reject mutation commands,
+extra authority fields, stale identity and malformed responses. A query cannot
+write a transfer or receipt, acquire quiescence, or claim native readiness.
+
+Development verification passed 9 new Rust source tests, 8 existing discovery
+tests, 14 shared contract tests, and the five isolated native source scenarios
+with 12 child processes and confirmed cleanup. Types, lint and ordinary Clippy
+passed; exact clean-candidate validation is recorded separately after commit.
+The initial missing-module test failure remains the feature baseline. No full
+Rust-suite or warning-free claim is made.
+
+Next priority remains Rust autonomous/background admission and durable source
+prepare/cancel/fence/release orchestration. `Exchange::request` still has no
+production caller. The existing ten resource gaps remain authoritative, Voice
+stays paused, and no full transfer is enabled. The earlier default-profile
+incident and its unknown data effects remain unresolved.

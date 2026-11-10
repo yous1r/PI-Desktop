@@ -101,6 +101,9 @@ async fn run(
     if owner_control::query_cli(&data_dir).await? {
         return Ok(());
     }
+    if owner_handoff::source::query_cli(&data_dir).await? {
+        return Ok(());
+    }
     if owner_handoff::run_cli(&data_dir, data_owner).await? {
         return Ok(());
     }
@@ -115,6 +118,8 @@ async fn run(
     let mut execution_fence = execution_fence::start(&data_dir)?;
     let owner_control =
         owner_control::Control::start(&data_dir, execution_fence::owner_epoch(&execution_fence))?;
+    let source_endpoint =
+        owner_handoff::source::Endpoint::claim(&data_dir, execution_fence.is_some())?;
     prior_owner.commit()?;
     std::fs::create_dir_all(data_dir.join("logs"))?;
     std::fs::create_dir_all(data_dir.join("plugins/installed"))?;
@@ -128,6 +133,7 @@ async fn run(
     execution_fence::bind_journal(&mut execution_fence, &data_dir)?;
     app_state.execution_fence = execution_fence;
     let state = Arc::new(Mutex::new(app_state));
+    let source = source_endpoint.bind(state.clone())?;
     tracing::info!(path = %data_dir.display(), "host-core starting");
     {
         // Sweep orphaned/stale session scratch dirs left behind by crashes or
@@ -160,5 +166,5 @@ async fn run(
         .await;
         startup.finish(true);
     });
-    owner_control.serve(rpc::serve(state)).await
+    source.serve(owner_control.serve(rpc::serve(state))).await
 }
