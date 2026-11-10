@@ -2936,3 +2936,26 @@ resolution; explicit current-source aliases now make its independent execution
 use the same source contract. The old wiring parser and OAuth IPC refusal each
 have discriminating failure evidence followed by corrected checks. Candidate
 refresh, fresh Host build and isolated process acceptance follow this checkpoint.
+
+### H1 non-Voice adapter candidate accepted
+
+Candidate `a360fc5050e8cb751386819dbee9f1cb20b364d1` incorporates base
+`e977efc96b6b735aeef5066a0b66c6565ad5691f` after a conflict-free private rebase.
+It passed 792 tests in 51 files, current-source types, lint, architecture, policy,
+documentation/base/whitespace checks, and a fresh offline Host build. Ten isolated
+process scenarios used four Hosts with confirmed cleanup. All 4,514 tracked
+regular files stayed unchanged and 23 acceptance artifacts were independently
+rehashed. See the [scoped acceptance record](./ai-command-center-p0-evidence/h1-adapters-verification.md)
+for per-task behavior, binary/input hashes and failed-attempt limitations.
+
+R01–R09 are accepted for Desktop adapter scope. Full H1/native qualification is
+not complete: all ten fixed gaps stay, Voice/LiveVoice remains user-paused, and
+authenticated source transactions belong to H2. H3–H5 and the later approved
+stages remain separate. No push, PR, remote merge or deployment was performed.
+
+The `pnpm check:pr-base` wrapper attempted automatic dependency synchronization
+and failed on linked `node_modules`; the same repository check was then executed
+directly with Node and passed. No completed installation is claimed. Known prior
+test/lint/loader issues are listed in the acceptance record. The earlier
+default-profile isolation incident remains unresolved; this isolated validation
+does not prove that earlier user data was unaffected.

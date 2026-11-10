@@ -20831,8 +20831,9 @@ delivery and deterministic plugin process ports remain fixture boundaries.
 - **Specs:** process model updater/inbound MCP ownership; H1 remaining task list.
 - **Acceptance:** targeted producer/consumer suites and exact clean-candidate
   isolated process regression. Fixture closure does not clear native gaps.
-- **Milestone/status:** H1 adapter implementation; final candidate validation
-  pending. H2 source transactions and H5 complete transfer are separate.
+- **Milestone/status:** H1 non-Voice adapter scope accepted; see the
+  [exact-candidate record](../../project/ai-command-center-p0-evidence/h1-adapters-verification.md).
+  H2 source transactions, native qualification and H5 complete transfer remain separate.
 
 ### H1-R06 collaboration admission and original-owner dispatch
 
@@ -20914,3 +20915,15 @@ delivery and deterministic plugin process ports remain fixture boundaries.
 - **Acceptance:** focused races, representative login/refresh and IPC discovery
   checks pass with the integrated current-source type/static checks. No real
   account/provider/browser or native closure claim is part of this acceptance.
+
+### H1-R09 scoped adapter acceptance result
+
+Candidate `a360fc5050e8cb751386819dbee9f1cb20b364d1` on base
+`e977efc96b6b735aeef5066a0b66c6565ad5691f` passed 792 tests across 51 files,
+current-source types/static checks and ten isolated owner-inspection scenarios
+using four Hosts with confirmed cleanup. The Host was rebuilt offline from the
+candidate; all 4,514 tracked input files remained unchanged. Original resource
+producer/consumer paths and fixed-gap refusal are mapped in the
+[acceptance record](../../project/ai-command-center-p0-evidence/h1-adapters-verification.md).
+This accepts R01–R09 adapter scope, not wider native closure or source transfer.
+Voice/LiveVoice remains deferred; the earlier isolation incident is unresolved.

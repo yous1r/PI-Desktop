@@ -46,8 +46,9 @@ or uncertainty. Missing and malformed required reports refuse inspection.
   reports, source identity across awaits, retained old owners and the unchanged
   ten fixed qualification gaps. Adapter reports are not supplied by a caller's
   qualification flag.
-- Exact test results and candidate identity belong to the R09 verification
-  record. This map alone is not a passed test or a native exit certificate.
+- Exact results and candidate identity are recorded in the
+  [R09 acceptance record](./ai-command-center-p0-evidence/h1-adapters-verification.md).
+  The map and adapter tests do not constitute a wider native exit certificate.
 
 The earlier [profile isolation incident](./ai-command-center-p0-evidence/rust-inspection-isolation-incident.json)
 remains unresolved. Later isolated tests do not establish that earlier profile

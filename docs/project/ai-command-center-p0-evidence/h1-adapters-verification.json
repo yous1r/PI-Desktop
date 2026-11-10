@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "a360fc5050e8cb751386819dbee9f1cb20b364d1",
+  "base": "e977efc96b6b735aeef5066a0b66c6565ad5691f",
+  "startedAt": "2026-11-10T09:05:45.551Z",
+  "endedAt": "2026-11-10T09:08:34.338Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "scope": "H1-R01 through R09 non-Voice Desktop adapter acceptance; not complete native qualification or source transfer",
+  "sourceInputs": {
+    "count": 4514,
+    "coverage": "All tracked regular files, including SQL, configuration, tests and documentation",
+    "sha256": "430cee72228e03b3ca51b1d5ccfb254ca0bc79d2ac8b42bd740fbf368c0c64d3",
+    "unchanged": true
+  },
+  "validation": {
+    "desktopTests": 792,
+    "desktopTestFiles": 51,
+    "failures": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "nativeChecks": 10,
+    "hostProcesses": 4,
+    "cleanupConfirmed": true,
+    "distinctAcceptanceArtifactsRehashed": 23,
+    "successfulCommands": [
+      "Selected Node tests against current sources",
+      "Current-source Desktop TypeScript --noEmit",
+      "Biome lint (463 selected files)",
+      "scripts/check-architecture.mjs",
+      "scripts/check-agent-policy-sync.mjs",
+      "docs/scripts/check-docs.mjs (637 pages)",
+      "scripts/check-pr-base-main.mjs",
+      "cargo rustc -p host-core --locked --offline (fresh scratch binary, provisioned target)",
+      "scripts/e2e-owner-inspection.mjs",
+      "git diff --check"
+    ],
+    "nativeBuild": "Fresh host-core v0.22.4 dev binary; 263 native inputs unchanged; not reused from older candidate"
+  },
+  "scratchRoot": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569",
+  "artifacts": [
+    { "path": "h1-adapters-candidate01-verified.json", "bytes": 9405, "sha256": "ecfcb02a2fb0f01514ce104ede25f5cdea308f63381963f422310fd7ef57374c" },
+    { "path": "h1-adapters-candidate01.json", "bytes": 23555, "sha256": "7de4c8cbd48fd621897dee413a1a5af061bc0978536503b64e797a0b98e9b394" },
+    { "path": "h1-adapters-candidate01-inputs.json", "bytes": 780827, "sha256": "13e9fc66985319a67e06a69a910cb94ee279f9c56127ee4801e1c68514f64afd" },
+    { "path": "h1-adapters-native01.json", "bytes": 6996, "sha256": "0ad357686efb2740a3f48c8a5d8959a778c6193713437625881f909f74797d2c" },
+    { "path": "h1-adapters-native01-host.exe", "bytes": 35436032, "sha256": "154d1ce66c882338ca00e9048a25d2c6a60057577efb5a1c3e6815c26e28f530" },
+    { "path": "owner-inspection-yNWu7o/report.json", "bytes": 2249, "sha256": "e4a372dea4e12d218a335f2de628427b8096efcfc58ea15a0f1d4fd6aa961d8e" },
+    { "path": "h1-adapters-development-evidence.json", "bytes": 6608, "sha256": "c88db7cb40dc0c50f82047618e2e2b604d627a0242fb20fb5de4ee3d312f2a18" },
+    { "path": "h1-adapters-verify.mjs", "bytes": 3970, "sha256": "56015427f8a78263abbee563afbe9a5c648c374d7843c106fd588a22c572c39a" }
+  ],
+  "retainedQualificationGaps": [
+    "rust-background-admission",
+    "native-resources-outside-execution-generation",
+    "updater",
+    "model-catalog",
+    "vendor-oauth",
+    "mcp-control",
+    "personal-todos",
+    "electron-surfaces-and-listeners",
+    "worker-execution-classification",
+    "voice-and-live-voice"
+  ],
+  "limitations": [
+    "Voice/LiveVoice remains deferred by the user; H2 source transactions and H3-H5 complete transfer are not accepted by this record.",
+    "Native harness tests original Rust/Sidecar ownership and controlled Desktop reports, not all native resource closure.",
+    "No live Desktop/default profile, real vendor account/provider, microphone, model download, installer or SSH test.",
+    "No new full Rust test/clippy run or successful standalone OAuth bundle build is claimed.",
+    "Known existing update-cache Windows-path assertions, safe-open-external regex failure and unlinted catalog-body helpers are documented in the companion report.",
+    "pnpm check:pr-base attempted automatic dependency synchronization and failed on linked node_modules; no completed installation is claimed. Direct repository base check and final source tests passed.",
+    "Earlier default-profile isolation incident remains unresolved; later isolated success does not prove earlier data unaffected.",
+    "No push, PR, remote merge or deployment. Raw scratch artifacts are session-scoped."
+  ]
+}
