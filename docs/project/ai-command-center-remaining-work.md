@@ -2657,3 +2657,27 @@ the complete coordinator. All 44 coordinator/quit cases, types and lint passed
 after this correction. Final candidate validation follows; Rust inputs and build
 are unchanged and require equality-checked evidence reuse rather than a new
 Rust execution claim.
+
+#### Original-stdio exchange final clean-candidate acceptance
+
+Candidate `3f92cd4820fce92c1894a10a5fd56797868d0c18` against freshly fetched
+`7e493e8b18d277d8d13f682cf250604ed94fb00d` passed 138 unique Desktop cases,
+77 runtime cases, 14 shared contract cases and nine isolated process checks
+across four Hosts with confirmed cleanup. Typecheck, lint (423 files), architecture,
+policy, documentation, base and whitespace checks exited zero. All 2,873 source
+inputs stayed unchanged; 65 artifacts were independently rehashed and the worktree
+remained clean before/after validation. See
+[private exchange verification](./ai-command-center-p0-evidence/private-exchange-verification.json).
+
+Rust build, 56 unique targeted tests (55 owner-handoff plus one RPC budget), fmt
+and ordinary Clippy were performed for `6202c492d91f49241ebb903fb3e4b3e7747ebaaf`.
+The final Desktop-only correction reuses them only after exact Rust input and
+binary/artifact equality; no repeated Rust execution is claimed. Existing unused
+and dead-code warnings remain. The original passing candidate, two failing
+maintenance regressions and corrected green results remain separate evidence.
+
+This accepts exchange infrastructure, original-owner application registration
+and maintenance compatibility within the documented scope. Continue with the
+authenticated running-source entry and Rust-owned journal transitions, then Rust
+background admission and remaining native/Worker proofs. Full H1 is incomplete,
+Voice remains paused, and the earlier default-profile data effects remain unknown.

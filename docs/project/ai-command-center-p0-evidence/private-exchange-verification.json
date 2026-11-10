@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "3f92cd4820fce92c1894a10a5fd56797868d0c18",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "startedAt": "2026-11-10T01:11:39.383Z",
+  "endedAt": "2026-11-10T01:13:14.482Z",
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "sourceInputs": {
+    "count": 2873,
+    "sha256": "05a5460613e0fbb16e4674ea13a7d1a2de9467690834c146bc8552fcbec2ee85",
+    "manifest": {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-exchange-final-candidate-inputs.json",
+      "bytes": 493035,
+      "sha256": "e1b7c83d6b0aebc12c407ed548a07055710416011eda25b0d7c63ad442e04103"
+    },
+    "unchanged": true
+  },
+  "raw": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-exchange-final-candidate.json",
+    "bytes": 56226,
+    "sha256": "c9403d603235f6f693cdc9dd3fbd6c8c4ce7be2effd2ea90a89855da8fb48b32"
+  },
+  "host": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-exchange-candidate-host.exe",
+    "bytes": 35073536,
+    "sha256": "55e7dba9604ead5bd8103f2c31118d6038c5c034979ba67ee6c6174bbc21771f"
+  },
+  "reusedRust": {
+    "candidate": "6202c492d91f49241ebb903fb3e4b3e7747ebaaf",
+    "raw": {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-exchange-candidate.json",
+      "bytes": 54014,
+      "sha256": "411c6829133aa4c829916e690c288698ab4edae06b3f3709f67c5b309bd385e8"
+    },
+    "sourceInputsUnchanged": true,
+    "hostHashVerified": true,
+    "rustTestsRerun": false,
+    "clippyRerun": false,
+    "buildRerun": false
+  },
+  "tests": {
+    "desktop": { "files": 6, "uniquePassed": 138 },
+    "runtime": { "files": 5, "uniquePassed": 77 },
+    "shared": { "files": 2, "uniquePassed": 14 },
+    "rust": { "uniquePassed": 56, "fullSuite": false, "rerun": false, "reusedFrom": "6202c492d91f49241ebb903fb3e4b3e7747ebaaf" },
+    "native": {
+      "checks": 9,
+      "hostProcesses": 4,
+      "cleanupConfirmed": true,
+      "report": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-inspection-FvYWHC/report.json",
+        "bytes": 2050,
+        "sha256": "f16b6f4f84258d08cc61aed41e20bc79fc8eeb4d68dcfb5072c8bc7f364fa5f7"
+      }
+    }
+  },
+  "checks": [
+    { "name": "shared", "exitCode": 0 },
+    { "name": "node", "exitCode": 0 },
+    { "name": "runtime", "exitCode": 0 },
+    { "name": "native", "exitCode": 0 },
+    { "name": "types", "exitCode": 0 },
+    { "name": "lint", "exitCode": 0 },
+    { "name": "architecture", "exitCode": 0 },
+    { "name": "policy", "exitCode": 0 },
+    { "name": "docs", "exitCode": 0 },
+    { "name": "base", "exitCode": 0 },
+    { "name": "whitespace", "exitCode": 0 }
+  ],
+  "artifactsVerified": 65,
+  "verifier": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-exchange-final-verify.mjs",
+    "bytes": 5436,
+    "sha256": "7ce4e31565f77e7ae4d4cb144d911687c71a43f350b894fba56a945b40dd04b4"
+  },
+  "limitations": [
+    "Production application registration and original normal-stdio completion infrastructure are covered. Authenticated running-source initiation/journal orchestration is not yet connected; no complete transfer is claimed.",
+    "Rust unit tests use actual registered owner/journal authority; process checks exercise completion refusal, native startup/restart/inspection and cleanup. Other Desktop producers in the process helper are fixtures.",
+    "All fixed qualification gaps remain. Rust background admission, Worker classification and complete native resource closure are unqualified; Voice/LiveVoice remain paused.",
+    "Rust build, 56 tests and ordinary Clippy are reused only after exact Rust input/binary/artifact equality with 6202c492d91f49241ebb903fb3e4b3e7747ebaaf. They were not rerun for the Desktop-only correction; existing unused/dead-code warnings remain. No full suite/live Desktop/provider/install/hardware claim.",
+    "Earlier default-profile startup/registration is confirmed; data effects remain unknown. Current profiles are isolated and no remediation was performed."
+  ]
+}
