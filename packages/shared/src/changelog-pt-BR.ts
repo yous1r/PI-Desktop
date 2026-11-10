@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const ptBREntries: ChangelogEntry[] = [
   {
+    version: "0.22.4",
+    date: "2026-11-10",
+    highlights: [
+      "Crie modos personalizados reutilizáveis com fluxos por etapas, artefatos salvos e pontos de aprovação.",
+      "Defina orçamentos do Goal, pause ou edite objetivos em andamento e receba avisos de conclusão.",
+      "As respostas de recuperação permanecem na ordem correta após alterar as instruções durante um turno.",
+      "Abra arquivos de sessões nativas do Pi pelo espaço de trabalho original.",
+      "As verificações de Git do gerenciador de arquivos retornam no prazo, mesmo quando processos filhos mantêm os canais de saída abertos.",
+    ],
+  },
+  {
     version: "0.22.3",
     date: "2026-11-07",
     highlights: [

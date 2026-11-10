@@ -2,6 +2,17 @@ import type { ChangelogEntry } from "./changelog.js";
 
 export const zhTWEntries: ChangelogEntry[] = [
   {
+    version: "0.22.4",
+    date: "2026-11-10",
+    highlights: [
+      "建立可重複使用的自訂模式，支援分階段工作流程、儲存產物與核准關卡。",
+      "設定 Goal 預算，暫停或編輯執行中的目標，並接收完成通知。",
+      "在回合中調整指示後，復原回覆仍依正確順序顯示。",
+      "透過原始工作區開啟原生 Pi 工作階段檔案。",
+      "檔案管理器的 Git 檢查會在到達逾時期限時返回，即使子程序仍占用輸出管線。",
+    ],
+  },
+  {
     version: "0.22.3",
     date: "2026-11-07",
     highlights: [
