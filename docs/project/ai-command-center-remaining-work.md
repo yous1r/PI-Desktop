@@ -2814,10 +2814,8 @@ Candidate `b189901bbc1931f15a6e010021d006e469f24597` passed 102 unique Rust test
 141 JS cases and 15 isolated native process scenarios. Independent verification
 confirmed 2,888 unchanged source inputs, 42 artifact hashes, cleanup and clean
 before/after state. See [Worker/source-step evidence](./ai-command-center-p0-evidence/worker-steps-verification.md).
-Authenticated source orchestration remains open. Its next prerequisite is a
-regression-tested acknowledgement ordering fix: retain at most one following
-notification during completion ACK, without concurrent coordinator execution,
-deadline extension, duplicate acceptance or continuation after owner loss.
+Authenticated source orchestration remains open. Its acknowledgement ordering
+prerequisite and exact acceptance are recorded below.
 
 ### H1 stdio acknowledgement ordering
 
@@ -2833,3 +2831,36 @@ including the application service routing two real inventory refusals while the
 RPC fixture delays the first ACK. Types and lint passed. Exact clean-candidate
 acceptance follows separately. This does not implement authenticated source
 mutations, grant journal/native authority or clear any fixed qualification gap.
+
+#### Exact acknowledgement acceptance and next operations
+
+Candidate `7df16a925c9b9b4ac09aad1ba6124350078f024d` passed 123 JS tests and ten
+isolated process scenarios (four Hosts, cleanup confirmed). Current-source bundle,
+types, lint, architecture, policy, docs, base and whitespace checks passed.
+Independent verification covered 2,888 unchanged source inputs and 812 artifacts.
+Rust binary reuse was justified by hash equality and the complete unchanged
+tracked native tree, including SQL. See [ACK ordering evidence](./ai-command-center-p0-evidence/ack-ordering-verification.md).
+
+The next implementation sequence remains:
+
+1. Wire authenticated source `prepare/cancel` through the existing original
+   stdio exchange, keeping actual native requester identity and fixed hold
+   revision separate from journal revision. Acceptance requires real isolated
+   source-to-Desktop busy refusal without journal mutation, qualified fixture
+   prepare/receipt replay, conflicting request refusal, disconnected waiter and
+   ambiguous commit reconciliation, and durable cancellation before reopening
+   exactly once. Desktop quiescence must precede Rust ingress closure so admitted
+   persistence can settle. No error code or missing record proves cancellation.
+2. Implement `fence/release` with durable fencing intent before irreversible
+   effects, retained original native handles and confirmed generation closure
+   before `source_fenced`. Acceptance must distinguish release intent from actual
+   source exit and forbid reopening or replacement-owner continuation on failure.
+3. Qualify each remaining resource family from actual admission, lifetime and
+   native closure evidence before removing its fixed gap. Parallel research of
+   MCP control confirmed existing tool effects use the IPC admission router;
+   listener/request/start-stop lifetimes remain unqualified. Research proposals
+   are not implementation or permission to drop a gap. Voice stays paused.
+
+H1 is not complete. H2-H5 and the remaining approved C/M/U/N/W/Q/R/X stages remain
+ordered behind their dependencies. Preserve isolated worktrees/profiles, reuse
+provisioned dependencies, and do not push, deploy or test a running user instance.
