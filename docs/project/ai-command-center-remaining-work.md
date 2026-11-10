@@ -2710,3 +2710,21 @@ prepare/cancel/fence/release orchestration. `Exchange::request` still has no
 production caller. The existing ten resource gaps remain authoritative, Voice
 stays paused, and no full transfer is enabled. The earlier default-profile
 incident and its unknown data effects remain unresolved.
+
+#### Exact running-source query acceptance
+
+Candidate `d4be4a2170ec8ff1b8ddeabe2d7805a5f083a10d` against freshly fetched
+`7e493e8b18d277d8d13f682cf250604ed94fb00d` passed 73 unique Rust tests (64
+handoff, 8 discovery, 1 RPC budget) and 19 shared tests across three files.
+Freshly rebuilt Host processes passed five source-query scenarios (12 children)
+and nine inspection/startup/restart scenarios (4 Hosts), with cleanup confirmed.
+Types, lint (425 files), architecture, agent policy, docs, base, whitespace,
+Rust format and ordinary Clippy all exited zero. Existing warnings remain.
+
+The independent verifier confirmed 2,884 unchanged source inputs, 34 distinct
+artifact hashes, exact tested HEAD/base, unique passing test names, and clean
+before/after state. See [running-source query verification](./ai-command-center-p0-evidence/running-source-query-verification.json).
+Development results overlap this acceptance and are not additional coverage.
+This accepts authenticated readonly source queries only. Continue with Rust
+background admission and durable prepare orchestration; fixed native/resource
+gaps and the earlier isolation incident remain unresolved.

@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "status": "PASS_WITH_UNQUALIFIED_NATIVE_RESOURCES",
+  "candidate": "d4be4a2170ec8ff1b8ddeabe2d7805a5f083a10d",
+  "base": "7e493e8b18d277d8d13f682cf250604ed94fb00d",
+  "startedAt": "2026-11-10T01:56:20.677Z",
+  "endedAt": "2026-11-10T02:00:47.899Z",
+  "sourceInputs": {
+    "count": 2884,
+    "sha256": "17f648c277955cd36e34d324256ce2f84fa8e23055f28bf2363691fe01ad4c37",
+    "manifest": {
+      "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-source-candidate-inputs.json",
+      "bytes": 494939,
+      "sha256": "754f84a42805da3a02f16cb9258c3279861c93b75784494ae9e39abc7f538997"
+    },
+    "unchanged": true
+  },
+  "cleanBefore": true,
+  "cleanAfter": true,
+  "validation": {
+    "rust": { "passed": 73, "selection": "64 owner_handoff, 8 owner_control, 1 RPC budget", "fullSuite": false },
+    "shared": { "passed": 19, "files": 3 },
+    "sourceProcess": {
+      "checks": 5, "processes": 12, "cleanupConfirmed": true,
+      "report": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-source-i525pC/report.json",
+        "bytes": 1195,
+        "sha256": "e24173b24721ca0cfc0280132e3e9e75f82438080d8610a2087757159ae94c31"
+      }
+    },
+    "inspectionProcess": {
+      "checks": 9, "hosts": 4, "cleanupConfirmed": true,
+      "report": {
+        "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/owner-inspection-aF3KNX/report.json",
+        "bytes": 2050,
+        "sha256": "5a1fb3a1ca1c1287d964d2e9823ebe1ffa71599ae1a90ec78a83ab77881cb462"
+      }
+    },
+    "checks": [
+      { "name": "rust-build", "exitCode": 0 },
+      { "name": "host-build", "exitCode": 0 },
+      { "name": "clippy", "exitCode": 0 },
+      { "name": "fmt", "exitCode": 0 },
+      { "name": "types", "exitCode": 0 },
+      { "name": "lint", "exitCode": 0 },
+      { "name": "architecture", "exitCode": 0 },
+      { "name": "policy", "exitCode": 0 },
+      { "name": "docs", "exitCode": 0 },
+      { "name": "base", "exitCode": 0 },
+      { "name": "whitespace", "exitCode": 0 }
+    ],
+    "distinctArtifacts": 34
+  },
+  "builtHost": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-source-candidate-host.exe",
+    "bytes": 35409920,
+    "sha256": "c6919e1f81f6a2f29c5c9abb69d492efc89cec928bbd735c7cc505ba61f28013"
+  },
+  "raw": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-source-candidate.json",
+    "bytes": 33894,
+    "sha256": "180ce175489e0b5a0a8b2e3c25dc5b5bd79c5c1aa2856e3e73e82fa3f1312381"
+  },
+  "verification": {
+    "path": "C:/Users/Administrator/.pi-desktop/scratch/233744ff-b9c5-46dd-9a91-5169100d5569/h1-source-verify.mjs",
+    "bytes": 4281,
+    "sha256": "38117d89cb67ff84e74617796b07b3aeacb0d9fc29e6fecdd26f2d5f4668ff02"
+  },
+  "limitations": [
+    "Authenticated source preflight/status only; Exchange::request has no production caller. Source mutations and Rust background admission remain pending.",
+    "All ten resource qualification gaps remain; Voice/LiveVoice paused. No full transfer, full Rust suite, warning-free Clippy, hardware or live Desktop qualification.",
+    "The source process test injects one terminal record; other Desktop owners in inspection are fixtures.",
+    "Earlier default-profile startup/registration remains confirmed with unknown data effects; no remediation or new default-profile operation."
+  ]
+}
