@@ -2547,3 +2547,40 @@ This accepts retained backend inventory only. Production coordinator transport,
 Rust background admission and required resource/native qualification remain
 next; full H1 is incomplete, Voice is paused, and the earlier profile incident's
 data effects remain unknown.
+
+### H1 original-owner Desktop coordinator adapter
+
+The optional handoff path now resolves original Rust identity and native generation
+before composing the coordinator. It captures Host object/generation, the immutable
+Sidecar binding token and every concrete inventory producer before awaiting reads.
+Missing producers refuse before RPC. Success, rejection and synchronous reentry
+recheck the same owners; detected invalidation cannot revive. Identity and native
+status have bounded 2.5-second waiter deadlines with observed late rejection.
+The bound view routes inventory and transfer queries to the original owner.
+
+`DesktopHandoffCoordinator` owns one core coordinator across ordinary backend
+restarts, reserves exchanges before callbacks, uses the existing shared gate and
+performs no constructor/startup query. Ordinary refusal permits a later owner to
+be resolved. Changed inventory after gate closure permanently blocks admission;
+maintenance and quit during optional preparation prevent further reads. Fixed
+qualification gaps still refuse before Sidecar hold effects. Production service
+registration and the Rust-owned private reverse exchange remain the next step.
+
+Five regressions reproduced stale failure classification at native status,
+journal, Sidecar status, cancellation and sealing boundaries: 16 existing cases
+passed and all five additions failed before the correction. Those boundaries now
+share before/finally original-binding checks, and the native generation is fixed
+at binding creation rather than inferred from a later first response.
+
+Development verification passed 90 Desktop cases (30 adapter, 60 inventory), 59
+runtime cases in four files, Desktop typecheck and lint over 418 files. The real
+isolated process path passed eight checks across four Hosts with confirmed cleanup,
+including adapter identity/native resolution and fixed-gap refusal. Its remaining
+Desktop producers and inventory Sidecar facade are explicit fixtures. Rust inputs
+and the accepted query Host hash were unchanged; no Rust rebuild/test/Clippy was
+performed. Development selections overlap exact-candidate acceptance below.
+
+H1 remains incomplete: private exchange/application wiring, Rust background
+admission, Workers and required native/resource proofs remain open. Voice remains
+paused. All process profiles in this slice were scratch-isolated; the earlier
+default-profile startup/registration and unknown data effects remain unresolved.

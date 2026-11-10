@@ -122,6 +122,13 @@ function retainedSidecars(sources: DesktopHandoffSources, current: DesktopHandof
   });
 }
 
+/** Compare actual producer identities before any asynchronous owner query. */
+export function assertDesktopHandoffSources(sources: Omit<DesktopHandoffSources, "binding">,
+  expected?: Omit<DesktopHandoffSources, "binding">): void {
+  if (expected && sourceKeys.some(key => sources[key] !== expected[key])) throw failure("HANDOFF_OWNER_CHANGED");
+  for (const key of sourceKeys) if (!sources[key]) throw unavailable(key);
+}
+
 /** Read original Rust authority, then synchronously sample current Desktop
  * owners. This is a conservative obstruction inventory, never an execution
  * capacity total, an admission hold, or native closure certification.
@@ -130,7 +137,7 @@ export async function inspectDesktopHandoff(current: () => DesktopHandoffSources
   const initial = current();
   if (!initial?.binding) throw failure("HANDOFF_OWNER_UNAVAILABLE");
   const sources = { ...initial }, binding = { ...initial.binding };
-  for (const key of sourceKeys) if (!sources[key]) throw unavailable(key);
+  assertDesktopHandoffSources(sources);
   if (!binding.host || !binding.sidecar) throw failure("HANDOFF_OWNER_UNAVAILABLE");
   const hostGeneration = binding.host.generation;
   const sidecarCurrent = read("sidecar", () => binding.sidecar.captureHostBinding(binding.host));
@@ -138,8 +145,8 @@ export async function inspectDesktopHandoff(current: () => DesktopHandoffSources
     const live = current(), owner = live?.binding;
     if (!live || !owner || owner.host !== binding.host || owner.sidecar !== binding.sidecar ||
         owner.sourceEpoch !== binding.sourceEpoch || owner.profileId !== binding.profileId || owner.generation !== binding.generation ||
-        binding.host.generation !== hostGeneration || !binding.host.isAvailable() || !sidecarCurrent() ||
-        sourceKeys.some(key => live[key] !== sources[key])) throw failure("HANDOFF_OWNER_CHANGED");
+        binding.host.generation !== hostGeneration || !binding.host.isAvailable() || !sidecarCurrent()) throw failure("HANDOFF_OWNER_CHANGED");
+    assertDesktopHandoffSources(live, sources);
   };
   assertCurrent();
   try {

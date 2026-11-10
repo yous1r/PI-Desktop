@@ -20,20 +20,23 @@ function build() {
   let inventory: () => Promise<OwnerHandoffInventory> = async () => idle();
   let journalPhase = "prepared";
   let beforeJournal: () => Promise<void> = async () => {};
+  let beforeNative: () => Promise<void> = async () => {};
+  let beforeSidecar: (operation: string) => Promise<void> = async () => {};
   let generation = "66666666-6666-4666-8666-666666666666";
   const sidecar = {
     async call<T>(_method: string, request: unknown): Promise<T> {
       const operation = (request as { operation: string }).operation;
+      await beforeSidecar(operation);
       sent.push(operation);
       const reply = sidecarGate.control(request);
       if (loseReply === operation) { loseReply = undefined; throw new Error("lost response"); }
       return reply as T;
     },
-    async executionStatus() { return { generation, state: "running" as const, activeProcesses: 2, rootExited: false, confirmed: false }; },
+    async executionStatus() { await beforeNative(); return { generation, state: "running" as const, activeProcesses: 2, rootExited: false, confirmed: false }; },
   };
   let hostGeneration = "88888888-8888-4888-8888-888888888888";
   const host: OwnerHandoffBinding["host"] = { get generation() { return hostGeneration; }, isAvailable: () => true };
-  let binding: OwnerHandoffBinding = { sourceEpoch: hold.sourceEpoch, profileId: fixture.response.record.profile, host, sidecar };
+  let binding: OwnerHandoffBinding = { sourceEpoch: hold.sourceEpoch, profileId: fixture.response.record.profile, generation, host, sidecar };
   const coordinator = new OwnerHandoffCoordinator({ gate, current: () => binding,
     inspect: () => inventory(),
     readTransfer: async () => { await beforeJournal(); return { version: 1 as const, record: { ...fixture.response.record, phase: journalPhase } }; },
@@ -42,6 +45,8 @@ function build() {
   return { gate, sidecarGate, coordinator, sent, request,
     inspect: (read: typeof inventory) => { inventory = read; },
     beforeJournal: (callback: () => Promise<void>) => { beforeJournal = callback; },
+    beforeNative: (callback: () => Promise<void>) => { beforeNative = callback; },
+    beforeSidecar: (callback: (operation: string) => Promise<void>) => { beforeSidecar = callback; },
     cancelJournal: () => { journalPhase = "cancelled"; },
     lose: (operation: string) => { loseReply = operation; },
     fencingJournal: () => { journalPhase = "source_fencing"; },
@@ -179,4 +184,34 @@ it("never cancels a held source through a restarted Host wrapper", async () => {
   await expect(cancelling).rejects.toMatchObject({ errorCode: "HANDOFF_OWNER_CHANGED" });
   expect(f.gate.isClosed()).toBe(true); expect(f.sent).not.toContain("cancel");
   f.coordinator.dispose();
+});
+
+for (const boundary of ["native", "journal", "status", "cancel", "seal"] as const) {
+  it(`rejects a changed original owner even when ${boundary} fails`, async () => {
+    const f = build(); const held = await f.coordinator.exchange(hold);
+    const entered = deferred<void>(); const resumed = deferred<void>();
+    const fail = async () => { entered.resolve(); await resumed.promise; throw new Error("original operation failed"); };
+    let operation: "inspect" | "cancel" | "seal" = "inspect";
+    if (boundary === "native") f.beforeNative(fail);
+    else if (boundary === "journal") { f.cancelJournal(); operation = "cancel"; f.beforeJournal(fail); }
+    else {
+      f.beforeSidecar(async current => { if (current === boundary) await fail(); });
+      if (boundary === "cancel") { f.cancelJournal(); operation = "cancel"; }
+      if (boundary === "seal") { f.fencingJournal(); operation = "seal"; }
+    }
+    const pending = f.coordinator.exchange(f.request(operation, held.holdId));
+    const rejected = expect(pending).rejects.toMatchObject({ errorCode: "HANDOFF_OWNER_CHANGED" });
+    await entered.promise; f.restartHost(); resumed.resolve();
+    await rejected;
+    expect(f.gate.isClosed()).toBe(true);
+    if (boundary === "journal" || boundary === "cancel") expect(f.sent).not.toContain("cancel");
+    if (boundary === "seal") expect(f.sent).not.toContain("seal");
+    f.coordinator.dispose();
+  });
+}
+
+it("never substitutes the first observed native generation for the captured binding", async () => {
+  const f = build(); f.replaceGeneration();
+  await expect(f.coordinator.exchange(hold)).rejects.toMatchObject({ errorCode: "HANDOFF_OWNER_CHANGED" });
+  expect(f.sent).toEqual([]); expect(f.gate.isClosed()).toBe(true); f.coordinator.dispose();
 });

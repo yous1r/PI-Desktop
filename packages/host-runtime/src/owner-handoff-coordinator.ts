@@ -16,6 +16,7 @@ import { SidecarHandoffClient } from "./sidecar-handoff-client.js";
 export type OwnerHandoffBinding = {
   sourceEpoch: string;
   profileId: string;
+  generation: string;
   host: Pick<HostProcess, "generation" | "isAvailable">;
   sidecar: Pick<AgentSidecar, "call" | "executionStatus">;
 };
@@ -34,7 +35,7 @@ type Entry = {
   holdId: string;
   client: SidecarHandoffClient;
   local?: HandoffAdmission;
-  generation?: string;
+  generation: string;
   attempted: boolean;
   sealing: boolean;
   peer?: SidecarHandoffStatus;
@@ -78,7 +79,7 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
       if (request.operation === "hold" && !entry) {
         if (this.options.gate.isClosed()) throw failure("HANDOFF_BUSY");
         entry = { request, binding: { ...current }, hostGeneration: current.host.generation,
-          holdId: randomUUID(), attempted: false, sealing: false,
+          holdId: randomUUID(), generation: current.generation, attempted: false, sealing: false,
           client: new SidecarHandoffClient(current.sidecar, { version: 1, transferId: request.transferId,
             sourceEpoch: request.sourceEpoch, revision: request.revision }) };
         this.entry = entry;
@@ -97,7 +98,7 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
       if (!entry.local) throw failure("HANDOFF_UNAVAILABLE");
       if (!entry.attempted) {
         entry.attempted = true;
-        try { entry.peer = await entry.client.acquire(); }
+        try { entry.peer = await this.original(entry, owned => owned.client.acquire()); }
         catch (error) {
           this.assertBinding(entry);
           // A classified busy refusal committed no sidecar hold and no source
@@ -107,8 +108,7 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
         }
         this.assertBinding(entry);
       } else {
-        entry.peer = await entry.client.status(entry.peer?.holdId);
-        this.assertBinding(entry);
+        entry.peer = await this.original(entry, owned => owned.client.status(owned.peer?.holdId));
       }
       if (entry.peer.state === "sealed" && !entry.sealing) {
         entry.local.beginFencing(); entry.sealing = true;
@@ -117,8 +117,8 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
         if (entry.sealing) throw failure("HANDOFF_BUSY");
         await this.requirePhase(entry, "cancelled");
         if (entry.peer.state !== "cancelled") {
-          entry.peer = await entry.client.cancel(entry.peer.holdId);
-          this.assertBinding(entry);
+          const holdId = entry.peer.holdId;
+          entry.peer = await this.original(entry, owned => owned.client.cancel(holdId));
         }
         return await this.completeCancellation(entry, request);
       }
@@ -134,8 +134,8 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
         counts = this.combine(await this.inventory(entry), entry.peer);
         if (Object.values(counts).some(count => count !== 0)) throw failure("HANDOFF_BUSY");
         entry.local.beginFencing(); entry.sealing = true;
-        entry.peer = await entry.client.seal(entry.peer.holdId);
-        this.assertBinding(entry);
+        const holdId = entry.peer.holdId;
+        entry.peer = await this.original(entry, owned => owned.client.seal(holdId));
         counts = this.combine(await this.inventory(entry), entry.peer);
       }
       if (entry.sealing && entry.peer.state !== "sealed") throw failure("HANDOFF_SEAL_UNCONFIRMED");
@@ -151,26 +151,26 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
     if (this.disposed) throw failure("HANDOFF_UNAVAILABLE");
     const current = this.options.current();
     if (!current || current.sourceEpoch !== entry.binding.sourceEpoch || current.profileId !== entry.binding.profileId ||
-        current.host !== entry.binding.host || current.sidecar !== entry.binding.sidecar || !entry.binding.host.isAvailable() ||
-        current.host.generation !== entry.hostGeneration) {
+        current.host !== entry.binding.host || current.sidecar !== entry.binding.sidecar || current.generation !== entry.generation ||
+        !entry.binding.host.isAvailable() || current.host.generation !== entry.hostGeneration) {
       this.options.gate.dispose();
       throw failure("HANDOFF_OWNER_CHANGED");
     }
   }
-  private async nativeGeneration(entry: Entry): Promise<void> {
-    const status = await entry.binding.sidecar.executionStatus();
+  private async original<T>(entry: Entry, operation: (owner: Entry) => Promise<T>): Promise<T> {
     this.assertBinding(entry);
+    try { return await operation(entry); }
+    finally { this.assertBinding(entry); }
+  }
+  private async nativeGeneration(entry: Entry): Promise<void> {
+    const status = await this.original(entry, owned => owned.binding.sidecar.executionStatus());
     if (!Value.Check(ExecutionFenceStatusSchema, status) || status.state !== "running" || status.confirmed || status.rootExited ||
-        status.activeProcesses < 1 || (entry.generation !== undefined && status.generation !== entry.generation)) {
+        status.activeProcesses < 1 || status.generation !== entry.generation) {
       throw failure("HANDOFF_OWNER_CHANGED");
     }
-    entry.generation = status.generation;
   }
   private async inventory(entry: Entry): Promise<OwnerHandoffInventory> {
-    this.assertBinding(entry);
-    let counts: OwnerHandoffInventory;
-    try { counts = await this.options.inspect(entry.binding); }
-    finally { this.assertBinding(entry); }
+    const counts = await this.original(entry, owned => this.options.inspect(owned.binding));
     if (!Value.Check(OwnerHandoffInventorySchema, counts)) throw failure("HANDOFF_UNAVAILABLE");
     return { ...counts };
   }
@@ -185,8 +185,7 @@ export class OwnerHandoffCoordinator implements OwnerHandoffCoordinatorPort {
     return result;
   }
   private async requirePhase(entry: Entry, phase: "cancelled" | "source_fencing"): Promise<void> {
-    const value = await this.options.readTransfer(entry.binding, entry.request.transferId);
-    this.assertBinding(entry);
+    const value = await this.original(entry, owned => this.options.readTransfer(owned.binding, owned.request.transferId));
     const response = parseOwnerHandoffResponse(value);
     if (!("record" in response) || response.record.phase !== phase || response.record.profile !== entry.binding.profileId ||
         response.record.id !== entry.request.transferId || response.record.sourceEpoch !== entry.request.sourceEpoch) {

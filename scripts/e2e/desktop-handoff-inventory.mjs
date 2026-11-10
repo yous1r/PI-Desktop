@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { DesktopHandoffAdmission } from '../../apps/desktop/electron/main/runtime/handoff-admission.ts';
 import { inspectDesktopHandoff, DESKTOP_HANDOFF_UNQUALIFIED_SOURCES } from '../../apps/desktop/electron/main/runtime/handoff-inventory.ts';
+import { bindDesktopHandoffOwner, DesktopHandoffCoordinator } from '../../apps/desktop/electron/main/runtime/handoff-coordinator.ts';
 import { PersistenceOutbox } from '../../apps/desktop/electron/main/persistence-outbox.ts';
 import { InflightCheckpointer } from '../../packages/host-runtime/src/inflight-checkpoint.ts';
 
@@ -12,6 +13,8 @@ export async function verifyDesktopInventory(host, binding, directory) {
   const external = () => reporter({ operations: 0, resources: 0, uncontainedResources: 0 });
   const sidecar = {
     captureHostBinding: owner => () => owner === host && host.isAvailable(),
+    executionStatus: () => host.call('executionFence.status', { generation: binding.generation }),
+    call: async () => assert.fail('unqualified coordinator must not acquire a Sidecar hold'),
     getExtensionOwnerActivity: () => ({ operations: 0, runtimes: 0, uncontainedResources: 0 }),
     getExtensionWorkspaceProcessActivity: () => ({ operations: 0, processes: 0, uncontainedResources: 0 }),
     getExtensionServiceActivity: () => ({ operations: 0, inputs: 0, uncontainedResources: 0 }),
@@ -65,5 +68,17 @@ export async function verifyDesktopInventory(host, binding, directory) {
     const detail = await host.call('session.get', { id: session.id });
     assert.ok(detail.session.messages.some(value => value.content === message.content));
     assert.ok(detail.session.messages.some(value => value.content === 'queued inventory reply'));
+    const current = () => ({ ...sources, host, sidecar });
+    const original = await bindDesktopHandoffOwner(current);
+    assert.equal(original.current().binding.sourceEpoch, binding.sourceEpoch);
+    assert.equal(original.current().binding.profileId, binding.profileId);
+    assert.equal(original.current().binding.generation, binding.generation);
+    assert.equal((await original.inspect()).uncontainedResources, DESKTOP_HANDOFF_UNQUALIFIED_SOURCES.length);
+    const coordinator = new DesktopHandoffCoordinator(admission, current);
+    try {
+      await assert.rejects(coordinator.exchange({ version: 1, operation: 'hold', exchangeId: randomUUID(),
+        transferId: randomUUID(), sourceEpoch: binding.sourceEpoch, revision: 1 }), error => error.code === 'HOST_BUSY');
+      assert.equal(admission.isClosed(), false);
+    } finally { coordinator.dispose(); }
   } finally { saveRelease.resolve(); await saving; checkpointer.dispose(); admission.dispose(); }
 }

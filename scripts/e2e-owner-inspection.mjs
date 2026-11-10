@@ -24,6 +24,8 @@ await writeFile(runtimeExports, [
   `export { inspectOwnerHandoff } from ${JSON.stringify(join(root, 'packages/host-runtime/src/owner-handoff-inspection.ts').replaceAll('\\', '/'))};`,
   `export { decodeBinaryStorage, encodeBinaryStorage } from ${JSON.stringify(join(root, 'packages/host-runtime/src/binary-storage.ts').replaceAll('\\', '/'))};`,
   `export { AgentSidecar } from ${JSON.stringify(join(root, 'packages/host-runtime/src/agent-sidecar.ts').replaceAll('\\', '/'))};`,
+  `export { OwnerHandoffCoordinator } from ${JSON.stringify(join(root, 'packages/host-runtime/src/owner-handoff-coordinator.ts').replaceAll('\\', '/'))};`,
+  `export { queryOwnerHandoffIdentity, readOwnerHandoffTransfer } from ${JSON.stringify(join(root, 'packages/host-runtime/src/owner-handoff-query.ts').replaceAll('\\', '/'))};`,
 ].join('\n'));
 const built = await build({ absWorkingDir: root, stdin: { resolveDir: root, contents:
   'export { HostProcess } from "./packages/host-runtime/src/host-process.ts"; export { AgentSidecar as DesktopSidecar } from "./apps/desktop/electron/main/agent-sidecar.ts"; export { DesktopBackendOwner } from "./apps/desktop/electron/main/runtime/backend-owner.ts"; export { DesktopHandoffAdmission } from "./apps/desktop/electron/main/runtime/handoff-admission.ts"; export { inspectOwnerHandoff } from "./packages/host-runtime/src/owner-handoff-inspection.ts"; export { queryOwnerHandoffIdentity, readOwnerHandoffTransfer } from "./packages/host-runtime/src/owner-handoff-query.ts"; export { verifyDesktopInventory } from "./scripts/e2e/desktop-handoff-inventory.mjs";' },
@@ -104,7 +106,7 @@ try {
   passed('real begin/checkpoint/end/recovery path updates read-only obligations and preserves the reply');
 
   await verifyDesktopInventory(source, binding, join(directory, 'desktop-persistence'));
-  passed('Desktop inventory retains real writes through disposal and rejects handoff after settlement while qualification is incomplete');
+  passed('Desktop inventory retains real writes; the coordinator resolves original Rust identity and generation and refuses handoff after settlement while qualification is incomplete');
 
   const generation = database(profile, db => db.prepare('SELECT record_json FROM execution_generations WHERE id=?').get(ticket.generation).record_json);
   const replaceRoot = root => database(profile, db => db.prepare('UPDATE execution_generations SET record_json=? WHERE id=?')

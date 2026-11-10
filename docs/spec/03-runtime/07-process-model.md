@@ -582,10 +582,12 @@ timer expiry, connection loss, a maintenance release or a stale handle cannot
 reopen it. Disposal remains closed. This is local admission authority, not a
 second durable journal or a client-supplied idle proof.
 
-The coordinator captures the original Host object and generation before its
-first asynchronous inventory read. Inspection success and failure both recheck
-that binding. A changed owner permanently closes local admission; its stale
-inventory or journal response cannot acquire, seal or cancel a hold.
+The coordinator captures the original Host object, Host generation and native
+execution generation before its first asynchronous inventory read. Inventory,
+native status, journal and Sidecar acquire/status/cancel/seal operations recheck
+that binding on success and failure. The first native response cannot replace
+the captured generation. A changed owner permanently closes local admission;
+its stale response cannot acquire, seal or cancel a hold.
 
 AgentHost reports pending approvals/inputs independently of active turns.
 RuntimeService reports pending session operations, turn finalizations, writes and
@@ -725,6 +727,24 @@ single bounded Journal read snapshot; Node does not derive authority from SQLite
 These reads neither fence autonomous producers nor establish full lifecycle
 composition. A stale successful or rejected response cannot authorize a new Host.
 
+The Desktop coordinator adapter resolves identity only for an explicit handoff
+exchange. Construction performs no startup query. Before identity/native awaits,
+it captures the exact Host, Host generation, Sidecar binding token and every
+concrete inventory producer. Missing sources refuse before RPC. Identity and
+native reads each have a 2.5-second waiter deadline; late rejection is observed,
+and no late result publishes a binding. Success, rejection and synchronous
+reentry recheck the original references. Detected invalidation stays revoked.
+The immutable result routes inventory and transfer reads to that original owner.
+
+One application-owned adapter retains the coordinator across ordinary backend
+restarts. A new request may resolve a new owner only when no handoff hold remains
+and shared admission is open. Concurrent/reentrant exchanges refuse before owner
+callbacks. Disposal permanently closes admission; optional preparation cannot
+proceed through quit or another maintenance hold. Once inspection closes the
+gate, a changed source keeps it permanently closed even when inspection fails.
+The adapter is available for composition; production service assembly and the
+Rust-owned private reverse exchange are still required before it is registered.
+
 The Desktop inventory reader captures exact Host, native generation, Sidecar
 binding token and concrete resource owners before reading Rust. It checks the
 same bindings on success, rejection and before publishing the result, then
@@ -749,11 +769,13 @@ and finalizations can overlap and remain conservative obstruction bounds, not
 execution occupancy. Sidecar child/native-session counts are merged by
 `OwnerHandoffCoordinator`; independent Worker classification is still uncovered.
 
-This reader is not yet connected to production Desktop startup/transfer. Its
-fixed qualification gaps retain refusal for Rust background admission, native
+The reader is consumed by this coordinator adapter but is not yet registered
+with the production Desktop transfer transport. Fixed qualification gaps retain
+refusal for Rust background admission, native
 resources outside the execution generation, updater, model catalog, vendor
 OAuth, MCP control, personal todos, Electron surfaces/listeners, independent
-Worker classification, and paused Voice/LiveVoice. These gaps cannot be cleared by a caller flag or an empty known
+Worker classification, and paused Voice/LiveVoice. These gaps cannot be cleared
+by a caller flag or an empty known
 report. No Voice runtime is initialized by inspection. Production fenced startup
 is composed separately; complete inventory/coordinator composition and native
 closure of every required resource family remain necessary before handoff.

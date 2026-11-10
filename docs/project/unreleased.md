@@ -1,5 +1,9 @@
 # Unreleased changes
 
+- Add on-demand Desktop coordinator binding to original Rust identity, native
+  generation and concrete resource owners. Stale successful/rejected queries
+  cannot acquire or reopen admission, and delayed callbacks cannot use replacement
+  owners. Private transfer transport and full resource qualification remain pending.
 - Include backend startup/closing work and every retained Sidecar in Desktop
   handoff inventory. Delayed original extension work survives restart; malformed
   or replaced retained-owner reports refuse inspection. Full handoff remains

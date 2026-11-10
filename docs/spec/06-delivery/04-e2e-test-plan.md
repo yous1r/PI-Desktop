@@ -20006,7 +20006,9 @@ session data is used.
   contained native runner; inspect startup settlement, then
   create a session, begin a turn, checkpoint its partial reply, end and recover
   it. Exercise real Desktop outbox/checkpoint disposal and admission refusal
-  through the Rust report. Other Desktop resource owners are explicit fixtures.
+  through the Rust report. Resolve the Desktop coordinator binding through actual
+  Rust identity and native status queries; verify fixed gaps still refuse hold.
+  Other Desktop resource owners and the inventory Sidecar facade are fixtures.
   Inject valid but mismatched root metadata only into the isolated journal;
   restore the fixture, test stale identity/caller inventory and an unfenced Host.
 - **Expected:** Own inspection is not execution activity; live generation is
@@ -20063,6 +20065,30 @@ session data is used.
   transport and full resource/native qualification remain pending. Original
   source identity/transfer queries are covered by the process path above.
   Voice/LiveVoice remain paused.
+- **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
+
+### Desktop original-owner coordinator adapter (H1 partial)
+
+- **Entry:** `apps/desktop/test/handoff-coordinator.test.mjs` with the current-source
+  Node loader; `packages/host-runtime/src/owner-handoff-coordinator.test.ts`;
+  isolated process path through `scripts/e2e/desktop-handoff-inventory.mjs`.
+- **Steps:** Resolve original Rust identity and native generation, read actual
+  inventory and query the original transfer. Change Host object/generation,
+  Sidecar/token or a concrete producer during successful and rejected reads.
+  Exercise synchronous reentry, invalid native reports, missing producers,
+  bounded deadlines with late rejection, maintenance/quit during preparation,
+  ordinary owner replacement after refusal and stale inventory after gate closure.
+  Reject failed native/journal/Sidecar callbacks after an owner change, and a
+  first native response whose generation differs from the captured binding.
+- **Expected:** No startup queries; no missing-source fallback or replacement
+  transport effects. Invalidated bindings never revive. Fixed qualification gaps
+  refuse before Sidecar holds; ordinary refusal leaves the unchanged gate usable.
+  Changed authority after gate closure leaves it permanently closed. Cancellation
+  and fencing still require original durable journal confirmation.
+- **Boundary:** Application registration and Rust-owned private reverse exchange
+  remain pending. The process path uses real Rust identity/status/inspection and
+  persistence, with explicit fixtures for other Desktop producers; it does not
+  qualify full handoff, Workers or native families. Voice remains paused.
 - **Spec:** [Desktop admission composition](../03-runtime/07-process-model.md#desktop-admission-composition).
 
 ### Desktop admission integration prerequisites (H1 partial)
