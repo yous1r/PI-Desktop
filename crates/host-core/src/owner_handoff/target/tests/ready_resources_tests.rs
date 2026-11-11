@@ -39,10 +39,15 @@ fn restricted_ready_publishes_exact_outcome_and_preserves_work() {
     let claim = f.claim();
     let claim_record = claim.record().clone();
     let claim_revision = claim.record().revision;
-    let publisher = TargetReadyPublisher::new(claim, f.context.build.clone()).unwrap();
-    let prepared = publisher.prepare().unwrap();
+    let registered = f.registered(&claim);
+    let publisher =
+        TargetReadyPublisher::new(claim, f.context.build.clone(), "target-event-epoch".into())
+            .unwrap();
     let request = build_request(&f, &id());
-    let outcome = prepared.commit(&request).unwrap();
+    let ready = publisher
+        .into_ready_target(registered, request.request_id())
+        .unwrap();
+    let outcome = ready.commit().unwrap();
     assert_eq!(outcome.record.phase, Phase::Ready);
     assert_eq!(outcome.record.revision, claim_revision + 1);
     assert_eq!(outcome.record.id, f.released.id);
@@ -56,8 +61,8 @@ fn restricted_ready_publishes_exact_outcome_and_preserves_work() {
     assert!(!outcome.ready.event_epoch.is_empty());
     assert_eq!(f.work(), original);
     let generation = read_generation(&f.journal.conn, &one_generation(&f)).unwrap();
-    // This slice registers durable evidence only; no sidecar root exists yet.
-    assert!(generation.root.is_none());
+    // The target generation is rooted by the real registration join.
+    assert!(generation.root.is_some());
     assert_eq!(
         f.journal.transfer(&f.released.id).unwrap().phase,
         Phase::Ready
@@ -91,15 +96,21 @@ fn ready_intent(
         generation: generation.clone(),
         event_epoch: outcome.ready.event_epoch.clone(),
         protocol_version: crate::state::PROTOCOL_VERSION,
-        restricted: true,
     }
 }
 
 #[test]
 fn missing_generation_refuses_before_any_ready_write() {
     let f = Fixture::new();
-    let publisher = TargetReadyPublisher::new(f.claim(), f.context.build.clone()).unwrap();
-    let prepared = publisher.prepare().unwrap();
+    let claim = f.claim();
+    let registered = f.registered(&claim);
+    let publisher =
+        TargetReadyPublisher::new(claim, f.context.build.clone(), "target-event-epoch".into())
+            .unwrap();
+    let request = build_request(&f, &id());
+    let ready = publisher
+        .into_ready_target(registered, request.request_id())
+        .unwrap();
     let generation = one_generation(&f);
     f.journal
         .conn
@@ -109,10 +120,7 @@ fn missing_generation_refuses_before_any_ready_write() {
         )
         .unwrap();
     let before = f.snapshot();
-    refused(
-        prepared.commit(&build_request(&f, &id())),
-        "TARGET_NOT_INITIALIZED",
-    );
+    refused(ready.commit(), "TARGET_NOT_INITIALIZED");
     assert_eq!(f.snapshot(), before);
     assert_eq!(
         f.journal.transfer(&f.released.id).unwrap().phase,
@@ -130,7 +138,7 @@ fn inconsistent_build_identity_capability_and_ready_version_refuse_explicitly() 
         protocol: f.context.build.protocol,
     };
     refused(
-        TargetReadyPublisher::new(f.claim(), other),
+        TargetReadyPublisher::new(f.claim(), other, "target-event-epoch".into()),
         "INCOMPATIBLE_BUILD",
     );
     let generation = generation(target.owner());
@@ -198,8 +206,15 @@ fn generation_of_other_owner(owner: &Owner) -> Generation {
 #[test]
 fn stale_revision_refuses_without_overwriting_claim() {
     let f = Fixture::new();
-    let publisher = TargetReadyPublisher::new(f.claim(), f.context.build.clone()).unwrap();
-    let prepared = publisher.prepare().unwrap();
+    let claim = f.claim();
+    let registered = f.registered(&claim);
+    let publisher =
+        TargetReadyPublisher::new(claim, f.context.build.clone(), "target-event-epoch".into())
+            .unwrap();
+    let request = build_request(&f, &id());
+    let ready = publisher
+        .into_ready_target(registered, request.request_id())
+        .unwrap();
     let mut changed = f.journal.transfer(&f.released.id).unwrap();
     changed.revision += 1;
     f.journal
@@ -214,22 +229,22 @@ fn stale_revision_refuses_without_overwriting_claim() {
         )
         .unwrap();
     let before = f.snapshot();
-    refused(prepared.commit(&build_request(&f, &id())), "STALE_REVISION");
-    // The failed one-shot attempt closes its unrooted generation for explicit
-    // recovery; the claim itself and its revision must stay untouched.
+    refused(ready.commit(), "STALE_REVISION");
+    // The retained generation is closed by the target join's abort path, not
+    // by a Ready transaction that refused before any write.
     let claim = f.journal.transfer(&f.released.id).unwrap();
     assert_eq!(claim, changed);
     assert_eq!(claim.phase, Phase::TargetClaimed);
-    let closed: bool = f
+    let root: Option<String> = f
         .journal
         .conn
         .query_row(
-            "SELECT closed FROM execution_generations WHERE owner_epoch=?1",
+            "SELECT json_extract(record_json,'$.root') FROM execution_generations WHERE owner_epoch=?1",
             [&f.context.owner.epoch],
             |row| row.get(0),
         )
         .unwrap();
-    assert!(closed);
+    assert!(root.is_some());
     assert!(f.snapshot().contains(&changed.id));
     assert!(before.contains(&changed.id));
 }
@@ -295,9 +310,17 @@ fn ready_request_protocol_is_strict_and_bounded() {
 #[test]
 fn ready_reply_and_error_reply_are_bounded_and_classified() {
     let f = Fixture::new();
-    let publisher = TargetReadyPublisher::new(f.claim(), f.context.build.clone()).unwrap();
-    let prepared = publisher.prepare().unwrap();
-    let outcome = prepared.commit(&build_request(&f, &id())).unwrap();
+    let claim = f.claim();
+    let registered = f.registered(&claim);
+    let publisher =
+        TargetReadyPublisher::new(claim, f.context.build.clone(), "target-event-epoch".into())
+            .unwrap();
+    let request = build_request(&f, &id());
+    let outcome = publisher
+        .into_ready_target(registered, request.request_id())
+        .unwrap()
+        .commit()
+        .unwrap();
     let reply: Value = serde_json::from_slice(&ready_reply(&outcome).unwrap()).unwrap();
     assert_eq!(reply["version"], json!(VERSION));
     assert_eq!(reply["ready"]["record"]["phase"], json!("ready"));

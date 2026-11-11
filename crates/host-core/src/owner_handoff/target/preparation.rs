@@ -73,34 +73,6 @@ impl PreparedGeneration {
     pub(crate) fn record(&self) -> &Generation {
         &self.generation
     }
-    /// Ready-only registration for the first restricted target slice. No
-    /// sidecar/Job root exists yet, so this returns the exact durable
-    /// generation without a native root. A later serving slice must replace
-    /// this with the existing `bind_root` path (real runner identity, Job
-    /// membership and registry progress lock) before exposing execution.
-    pub(crate) fn register_unrooted(self) -> Result<RegisteredGeneration> {
-        let mut journal = Journal::open(&self.authority.path, false)?;
-        journal.transaction(|conn| {
-            require_claimed(conn, &self.authority)?;
-            let stored = read_generation(conn, &self.generation.id)?;
-            if stored != self.generation {
-                bail!("HANDOFF_GENERATION_CHANGED");
-            }
-            let closed: bool = conn.query_row(
-                "SELECT closed FROM execution_generations WHERE id=?1",
-                [&self.generation.id],
-                |row| row.get(0),
-            )?;
-            if closed {
-                bail!("HANDOFF_GENERATION_CLOSED");
-            }
-            Ok(())
-        })?;
-        Ok(RegisteredGeneration {
-            authority: self.authority,
-            generation: self.generation,
-        })
-    }
     /// Call only with the authenticated original runner's native identity,
     /// after the existing SID/image/parent/creation/capability checks. Preserve
     /// the Registry progress lock through root binding and Job assignment.

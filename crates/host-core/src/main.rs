@@ -65,16 +65,20 @@ fn data_directory() -> std::path::PathBuf {
 
 fn main() -> anyhow::Result<()> {
     // Locals drop in reverse order: Tokio must stop every background/blocking
-    // task before the data-directory ownership handle can be released.
+    // task before the data-directory ownership handle can be released. The
+    // target lock is declared before the runtime so it drops only after the
+    // runtime (and every target task) has fully stopped.
+    let mut target_owner: Option<Arc<data_directory_owner::DataDirectoryOwner>> = None;
     let mut data_owner = None;
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?;
-    runtime.block_on(run(&mut data_owner))
+    runtime.block_on(run(&mut data_owner, &mut target_owner))
 }
 
 async fn run(
     data_owner: &mut Option<data_directory_owner::DataDirectoryOwner>,
+    target_owner: &mut Option<Arc<data_directory_owner::DataDirectoryOwner>>,
 ) -> anyhow::Result<()> {
     if let Some(code) = execution_fence::run_cli().await? {
         std::process::exit(code);
@@ -108,7 +112,7 @@ async fn run(
     // startup inspection/recovery/migration runs. A target-mode process must
     // never fall through to ordinary startup.
     if owner_handoff::target::requested(&std::env::args_os().skip(1).collect::<Vec<_>>())? {
-        owner_handoff::target::run(&data_dir).await?;
+        owner_handoff::target::run(&data_dir, target_owner).await?;
         return Ok(());
     }
     if owner_control::query_cli(&data_dir).await? {

@@ -10,6 +10,7 @@ use crate::owner_handoff::{
     model::{Generation, Owner, VERSION},
     native::record,
     repository::Journal,
+    target::{PreparedGeneration, RegisteredGeneration},
 };
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
@@ -153,6 +154,23 @@ impl Registry {
             journal: Some(Arc::new(Mutex::new(journal))),
         })
     }
+    #[cfg(test)]
+    pub(crate) fn for_test(
+        directory: &Path,
+        identity: Identity,
+        coordinator: Arc<Coordinator>,
+        owner: Owner,
+    ) -> Result<Self> {
+        let journal = Journal::open(&directory.join("pi.sqlite"), false)?;
+        journal.inspect_source(&owner, None)?;
+        Ok(Self {
+            identity,
+            coordinator,
+            current: None,
+            owner,
+            journal: Some(Arc::new(Mutex::new(journal))),
+        })
+    }
     pub fn start(directory: &Path) -> Result<Self> {
         let identity = Identity::current()?;
         let coordinator = Arc::new(Coordinator::capture(&identity)?);
@@ -262,14 +280,79 @@ impl Registry {
                 .close_generation(&current.generation)?;
         }
         let generation = uuid::Uuid::new_v4().to_string();
-        let ticket = Ticket {
+        let registration = Generation {
+            version: VERSION,
+            id: generation.clone(),
+            owner_epoch: self.owner.epoch.clone(),
+            profile: self.owner.profile.clone(),
+            job_name: Generation::job_name(&self.owner.profile, &self.owner.epoch, &generation),
+            root: None,
+        };
+        journal
+            .lock()
+            .map_err(|_| anyhow::anyhow!("HANDOFF_JOURNAL_UNAVAILABLE"))?
+            .register_generation(&registration)?;
+        let ticket = self.ticket_for(&generation);
+        let binder = RootBinder::Normal {
+            journal,
+            generation: generation.clone(),
+        };
+        self.start_registration(ticket.clone(), generation, registration.job_name, binder)?;
+        Ok(ticket)
+    }
+
+    /// Target-only preparation. The generation was already registered by the
+    /// restricted claim path; only the Job/one-use pipe/registration actor are
+    /// created here, and the exact captured owner epoch is retained. Normal
+    /// `prepare` keeps minting and registering its own generation.
+    pub(crate) fn prepare_prepared(
+        &mut self,
+        prepared: PreparedGeneration,
+    ) -> Result<(Ticket, Arc<Mutex<Option<RegisteredGeneration>>>)> {
+        if native::exited(self.coordinator.handle.as_raw_handle())? {
+            bail!("EXECUTION_FENCE_COORDINATOR_EXITED");
+        }
+        if self.current.is_some() {
+            bail!("EXECUTION_FENCE_BUSY");
+        }
+        let record = prepared.record();
+        record.validate()?;
+        if record.owner_epoch != self.owner.epoch
+            || record.profile != self.owner.profile
+            || record.root.is_some()
+        {
+            bail!("HANDOFF_INVALID_REGISTRATION");
+        }
+        let generation = record.id.clone();
+        let job_name = record.job_name.clone();
+        let ticket = self.ticket_for(&generation);
+        let bound = Arc::new(Mutex::new(None));
+        let binder = RootBinder::Target {
+            prepared: Some(prepared),
+            bound: Arc::clone(&bound),
+        };
+        self.start_registration(ticket.clone(), generation, job_name, binder)?;
+        Ok((ticket, bound))
+    }
+
+    fn ticket_for(&self, generation: &str) -> Ticket {
+        Ticket {
             version: 1,
             address: format!(r"\\.\pipe\pi-execution-v1-{generation}"),
-            generation: generation.clone(),
+            generation: generation.to_string(),
             capability: uuid::Uuid::new_v4().to_string(),
             owner_pid: std::process::id(),
             owner_created_at: self.identity.created_at.to_string(),
-        };
+        }
+    }
+
+    fn start_registration(
+        &mut self,
+        ticket: Ticket,
+        generation: String,
+        job_name: String,
+        binder: RootBinder,
+    ) -> Result<()> {
         let security = SecurityDescriptor::for_user(&self.identity.sid)?;
         let mut attributes = security.attributes();
         let pipe = unsafe {
@@ -284,19 +367,7 @@ impl Registry {
                     std::ptr::from_mut(&mut attributes).cast(),
                 )
         }?;
-        let registration = Generation {
-            version: VERSION,
-            id: generation.clone(),
-            owner_epoch: self.owner.epoch.clone(),
-            profile: self.owner.profile.clone(),
-            job_name: Generation::job_name(&self.owner.profile, &self.owner.epoch, &generation),
-            root: None,
-        };
-        let job = Arc::new(Job::create(&registration.job_name, &self.identity.sid)?);
-        journal
-            .lock()
-            .map_err(|_| anyhow::anyhow!("HANDOFF_JOURNAL_UNAVAILABLE"))?
-            .register_generation(&registration)?;
+        let job = Arc::new(Job::create(&job_name, &self.identity.sid)?);
         let progress = Arc::new(Mutex::new(Progress {
             state: "pending",
             root: None,
@@ -305,10 +376,10 @@ impl Registry {
             ticket: ticket.clone(),
             identity: self.identity.clone(),
             coordinator: self.coordinator.clone(),
-            job: job.clone(),
-            progress: progress.clone(),
+            job: Arc::clone(&job),
+            progress: Arc::clone(&progress),
             issued_at: native::now(),
-            journal,
+            binder,
         };
         let task = tokio::spawn(async move {
             actor.run(pipe).await;
@@ -319,7 +390,53 @@ impl Registry {
             progress,
             task,
         }));
-        Ok(ticket)
+        Ok(())
+    }
+
+    /// Wait until the sidecar registration actor bound a root for this exact
+    /// generation. A failed actor, closed generation or timeout is a refusal;
+    /// success means the exact ticket handshake and bind_root completed.
+    pub(crate) async fn wait_root(&self, generation: &str, timeout: Duration) -> Result<()> {
+        let lease = self.lease(generation)?;
+        let deadline = tokio::time::Instant::now() + timeout;
+        loop {
+            let status = lease.status()?;
+            if status.state == "running" && status.active_processes > 0 && !lease.task.is_finished()
+            {
+                return Ok(());
+            }
+            if status.state == "failed" || status.state == "closed" || lease.task.is_finished() {
+                bail!("HANDOFF_TARGET_ROOT_BIND_FAILED");
+            }
+            if tokio::time::Instant::now() >= deadline {
+                bail!("HANDOFF_TARGET_ROOT_TIMEOUT");
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }
+
+    /// Stop the exact target lease and close its durable generation after any
+    /// failed initialization. The claim/transfer row is left untouched so the
+    /// explicit Recover path can rotate the target epoch later.
+    pub(crate) async fn abort_target(&mut self, generation: &str) -> Result<()> {
+        if let Ok(lease) = self.lease(generation) {
+            // Binding a sidecar without Ready must not leave an owned process.
+            let _ = lease.stop(2_000).await;
+        }
+        if let Some(journal) = &self.journal {
+            journal
+                .lock()
+                .map_err(|_| anyhow::anyhow!("HANDOFF_JOURNAL_UNAVAILABLE"))?
+                .close_generation(generation)?;
+        }
+        if self
+            .current
+            .as_ref()
+            .is_some_and(|lease| lease.generation == generation)
+        {
+            self.current = None;
+        }
+        Ok(())
     }
     pub fn lease(&self, generation: &str) -> Result<Arc<Lease>> {
         self.current
@@ -329,6 +446,43 @@ impl Registry {
             .context("EXECUTION_FENCE_STALE")
     }
 }
+enum RootBinder {
+    Normal {
+        journal: Arc<Mutex<Journal>>,
+        generation: String,
+    },
+    Target {
+        prepared: Option<PreparedGeneration>,
+        bound: Arc<Mutex<Option<RegisteredGeneration>>>,
+    },
+}
+impl RootBinder {
+    fn bind(&mut self, root: &crate::owner_handoff::model::ProcessIdentity) -> Result<()> {
+        match self {
+            Self::Normal {
+                journal,
+                generation,
+            } => journal
+                .lock()
+                .map_err(|_| anyhow::anyhow!("HANDOFF_JOURNAL_UNAVAILABLE"))?
+                .bind_root(generation, root),
+            Self::Target { prepared, bound } => {
+                let prepared = prepared
+                    .take()
+                    .ok_or_else(|| anyhow::anyhow!("HANDOFF_TARGET_ROOT_ALREADY_BOUND"))?;
+                let registered = prepared.bind_root(root)?;
+                let mut slot = bound
+                    .lock()
+                    .map_err(|_| anyhow::anyhow!("HANDOFF_NATIVE_STATE_UNAVAILABLE"))?;
+                if slot.is_some() {
+                    bail!("HANDOFF_TARGET_ROOT_ALREADY_BOUND");
+                }
+                *slot = Some(registered);
+                Ok(())
+            }
+        }
+    }
+}
 struct Registration {
     ticket: Ticket,
     identity: Identity,
@@ -336,10 +490,10 @@ struct Registration {
     job: Arc<Job>,
     progress: Arc<Mutex<Progress>>,
     issued_at: u64,
-    journal: Arc<Mutex<Journal>>,
+    binder: RootBinder,
 }
 impl Registration {
-    async fn register(&self, pipe: &mut NamedPipeServer) -> Result<()> {
+    async fn register(&mut self, pipe: &mut NamedPipeServer) -> Result<()> {
         pipe.connect().await?;
         let peer = authenticate_with_access(
             pipe.as_raw_handle(),
@@ -368,18 +522,17 @@ impl Registration {
             {
                 bail!("EXECUTION_FENCE_CANCELLED");
             }
-            self.journal
-                .lock()
-                .map_err(|_| anyhow::anyhow!("HANDOFF_JOURNAL_UNAVAILABLE"))?
-                .bind_root(&self.ticket.generation, &record(peer.pid, &peer.identity))?;
+            self.binder.bind(&record(peer.pid, &peer.identity))?;
             self.job.assign(peer.handle.as_raw_handle())?;
             progress.root = Some(peer);
-            progress.state = "running";
         }
         write_frame(pipe, self.ticket.generation.as_bytes()).await?;
         if pipe.read_u8().await? != 0 {
             bail!("EXECUTION_FENCE_INVALID_ACK");
         }
+        // Publish `running` only after the sidecar acknowledged the exact
+        // generation, so Ready cannot race an unconfirmed handshake.
+        lock(&self.progress)?.state = "running";
         Ok(())
     }
     async fn supervise(&self) -> Result<()> {
@@ -399,7 +552,7 @@ impl Registration {
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
     }
-    async fn run(self, mut pipe: NamedPipeServer) {
+    async fn run(mut self, mut pipe: NamedPipeServer) {
         let registered = tokio::time::timeout(START_TIMEOUT, self.register(&mut pipe)).await;
         // Close the one-use endpoint before supervision; no reconnection/replay.
         drop(pipe);

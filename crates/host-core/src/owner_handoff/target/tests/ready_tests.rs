@@ -13,7 +13,6 @@ fn intent(
         generation: registered.record().clone(),
         event_epoch: "retained-event-source".into(),
         protocol_version: crate::state::PROTOCOL_VERSION,
-        restricted: false,
     }
 }
 

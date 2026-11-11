@@ -19,16 +19,20 @@ mod bootstrap_tests;
 mod entry_tests;
 mod ready_resources_tests;
 mod ready_tests;
+mod root_join_tests;
 mod serving_tests;
 
 fn id() -> String {
     uuid::Uuid::new_v4().to_string()
 }
 fn process(pid: u32) -> ProcessIdentity {
+    process_with_sid(pid, "S-1-5-21-1234")
+}
+fn process_with_sid(pid: u32, sid: &str) -> ProcessIdentity {
     ProcessIdentity {
         pid,
         created_at: format!("1341156492345678{pid:02}"),
-        sid: "S-1-5-21-1234".into(),
+        sid: sid.into(),
         image: "C:\\fixture\\target-host.exe".into(),
     }
 }
@@ -58,6 +62,10 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Self {
+        Self::with_sid("S-1-5-21-1234")
+    }
+
+    fn with_sid(sid: &str) -> Self {
         // Host scratch space instead of the OS temp directory: this managed
         // Windows host denies directory creation under the short-name temp path.
         let scratch = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target");
@@ -70,14 +78,14 @@ impl Fixture {
             version: VERSION,
             epoch: id(),
             profile: model::digest(b"target fixture profile"),
-            host: process(11),
-            coordinator: process(12),
+            host: process_with_sid(11, sid),
+            coordinator: process_with_sid(12, sid),
         };
         journal.register_owner(&source).unwrap();
         let source_generation = generation(&source);
         journal.register_generation(&source_generation).unwrap();
         journal
-            .bind_root(&source_generation.id, &process(13))
+            .bind_root(&source_generation.id, &process_with_sid(13, sid))
             .unwrap();
         let build = Build {
             sha256: model::digest(b"target fixture build"),
@@ -93,7 +101,7 @@ impl Fixture {
             target_epoch: id(),
             source_build: build.clone(),
             target_build: build.clone(),
-            requester: process(14),
+            requester: process_with_sid(14, sid),
             capability_hash: model::digest(capability.as_bytes()),
             revision: 1,
             phase: Phase::Prepared,
@@ -139,8 +147,8 @@ impl Fixture {
                 version: VERSION,
                 epoch: released.target_epoch.clone(),
                 profile: source.profile.clone(),
-                host: process(21),
-                coordinator: process(22),
+                host: process_with_sid(21, sid),
+                coordinator: process_with_sid(22, sid),
             },
             build,
         };

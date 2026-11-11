@@ -22,7 +22,11 @@ fn entries(directory: &std::path::Path) -> usize {
 #[tokio::test]
 async fn missing_profile_refuses_before_creating_state_or_opening_appstate() {
     let profile = scratch();
-    let error = run(profile.path()).await.unwrap_err().to_string();
+    let mut owner = None;
+    let error = run(profile.path(), &mut owner)
+        .await
+        .unwrap_err()
+        .to_string();
     assert!(error.contains("HANDOFF_DATABASE_MISSING"), "{error}");
     // No data directory, lock file, log directory, database or migration ran.
     assert_eq!(entries(profile.path()), 0);
@@ -72,7 +76,7 @@ async fn absent_or_invalid_private_transport_is_propagated_and_never_falls_throu
 fn target_run_claims_then_publishes_ready_before_any_ordinary_startup() {
     let target = include_str!("../../target.rs");
     assert!(target.contains("windows::receive(directory)"));
-    assert!(target.contains("windows::publish_ready(native)"));
+    assert!(target.contains("windows::publish_ready(native, directory)"));
     for forbidden in [
         "AppState::open",
         "ReadyTarget::new",
@@ -95,7 +99,7 @@ fn main_dispatches_target_mode_before_any_data_directory_or_appstate_side_effect
         .find("owner_handoff::target::requested(")
         .expect("main must validate the target argv surface");
     let dispatch = main
-        .find("owner_handoff::target::run(&data_dir)")
+        .find("owner_handoff::target::run(&data_dir, target_owner)")
         .expect("main must dispatch the target mode");
     assert!(
         requested < dispatch,

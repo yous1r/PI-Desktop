@@ -6,7 +6,7 @@ mod runner;
 #[cfg(windows)]
 mod windows;
 #[cfg(windows)]
-pub use windows::{Registry, SourceOwner};
+pub use windows::{Registry, SourceOwner, Ticket};
 #[cfg(not(windows))]
 pub struct Registry;
 

@@ -1,14 +1,14 @@
 //! Target-mode RPC serving adapter over the inherited private framed channel.
 //!
-//! Integration contract for the Lead: `rpc/mod.rs` must declare this child
-//! module (`mod target_serve;`) and the target entry calls
-//! `crate::rpc::target_serve::serve_target(state).await` after the Ready frame.
-//! The file is intentionally absent from `rpc/mod.rs` in this lane.
-//!
-//! The adapter refuses before reading any request unless both a live event
-//! epoch and a real adopted execution generation exist. A missing sidecar root
+//! The target entry calls this only after the Ready frame, a real adopted
+//! execution generation and the live hub event epoch exist. The adapter refuses
+//! before reading any request unless both are present. A missing sidecar root
 //! or hub epoch is an explicit `HANDOFF_TARGET_SERVING_UNAVAILABLE`; it is never
 //! replaced with a generated epoch or a transport-only success.
+//!
+//! Notifications are not yet forwarded (the framed channel carries one response
+//! per request in this slice); the Node post-Ready JSON-RPC/notification client
+//! remains an explicit ticket.
 #[cfg(windows)]
 use crate::owner_handoff::target::serving::{serve_framed, RpcRequest, SERVING_UNAVAILABLE};
 use crate::state::AppState;

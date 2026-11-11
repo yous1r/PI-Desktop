@@ -160,10 +160,6 @@ impl ReadyResources for TargetReadyResources {
         self.verify(owner, generation)?;
         commit(self.event_stream()?)
     }
-
-    fn allows_unrooted_generation(&self) -> bool {
-        true
-    }
 }
 
 /// Restricted target initialization: registers exactly one unrooted durable
@@ -177,7 +173,11 @@ pub(crate) struct TargetReadyPublisher {
 }
 
 impl TargetReadyPublisher {
-    pub(crate) fn new(bootstrap: super::bootstrap::TargetBootstrap, build: Build) -> Result<Self> {
+    pub(crate) fn new(
+        bootstrap: super::bootstrap::TargetBootstrap,
+        build: Build,
+        event_epoch: String,
+    ) -> Result<Self> {
         build.validate()?;
         if build != bootstrap.record().target_build {
             bail!("HANDOFF_INCOMPATIBLE_BUILD");
@@ -185,93 +185,25 @@ impl TargetReadyPublisher {
         Ok(Self {
             bootstrap,
             build,
-            event_epoch: uuid::Uuid::new_v4().to_string(),
+            event_epoch,
         })
     }
 
-    pub(crate) fn prepare(&self) -> Result<PreparedReady<'_>> {
-        let owner = self.bootstrap.owner();
-        let id = uuid::Uuid::new_v4().to_string();
-        let generation = Generation {
-            version: VERSION,
-            job_name: Generation::job_name(&owner.profile, &owner.epoch, &id),
-            id,
-            owner_epoch: owner.epoch.clone(),
-            profile: owner.profile.clone(),
-            root: None,
-        };
-        let prepared_generation = self.bootstrap.prepare_generation(generation)?;
-        let generation_id = prepared_generation.record().id.clone();
-        let registered = match prepared_generation.register_unrooted() {
-            Ok(registered) => registered,
-            Err(error) => {
-                close_generation_best_effort(&self.bootstrap.authority.path, &generation_id);
-                return Err(error);
-            }
-        };
-        let generation_record = registered.record().clone();
-        let mut prepared = PreparedReady {
-            bootstrap: &self.bootstrap,
-            generation_id,
-            registered: Some(registered),
-            resources: None,
-            committed: false,
-        };
+    /// Bind a generation whose Job/pipe/root registration already succeeded to
+    /// the Ready transaction with the live hub event epoch from the target
+    /// protocol. No second generation is created here.
+    pub(crate) fn into_ready_target(
+        self,
+        registered: RegisteredGeneration,
+        request_id: &str,
+    ) -> Result<ReadyTarget<TargetReadyResources>> {
         let facts = ReadyFacts::from_claim(
             &self.bootstrap.authority,
-            generation_record,
-            self.build.clone(),
-            self.event_epoch.clone(),
+            registered.record().clone(),
+            self.build,
+            self.event_epoch,
         )?;
-        prepared.resources = Some(TargetReadyResources::new(
-            Arc::clone(&self.bootstrap.authority),
-            facts,
-        )?);
-        Ok(prepared)
-    }
-}
-
-/// One-shot Ready attempt. Dropping before commit closes the generation this
-/// slice registered, so a failed initialization stays explicitly recoverable
-/// and never leaves an open unrooted generation behind.
-pub(crate) struct PreparedReady<'a> {
-    bootstrap: &'a super::bootstrap::TargetBootstrap,
-    generation_id: String,
-    registered: Option<RegisteredGeneration>,
-    resources: Option<TargetReadyResources>,
-    committed: bool,
-}
-
-impl PreparedReady<'_> {
-    pub(crate) fn commit(mut self, request: &ReadyRequest) -> Result<ReadyOutcome> {
-        request.check(self.bootstrap)?;
-        let registered = self
-            .registered
-            .take()
-            .ok_or_else(|| anyhow::anyhow!("HANDOFF_TARGET_NOT_INITIALIZED"))?;
-        let resources = self
-            .resources
-            .take()
-            .ok_or_else(|| anyhow::anyhow!("HANDOFF_TARGET_NOT_INITIALIZED"))?;
-        let target = ReadyTarget::new(registered, resources, request.request_id())?;
-        let outcome = target.commit()?;
-        self.committed = true;
-        Ok(outcome)
-    }
-}
-
-impl Drop for PreparedReady<'_> {
-    fn drop(&mut self) {
-        if self.committed {
-            return;
-        }
-        close_generation_best_effort(&self.bootstrap.authority.path, &self.generation_id);
-    }
-}
-
-fn close_generation_best_effort(path: &std::path::Path, generation: &str) {
-    match Journal::open(path, false).and_then(|mut journal| journal.close_generation(generation)) {
-        Ok(()) => {}
-        Err(error) => tracing::error!(%error, "failed to close target ready generation"),
+        let resources = TargetReadyResources::new(Arc::clone(&self.bootstrap.authority), facts)?;
+        ReadyTarget::new(registered, resources, request_id)
     }
 }

@@ -21,12 +21,6 @@ pub(super) struct ReadyIntent {
     pub(super) generation: Generation,
     pub(super) event_epoch: String,
     pub(super) protocol_version: u32,
-    /// True only for the restricted target Ready slice where no sidecar root
-    /// exists yet. It never permits a replacement root or a second generation.
-    /// Excluded from the wire/fingerprint domain so historical Ready receipts
-    /// keep their exact identity; it only relaxes the in-memory root guard.
-    #[serde(skip)]
-    pub(super) restricted: bool,
 }
 impl ReadyIntent {
     pub(super) fn validate(&self) -> Result<()> {
@@ -46,8 +40,7 @@ impl ReadyIntent {
             || self.owner.host.sid != self.claimed.requester.sid
             || self.generation.owner_epoch != self.owner.epoch
             || self.generation.profile != self.owner.profile
-            || (!self.restricted && self.generation.root.is_none())
-            || self.generation.root.as_ref().is_some_and(|root| {
+            || self.generation.root.as_ref().is_none_or(|root| {
                 root.sid != self.owner.host.sid
                     || root.pid == self.owner.host.pid
                     || root.pid == self.owner.coordinator.pid

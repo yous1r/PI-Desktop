@@ -1,6 +1,8 @@
 //! Private launch envelope. The nested command is the committed shared
 //! OwnerHandoffBootstrapCommand shape (including its snake_case field names).
 use super::ready::ReadyOutcome;
+#[cfg(windows)]
+use crate::execution_fence::Ticket;
 use crate::owner_handoff::{
     model::{self, Build, VERSION},
     service::{Command, ContextIdentity},
@@ -216,4 +218,96 @@ pub(super) fn ready_error_reply(error: &anyhow::Error) -> Result<Vec<u8>> {
         model::encode(&serde_json::json!({"version": VERSION, "error": {"code": code}}))?
             .into_bytes(),
     )
+}
+
+/// Bounded launch frame: the Node supervisor receives the exact one-use ticket
+/// created for the prepared target generation, then starts the sidecar runner.
+#[cfg(windows)]
+pub(super) fn launch_sidecar_reply(
+    transfer_id: &str,
+    target_epoch: &str,
+    ticket: &Ticket,
+) -> Result<Vec<u8>> {
+    Ok(model::encode(&serde_json::json!({
+        "version": VERSION,
+        "operation": "launch-sidecar",
+        "transferId": transfer_id,
+        "targetEpoch": target_epoch,
+        "ticket": ticket,
+    }))?
+    .into_bytes())
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+enum AttachOperation {
+    AttachEpoch,
+}
+
+/// Node -> target frame carrying the live hub event epoch. The epoch is only
+/// accepted when it binds the current claim revision and target epoch.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct AttachEpoch {
+    version: u32,
+    operation: AttachOperation,
+    request_id: String,
+    transfer_id: String,
+    target_epoch: String,
+    expected_revision: i64,
+    event_epoch: String,
+}
+
+impl AttachEpoch {
+    pub(crate) fn parse(frame: &[u8]) -> Result<Self> {
+        if frame.is_empty() || frame.len() > model::MAX_RECORD_BYTES {
+            bail!("HANDOFF_INVALID_FRAME");
+        }
+        let request: Self = serde_json::from_slice(frame)
+            .map_err(|_| anyhow::anyhow!("HANDOFF_INVALID_REQUEST"))?;
+        request.validate()?;
+        Ok(request)
+    }
+
+    fn validate(&self) -> Result<()> {
+        if self.version != VERSION {
+            bail!("HANDOFF_UNSUPPORTED_VERSION");
+        }
+        match self.operation {
+            AttachOperation::AttachEpoch => {}
+        }
+        for value in [&self.request_id, &self.transfer_id, &self.target_epoch] {
+            model::uuid(value).map_err(|_| anyhow::anyhow!("HANDOFF_INVALID_IDENTITY"))?;
+        }
+        if !(1..=MAX_REVISION).contains(&self.expected_revision) {
+            bail!("HANDOFF_INVALID_REVISION");
+        }
+        if self.event_epoch.is_empty()
+            || self.event_epoch.encode_utf16().count() > 256
+            || self.event_epoch.contains('\0')
+        {
+            bail!("HANDOFF_TARGET_EVENT_EPOCH_UNAVAILABLE");
+        }
+        Ok(())
+    }
+
+    pub(super) fn check(&self, bootstrap: &super::bootstrap::TargetBootstrap) -> Result<()> {
+        self.validate()?;
+        if self.transfer_id != bootstrap.record().id || self.target_epoch != bootstrap.owner().epoch
+        {
+            bail!("HANDOFF_TARGET_IDENTITY_MISMATCH");
+        }
+        if self.expected_revision != bootstrap.record().revision {
+            bail!("HANDOFF_STALE_REVISION");
+        }
+        Ok(())
+    }
+
+    pub(crate) fn event_epoch(&self) -> &str {
+        &self.event_epoch
+    }
+
+    pub(crate) fn request_id(&self) -> &str {
+        &self.request_id
+    }
 }

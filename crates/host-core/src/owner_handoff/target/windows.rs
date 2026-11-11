@@ -2,19 +2,23 @@
 //! Restricted Ready in this SAME process, and never launch another serving Host.
 use super::{
     bootstrap,
-    protocol::{ready_error_reply, ready_reply},
+    protocol::{
+        launch_sidecar_reply, ready_error_reply, ready_reply, AttachEpoch, BootstrapRequest,
+    },
     ready_resources::TargetReadyPublisher,
-    BootstrapRequest, ReadyRequest, TargetBootstrap,
+    TargetBootstrap,
 };
 use crate::data_directory_owner::{DataDirectoryOwner, IN_USE_MARKER};
 use crate::execution_fence::native::{exited, Coordinator};
+use crate::execution_fence::Registry;
 use crate::owner_control::identity::Identity;
 use crate::owner_handoff::{
-    model::{self, Build, Owner, VERSION},
+    model::{self, Build, Generation, Owner, VERSION},
     native::{record, Proof},
     service::ContextIdentity,
     stdio,
 };
+use crate::state::AppState;
 use anyhow::{bail, Result};
 use std::os::windows::io::AsRawHandle;
 use std::path::Path;
@@ -23,6 +27,8 @@ use std::time::Duration;
 
 const LOCK_WAIT: Duration = Duration::from_secs(10);
 const MAX_COMMANDS: usize = 4;
+/// Bound on the time a target waits for the sidecar registration handshake.
+const ROOT_WAIT: Duration = Duration::from_secs(10);
 
 pub(crate) struct NativeTarget {
     pub(crate) bootstrap: TargetBootstrap,
@@ -100,47 +106,89 @@ pub(crate) async fn receive(directory: &Path) -> Result<NativeTarget> {
     bail!("HANDOFF_BOOTSTRAP_LIMIT")
 }
 
-/// Publish Ready after one claim. Any refusal sends a bounded classified error
-/// frame when the channel is still usable, then returns the error so `main`
-/// exits without ordinary startup. Success leaves the process waiting for the
-/// supervisor to close the private channel; this build has no serving loop yet.
-pub(crate) async fn publish_ready(target: NativeTarget) -> Result<()> {
+/// Prepare the real target root and publish Ready after one claim.
+///
+/// Order is fixed: restricted AppState -> adopt captured owner -> prepare the
+/// target generation (Job/one-use pipe/ticket) -> send `launch-sidecar` ->
+/// accept `attach-epoch` -> wait for the fake/real sidecar `bind_root` with a
+/// bounded timeout -> commit Ready with that exact live epoch -> serve framed
+/// JSON-RPC on the same channel. Any refusal closes the target generation and
+/// leaves the durable claim recoverable; ordinary startup is never reached.
+pub(crate) async fn publish_ready(target: NativeTarget, directory: &Path) -> Result<()> {
     let NativeTarget {
         bootstrap,
-        identity: _identity,
+        identity,
         coordinator,
         build,
     } = target;
-    let result = async {
-        let publisher = TargetReadyPublisher::new(bootstrap, build)?;
-        let prepared = publisher.prepare()?;
+    let mut state = AppState::open_restricted_target(directory)?;
+    let mut registry = Registry::adopt(
+        directory,
+        identity,
+        Arc::clone(&coordinator),
+        bootstrap.owner().clone(),
+    )?;
+    let owner = bootstrap.owner();
+    let generation = Generation {
+        version: VERSION,
+        id: uuid::Uuid::new_v4().to_string(),
+        owner_epoch: owner.epoch.clone(),
+        profile: owner.profile.clone(),
+        job_name: String::new(),
+        root: None,
+    };
+    let mut generation = generation;
+    generation.job_name = Generation::job_name(&owner.profile, &owner.epoch, &generation.id);
+    let prepared = bootstrap.prepare_generation(generation)?;
+    let generation_id = prepared.record().id.clone();
+    let (ticket, bound) = registry.prepare_prepared(prepared)?;
+
+    let join = async {
+        let launch = launch_sidecar_reply(
+            bootstrap.record().id.as_str(),
+            bootstrap.owner().epoch.as_str(),
+            &ticket,
+        )?;
+        stdio::send(&coordinator, launch).await?;
         let frame = stdio::receive(&coordinator)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("HANDOFF_READY_EOF"))?;
-        let request = ReadyRequest::parse(&frame)?;
-        let outcome = prepared.commit(&request)?;
+            .ok_or_else(|| anyhow::anyhow!("HANDOFF_ATTACH_EPOCH_EOF"))?;
+        let attach = AttachEpoch::parse(&frame)?;
+        attach.check(&bootstrap)?;
+        let event_epoch = attach.event_epoch().to_string();
+        let request_id = attach.request_id().to_string();
+        registry.wait_root(&generation_id, ROOT_WAIT).await?;
+        let registered = bound
+            .lock()
+            .map_err(|_| anyhow::anyhow!("HANDOFF_NATIVE_STATE_UNAVAILABLE"))?
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("HANDOFF_TARGET_ROOT_BIND_FAILED"))?;
+        let publisher = TargetReadyPublisher::new(bootstrap, build, event_epoch.clone())?;
+        let ready = publisher.into_ready_target(registered, &request_id)?;
+        let outcome = ready.commit()?;
         stdio::send(&coordinator, ready_reply(&outcome)?).await?;
-        Ok::<(), anyhow::Error>(())
+        Ok::<String, anyhow::Error>(event_epoch)
     }
     .await;
-    if let Err(error) = result {
-        if let Ok(reply) = ready_error_reply(&error) {
-            // Best effort: the classified code remains on stderr via `main`
-            // even when the peer is already gone.
-            let _ = stdio::send(&coordinator, reply).await;
+
+    match join {
+        Ok(event_epoch) => {
+            state.set_event_epoch(Some(event_epoch));
+            state.execution_fence = Some(registry);
+            // The served process retains the claim lock through main's
+            // target_owner value. Only after Ready (real root + live epoch)
+            // does the inherited channel switch to framed JSON-RPC serving.
+            let state = Arc::new(tokio::sync::Mutex::new(state));
+            crate::rpc::target_serve::serve_target(state).await
         }
-        return Err(error);
-    }
-    // The same claimed process stays alive until the supervisor finishes with
-    // it. A second command is not part of this slice and must not be replayed.
-    // Idle waits poll the bounded pipe reader; each retry is fresh I/O, not a
-    // protocol resend.
-    loop {
-        match stdio::receive(&coordinator).await {
-            Ok(None) => return Ok(()),
-            Ok(Some(_)) => bail!("HANDOFF_TARGET_COMMAND_UNSUPPORTED"),
-            Err(error) if error.to_string() == "HANDOFF_IO_TIMEOUT" => continue,
-            Err(error) => return Err(error),
+        Err(error) => {
+            if let Err(cleanup) = registry.abort_target(&generation_id).await {
+                tracing::error!(%cleanup, "failed to abort target generation after refusal");
+            }
+            if let Ok(reply) = ready_error_reply(&error) {
+                let _ = stdio::send(&coordinator, reply).await;
+            }
+            Err(error)
         }
     }
 }

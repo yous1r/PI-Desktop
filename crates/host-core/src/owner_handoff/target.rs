@@ -6,20 +6,30 @@
 //! and Node admission closed until an original-resource readiness commit. The
 //! same Rust process that claims must continue serving. A historical receipt is
 //! not permission to admit work.
+#[cfg(any(windows, test))]
 mod bootstrap;
+#[cfg(any(windows, test))]
 mod journal;
+#[cfg(any(windows, test))]
 mod preparation;
+#[cfg(any(windows, test))]
 mod protocol;
+#[cfg(any(windows, test))]
 mod ready;
+#[cfg(any(windows, test))]
 mod ready_resources;
 #[cfg(windows)]
 pub(crate) mod serving;
 #[cfg(windows)]
 mod windows;
 
+#[cfg(any(windows, test))]
 pub(crate) use bootstrap::TargetBootstrap;
+#[cfg(any(windows, test))]
 pub(crate) use preparation::{PreparedGeneration, RegisteredGeneration};
+#[cfg(any(windows, test))]
 pub(crate) use protocol::{BootstrapRequest, ReadyRequest};
+#[cfg(any(windows, test))]
 pub(crate) use ready::{EventStream, ReadyOutcome, ReadyPublication, ReadyResources, ReadyTarget};
 #[cfg(windows)]
 pub(crate) use windows::{receive, NativeTarget};
@@ -45,21 +55,28 @@ pub(crate) fn requested(args: &[OsString]) -> Result<bool> {
 /// creates the data directory, acquires the directory lock, opens AppState, or
 /// runs startup inspection/recovery/migration.
 ///
-/// This build claims the transfer, performs restricted target initialization
-/// (one unrooted durable generation), commits `ReadyTarget` and sends the
-/// bounded ReadyOutcome frame. It then stays the same process until the
-/// supervisor closes the private channel; ordinary startup/RPC serving is not
-/// reachable from this mode.
-pub(crate) async fn run(directory: &Path) -> Result<()> {
+/// On Windows, claim the transfer and retain its directory guard outside the
+/// runtime. Only a real Job/pipe/root registration plus the live event epoch can
+/// commit `ReadyTarget`; the same process then serves bounded framed RPC.
+/// Other platforms refuse native handoff before initialization. Neither path
+/// falls through to ordinary startup.
+pub(crate) async fn run(
+    directory: &Path,
+    target_owner: &mut Option<std::sync::Arc<crate::data_directory_owner::DataDirectoryOwner>>,
+) -> Result<()> {
     #[cfg(windows)]
     {
         let native = windows::receive(directory).await?;
-        windows::publish_ready(native).await?;
+        // Retain the claim's directory guard in main so it outlives the Tokio
+        // runtime and every target task; dropping it here would let a second
+        // writer acquire the profile while the served process is still alive.
+        *target_owner = Some(native.bootstrap.directory_owner());
+        windows::publish_ready(native, directory).await?;
         Ok(())
     }
     #[cfg(not(windows))]
     {
-        let _ = directory;
+        let _ = (directory, target_owner);
         bail!("HANDOFF_NATIVE_PROOF_UNSUPPORTED")
     }
 }
