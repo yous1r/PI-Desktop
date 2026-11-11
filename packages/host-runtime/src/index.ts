@@ -4,6 +4,8 @@ export * from "./owner-handoff-inspection.js";
 export * from "./owner-handoff-query.js";
 export * from "./owner-handoff-coordinator.js";
 export * from "./owner-handoff-exchange.js";
+export * from "./owner-handoff-attachment.js";
+export * from "./command-center-repository.js";
 export * from "./host-process.js";
 export * from "./workspace-terminal-service.js";
 export * from "./terminal-shell-registry.js";
