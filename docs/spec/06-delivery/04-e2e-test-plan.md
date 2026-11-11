@@ -10752,6 +10752,7 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 |---|---|
 | Quality — Command-center P0 runtime baseline (partial evidence for proposed AC-07) | E2E-COMMAND-CENTER-runtime-baseline |
 | Quality — Command-center one-hour fixed-context diagnostic | E2E-COMMAND-CENTER-runtime-soak |
+| C / Security / Quality — Command-center internal paging and portable receipt consumers | E2E-COMMAND-CENTER-observation-foundations |
 | C / Quality — Bounded replay and explicit snapshot recovery | E2E-RACP-replay-byte-budget |
 | C / Security / Compatibility — Exclusive Host data-directory startup | E2E-HOST-data-directory-owner |
 | C / E / Security / Quality — Gemini work setup | E2E-LIVE-VOICE-gemini-work-schema |
@@ -20965,3 +20966,78 @@ producer/consumer paths and fixed-gap refusal are mapped in the
 [acceptance record](../../project/ai-command-center-p0-evidence/h1-adapters-verification.md).
 This accepts R01–R09 adapter scope, not wider native closure or source transfer.
 Voice/LiveVoice remains deferred; the earlier isolation incident is unresolved.
+
+### E2E-COMMAND-CENTER-observation-foundations
+
+- **Title:** Internal summary pagination and browser-safe receipt observation.
+- **Milestone:** M1/W2 foundation only; complete monitoring, transfer and browser
+  product acceptance remain separate.
+- **Preconditions:** Current shared C1 source and provisioned compatible JS
+  dependencies. No running Desktop, profile, provider or network is needed.
+- **Entry:** `node scripts/check-command-center-foundations.mjs`; package Vitest
+  suites under `packages/agent-host/src/monitor` and
+  `packages/command-center-client/src` provide boundary and race coverage. After
+  building shared, Agent Host and the client with their TypeScript projects, add
+  `--built` to validate emitted package entries without source-resolution aliases.
+- **Steps:**
+  1. Bundle the Agent Host public entry with the current shared source. Capture a
+     three-page fixture at one cursor; mutate the source and returned pages, and
+     read the original continuation under its trusted scope.
+  2. Try another scope, then advance the controlled clock to expiry and dispose
+     the store. Verify explicit resync and no substitution of a newer generation.
+  3. Bundle the client entry for the browser without external/Node imports and
+     evaluate it in an isolated realm with Web Crypto and Web text/URL APIs.
+  4. Capture a golden request, observe acceptance, mark a disconnect, then receive
+     a valid completion followed by an older receipt. Revoke its context and
+     deliver a late receipt from the old scope.
+  5. Bind a fresh observation context directly to the authenticated Host identity.
+     Join the actual Host store to the browser reader using an injected read-only
+     adapter and 205 fixture rows over three pages. Require complete publication.
+     Expire a continuation during the next refresh: retain the prior complete
+     projection with an error state and issue no automatic retry. Revoke the context
+     and verify the projection is cleared.
+  6. Controlled model tests hold original loader promises across cancel/refresh,
+     switch generations, reject duplicate tasks/repeated tokens/oversized pages,
+     and verify stale results and bounded pending I/O.
+  7. Compose the reader with the connection-health controller using a controlled
+     monotonic scheduler and held ping responses. Snapshot completion alone stays
+     stale; a valid reply makes the same cycle fresh. Advance six seconds without
+     replies and observe stale notification without UI polling. Suspend and resume:
+     old replies/tokens remain stale; only a new completed snapshot and valid
+     current-cycle reply restore freshness. Revocation clears both models and
+     leaves no timer notifications. No real network/time delays are used.
+  8. Contract-only barrier sequence against the real snapshot store with a
+     reference in-memory change source: subscribe, consistent cut plus watermark,
+     capture at that watermark, then replay only strictly newer changes. Mid-read
+     updates/inserts/removals must be absent from the frozen pages and must replay
+     to exactly the authoritative rows across all pages. Buffer overflow requires a
+     fresh snapshot with no partial publication; a scope change discards pages and
+     the replacement scope rejects old tokens. This does not substitute for the
+     real C3 repository/authorization/transport acceptance (CC-M-01/02).
+  9. Apply validated live change envelopes to the published browser-realm
+     projection: consecutive upsert (replace and insert) and remove update rows
+     and cursor in order; duplicates are no-ops; a sequence gap yields
+     `resync_required` while retaining the last consistent rows; the cut
+     timestamp does not move. Revoking the context clears retained rows. The
+     adapter port shape is local, not a registered wire message.
+ 10. Compose a monitor session in the isolated browser realm with a controlled
+     scheduler and held ping replies: a pre-connect snapshot stays stale; after
+     connect, a published refresh plus a valid reply becomes fresh; live changes
+     apply; a gap forces summary resync; advancing two seconds sends one probe and
+     suspension aborts it and clears the timer; resume requires another published
+     refresh before freshness; revocation clears rows and exposes no timers. No
+     socket, provider or Agent execution is used.
+- **Expected:** Snapshot pages preserve cursor/content and obey row/byte bounds;
+  invalid/expired access requires restart. The client matches canonical SHA-256,
+  preserves accepted versus settled state, resolves only local uncertainty with
+  authoritative evidence, ignores stale revisions and clears revoked contexts.
+  No command is dispatched or retried.
+- **Specs:** [Command-center observation foundations](../03-runtime/19-remote-agent-control-protocol.md#command-center-observation-foundations),
+  [control contracts](../../project/ai-command-center-control-contracts.md).
+- **Acceptance:** Public package consumers and related model tests pass on the
+  candidate. The isolated JavaScript realm is a portability check, not an actual
+  browser/device or authorized network-control result. Source event barriers,
+  backpressure, C3 producers, Desktop wiring and HTTPS/mobile journeys remain
+  required for full M1/W2 qualification.
+- **Status:** Results are recorded in the
+  [continuation evidence](../../project/ai-command-center-continuation.md).

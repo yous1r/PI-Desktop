@@ -1380,3 +1380,121 @@ Host/package consent and retains the SSH account trust boundary.
 [Spec 18](../07-plugins/18-workspace-execution.md) defines schemas, ownership,
 limits, package compatibility, cancellation, file resources and no-replay behavior.
 See [ADR 0340](../../adr/0340-workspace-plugin-execution.md).
+
+## Command-center observation foundations
+
+The command-center C1 schemas have two internal consumers. They do not register
+RACP operations, change the negotiated catalog, or advertise monitor/intervention
+capabilities. Existing RACP authorization and connection behavior stay in force.
+
+`MonitorSnapshotStore` in Agent Host accepts only an already-authorized,
+consistent collection of C1 summary rows and its projection cursor. The caller
+owns the source-read/event barrier, canonical membership and goal facts, and
+permission filtering. The store must not infer those facts from session status.
+Each returned page has at most 100 rows and 256 KiB of encoded JSON, including its
+continuation token. All pages retain the same cursor and timestamp even when the
+source or a previously returned page changes. Opaque page tokens bind the trusted
+authorization/filter scope and boot epoch. Expiry, eviction, scope mismatch and
+disposal require an explicit restart; reads never silently switch generations.
+
+Default hard ceilings are 10,000 aggregate rows, 16 MiB of serialized retention,
+eight generations, 1,024 continuation tokens and a 60-second absolute lifetime.
+A caller may choose lower bounds. Serialized retention includes page JSON, scope
+keys and token-index keys; it is not a JavaScript heap or full-process memory
+claim. Capture stages one additional bounded generation before publication.
+Failed capture does not evict valid retained generations. Single-page results need
+no retained continuation. The owner discards its scope on access/filter changes
+and disposes the store on shutdown; idle expiration is reclaimed on the next call.
+
+`@pi-desktop/command-center-client` is a browser-safe observation model. It captures
+an immutable C1 intervention and hashes the shared canonical UTF-8 payload using
+Web Crypto SHA-256. It performs no dispatch, network access, persistence or retry.
+A trusted adapter creates a local observation context for one authenticated
+Host/owner scope and invalidates it before authorization or owner changes. The
+context pins the first valid request's Host ID and expected owner epoch before
+asynchronous hashing and rejects a different Host/epoch without rebinding. Revoked
+contexts clear owned attempts and reject delayed receipts, including creation
+still awaiting its hash. Previously returned snapshots must be discarded by the
+adapter; a local token is not an authorization credential.
+
+Receipts must match the request ID, operation, concrete execution and fingerprint.
+Older revisions are ignored; equal revisions require equal canonical contents.
+New revisions cannot regress goal revisions or bypass the C1 reachable-state
+contract. Missed intermediate observations are allowed; same-status new revisions,
+terminal reopening and authoritative `outcome_unknown` reconciliation remain
+unavailable under the current C1 contract. Local disconnection uncertainty is
+separate from authoritative receipt state. Accepted/consumed controls are not
+settled, and accepted Stop does not prove execution has stopped.
+
+A read-only adapter may bind the observation context directly using the validated
+existing C1 `hostId` and `expectedHostEpoch` fields. No fake intervention, workspace
+membership or execution is required. The same owner is then enforced for both
+monitor reads and intervention attempts; changing authorization requires a new
+context, not rebinding the old token.
+
+The portable monitor reader accepts an injected authorized page loader. It validates
+and copies each C1 page, requiring a common cursor/timestamp and unique tasks across
+all pages. Only a complete generation is published as an immutable all-pages
+projection; this is not a wire page or a live event stream. Default upper bounds
+are 10,000 rows, 16 MiB of accumulated canonical JSON, 1,025 pages and two unsettled
+original loader calls. The page ceiling matches the Host default of 1,024
+continuation tokens plus the initial page. The caller may lower these bounds. Token
+cycles, invalid pages and conflicting generations fail explicitly without an
+automatic restart.
+
+Refresh, cancellation, scope revocation and disposal capture observation lifetime.
+Superseded or aborted requests resolve promptly but their original I/O stays counted
+until settlement. Late results cannot publish into a newer refresh. A previous
+complete projection may remain during loading/error/cancelled state and must be
+shown as stale; revoked/disposed contexts clear it. No partial page set is published,
+and an exhausted I/O budget fails without queueing another retry.
+
+After a complete projection, the portable model can apply ordered change
+envelopes from an injected trusted adapter: an `upsert` full C1 row, a `remove` of
+a stable task target, or an explicit `resync`. This envelope is a local adapter
+port shape, not a registered RACP message or capability. Epochs must match the
+initial cut; a sequence at or below the cursor is a duplicate no-op; a gap,
+epoch change, resync envelope, exceeded row/byte bound or explicit request makes
+`resync_required` absorbing while retaining the last consistent projection for
+stale display. Rejected inputs change nothing, unknown removals are idempotent,
+and disposition/revocation clears retained rows. The authoritative source still
+owns authorization, ordering, delivery and backpressure; the model never opens a
+stream and never applies unvalidated caller data.
+
+A separate connection-health controller reuses the existing authenticated
+`connection/ping` result via an injected read-only adapter. There is one controller
+per connection, not per monitored task. Foreground probes start immediately and
+continue every two seconds while the original unsettled-call budget permits;
+six seconds without a valid reply marks stale. A delayed timer checks actual
+elapsed time rather than sending a burst of missed probes. Monotonic fractional
+milliseconds are accepted; invalid/backward clocks and scheduler failures halt
+the cycle stale until explicit reconnection. Server time never drives freshness.
+
+Suspend/disconnect immediately mark stale, clear the single timer and abort
+probes. Original promises remain counted until they settle, bounded at two even
+across cancellation/reconnect; a full budget exposes `pending_limit` without a
+retry queue. A new foreground cycle requires a current opaque resynchronization
+token and a recent valid reply before becoming fresh. Old cycle tokens/replies
+cannot clear the stale state. The token records only local observation lifetime,
+not authorization, successful execution or Agent progress.
+
+The optional state observer receives actual primitive state changes without
+polling. Reentrant lifecycle changes preserve the newest cycle and its timer.
+Observer exceptions detach that observer and set a persistent `observerFailed`
+diagnostic; the caller is responsible for handling it. Context invalidation and
+disposal terminate observation resources and notifications. Actual browser/device
+suspension timing and UI rendering still require their integration qualification.
+
+A client session composition may hold these models for one authenticated
+connection: connect/resume rotate a foreground health cycle, a published refresh
+rebuilds the summary from that projection and completes resynchronization only for
+the cycle captured before the read, and a pre-connect/pre-resume read cannot
+satisfy a later cycle. `fresh` requires a ready projection, a summary rebuilt from
+exactly that cut, and a recent valid ping. Suspension retains data as stale, while
+context revocation/disposal clears rows and timers. Independently lower summary
+limits reject a valid projection explicitly. This composes existing local models;
+it registers no operation, opens no stream and grants no authorization.
+
+Full monitoring still requires C3's authorized producer, a snapshot/event barrier,
+stream backpressure and client integration. Browser access still requires its
+separately validated HTTPS/session binding. Neither foundation enables those paths.

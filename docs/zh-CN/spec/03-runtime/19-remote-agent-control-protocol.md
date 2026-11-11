@@ -9,6 +9,10 @@
 英文页面是规范源。本页保留协议字段、方法名、错误码和代码结构，便于
 中文读者检索；实现必须以英文规范中的完整定义为准。
 
+The [command-center observation foundations](/spec/03-runtime/19-remote-agent-control-protocol#command-center-observation-foundations)
+add internal bounded snapshot paging and portable receipt models only. They do
+not enable monitoring, control, browser transport or new negotiated capabilities.
+
 插件远程只读文件使用独立的 owner-only `workspace/pluginFiles`，由可选能力
 `workspacePluginFiles` 广播。封闭请求为
 `{ path, operation: "list" | "preview", ref, scope: string[] }`，不接受 Host key、

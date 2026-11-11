@@ -48,6 +48,7 @@ type AppError = {
 |---|---|---|
 | `PROTOCOL_MISMATCH` | 不 | handshake/protocol 版本不匹配 |
 | `HOST_UNAVAILABLE` | 是的 | Rust 主机不是 running/reachable |
+| `HOST_DATA_DIR_IN_USE` | after owner exit | A cooperating Rust Host already owns this data directory; startup/relocation is refused before recovery or mutation. Close the existing owner; never delete the lock file to force takeover. |
 | `HOST_OVERLOADED` | 是的 | 绑定主机 RPC/tool 容量已满；背压后重试 |
 | `AGENT_UNAVAILABLE` | 是的 | pi sidecar 不是 running/reachable |
 | `APP_DEGRADED` | 是的 | 应用程序以有限的功能运行 |

@@ -1,0 +1,100 @@
+{
+  "brand": "PI-Desktop",
+  "toolbar": {
+    "navigation": "主导航",
+    "overview": "总览",
+    "history": "历史会话",
+    "settings": "设置",
+    "hostStatus": "主机 {{name}}，状态：{{state}}",
+    "hostState": {
+      "connected": "已连接",
+      "stale": "状态已过期",
+      "offline": "离线"
+    }
+  },
+  "overview": {
+    "title": "监控总览",
+    "monitorTitle": "总览",
+    "needsInput": "需要输入 {{count}}",
+    "allTasks": "全部任务 {{count}}",
+    "monitorEmpty": "目前没有正在运行的任务。",
+    "monitorEmptyHint": "任一工作区启动的任务都会显示在这里。",
+    "workspacesTitle": "工作区",
+    "workspacesHint": "打开一个工作区",
+    "workspacesEmpty": "尚未启用任何工作区。",
+    "workspacesEmptyHint": "启用最多三个工作区后，这里会显示它们的入口。",
+    "entryLabel": "{{letter}} / {{name}}",
+    "entryAgents": "{{count}} / {{max}} 个智能体",
+    "entryOpen": "打开工作区 {{letter}}：{{name}}",
+    "entryOpenAgents": "打开工作区 {{letter}}：{{name}}，{{max}} 个智能体中有 {{count}} 个正在运行",
+    "reservedLabel": "待定区域 {{index}}",
+    "reservedBadge": "预留",
+    "reservedTitle": "尚未确定",
+    "reservedNote": "未分配功能"
+  },
+  "workspace": {
+    "tabsLabel": "工作区",
+    "tabOpen": "打开工作区 {{letter}}：{{name}}",
+    "attention": "{{count}} 项需要输入",
+    "attentionNone": "没有任务需要输入",
+    "liveAgents": "{{count}} / {{max}} 个活动智能体",
+    "taskListLabel": "{{name}} 的任务",
+    "taskListEmpty": "此工作区还没有任务。",
+    "conversation": "实时对话",
+    "conversationTitle": "{{task}} / 实时对话",
+    "conversationEmpty": "尚未附加对话。",
+    "goalRevisions": "目标修订 {{desired}} 已提交，{{effective}} 已确认",
+    "composerLabel": "为 {{name}} 添加指引",
+    "composerPlaceholder": "为 {{name}} 添加指引…",
+    "composerTarget": "目标：{{task}}",
+    "draftLocal": "草稿仅保存在本机。",
+    "send": "发送",
+    "sendUnavailableCapability": "此版本尚不支持发送指引。",
+    "sendUnavailableHandler": "发送指引尚未接入。",
+    "backgroundNote": "离开此视图不会停止后台工作。",
+    "unavailable": "此工作区不可用。",
+    "unavailableHint": "它可能已被禁用或移除。请通过总览选择其他工作区。",
+    "openTask": "打开任务 {{label}}"
+  },
+  "history": {
+    "title": "历史会话",
+    "localOnly": "历史仅保存在本机。打开条目只会切换当前视图。",
+    "empty": "还没有打开过对话。",
+    "open": "打开 {{label}}",
+    "entryWorkspace": "工作区：{{name}}"
+  },
+  "receipts": {
+    "title": "控制回执",
+    "empty": "还没有控制回执。",
+    "item": "{{operation}}：{{status}}"
+  },
+  "status": {
+    "reserved": "已预留",
+    "starting": "启动中",
+    "running": "运行中",
+    "waiting_tool": "等待工具",
+    "waiting_human": "需要输入",
+    "stopping": "正在停止",
+    "outcome_unknown": "结果未知",
+    "completed": "已完成",
+    "aborted": "已中止",
+    "failed": "已失败",
+    "launch_failed": "启动失败"
+  },
+  "receiptStatus": {
+    "recorded": "已记录",
+    "accepted": "已接受",
+    "consumed": "已消费",
+    "completed": "已完成",
+    "rejected": "已拒绝",
+    "conflicted": "已冲突",
+    "interrupted": "已中断",
+    "outcome_unknown": "结果未知"
+  },
+  "operation": {
+    "append": "追加指引",
+    "steer": "转向",
+    "reviseGoal": "修订目标",
+    "stop": "停止"
+  }
+}

@@ -5,3 +5,5 @@ export * from "./turn-queue.js";
 export * from "./approvals.js";
 export * from "./maintenance-admission.js";
 export * from "./agent-host.js";
+export * from "./monitor/snapshot-store.js";
+export * from "./command-center-control.js";

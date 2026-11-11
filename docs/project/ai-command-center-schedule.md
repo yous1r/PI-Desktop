@@ -1,6 +1,9 @@
 # AI command center: implementation schedule
 
 - Status: Proposed schedule; staffing, kickoff and release dates are not committed
+- Status update (2026-11-11): the current accepted/verified/blocked matrix is the
+  [acceptance index](ai-command-center-acceptance-index.md). The gate tables below
+  are historical planning and do not describe current execution status.
 - Prepared: 2026-11-08 (verified local environment date)
 - Design baseline: local commit `3eaa78fcb32a0e432519f493603fa63874ac7f82`, based on `origin/main` at `fd28eb89866ac513912ed109716e7120cf60f18c`
 - Scope references: [ADR](../adr/ai-command-center.md), [requirements](ai-command-center-requirements.md), [development design](ai-command-center-development-design.md)
@@ -410,3 +413,13 @@ handoff fault cases. Existing AgentHost and RACP suites validate reuse seams;
 they do not imply the proposed command-center APIs or 12/36 quota repositories
 already exist. The one-hour run supplies its own completed/failed evidence,
 separate from this preparation progress.
+
+Branch status note (2026-11-11): under explicit user authorization, the pending
+C2/C3/H3/H4/U1/Q0 work was copied into the continuation request branch with a
+hash manifest. The storage module is now wired into schema v31 with a v30 backup
+and upgrade tests; the control service, repository adapter, RACP dispatcher
+factory and successor-bootstrap module have targeted tests. None of that is
+integrated into production startup, RACP registration, capability negotiation or
+the Desktop route, and no candidate has been committed or released. See the
+[branch handoff](ai-command-center-final-handoff.md) for the verified suites and
+the remaining wiring.

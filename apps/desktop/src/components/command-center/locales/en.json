@@ -1,0 +1,100 @@
+{
+  "brand": "PI-Desktop",
+  "toolbar": {
+    "navigation": "Main navigation",
+    "overview": "Overview",
+    "history": "History",
+    "settings": "Settings",
+    "hostStatus": "Host {{name}}, status {{state}}",
+    "hostState": {
+      "connected": "connected",
+      "stale": "status stale",
+      "offline": "offline"
+    }
+  },
+  "overview": {
+    "title": "Monitoring overview",
+    "monitorTitle": "Overview",
+    "needsInput": "Needs input {{count}}",
+    "allTasks": "All tasks {{count}}",
+    "monitorEmpty": "No tasks are running yet.",
+    "monitorEmptyHint": "Tasks started in any workspace appear here.",
+    "workspacesTitle": "Workspaces",
+    "workspacesHint": "Open a workspace",
+    "workspacesEmpty": "No workspaces are enabled.",
+    "workspacesEmptyHint": "Enable up to three workspaces to show their entry tabs here.",
+    "entryLabel": "{{letter}} / {{name}}",
+    "entryAgents": "{{count}} / {{max}} agents",
+    "entryOpen": "Open workspace {{letter}}: {{name}}",
+    "entryOpenAgents": "Open workspace {{letter}}: {{name}}, {{count}} of {{max}} agents running",
+    "reservedLabel": "Reserved area {{index}}",
+    "reservedBadge": "Reserved",
+    "reservedTitle": "To be decided",
+    "reservedNote": "No function assigned"
+  },
+  "workspace": {
+    "tabsLabel": "Workspaces",
+    "tabOpen": "Open workspace {{letter}}: {{name}}",
+    "attention": "{{count}} need input",
+    "attentionNone": "No task needs input",
+    "liveAgents": "{{count}} / {{max}} live agents",
+    "taskListLabel": "Tasks in {{name}}",
+    "taskListEmpty": "No tasks in this workspace yet.",
+    "conversation": "Live conversation",
+    "conversationTitle": "{{task}} / live conversation",
+    "conversationEmpty": "No conversation is attached.",
+    "goalRevisions": "Goal revision {{desired}} committed, {{effective}} confirmed",
+    "composerLabel": "Guidance for {{name}}",
+    "composerPlaceholder": "Add guidance to {{name}}…",
+    "composerTarget": "Target: {{task}}",
+    "draftLocal": "Drafts stay on this device.",
+    "send": "Send",
+    "sendUnavailableCapability": "Sending guidance is not available in this build.",
+    "sendUnavailableHandler": "Sending guidance is not connected yet.",
+    "backgroundNote": "Leaving this view does not stop background work.",
+    "unavailable": "This workspace is not available.",
+    "unavailableHint": "It may be disabled or removed. Use Overview to choose another workspace.",
+    "openTask": "Open task {{label}}"
+  },
+  "history": {
+    "title": "History",
+    "localOnly": "History on this device only. Opening an entry changes only this view.",
+    "empty": "No conversations opened yet.",
+    "open": "Open {{label}}",
+    "entryWorkspace": "Workspace: {{name}}"
+  },
+  "receipts": {
+    "title": "Control receipts",
+    "empty": "No control receipts have been recorded yet.",
+    "item": "{{operation}}: {{status}}"
+  },
+  "status": {
+    "reserved": "Reserved",
+    "starting": "Starting",
+    "running": "Running",
+    "waiting_tool": "Waiting for tool",
+    "waiting_human": "Needs input",
+    "stopping": "Stopping",
+    "outcome_unknown": "Outcome unknown",
+    "completed": "Completed",
+    "aborted": "Aborted",
+    "failed": "Failed",
+    "launch_failed": "Could not start"
+  },
+  "receiptStatus": {
+    "recorded": "Recorded",
+    "accepted": "Accepted",
+    "consumed": "Consumed",
+    "completed": "Completed",
+    "rejected": "Rejected",
+    "conflicted": "Conflicted",
+    "interrupted": "Interrupted",
+    "outcome_unknown": "Outcome unknown"
+  },
+  "operation": {
+    "append": "Add guidance",
+    "steer": "Steer",
+    "reviseGoal": "Revise goal",
+    "stop": "Stop"
+  }
+}

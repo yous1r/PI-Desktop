@@ -5,3 +5,4 @@ export * from "./server.js";
 export * from "./client.js";
 export * from "./ws-binding.js";
 export type { OperationContext, OperationHandler } from "./operations.js";
+export * from "./command-center-dispatch.js";

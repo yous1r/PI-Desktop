@@ -1,4 +1,4 @@
-# 04. Data Storage (Schema v30)
+# 04. Data Storage (Schema v31)
 
 
 ### Lossless tool-image storage (#1868)
@@ -1634,7 +1634,7 @@ truncating at a guessed position.
 - JSON columns are read blind on hot paths (shipped to the renderer as-is);
   anything filtered or summed is a promoted column by rule.
 
-## 7. Versioning, v7 reset, and v8-to-v30 migration
+## 7. Versioning, v7 reset, and v8-to-v31 migration
 
 - `PRAGMA user_version` stays the schema authority; future structural changes
   add ordered Rust migration fns again, each in one transaction, with a
@@ -1645,7 +1645,7 @@ truncating at a guessed position.
   Sessions, providers, and settings from the old file are not carried over;
   the archive remains for manual recovery. All pre-v7 migration code
   (v1 `settings.sqlite` import, v2→v6 chain) is deleted.
-- Fresh installs run the full v30 DDL directly.
+- Fresh installs run the full v31 DDL directly.
 - **Schema v7 first reaches v8, then uses the guarded path.** The v7→v8
   migration is followed by the same guarded v8→v15 migration; schema-v9 and
   schema-v10 databases take the same guarded path and receive an exact readable
@@ -1741,6 +1741,17 @@ truncating at a guessed position.
   No automatic deletion or session/task cascade removes these records.
   Retained generation reads use 100-row pages. See the
   [guarded bootstrap contract](07-process-model.md#durable-owner-registration-and-restricted-recovery).
+- **Schema v31 is additive.** It adds the command-center workspace,
+  membership, reservation, goal-head, intervention-receipt and notification
+  tables (eight cc_* tables), their indexes and retention triggers, after the
+  v30 ownership journal. A readable pi.sqlite.v30.bak precedes the
+  transaction; existing sessions, settings, mode runs, turns, transcripts and
+  ownership journals remain intact and no existing row is rewritten. Fresh
+  creation and the upgrade share one DDL constant, and every open validates the
+  live cc_* objects against it, so a drifted or half-migrated file fails
+  closed before a control operation can read or write it. The versioned step is
+  db::command_center_migration::migrate_v30_to_v31; the DDL helper itself
+  never stamps a version.
 - **Schema v14 is additive.** It adds nullable `sessions.deleted_at`, the
   partial deletion index, and `session_import_origins`. Existing sessions stay
   active and have no origin rows. The migration runs in the same guarded

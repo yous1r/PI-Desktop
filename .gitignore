@@ -61,3 +61,5 @@ electron.vite.config.*.mjs
 
 .playwright-cli
 worktrees
+# Rust source module whose path component is named target (not build output).
+!crates/host-core/src/owner_handoff/target/

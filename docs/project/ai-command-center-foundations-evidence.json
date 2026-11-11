@@ -1,0 +1,375 @@
+{
+  "version": 1,
+  "baseline": "1cdb4ce1d797ab94b024a2c478ecd01d50cb2b2f",
+  "baseMain": "e977efc96b6b735aeef5066a0b66c6565ad5691f",
+  "scope": "command-center observation foundations only",
+  "state": "uncommitted-source-verified",
+  "sourceDigest": "af583e9a4bc685c027b73d0b3f2e88af980d65af824c7b21d76683d3d44dfa98",
+  "sourceFiles": [
+    {
+      "path": "biome.json",
+      "bytes": 8153,
+      "sha256": "77618046c77440bb51ad49012dbcef95c8e7c4a9f28c1e1519b0941363dd95ec"
+    },
+    {
+      "path": "package.json",
+      "bytes": 10132,
+      "sha256": "cb8b74644e7e1867a0a735899cabca0a6a5c28aec38b1d1be297a554b227a7c8"
+    },
+    {
+      "path": "packages/agent-host/src/index.ts",
+      "bytes": 321,
+      "sha256": "3db5157d61b4263cc2362b18db0dd15f2ddc8d8b66c5ffc2e2d909e33f5dcd1f"
+    },
+    {
+      "path": "packages/agent-host/src/monitor/generation.ts",
+      "bytes": 4418,
+      "sha256": "279b6f7cc8da6a7ce38a5c2d915bcd502e96c9f3280fdf1f1975d25ce5aba597"
+    },
+    {
+      "path": "packages/agent-host/src/monitor/projection-barrier.test.ts",
+      "bytes": 9775,
+      "sha256": "ef247adbf70ea72cd45251ca2082887f169324dd1ef9a24da2ff230f4464685d"
+    },
+    {
+      "path": "packages/agent-host/src/monitor/snapshot-failures.test.ts",
+      "bytes": 8632,
+      "sha256": "cb6beb63c9de472c40c586dbe9a0b9c7989bee83cdfff89c4406730f946979f8"
+    },
+    {
+      "path": "packages/agent-host/src/monitor/snapshot-retention.test.ts",
+      "bytes": 5872,
+      "sha256": "e1dde3f3de6b91da9d2341595bf6b6fd537e7800f05f51768a7c75f4c9c09813"
+    },
+    {
+      "path": "packages/agent-host/src/monitor/snapshot-store.property.test.ts",
+      "bytes": 4046,
+      "sha256": "73f5eccf75cafcb08903ac3daa2fb027083852d0c624290f95f95bb7ac4974bf"
+    },
+    {
+      "path": "packages/agent-host/src/monitor/snapshot-store.test-support.ts",
+      "bytes": 2380,
+      "sha256": "a640e13d9df9410b1dd3601f37b06463556f830778a391140fbbc4f2f1bc4bae"
+    },
+    {
+      "path": "packages/agent-host/src/monitor/snapshot-store.test.ts",
+      "bytes": 6423,
+      "sha256": "0d590b03f4b081815b7ca3842384a85bd760f26531955f04a04fd92f708a1ee7"
+    },
+    {
+      "path": "packages/agent-host/src/monitor/snapshot-store.ts",
+      "bytes": 8177,
+      "sha256": "f85e60785aaef36766bc6c39d6e15f26f844456ad621b17aa1551541225917d5"
+    },
+    {
+      "path": "packages/agent-host/src/monitor/types.ts",
+      "bytes": 2945,
+      "sha256": "24b7bcab01bfb78c2c8af4ee71b3aec0f9b1d20f5ed2da47d93f7480ce5cb490"
+    },
+    {
+      "path": "packages/command-center-client/package.json",
+      "bytes": 631,
+      "sha256": "c0cb1ea3b26a3b14587664382bf5037b3e6556bfa264a1f95557da9919b1d3de"
+    },
+    {
+      "path": "packages/command-center-client/src/attempt-safety.test.ts",
+      "bytes": 12371,
+      "sha256": "6a1e3b8a999091d8c0fb6abe4f1050b08664922eda210a003a5701218ca5e847"
+    },
+    {
+      "path": "packages/command-center-client/src/attempt.property.test.ts",
+      "bytes": 7072,
+      "sha256": "17e2be7e5e4ebef9be7dbf327eedd123460d781c49aad9fb203d191dc5b59c20"
+    },
+    {
+      "path": "packages/command-center-client/src/attempt.test.ts",
+      "bytes": 11000,
+      "sha256": "b135f7a348145de4160613924ba3731a727291226babca89e7486e8d260c1106"
+    },
+    {
+      "path": "packages/command-center-client/src/attempt.ts",
+      "bytes": 6682,
+      "sha256": "57d32dea773eab86925a17b6c864ca05a09b1ea426de1f3c85a2ccb23a1adc84"
+    },
+    {
+      "path": "packages/command-center-client/src/context.test.ts",
+      "bytes": 3364,
+      "sha256": "fada5985cb25c5d9841a5fb389e071164113bae31273bf3f20ebd8df1464bd66"
+    },
+    {
+      "path": "packages/command-center-client/src/context.ts",
+      "bytes": 3418,
+      "sha256": "14f15adcbc61be4d39e22347ffa8df57503d587003860cff2c4c56f5a35a9ef0"
+    },
+    {
+      "path": "packages/command-center-client/src/health/controller.test.ts",
+      "bytes": 14158,
+      "sha256": "48336d8979d8788c46bfa34cfbb984c1be48c1d6fdb458355b3d43bbb699a60b"
+    },
+    {
+      "path": "packages/command-center-client/src/health/controller.ts",
+      "bytes": 10328,
+      "sha256": "60ade78fdbebb82c9522feaf478119454642990c1f5865b7832fb08df4acbcc5"
+    },
+    {
+      "path": "packages/command-center-client/src/health/failures.test.ts",
+      "bytes": 11025,
+      "sha256": "777e398aea6d6723dbf8713857160f4215dcbcdd772799ca0767ca1acca39a80"
+    },
+    {
+      "path": "packages/command-center-client/src/health/index.ts",
+      "bytes": 392,
+      "sha256": "d79ba04e8d3312b4d6f2de3d571b733bcca2074f75b249b495be1f6a1aba01ff"
+    },
+    {
+      "path": "packages/command-center-client/src/health/state.ts",
+      "bytes": 1954,
+      "sha256": "e455e8c6f51f6f670ef213e400daf8f9e1780557d13038769daed1d1b587fe4e"
+    },
+    {
+      "path": "packages/command-center-client/src/health/timing.property.test.ts",
+      "bytes": 6545,
+      "sha256": "6acbd6bdf31cc80ed54b231f4b5881edc799c8e62def49acfdfde499f48fc17f"
+    },
+    {
+      "path": "packages/command-center-client/src/health/types.ts",
+      "bytes": 2385,
+      "sha256": "1fee08b6d64e07d0f5d4534ec1f41c84187678a98b8460e9319ca96163d35d0d"
+    },
+    {
+      "path": "packages/command-center-client/src/health/validation.ts",
+      "bytes": 1006,
+      "sha256": "ac8e60e72b180be685820f144c91284392342e587959f0bbd8616fca34ebf82a"
+    },
+    {
+      "path": "packages/command-center-client/src/index.ts",
+      "bytes": 660,
+      "sha256": "40313c0b29e24f85d40faf35e92f12f02e052e0459ae90aea042bf809a55d779"
+    },
+    {
+      "path": "packages/command-center-client/src/monitor/index.ts",
+      "bytes": 443,
+      "sha256": "e71b6a89b948133aa8ed33e5af066f64b7be35eb834b0a5ed16587f6ecbf1f1a"
+    },
+    {
+      "path": "packages/command-center-client/src/monitor/pages.ts",
+      "bytes": 3451,
+      "sha256": "bf16b5b2387aa6aa01238fbf6d33ff24ca41e3a0707ce20837cdb220d5482204"
+    },
+    {
+      "path": "packages/command-center-client/src/monitor/reader-limits.test.ts",
+      "bytes": 10020,
+      "sha256": "b52d22d4139b1a8ab9f0d65b51349b1ba54f4dcee465a381537442743ee2f40d"
+    },
+    {
+      "path": "packages/command-center-client/src/monitor/reader.property.test.ts",
+      "bytes": 5995,
+      "sha256": "ddf2a0ca4c31e1031da85884a963dad60678eba43c300289ad9986c2f22452af"
+    },
+    {
+      "path": "packages/command-center-client/src/monitor/reader.test.ts",
+      "bytes": 14787,
+      "sha256": "68b09a9e648bdfcece358a98f5247bfc103216edd737984bdae72c79e60c2922"
+    },
+    {
+      "path": "packages/command-center-client/src/monitor/reader.ts",
+      "bytes": 6126,
+      "sha256": "03c0aee10de7e06d29e83458580a854af6a54a4cc60f9d6aa936715e2c5b7f43"
+    },
+    {
+      "path": "packages/command-center-client/src/monitor/types.ts",
+      "bytes": 2924,
+      "sha256": "c012c15bb4c70d79f97ce27d827b13b30ce587ad6f9466b354c14364d94370f2"
+    },
+    {
+      "path": "packages/command-center-client/src/session/index.ts",
+      "bytes": 292,
+      "sha256": "a27c1281d24795272b4f22ba84a73cf9b4cabb26a92199dd307f07fa0524670b"
+    },
+    {
+      "path": "packages/command-center-client/src/session/safety.test.ts",
+      "bytes": 6863,
+      "sha256": "e41db1a91b1c20463ba49c672e55a73be70b29fb247ae3ee323efb3ff51a6422"
+    },
+    {
+      "path": "packages/command-center-client/src/session/session.test.ts",
+      "bytes": 17471,
+      "sha256": "ba00ebe32413794bbe4db1a2b242e0d4ad7c4e90a093977167ef87569ea533aa"
+    },
+    {
+      "path": "packages/command-center-client/src/session/session.ts",
+      "bytes": 7880,
+      "sha256": "1821a3f5b814138e0f41d3296f5a3a2f1c14c9aa52fcc4ba8364e033238527f6"
+    },
+    {
+      "path": "packages/command-center-client/src/session/state.ts",
+      "bytes": 2031,
+      "sha256": "849773fc325f4514c8580818228fd9f9b58cb3c8a417bbcdd8b205ad10b741d2"
+    },
+    {
+      "path": "packages/command-center-client/src/session/types.ts",
+      "bytes": 2109,
+      "sha256": "8d077ff730c40c57daae43c2d45caac4aa5e9f4eb6dcb28db42e66ac3668b670"
+    },
+    {
+      "path": "packages/command-center-client/src/summary/index.ts",
+      "bytes": 356,
+      "sha256": "d5375bd86b773ce36c4c3d0b166f91cc4eff49124e380514e6cbbe3c9cd74747"
+    },
+    {
+      "path": "packages/command-center-client/src/summary/model.property.test.ts",
+      "bytes": 5328,
+      "sha256": "852c9eebbbed0264f1046c8d975265b2c59774298e005c02d7bce109bf785bc4"
+    },
+    {
+      "path": "packages/command-center-client/src/summary/model.test.ts",
+      "bytes": 10665,
+      "sha256": "1b8821a9b677e7d36b27cb47409937221afe22a2915e94851c4db35d54d9b8f8"
+    },
+    {
+      "path": "packages/command-center-client/src/summary/model.ts",
+      "bytes": 5173,
+      "sha256": "c38d08ff9803352d65479d91e62a20669fdbe75b5b590acedcdf9b4de3ec3012"
+    },
+    {
+      "path": "packages/command-center-client/src/summary/types.ts",
+      "bytes": 1623,
+      "sha256": "33c13efe797022724fb0e6a14f70d9c2a38aa324fa47acb6bc8d8fbc191c8f76"
+    },
+    {
+      "path": "packages/command-center-client/src/summary/validation.test.ts",
+      "bytes": 10167,
+      "sha256": "af649c46ceceecdb955e4ccd3d3962d9aeaaed42e598597df1d1ab19f1cd0e32"
+    },
+    {
+      "path": "packages/command-center-client/src/summary/validation.ts",
+      "bytes": 5292,
+      "sha256": "97daef378dc064609905b6ce65ccf674ad0ee6c6ecd378b10c061ee47da32894"
+    },
+    {
+      "path": "packages/command-center-client/src/types.ts",
+      "bytes": 1861,
+      "sha256": "3307724deadd6ea5e8830705a4483d667690ecb71081c1d521c9ac06140f9b72"
+    },
+    {
+      "path": "packages/command-center-client/tsconfig.json",
+      "bytes": 312,
+      "sha256": "1a30f901fa0316e7e07e569b704f851081e500870dff80f384d3ab63b66e108b"
+    },
+    {
+      "path": "packages/command-center-client/vitest.config.ts",
+      "bytes": 306,
+      "sha256": "c96c051f4008bc1c7e75cd98d7d5c36437f2fb08f993499b046bce007903ef1f"
+    },
+    {
+      "path": "packages/racp/src/index.ts",
+      "bytes": 308,
+      "sha256": "d4b1f6a9b0df4bea979f541944ddedad7728bc7bbc9896bf2bfdfa48925b5909"
+    },
+    {
+      "path": "packages/shared/src/command-center/identity.ts",
+      "bytes": 7985,
+      "sha256": "ba421f1c521617aa81a6c3ba94ae7f58e2f412196bddd836610ebce73e46cf94"
+    },
+    {
+      "path": "packages/shared/src/command-center/observation-owner.test.ts",
+      "bytes": 1155,
+      "sha256": "14e56230539d85e64f069da17f2444b3a4d82b044cd38d311fa29638cf35d837"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "bytes": 302526,
+      "sha256": "e5e6294fbbc45dd8d73d70e38ac8e73953c2d1678ade73ffcfc328278d9734e3"
+    },
+    {
+      "path": "scripts/check-command-center-foundations.mjs",
+      "bytes": 13288,
+      "sha256": "704a6582cdb21337e2ef481553d8940e4946a4ab3980216b9a1e14e6e754592e"
+    },
+    {
+      "path": "scripts/e2e/command-center/connection-health-consumer.mjs",
+      "bytes": 4488,
+      "sha256": "7c6c87923b14b487c9333ca8f19bb4282f6753e5528f37d7e850c73c5719f915"
+    },
+    {
+      "path": "scripts/e2e/command-center/monitor-session-consumer.mjs",
+      "bytes": 5212,
+      "sha256": "b0074b0e073acf1297d29a67eda7e9e21a64e2899ba4bede1f691f22e98c5b79"
+    }
+  ],
+  "verification": {
+    "tests": {
+      "passed": 363,
+      "files": 30
+    },
+    "regressionSuites": {
+      "agentHostPackage": {
+        "passed": 151,
+        "files": 12
+      },
+      "sharedSourceOnly": {
+        "passed": 808,
+        "files": 72
+      },
+      "clientPackage": {
+        "passed": 259,
+        "files": 15
+      },
+      "racpConsumer": {
+        "passed": 33,
+        "files": 4,
+        "build": "pass"
+      }
+    },
+    "barrierContract": "pass-projection-barrier-5",
+    "liveSummaryApplication": "pass-owner-bound-change-application",
+    "modelBasedProperties": "pass-seeded-pagination-page-partitions-change-streams-receipt-chains-and-health-timing",
+    "composedPageCeiling": "pass-host-1024-tokens-reader-1025-pages",
+    "monitorSessionComposition": "pass-browser-realm-reader-summary-health",
+    "documentedLimitComposition": "pass-host-client-c1-limits",
+    "controlBoundaryTests": "pass-15-control-authorization-and-7-repository-adapter",
+    "dependentBuildLimitation": "host-runtime-agent-runtime-pi-patch-provenance-mismatch",
+    "publicConsumerChecks": {
+      "source": 12,
+      "emittedArtifacts": 12
+    },
+    "types": "pass-current-source-no-emit",
+    "architecture": "pass-base-1cdb4ce1d",
+    "agentPolicy": "pass",
+    "build": "pass-official-shared-agent-host-command-center-client-tsc-projects",
+    "directEmittedImports": "pass",
+    "lint": "pass-62-affected-files",
+    "documentation": {
+      "pages": 645,
+      "localePairs": 88
+    },
+    "baselineScript": "pass-48-requires-PI_SCRATCH_DIR",
+    "fullProductQualification": false,
+    "commitCreated": false,
+    "reproduce": {
+      "configs": [
+        ".pi/command-center-continuation/vitest.config.mjs",
+        ".pi/command-center-continuation/tsconfig.json"
+      ],
+      "commands": [
+        "node packages/agent-host/node_modules/vitest/vitest.mjs run --config .pi/command-center-continuation/vitest.config.mjs",
+        "node packages/agent-host/node_modules/vitest/vitest.mjs run --root packages/agent-host",
+        "node packages/agent-host/node_modules/vitest/vitest.mjs run --root packages/shared src/",
+        "node packages/agent-host/node_modules/vitest/vitest.mjs run --root packages/command-center-client",
+        "node packages/agent-host/node_modules/vitest/vitest.mjs run --root packages/racp",
+        "node node_modules/typescript/bin/tsc -p .pi/command-center-continuation/tsconfig.json",
+        "node node_modules/typescript/bin/tsc -b packages/shared packages/agent-host packages/command-center-client",
+        "node scripts/check-command-center-foundations.mjs",
+        "node scripts/check-command-center-foundations.mjs --built",
+        "node scripts/check-architecture.mjs --base 1cdb4ce1d",
+        "node scripts/check-agent-policy-sync.mjs",
+        "node scripts/check-pr-base-main.mjs",
+        "node docs/scripts/check-docs.mjs",
+        "node docs/scripts/check-locales.mjs",
+        "node .pi/command-center-continuation/source-manifest.mjs"
+      ],
+      "observedAt": "2026-11-11",
+      "dependencyHead": "1cdb4ce1d797ab94b024a2c478ecd01d50cb2b2f"
+    }
+  }
+}

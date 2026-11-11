@@ -151,3 +151,22 @@ runbook](../docs/spec/06-delivery/06-release-runbook.md).
   component, localized guidance and detail disclosure. Requires built desktop
   styles. Optional `PI_CERTIFICATE_EVIDENCE_DIR` saves a review screenshot;
   `--baseline` renders the `origin/main` error component for comparison.
+
+### Command-center observation foundations
+
+- `node scripts/check-command-center-foundations.mjs`: bundles the current-source
+  Agent Host and command-center client entries, joins the real snapshot store to
+  the browser-target reader, and exercises receipts, live change application,
+  connection health and the composed monitor session in an isolated JavaScript
+  realm. No Desktop, profile, provider or network is used.
+- `node scripts/check-command-center-foundations.mjs --built`: the same checks
+  against emitted package entries after building shared, Agent Host and the
+  client with their TypeScript projects.
+- `scripts/e2e/command-center/connection-health-consumer.mjs` and
+  `monitor-session-consumer.mjs`: reusable deterministic consumers with a
+  controlled clock and held ping replies, imported by the check above.
+- `node --test scripts/e2e/command-center/*.test.mjs
+  scripts/e2e-command-center-curve.test.mjs`: the command-center baseline
+  script (`pnpm test:command-center-baseline`). It includes the Q0 qualification
+  manifest/validation harness and the pre-existing curve export test; the latter
+  requires `PI_SCRATCH_DIR` to name an isolated scratch directory.

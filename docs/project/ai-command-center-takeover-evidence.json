@@ -1,0 +1,762 @@
+{
+  "version": 1,
+  "kind": "authorized-uncommitted-takeover",
+  "authorization": "User selected \"authorize takeover and integration of the 24 uncommitted changes\" in this session.",
+  "createdAt": "2026-11-11T01:19:40.564Z",
+  "sourceWorktree": "D:/Packages/PI-Desktop/worktrees/owner-local-control",
+  "sourceHead": "1cdb4ce1d797ab94b024a2c478ecd01d50cb2b2f",
+  "targetHead": "1cdb4ce1d797ab94b024a2c478ecd01d50cb2b2f",
+  "fileCount": 58,
+  "files": [
+    {
+      "path": "apps/desktop/electron/main/runtime/handoff-attachment.ts",
+      "status": "??",
+      "sourceBytes": 2934,
+      "sourceSha256": "b7d2320f4ea4600b724cf8fe6f40781b98f76a1c01406978bfa94600a5083879",
+      "bytes": 2934,
+      "sha256": "b7d2320f4ea4600b724cf8fe6f40781b98f76a1c01406978bfa94600a5083879",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/CommandCenterHistoryPage.tsx",
+      "status": "??",
+      "sourceBytes": 2912,
+      "sourceSha256": "3717370f0da31f4e09fc426cdab4450e487e9bcf24678428b8f1e6e5c2ce66c8",
+      "bytes": 2912,
+      "sha256": "3717370f0da31f4e09fc426cdab4450e487e9bcf24678428b8f1e6e5c2ce66c8",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/CommandCenterOverview.tsx",
+      "status": "??",
+      "sourceBytes": 3961,
+      "sourceSha256": "033f7e6fbea2dec479ea7c908c49e56a04d285283ee5b1aff80f97abfcea5b88",
+      "bytes": 3961,
+      "sha256": "033f7e6fbea2dec479ea7c908c49e56a04d285283ee5b1aff80f97abfcea5b88",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/CommandCenterReceipts.tsx",
+      "status": "??",
+      "sourceBytes": 2195,
+      "sourceSha256": "7338cd6d6d6e4cf6072a781df9ad70a5156fbb07f667df3fc44cb92261e8eb27",
+      "bytes": 2195,
+      "sha256": "7338cd6d6d6e4cf6072a781df9ad70a5156fbb07f667df3fc44cb92261e8eb27",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/CommandCenterSurface.tsx",
+      "status": "??",
+      "sourceBytes": 5986,
+      "sourceSha256": "3d3d84a44bebe39efb2a48aebe2221378f0f5d272289631b78d0a0e02a5f0b27",
+      "bytes": 5986,
+      "sha256": "3d3d84a44bebe39efb2a48aebe2221378f0f5d272289631b78d0a0e02a5f0b27",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/CommandCenterTaskList.tsx",
+      "status": "??",
+      "sourceBytes": 2858,
+      "sourceSha256": "3bd5ecc670ec30c4fb855d0ce39fd1ee7be3c4a5a02ba80cd3339907b1a651a5",
+      "bytes": 2858,
+      "sha256": "3bd5ecc670ec30c4fb855d0ce39fd1ee7be3c4a5a02ba80cd3339907b1a651a5",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/CommandCenterToolbar.tsx",
+      "status": "??",
+      "sourceBytes": 3777,
+      "sourceSha256": "f9d49c2c8a25a605b53b99ac93ab96d1d84f23cf71ba36a33e671c463329c14a",
+      "bytes": 3777,
+      "sha256": "f9d49c2c8a25a605b53b99ac93ab96d1d84f23cf71ba36a33e671c463329c14a",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/CommandCenterWorkspaceEntries.tsx",
+      "status": "??",
+      "sourceBytes": 3830,
+      "sourceSha256": "4df16aac40efce4279046aaec7dea30004cbbbcd242ac53e6c6883d8e56e132c",
+      "bytes": 3830,
+      "sha256": "4df16aac40efce4279046aaec7dea30004cbbbcd242ac53e6c6883d8e56e132c",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/CommandCenterWorkspacePage.tsx",
+      "status": "??",
+      "sourceBytes": 6788,
+      "sourceSha256": "a9d2d8186df9cff8dbc45dfc136781fd68c490eb0214a2572e2153f68c14efb3",
+      "bytes": 6788,
+      "sha256": "a9d2d8186df9cff8dbc45dfc136781fd68c490eb0214a2572e2153f68c14efb3",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/index.ts",
+      "status": "??",
+      "sourceBytes": 1302,
+      "sourceSha256": "f9b0a3ce8d08eb291612d823da5bc05e330d562e4ed08e3a371c00b35110778f",
+      "bytes": 1302,
+      "sha256": "f9b0a3ce8d08eb291612d823da5bc05e330d562e4ed08e3a371c00b35110778f",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/locales/en.json",
+      "status": "??",
+      "sourceBytes": 3653,
+      "sourceSha256": "c7e8657c22e92969d4d9d3e2c7828a8d288a8c06ce01a2f8203f63494db3436c",
+      "bytes": 3653,
+      "sha256": "c7e8657c22e92969d4d9d3e2c7828a8d288a8c06ce01a2f8203f63494db3436c",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/locales/zh-CN.json",
+      "status": "??",
+      "sourceBytes": 3668,
+      "sourceSha256": "928ffb0f85b4bbb7cee921172a904f9c44eb3cb5b45b3fb6150c141c673ef38d",
+      "bytes": 3668,
+      "sha256": "928ffb0f85b4bbb7cee921172a904f9c44eb3cb5b45b3fb6150c141c673ef38d",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/strings.ts",
+      "status": "??",
+      "sourceBytes": 2332,
+      "sourceSha256": "ab86a264a734f4d9e748105595873421afdb7fe571ec93130f8e4e13c6cbab1f",
+      "bytes": 2332,
+      "sha256": "ab86a264a734f4d9e748105595873421afdb7fe571ec93130f8e4e13c6cbab1f",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/view/command-center-view.ts",
+      "status": "??",
+      "sourceBytes": 16720,
+      "sourceSha256": "32158e8e7d2176e3a417a13df8f8064bfc2f63f9084a81dbf5ea66586ac231cc",
+      "bytes": 16720,
+      "sha256": "32158e8e7d2176e3a417a13df8f8064bfc2f63f9084a81dbf5ea66586ac231cc",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/src/components/command-center/view/use-command-center-view.ts",
+      "status": "??",
+      "sourceBytes": 844,
+      "sourceSha256": "82742005c0026f2cf8c87aae1ddb96b7b504329c68a25eac4e766bc4a4388725",
+      "bytes": 844,
+      "sha256": "82742005c0026f2cf8c87aae1ddb96b7b504329c68a25eac4e766bc4a4388725",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/test/command-center-components.test.mjs",
+      "status": "??",
+      "sourceBytes": 14737,
+      "sourceSha256": "7672fac25f5820f5b332a885ff613a9ee84489cb92a0630b1570555a015e7d84",
+      "bytes": 14737,
+      "sha256": "7672fac25f5820f5b332a885ff613a9ee84489cb92a0630b1570555a015e7d84",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/test/command-center-user-path.test.mjs",
+      "status": "??",
+      "sourceBytes": 10701,
+      "sourceSha256": "3ca81d842163262ca4c4a38320044b8ca151289b61a34a747da680b2c79f425a",
+      "bytes": 10701,
+      "sha256": "3ca81d842163262ca4c4a38320044b8ca151289b61a34a747da680b2c79f425a",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/test/command-center-view.test.mjs",
+      "status": "??",
+      "sourceBytes": 12732,
+      "sourceSha256": "3255b79c28e3a37e7b6b5439eb6c9482148f8484f1b67ecc5aa39493cd753d81",
+      "bytes": 12732,
+      "sha256": "3255b79c28e3a37e7b6b5439eb6c9482148f8484f1b67ecc5aa39493cd753d81",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "apps/desktop/test/handoff-attachment.test.mjs",
+      "status": "??",
+      "sourceBytes": 12012,
+      "sourceSha256": "de57b8bba087e824a663eb10f36f7fced938c5753a1234e3f4c9d049ca676c95",
+      "bytes": 12012,
+      "sha256": "de57b8bba087e824a663eb10f36f7fced938c5753a1234e3f4c9d049ca676c95",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/api/projection.rs",
+      "status": "??",
+      "sourceBytes": 2674,
+      "sourceSha256": "6aad5d8fd43e0a2b3b3d35f855fdf39caae0f8cc7edee20d4c68c6e4cc362c18",
+      "bytes": 2674,
+      "sha256": "6aad5d8fd43e0a2b3b3d35f855fdf39caae0f8cc7edee20d4c68c6e4cc362c18",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/api/wire.rs",
+      "status": "??",
+      "sourceBytes": 7704,
+      "sourceSha256": "700464dd067fdf93c2aab94fb8145ae09b924b48d6757c8c5e57c47066a03e84",
+      "bytes": 7704,
+      "sha256": "700464dd067fdf93c2aab94fb8145ae09b924b48d6757c8c5e57c47066a03e84",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/fixture_tests.rs",
+      "status": "??",
+      "sourceBytes": 19239,
+      "sourceSha256": "fd1c0070028f797bca1cc89a1c590556312d598b7402215b35223359556efd9f",
+      "bytes": 19239,
+      "sha256": "fd1c0070028f797bca1cc89a1c590556312d598b7402215b35223359556efd9f",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/goal_tests.rs",
+      "status": "??",
+      "sourceBytes": 9104,
+      "sourceSha256": "d1102f1491153a6b62f2c6833ef18be90539a160b767c6778befadc06db6508c",
+      "bytes": 9104,
+      "sha256": "d1102f1491153a6b62f2c6833ef18be90539a160b767c6778befadc06db6508c",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/goal.rs",
+      "status": "??",
+      "sourceBytes": 13380,
+      "sourceSha256": "371398034d78c0069e632fd1cc7b98e84b645695a825690f4fba8b7f5dfccf4b",
+      "bytes": 13380,
+      "sha256": "371398034d78c0069e632fd1cc7b98e84b645695a825690f4fba8b7f5dfccf4b",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/identity.rs",
+      "status": "??",
+      "sourceBytes": 17028,
+      "sourceSha256": "bde3474452e3af1828b2d0dee99caaa5751fdb682210dabbeea66f97acb02fae",
+      "bytes": 17028,
+      "sha256": "bde3474452e3af1828b2d0dee99caaa5751fdb682210dabbeea66f97acb02fae",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/key_tests.rs",
+      "status": "??",
+      "sourceBytes": 12506,
+      "sourceSha256": "25b1d9918e72f67035f89aa55e58ee2746f762f227a39786d1830b7fe8ebab55",
+      "bytes": 12506,
+      "sha256": "25b1d9918e72f67035f89aa55e58ee2746f762f227a39786d1830b7fe8ebab55",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/limits.rs",
+      "status": "??",
+      "sourceBytes": 7944,
+      "sourceSha256": "73174cf4ea767c06f7351d3f89e3f6e4570adf7cde06c642e1ba06942fe78643",
+      "bytes": 7944,
+      "sha256": "73174cf4ea767c06f7351d3f89e3f6e4570adf7cde06c642e1ba06942fe78643",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/mod.rs",
+      "status": "??",
+      "sourceBytes": 3836,
+      "sourceSha256": "3e77a62c615e3d8a36cf513f0608ba967989af0a7bb0375852e4875063e3167c",
+      "bytes": 3836,
+      "sha256": "3e77a62c615e3d8a36cf513f0608ba967989af0a7bb0375852e4875063e3167c",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/notification.rs",
+      "status": "??",
+      "sourceBytes": 11486,
+      "sourceSha256": "28f673f698b89d548f30abd35ccd79a3ae1adaed79eb65749e7e205adf5d30a7",
+      "bytes": 11486,
+      "sha256": "28f673f698b89d548f30abd35ccd79a3ae1adaed79eb65749e7e205adf5d30a7",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/payload.rs",
+      "status": "??",
+      "sourceBytes": 11349,
+      "sourceSha256": "2a553b636476baa4677ebe574fff94bbf7e99c936414066b6f48c3f7e7bab759",
+      "bytes": 11349,
+      "sha256": "2a553b636476baa4677ebe574fff94bbf7e99c936414066b6f48c3f7e7bab759",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/receipt_tests.rs",
+      "status": "??",
+      "sourceBytes": 13866,
+      "sourceSha256": "c0c41b048c41bf1cd9fd0747ebc35f3b5313fd407515784876b77f91498c93ab",
+      "bytes": 13408,
+      "sha256": "e91b1faa87bf07a9326b1412d17acf0f6ff6edb33cd122b00beceecfb710cfdc",
+      "modifiedAfterTakeover": true
+    },
+    {
+      "path": "crates/host-core/src/command_center/receipt.rs",
+      "status": "??",
+      "sourceBytes": 20826,
+      "sourceSha256": "73178fb51775dc6f12d0b39482872e5f11e0176571f8e43fd91a265598a4de26",
+      "bytes": 20826,
+      "sha256": "73178fb51775dc6f12d0b39482872e5f11e0176571f8e43fd91a265598a4de26",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/reservation_tests.rs",
+      "status": "??",
+      "sourceBytes": 8941,
+      "sourceSha256": "87901e8dd88ca804391bc7cacfea6825d5c2a83b1cfb31f4e7cc4ee149aad1a9",
+      "bytes": 9320,
+      "sha256": "feb66785db7f4849023b6e2275f121767bb735250a2fbe40e9538a2d85dd672b",
+      "modifiedAfterTakeover": true
+    },
+    {
+      "path": "crates/host-core/src/command_center/reservation.rs",
+      "status": "??",
+      "sourceBytes": 19916,
+      "sourceSha256": "98d44cc927f30250f8e707fae2122bdc9c8761112e11a691f0759f016d68083e",
+      "bytes": 19916,
+      "sha256": "98d44cc927f30250f8e707fae2122bdc9c8761112e11a691f0759f016d68083e",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/schema.rs",
+      "status": "??",
+      "sourceBytes": 10470,
+      "sourceSha256": "0dde52a0b35c4c877a9e9ca12b0d479ee370bd98bfe81789abae83b54dc4e47d",
+      "bytes": 10470,
+      "sha256": "0dde52a0b35c4c877a9e9ca12b0d479ee370bd98bfe81789abae83b54dc4e47d",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/state.rs",
+      "status": "??",
+      "sourceBytes": 7779,
+      "sourceSha256": "171c6649437c1f20f51dc781f34649ce87201972b7539e386b46c31d75d7622b",
+      "bytes": 7779,
+      "sha256": "171c6649437c1f20f51dc781f34649ce87201972b7539e386b46c31d75d7622b",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/tests.rs",
+      "status": "??",
+      "sourceBytes": 19168,
+      "sourceSha256": "48650185d0c964de3932e3afbb94d1c6460f334c8ad4f693597efc86a5c10fd7",
+      "bytes": 19252,
+      "sha256": "f3cc89340dd814a281b4b6d747217784d7e1324a5ba866633b4744aafcb1d42d",
+      "modifiedAfterTakeover": true
+    },
+    {
+      "path": "crates/host-core/src/command_center/tx.rs",
+      "status": "??",
+      "sourceBytes": 1380,
+      "sourceSha256": "772df34b8c6ddc826ab5d2cae036ffcb115ed9e5ea8a4c62c7cc30e805e1441c",
+      "bytes": 1380,
+      "sha256": "772df34b8c6ddc826ab5d2cae036ffcb115ed9e5ea8a4c62c7cc30e805e1441c",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/command_center/workspace.rs",
+      "status": "??",
+      "sourceBytes": 14647,
+      "sourceSha256": "d635f780251f11195d1b9d368fec6859e197d9e59a7c086484e0ec786cc09578",
+      "bytes": 14647,
+      "sha256": "d635f780251f11195d1b9d368fec6859e197d9e59a7c086484e0ec786cc09578",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/db.rs",
+      "status": "M",
+      "sourceBytes": 5808,
+      "sourceSha256": "5e7ccf8586493b4068d89758a8c8fab9c8f3f438ded36263a88b8da00a94f9c2",
+      "bytes": 5869,
+      "sha256": "930de4c7b8daa6c5f78762b6bfb193bf0d8f629af9839ee351873dc57dde1296",
+      "modifiedAfterTakeover": true
+    },
+    {
+      "path": "crates/host-core/src/db/command_center_migration.rs",
+      "status": "??",
+      "sourceBytes": 1955,
+      "sourceSha256": "5a5ba978fb73c999479629f81bc64cd8060a9440707d0d92e7d3fecd5646c021",
+      "bytes": 7742,
+      "sha256": "b44981d4ae1350d8892dd8d706473173a3bfff42ac40f1a86d949247409d5d00",
+      "modifiedAfterTakeover": true
+    },
+    {
+      "path": "crates/host-core/src/db/command_center_tests.rs",
+      "status": "??",
+      "sourceBytes": 6837,
+      "sourceSha256": "d301dfe52709a449163e70c4fd53f845d77ce12e359aedd4d000f5d532f712f2",
+      "bytes": 6837,
+      "sha256": "d301dfe52709a449163e70c4fd53f845d77ce12e359aedd4d000f5d532f712f2",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/main.rs",
+      "status": "M",
+      "sourceBytes": 5793,
+      "sourceSha256": "99f65bfc1274a77e20a773a8978c21aba3e9532c145513f525773d9430b8c6e7",
+      "bytes": 5793,
+      "sha256": "99f65bfc1274a77e20a773a8978c21aba3e9532c145513f525773d9430b8c6e7",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/target.rs",
+      "status": "??",
+      "sourceBytes": 1480,
+      "sourceSha256": "7bf747b5ad9bcb8a8c689677a398041d246dc3f6ffb818750795a86da0f05eb3",
+      "bytes": 1480,
+      "sha256": "7bf747b5ad9bcb8a8c689677a398041d246dc3f6ffb818750795a86da0f05eb3",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "docs/project/ai-command-center-qualification-inputs.md",
+      "status": "??",
+      "sourceBytes": 23799,
+      "sourceSha256": "bbc0041bc393ba34214c666a2a1c1684966bf44f873d395526808555883c3c62",
+      "bytes": 23799,
+      "sha256": "bbc0041bc393ba34214c666a2a1c1684966bf44f873d395526808555883c3c62",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "packages/agent-host/src/command-center-control.ts",
+      "status": "??",
+      "sourceBytes": 9872,
+      "sourceSha256": "3cdf6ed5c5059ef5faa0c0c13d66cb3aacf9173b94184aaa12bd5bca323b015f",
+      "bytes": 9872,
+      "sha256": "3cdf6ed5c5059ef5faa0c0c13d66cb3aacf9173b94184aaa12bd5bca323b015f",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "packages/agent-host/src/command-center-control/contracts.ts",
+      "status": "??",
+      "sourceBytes": 7661,
+      "sourceSha256": "d8f2ffdf4307bcd17fc3f461789c76235934a220838a051b282bb9a9099907fb",
+      "bytes": 7661,
+      "sha256": "d8f2ffdf4307bcd17fc3f461789c76235934a220838a051b282bb9a9099907fb",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "packages/agent-host/src/command-center-control/results.ts",
+      "status": "??",
+      "sourceBytes": 3545,
+      "sourceSha256": "dd074ed8c10cef923bac43ee44f637360943308f4399424fa503244b74796323",
+      "bytes": 3545,
+      "sha256": "dd074ed8c10cef923bac43ee44f637360943308f4399424fa503244b74796323",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "packages/host-runtime/src/attachment/ports.ts",
+      "status": "??",
+      "sourceBytes": 3557,
+      "sourceSha256": "5ba479df6654b671a3126037ae7a5f2c3c40539e1b84cfcd10a728d3368cfa38",
+      "bytes": 3557,
+      "sha256": "5ba479df6654b671a3126037ae7a5f2c3c40539e1b84cfcd10a728d3368cfa38",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "packages/host-runtime/src/attachment/stream.ts",
+      "status": "??",
+      "sourceBytes": 9710,
+      "sourceSha256": "5dea15a752c694d22d2df969de7f2606c1c95319f572e80d1867fcfb4df7563c",
+      "bytes": 9710,
+      "sha256": "5dea15a752c694d22d2df969de7f2606c1c95319f572e80d1867fcfb4df7563c",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "packages/host-runtime/src/command-center-repository.ts",
+      "status": "??",
+      "sourceBytes": 4066,
+      "sourceSha256": "3db28a3d2dd58df203886e8d583170bf5064fe782dfa34fbfe47243a1212ea4b",
+      "bytes": 4066,
+      "sha256": "3db28a3d2dd58df203886e8d583170bf5064fe782dfa34fbfe47243a1212ea4b",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "packages/host-runtime/src/owner-handoff-attachment.test.ts",
+      "status": "??",
+      "sourceBytes": 18331,
+      "sourceSha256": "24b3034286fbfe945b3ff47081db0b91546d37837dcf80d2778298c70d3ac96e",
+      "bytes": 18331,
+      "sha256": "24b3034286fbfe945b3ff47081db0b91546d37837dcf80d2778298c70d3ac96e",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "packages/host-runtime/src/owner-handoff-attachment.ts",
+      "status": "??",
+      "sourceBytes": 11455,
+      "sourceSha256": "6c09ee52675e44f753c427901b687cab1be5173fd0875393b2d5bbc60eb1e98c",
+      "bytes": 11455,
+      "sha256": "6c09ee52675e44f753c427901b687cab1be5173fd0875393b2d5bbc60eb1e98c",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "packages/racp/src/command-center-dispatch.ts",
+      "status": "??",
+      "sourceBytes": 1291,
+      "sourceSha256": "54c8539be2a605a545d974433e6d3b2d545dd53b984284e21b431f2cea1d4e30",
+      "bytes": 1291,
+      "sha256": "54c8539be2a605a545d974433e6d3b2d545dd53b984284e21b431f2cea1d4e30",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "scripts/e2e/command-center/qualification-manifest.mjs",
+      "status": "??",
+      "sourceBytes": 23547,
+      "sourceSha256": "7aed011c8b46c9786d82d5b97760325925fe4163f7db426d2fbe6112e29e58e1",
+      "bytes": 23547,
+      "sha256": "7aed011c8b46c9786d82d5b97760325925fe4163f7db426d2fbe6112e29e58e1",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "scripts/e2e/command-center/qualification-manifest.test.mjs",
+      "status": "??",
+      "sourceBytes": 11312,
+      "sourceSha256": "69b64f9225d9281a66abc13d580e3e3390f36471529f2d97834b8b5968fa231b",
+      "bytes": 11312,
+      "sha256": "69b64f9225d9281a66abc13d580e3e3390f36471529f2d97834b8b5968fa231b",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "scripts/e2e/command-center/qualification-validation.mjs",
+      "status": "??",
+      "sourceBytes": 32134,
+      "sourceSha256": "9c0b161f09d7eee4f96b89bf97c0c507ef27ff4940a62efa9f791ec6fa93994f",
+      "bytes": 32134,
+      "sha256": "9c0b161f09d7eee4f96b89bf97c0c507ef27ff4940a62efa9f791ec6fa93994f",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "scripts/e2e/command-center/qualification-validation.test.mjs",
+      "status": "??",
+      "sourceBytes": 24874,
+      "sourceSha256": "b53c46f10c6d4d48c0788d00ecd2997e701f542a199ce9866c7ad8df8d1e0fa1",
+      "bytes": 24874,
+      "sha256": "b53c46f10c6d4d48c0788d00ecd2997e701f542a199ce9866c7ad8df8d1e0fa1",
+      "modifiedAfterTakeover": false
+    }
+  ],
+  "supplementaryFileCount": 9,
+  "supplementaryFiles": [
+    {
+      "path": "crates/host-core/src/owner_handoff/target/bootstrap.rs",
+      "sourceBytes": 5476,
+      "sourceSha256": "bc4d9ba8c3cd76856ee6c4fd8b91a18167b96044ff0d210251d595b494ed5cec",
+      "bytes": 5476,
+      "sha256": "bc4d9ba8c3cd76856ee6c4fd8b91a18167b96044ff0d210251d595b494ed5cec",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/target/journal.rs",
+      "sourceBytes": 8152,
+      "sourceSha256": "d970b8a7e3605bd5b3a6e05601ca3743e294f2d184ba6d83e923a43a4b947346",
+      "bytes": 8152,
+      "sha256": "d970b8a7e3605bd5b3a6e05601ca3743e294f2d184ba6d83e923a43a4b947346",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/target/preparation.rs",
+      "sourceBytes": 4602,
+      "sourceSha256": "b0f645670137f74ff8946784910f1090951f9ce912c182e18322d6ac6861ba7a",
+      "bytes": 4602,
+      "sha256": "b0f645670137f74ff8946784910f1090951f9ce912c182e18322d6ac6861ba7a",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/target/protocol.rs",
+      "sourceBytes": 4229,
+      "sourceSha256": "f042acee9f1bfb5a2751b2f273439fe20a622423d9a73d95b1a0164517e07bfc",
+      "bytes": 4229,
+      "sha256": "f042acee9f1bfb5a2751b2f273439fe20a622423d9a73d95b1a0164517e07bfc",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/target/ready.rs",
+      "sourceBytes": 5839,
+      "sourceSha256": "bf7ef0c864cc0e48bb1f5c86e4ff65d84099089e0e3d1d92be73e46d72a7d7fe",
+      "bytes": 5839,
+      "sha256": "bf7ef0c864cc0e48bb1f5c86e4ff65d84099089e0e3d1d92be73e46d72a7d7fe",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/target/tests.rs",
+      "sourceBytes": 10796,
+      "sourceSha256": "0ace055dfdd5fea833524af5b3c013b973f011c0cab5b7c03d7c383a9e3d64b6",
+      "bytes": 11134,
+      "sha256": "1ce44f09ab26977c8eca72df403bd31fc63b43d27aeb8da4a727a180fff90d2f",
+      "modifiedAfterTakeover": true
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/target/windows.rs",
+      "sourceBytes": 5039,
+      "sourceSha256": "28c2ddffb06947f65614f8632d6542efa0f53056202c0675c926016e183a615a",
+      "bytes": 5039,
+      "sha256": "28c2ddffb06947f65614f8632d6542efa0f53056202c0675c926016e183a615a",
+      "modifiedAfterTakeover": false
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/target/tests/bootstrap_tests.rs",
+      "sourceBytes": 10778,
+      "sourceSha256": "9b19c3fd0bfd799fe95b2c4e0863fd3d1d8639961cc0259e79b69597bc7d4e6d",
+      "bytes": 11120,
+      "sha256": "8f6f9227f73fce5d7b4ce433b6182bbdddc2ca40ebf691cb8326679ff409c404",
+      "modifiedAfterTakeover": true
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/target/tests/ready_tests.rs",
+      "sourceBytes": 17647,
+      "sourceSha256": "996c486c9f654ea7ebf3687bdbf52adf6091e6a5ae4e34d9c54c21f3f8dd2aa6",
+      "bytes": 17647,
+      "sha256": "996c486c9f654ea7ebf3687bdbf52adf6091e6a5ae4e34d9c54c21f3f8dd2aa6",
+      "modifiedAfterTakeover": false
+    }
+  ],
+  "integrationEdits": [
+    {
+      "path": "packages/agent-host/src/index.ts",
+      "change": "Export ./command-center-control.js so the RACP dispatcher and Rust repository adapter can import the shared control service, contracts and result parser."
+    },
+    {
+      "path": "crates/host-core/src/db.rs",
+      "change": "Bump SCHEMA_VERSION to 31 and re-export the versioned command-center migration."
+    },
+    {
+      "path": "crates/host-core/src/db/repositories.rs",
+      "change": "Fresh creation applies command_center::SCHEMA_DDL; Database::open runs migrate_v30_to_v31 for v30 files and validates cc_* objects on every open."
+    },
+    {
+      "path": "crates/host-core/src/db/command_center_migration.rs",
+      "change": "Add the backup/transaction/version-stamp wrapper migrate_v30_to_v31 and three tests (fresh v31, atomic populated v30 upgrade, non-v30 refusal)."
+    },
+    {
+      "path": "docs/spec/03-runtime/04-data-storage.md",
+      "change": "Record schema v31, the v30 backup, the additive cc_* tables and fail-closed validation."
+    },
+    {
+      "path": ".gitignore",
+      "change": "Re-include crates/host-core/src/owner_handoff/target/ so this source module is not hidden by the global target/ build-output rule."
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/mod.rs",
+      "change": "Declare pub(crate) mod target so the restricted successor bootstrap compiles and its tests run. The CLI entry point is not wired yet."
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/target/tests.rs",
+      "change": "Use the repository target scratch directory instead of the OS temp directory, which this managed host denies to the test process."
+    },
+    {
+      "path": "crates/host-core/src/owner_handoff/target/tests/bootstrap_tests.rs",
+      "change": "Pin the envelope build schema to the current SCHEMA_VERSION; the shared H2 fixture intentionally records schema 30."
+    },
+    {
+      "path": "packages/racp/src/index.ts",
+      "change": "Export the command-center dispatcher factory so a parent can register the methods after wiring the real service. Catalog registration and capability advertisement remain unchanged."
+    },
+    {
+      "path": "packages/racp/src/command-center-dispatch.test.ts",
+      "change": "Add three seam tests for the dispatcher: prefixed method list, namespace stripping with principal forwarding, and refusal of unknown operations."
+    }
+  ],
+  "addedBoundaryTests": [
+    {
+      "path": "packages/agent-host/src/command-center-control.test.ts",
+      "tests": 15,
+      "bytes": 12722,
+      "sha256": "910463aa88804b8f7ce91f1cf57172a7f00eae286a283aee3f664d944fd11485",
+      "covers": "authorization, row filtering, owner fencing, mutation closure, receipt replay/conflict, capability gate, response budget"
+    },
+    {
+      "path": "packages/host-runtime/src/command-center-repository.test.ts",
+      "tests": 7,
+      "bytes": 6957,
+      "sha256": "9057a90175974f44fb035d333a0d6d2962da461c135112e2be90371a444ce4b0",
+      "covers": "private stdio payload shape, CC_ error mapping, no retry, owner change, malformed result, receipt binding"
+    },
+    {
+      "path": "packages/racp/src/command-center-dispatch.test.ts",
+      "tests": 3,
+      "bytes": 2131,
+      "sha256": "7fb31448a5eae3c8ccbf2b7a292e9c8eebd652bbc87a742e11ae47eed952699c",
+      "covers": "prefixed method advertisement, namespace stripping, principal forwarding, unknown-operation refusal"
+    }
+  ],
+  "testFixes": [
+    {
+      "path": "crates/host-core/src/command_center/receipt_tests.rs",
+      "reason": "The taken-over test expected accepted → conflicted, but the frozen shared C1 table forbids that transition. The test now expects CC_TRANSITION_INVALID and keeps the ledger-retention assertion."
+    },
+    {
+      "path": "crates/host-core/src/command_center/reservation_tests.rs",
+      "reason": "The taken-over test created a fourth enabled workspace, which the frozen three-workspace quota rejects. It now exercises the Host cap through a 37th admission into an existing workspace (the Host check runs first) and asserts the fourth enabled workspace is refused."
+    },
+    {
+      "path": "crates/host-core/src/command_center/tests.rs",
+      "reason": "The migration test created a file under temp_dir(), which this managed host denies for the test process; existing repo tempdir tests fail the same way. It now uses tempdir_in on the repository target scratch directory and still proves additive migration plus idempotence."
+    }
+  ],
+  "verification": {
+    "rust": {
+      "check": "pass-cargo-check-p-host-core-offline",
+      "commandCenterTests": {
+        "passed": 59,
+        "failed": 0,
+        "command": "cargo test -p host-core --locked --offline command_center"
+      },
+      "migration": "pass-schema-v31-versioned-upgrade-with-v30-backup-and-3-tests",
+      "ownerTargetTests": {
+        "passed": 16,
+        "failed": 0,
+        "command": "cargo test -p host-core --locked --offline owner_handoff::target"
+      }
+    },
+    "javascript": {
+      "foundationsIntegrated": {
+        "passed": 363,
+        "files": 30
+      },
+      "agentHostPackage": {
+        "passed": 151,
+        "files": 12
+      },
+      "sharedSource": {
+        "passed": 808,
+        "files": 72
+      },
+      "clientPackage": {
+        "passed": 259,
+        "files": 15
+      },
+      "racpPackage": {
+        "passed": 33,
+        "files": 4
+      },
+      "desktopCommandCenterAndAttachment": {
+        "passed": 25,
+        "command": "node --test apps/desktop/test/command-center-*.test.mjs apps/desktop/test/handoff-attachment.test.mjs"
+      },
+      "hostRuntimeAttachmentAndAdapter": {
+        "passed": 36,
+        "command": "node packages/agent-host/node_modules/vitest/vitest.mjs run --config .pi/command-center-continuation/vitest.host-runtime-takeover.config.mjs"
+      },
+      "qualificationHarness": {
+        "passed": 24,
+        "command": "node --test scripts/e2e/command-center/qualification-*.test.mjs"
+      },
+      "baselineScript": {
+        "passed": 48,
+        "requires": "PI_SCRATCH_DIR",
+        "command": "node --test scripts/e2e/command-center/*.test.mjs scripts/e2e-command-center-curve.test.mjs"
+      },
+      "isolatedTypechecks": [
+        "host-runtime attachment/repository files",
+        "desktop command-center components and electron handoff attachment"
+      ],
+      "consumerChecks": {
+        "source": 12,
+        "emittedArtifacts": 12
+      }
+    },
+    "notRunOrBlocked": [
+      "Production wiring: versioned schema migration, RACP/IPC registration, capability advertisement, Desktop route mounting and host-runtime composition are NOT implemented by the taken-over code.",
+      "Full host-core suite: many existing tests require OS temp directories that this host denies to the test process; only the command-center module was run and reported.",
+      "host-runtime and agent-runtime package builds: provisioned Pi dependency copy lacks this branch patches (pre-existing environment limitation).",
+      "Real Electron/browser/mobile/device journeys, paid providers and native programs were not used."
+    ],
+    "commitCreated": false
+  }
+}

@@ -20,6 +20,7 @@ mod source_read;
 pub(crate) mod startup;
 #[cfg(windows)]
 mod stdio;
+pub(crate) mod target;
 #[cfg(any(windows, test))]
 mod transitions;
 

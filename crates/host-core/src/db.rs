@@ -7,7 +7,7 @@ pub(crate) use serde_json::Value;
 pub(crate) use std::path::{Path, PathBuf};
 
 /// Current SQLite schema version.
-pub const SCHEMA_VERSION: i64 = 30;
+pub const SCHEMA_VERSION: i64 = 31;
 
 /// Absolute approval deadline for a newly submitted Plan or Goal proposal.
 pub const PLAN_APPROVAL_TIMEOUT_MS: i64 = 30 * 60 * 1000;
@@ -15,6 +15,8 @@ pub const PLAN_APPROVAL_TIMEOUT_MS: i64 = 30 * 60 * 1000;
 /// Durable notification rows kept globally.
 pub const NOTIFICATION_KEEP: i64 = 200;
 
+pub(crate) mod command_center_migration;
+pub(crate) use command_center_migration::migrate_v30_to_v31;
 mod migrations;
 mod mode_runs_migration;
 mod model;

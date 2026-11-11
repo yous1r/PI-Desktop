@@ -5920,6 +5920,11 @@ eleven-tool-round desktop paths are verified by
 ## 8. 可追溯性矩阵
 | 验收 | 应用场景 |
 |---|---|
+| Quality — Command-center P0 runtime baseline (partial evidence for proposed AC-07) | [E2E-COMMAND-CENTER-runtime-baseline](/spec/06-delivery/04-e2e-test-plan#e2e-command-center-runtime-baseline) |
+| Quality — Command-center one-hour fixed-context diagnostic | [E2E-COMMAND-CENTER-runtime-soak](/spec/06-delivery/04-e2e-test-plan#e2e-command-center-runtime-soak) |
+| C / Security / Quality — Command-center internal paging and portable receipt consumers | [E2E-COMMAND-CENTER-observation-foundations](/spec/06-delivery/04-e2e-test-plan#e2e-command-center-observation-foundations) |
+| C / Quality — Bounded replay and explicit snapshot recovery | [E2E-RACP-replay-byte-budget](/spec/06-delivery/04-e2e-test-plan#e2e-racp-replay-byte-budget) |
+| C / Security / Compatibility — Exclusive Host data-directory startup | [E2E-HOST-data-directory-owner](/spec/06-delivery/04-e2e-test-plan#e2e-host-data-directory-owner) |
 | C / E / Security / Quality — Gemini work setup | E2E-LIVE-VOICE-gemini-work-schema |
 | C / Quality — Continue after malformed tool output | E2E-RUNTIME-malformed-tool-call-continue-recovery |
 | B / Security / Quality — Optional provider client certificate requests | E2E-PROVIDER-optional-client-certificate |

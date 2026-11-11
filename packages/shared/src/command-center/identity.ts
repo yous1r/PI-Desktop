@@ -15,6 +15,23 @@ export const CommandCenterHostIdSchema = Type.String({
   minLength: 1, maxLength: 128, pattern: "^[^\\u0000\\s/\\\\]+$",
 });
 
+/**
+ * Local observation binding established by a trusted transport adapter. This
+ * shape validates existing fence fields; it is not a credential or RPC request.
+ */
+const observationOwnerSchema = Type.Object({
+  hostId: CommandCenterHostIdSchema,
+  expectedHostEpoch: CommandCenterUuidSchema,
+}, { additionalProperties: false });
+export type CommandCenterObservationOwner = Static<typeof observationOwnerSchema>;
+
+export function parseCommandCenterObservationOwner(value: unknown): CommandCenterObservationOwner {
+  if (!Value.Check(observationOwnerSchema, value)) throw new Error("COMMAND_CENTER_INVALID_OWNER");
+  const owner = { hostId: value.hostId, expectedHostEpoch: value.expectedHostEpoch };
+  if (!Value.Check(observationOwnerSchema, owner)) throw new Error("COMMAND_CENTER_INVALID_OWNER");
+  return owner;
+}
+
 const fenceFields = {
   hostId: CommandCenterHostIdSchema,
   /** Exclusive execution-owner generation; changes on Host restart. */
