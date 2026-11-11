@@ -23,6 +23,7 @@
     "test:e2e": "node scripts/e2e-smoke.mjs",
     "test:command-center-baseline": "node --test scripts/e2e/command-center/*.test.mjs scripts/e2e-command-center-curve.test.mjs",
     "test:e2e:command-center-baseline": "node scripts/e2e-command-center-baseline.mjs",
+    "test:e2e:command-center-control": "node scripts/e2e-command-center-control.mjs",
     "test:e2e:host-data-owner": "node scripts/e2e-host-data-owner.mjs",
     "test:e2e:relocation-capability-keys": "node scripts/e2e-relocation-capability-keys.mjs",
     "test:e2e:background-task-stop": "node scripts/e2e-background-task-stop.mjs",
