@@ -61,7 +61,7 @@ try {
   passed('production client refuses a live directory owner and confirms the original restricted child exit');
 
   const capability = randomUUID();
-  const buildIdentity = { sha256: report.binarySha256, schema: 30, protocol: 1 };
+  const buildIdentity = { sha256: report.binarySha256, schema: 31, protocol: 1 };
   let record = { version: 1, id: randomUUID(), profile: owner.profile, sourceEpoch: owner.epoch, targetEpoch: randomUUID(),
     sourceBuild: buildIdentity, targetBuild: buildIdentity, requester: owner.coordinator, capabilityHash: hash(capability),
     revision: 1, phase: 'prepared', recoveryAttempt: 0, lastFailure: null };

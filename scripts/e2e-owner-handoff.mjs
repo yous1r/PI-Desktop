@@ -23,7 +23,7 @@ const report = { status: 'FAIL', candidate: git('rev-parse', 'HEAD'), base: git(
   scriptSha256: hash(await readFile(fileURLToPath(import.meta.url))),
   helperSha256: hash(await readFile(new URL('./e2e/owner-handoff-fixture.mjs', import.meta.url))),
   checks: [], cleanupConfirmed: false, fixtureMode: 'durable fault injection; production restricted bootstrap' };
-const build = { sha256: report.binarySha256, schema: 30, protocol: 1 };
+const build = { sha256: report.binarySha256, schema: 31, protocol: 1 };
 const runtime = join(directory, 'runtime.mjs');
 await writeFile(runtime, `import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';

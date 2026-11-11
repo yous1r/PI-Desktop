@@ -30,7 +30,7 @@ const report = { status: 'FAIL', candidate: git('rev-parse', 'HEAD'), base: git(
   checks: [], cleanupConfirmed: false,
   scope: 'original source -> authenticated framed stdio -> real Rust exchange -> Desktop coordinator NEGATIVE only; '
     + 'no handoff completes, no native closure is certified, no Sidecar is acquired' };
-const build = { sha256: report.binarySha256, schema: 30, protocol: 1 };
+const build = { sha256: report.binarySha256, schema: 31, protocol: 1 };
 
 // Bundle the current production sources instead of a built artifact: the
 // Desktop coordinator, the exchange subscription, the inventory and the shared

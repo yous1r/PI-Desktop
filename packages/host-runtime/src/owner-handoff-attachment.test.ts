@@ -4,7 +4,7 @@ import type { OwnerHandoffRecord, RacpEventEnvelope } from "@pi-desktop/shared";
 
 const uuid = (n: number) => `11111111-1111-4111-8111-${n.toString().padStart(12, "0")}`;
 const record: OwnerHandoffRecord = { version: 1, id: uuid(1), profile: "a".repeat(64), sourceEpoch: uuid(2), targetEpoch: uuid(3),
-  sourceBuild: { sha256: "b".repeat(64), schema: 30, protocol: 1 }, targetBuild: { sha256: "b".repeat(64), schema: 30, protocol: 1 },
+  sourceBuild: { sha256: "b".repeat(64), schema: 31, protocol: 1 }, targetBuild: { sha256: "b".repeat(64), schema: 31, protocol: 1 },
   requester: { pid: 123, createdAt: "1", sid: "S-1-5-21", image: "fixture.exe" }, capabilityHash: "c".repeat(64),
   revision: 6, phase: "ready", recoveryAttempt: 0, lastFailure: null };
 const ready = { version: 1, transferId: record.id, profileId: record.profile, ownerEpoch: record.targetEpoch,

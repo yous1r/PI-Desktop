@@ -13,7 +13,7 @@ export async function verifyOwnerQueries(source, profile, queryIdentity, readTra
   const binding = { host: source, sourceEpoch: identity.sourceEpoch, profileId: identity.profileId };
   const owner = database(profile, db => JSON.parse(db.prepare('SELECT record_json FROM execution_owners WHERE epoch=?').get(identity.sourceEpoch).record_json));
   assert.equal(owner.profile, identity.profileId);
-  const build = { sha256: 'b'.repeat(64), schema: 30, protocol: 1 };
+  const build = { sha256: 'b'.repeat(64), schema: 31, protocol: 1 };
   const record = { version: 1, id: randomUUID(), profile: identity.profileId, sourceEpoch: identity.sourceEpoch,
     targetEpoch: randomUUID(), sourceBuild: build, targetBuild: build, requester: owner.coordinator,
     capabilityHash: 'c'.repeat(64), revision: 1, phase: 'cancelled', recoveryAttempt: 0, lastFailure: null };

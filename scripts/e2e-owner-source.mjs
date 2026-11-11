@@ -53,7 +53,7 @@ try {
   const before = rows(profile);
   const request = parseOwnerHandoffSourceRequest({ protocol: 'owner-transfer', version: 1, command: {
     version: 1, operation: 'preflight', requestId: randomUUID(), sourceEpoch: identity.sourceEpoch,
-    targetBuild: { sha256: report.binarySha256, schema: 30, protocol: 1 } } });
+    targetBuild: { sha256: report.binarySha256, schema: 31, protocol: 1 } } });
   const reply = parseOwnerHandoffSourceReply(await query(profile, request), request, identity.profileId);
   assert.equal(reply.result.requiresIdle, true);
   assert.deepEqual(rows(profile), before);
