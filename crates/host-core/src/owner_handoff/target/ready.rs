@@ -25,9 +25,18 @@ impl EventStream<'_> {
     }
 }
 
-/// Trusted, process-local integration seam, implemented by an owner of the
-/// ORIGINAL AppState/recovery completion, closed Rust + Node admission holds,
-/// initialized idle sidecar, capability publication and live event stream.
+/// Trusted, process-local integration seam. The full serving implementation is
+/// owned by the original AppState/recovery completion, closed Rust + Node
+/// admission holds, initialized idle sidecar, capability publication and live
+/// event stream.
+///
+/// The restricted `--owner-target` slice supplies a narrower implementation
+/// (`ready_resources::TargetReadyResources`) that proves only the retained
+/// claim authority, exact target generation, build, capability hash, event
+/// epoch and ready version. It sets `allows_unrooted_generation` explicitly;
+/// every other implementation keeps the exact live Registry/Lease/Job/root
+/// requirement (default false). Full serving still requires replacing that
+/// restricted provider with the original-resource implementation below.
 ///
 /// `with_ready` MUST refuse incomplete initialization, uncertainty, disposal or
 /// pending work. It must verify the exact current Registry/Lease/Job/root and
@@ -48,6 +57,12 @@ pub(crate) trait ReadyResources {
         generation: &Generation,
         commit: impl FnOnce(EventStream<'_>) -> Result<T>,
     ) -> Result<T>;
+    /// Restricted target initialization may publish Ready before a sidecar
+    /// root exists. Every other implementation keeps the exact live
+    /// Registry/Lease/Job/root requirement (default false).
+    fn allows_unrooted_generation(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -97,6 +112,7 @@ impl<R: ReadyResources> ReadyTarget<R> {
             generation: registered.generation.clone(),
             event_epoch: stream.epoch.into(),
             protocol_version: stream.protocol_version,
+            restricted: resources.allows_unrooted_generation(),
         };
         intent.validate()?;
         Ok(Self {

@@ -7,10 +7,12 @@ import {
   HANDOFF_TARGET_READY_TIMEOUT,
   HANDOFF_TARGET_READY_UNAVAILABLE,
   OwnerHandoffTargetSupervisor,
+  createOwnerHandoffTargetReadyRequest,
   validateOwnerHandoffTargetClaimReceipt,
   validateOwnerHandoffTargetReadyOutcome,
   type OwnerHandoffReadyOutcome,
   type OwnerHandoffTargetEnvelope,
+  type OwnerHandoffTargetReadyRequest,
   type OwnerHandoffTargetReadyResources,
   type OwnerHandoffTargetTransport,
 } from "./owner-handoff-target.js";
@@ -51,6 +53,21 @@ class FakeTransport implements OwnerHandoffTargetTransport {
   dispose(): Promise<void> {
     this.disposed += 1;
     return this.disposeFailure ? Promise.reject(this.disposeFailure) : Promise.resolve();
+  }
+}
+class ReadyTransport extends FakeTransport {
+  readonly readyCalls: OwnerHandoffTargetReadyRequest[] = [];
+  readonly readyTimeouts: number[] = [];
+  constructor(
+    private readonly readyResponder: (request: OwnerHandoffTargetReadyRequest) => Promise<OwnerHandoffReadyOutcome>,
+    responder?: Responder,
+  ) {
+    super(responder);
+  }
+  ready(request: OwnerHandoffTargetReadyRequest, timeoutMs: number): Promise<OwnerHandoffReadyOutcome> {
+    this.readyCalls.push(request);
+    this.readyTimeouts.push(timeoutMs);
+    return this.readyResponder(request);
   }
 }
 function build(overrides: Partial<ConstructorParameters<typeof OwnerHandoffTargetSupervisor>[0]> = {}) {
@@ -98,6 +115,57 @@ describe("restricted target supervisor", () => {
     await supervisor.dispose();
     expect(transport.disposed).toBe(1);
     expect(supervisor.state).toBe("ready");
+  });
+
+  it("sends exactly one ready command to the same claimed process and accepts its ReadyOutcome", async () => {
+    const transport = new ReadyTransport(() => Promise.resolve(readyOutcome));
+    const states: string[] = [];
+    const supervisor = new OwnerHandoffTargetSupervisor({
+      transport, profileId, targetBuild, claim, onState: (state) => states.push(state),
+    });
+    await expect(supervisor.start()).resolves.toEqual(readyOutcome);
+    expect(transport.readyCalls).toHaveLength(1);
+    expect(transport.readyCalls[0]).toMatchObject({
+      version: 1,
+      operation: "ready",
+      transferId: claim.transfer_id,
+      targetEpoch: claim.target_epoch,
+      expectedRevision: claim.expected_revision + 1,
+    });
+    expect(transport.readyCalls[0]!.requestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+    expect(transport.readyTimeouts).toEqual([30_000]);
+    expect(states).toEqual(["claim-sent", "claimed", "ready"]);
+    expect(transport.disposed).toBe(0);
+    await supervisor.dispose();
+  });
+
+  it("fails closed on a classified ready refusal from the same process", async () => {
+    const transport = new ReadyTransport(() => Promise.reject(
+      Object.assign(new Error("HANDOFF_TARGET_NOT_INITIALIZED"), { errorCode: "HANDOFF_TARGET_NOT_INITIALIZED" }),
+    ));
+    const supervisor = new OwnerHandoffTargetSupervisor({ transport, profileId, targetBuild, claim });
+    await expect(supervisor.start()).rejects.toMatchObject({ errorCode: "HANDOFF_TARGET_NOT_INITIALIZED" });
+    expect(supervisor.state).toBe("ready-refused");
+    expect(supervisor.ready).toBeUndefined();
+    expect(transport.disposed).toBe(1);
+  });
+
+  it("validates the one-shot ready request identity before it is written", () => {
+    const request = createOwnerHandoffTargetReadyRequest(claimedRecord, "44444444-4444-4444-8444-444444444444");
+    expect(request).toEqual({
+      version: 1,
+      operation: "ready",
+      requestId: "44444444-4444-4444-8444-444444444444",
+      transferId: claim.transfer_id,
+      targetEpoch: claim.target_epoch,
+      expectedRevision: claim.expected_revision + 1,
+    });
+    expect(() => createOwnerHandoffTargetReadyRequest(claimedRecord, "not-a-uuid"))
+      .toThrow("HANDOFF_INVALID_REQUEST");
+    expect(() => createOwnerHandoffTargetReadyRequest({ ...claimedRecord, revision: 0 }, "44444444-4444-4444-8444-444444444444"))
+      .toThrow("HANDOFF_INVALID_REQUEST");
   });
 
   it("refuses a receipt with any profile, transfer, epoch, revision, phase or build drift", async () => {

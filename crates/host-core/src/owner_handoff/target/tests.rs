@@ -17,6 +17,7 @@ use std::sync::Arc;
 mod argv_tests;
 mod bootstrap_tests;
 mod entry_tests;
+mod ready_resources_tests;
 mod ready_tests;
 
 fn id() -> String {

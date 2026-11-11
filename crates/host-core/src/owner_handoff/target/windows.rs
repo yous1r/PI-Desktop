@@ -1,6 +1,11 @@
-//! Capture native identity once, claim on inherited framed stdio, and return to
-//! main in this SAME process. Never launch another serving Host after claiming.
-use super::{bootstrap, BootstrapRequest, TargetBootstrap};
+//! Capture native identity once, claim on inherited framed stdio, publish
+//! Restricted Ready in this SAME process, and never launch another serving Host.
+use super::{
+    bootstrap,
+    protocol::{ready_error_reply, ready_reply},
+    ready_resources::TargetReadyPublisher,
+    BootstrapRequest, ReadyRequest, TargetBootstrap,
+};
 use crate::data_directory_owner::{DataDirectoryOwner, IN_USE_MARKER};
 use crate::execution_fence::native::{exited, Coordinator};
 use crate::owner_control::identity::Identity;
@@ -24,9 +29,10 @@ pub(crate) struct NativeTarget {
     /// Move these captured originals into Registry's adopt constructor. That
     /// constructor must compare the owner and verify this coordinator is alive;
     /// it must not mint a fresh epoch, capture a replacement parent, or insert
-    /// another execution_owners row.
+    /// another execution_owners row. Retained here for the serving slice.
     pub(crate) identity: Identity,
     pub(crate) coordinator: Arc<Coordinator>,
+    pub(crate) build: Build,
 }
 
 /// Call before AppState, migration, ordinary startup inspection, runtime launch
@@ -74,6 +80,7 @@ pub(crate) async fn receive(directory: &Path) -> Result<NativeTarget> {
                 bootstrap,
                 identity,
                 coordinator,
+                build,
             });
         }
         let recovered =
@@ -91,6 +98,51 @@ pub(crate) async fn receive(directory: &Path) -> Result<NativeTarget> {
         request = BootstrapRequest::parse(&frame)?;
     }
     bail!("HANDOFF_BOOTSTRAP_LIMIT")
+}
+
+/// Publish Ready after one claim. Any refusal sends a bounded classified error
+/// frame when the channel is still usable, then returns the error so `main`
+/// exits without ordinary startup. Success leaves the process waiting for the
+/// supervisor to close the private channel; this build has no serving loop yet.
+pub(crate) async fn publish_ready(target: NativeTarget) -> Result<()> {
+    let NativeTarget {
+        bootstrap,
+        identity: _identity,
+        coordinator,
+        build,
+    } = target;
+    let result = async {
+        let publisher = TargetReadyPublisher::new(bootstrap, build)?;
+        let prepared = publisher.prepare()?;
+        let frame = stdio::receive(&coordinator)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("HANDOFF_READY_EOF"))?;
+        let request = ReadyRequest::parse(&frame)?;
+        let outcome = prepared.commit(&request)?;
+        stdio::send(&coordinator, ready_reply(&outcome)?).await?;
+        Ok::<(), anyhow::Error>(())
+    }
+    .await;
+    if let Err(error) = result {
+        if let Ok(reply) = ready_error_reply(&error) {
+            // Best effort: the classified code remains on stderr via `main`
+            // even when the peer is already gone.
+            let _ = stdio::send(&coordinator, reply).await;
+        }
+        return Err(error);
+    }
+    // The same claimed process stays alive until the supervisor finishes with
+    // it. A second command is not part of this slice and must not be replayed.
+    // Idle waits poll the bounded pipe reader; each retry is fresh I/O, not a
+    // protocol resend.
+    loop {
+        match stdio::receive(&coordinator).await {
+            Ok(None) => return Ok(()),
+            Ok(Some(_)) => bail!("HANDOFF_TARGET_COMMAND_UNSUPPORTED"),
+            Err(error) if error.to_string() == "HANDOFF_IO_TIMEOUT" => continue,
+            Err(error) => return Err(error),
+        }
+    }
 }
 
 fn ensure_coordinator(coordinator: &Coordinator) -> Result<()> {

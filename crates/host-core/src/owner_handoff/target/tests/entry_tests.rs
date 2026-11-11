@@ -32,19 +32,18 @@ async fn missing_profile_refuses_before_creating_state_or_opening_appstate() {
 }
 
 #[tokio::test]
-async fn a_claim_without_supervisor_adoption_stops_with_the_documented_code() {
+async fn a_successful_receive_is_returned_without_an_artifact_refusal() {
     let profile = scratch();
     let mut received = Vec::new();
-    let error = dispatch(profile.path().to_path_buf(), |directory| {
+    let value = dispatch(profile.path().to_path_buf(), |directory| {
         received.push(directory);
-        std::future::ready(Ok::<(), anyhow::Error>(()))
+        std::future::ready(Ok::<u8, anyhow::Error>(7))
     })
     .await
-    .unwrap_err()
-    .to_string();
-    assert!(error.contains(ADOPTION_UNAVAILABLE), "{error}");
+    .unwrap();
+    assert_eq!(value, 7);
     assert_eq!(received, vec![profile.path().to_path_buf()]);
-    // The refusal must not fall back to data-directory creation or AppState.
+    // Dispatch itself performs no data-directory or AppState side effect.
     assert_eq!(entries(profile.path()), 0);
 }
 
@@ -70,23 +69,10 @@ async fn absent_or_invalid_private_transport_is_propagated_and_never_falls_throu
 }
 
 #[test]
-fn documented_refusal_is_a_stable_supervisor_visible_handoff_code() {
-    // The Node supervisor classifies refusals through this HANDOFF_* vocabulary;
-    // a generated, localized or path-bearing message cannot be consumed safely.
-    assert_eq!(ADOPTION_UNAVAILABLE, "HANDOFF_TARGET_ADOPTION_UNAVAILABLE");
-    let suffix = ADOPTION_UNAVAILABLE
-        .strip_prefix("HANDOFF_")
-        .expect("classified HANDOFF_ code");
-    assert!(!suffix.is_empty() && suffix.len() <= 120);
-    assert!(suffix
-        .bytes()
-        .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_'));
-}
-
-#[test]
-fn dispatch_tail_never_opens_appstate_adopts_or_serves_after_claim() {
+fn target_run_claims_then_publishes_ready_before_any_ordinary_startup() {
     let target = include_str!("../../target.rs");
-    assert!(target.contains("bail!(\"{ADOPTION_UNAVAILABLE}\")"));
+    assert!(target.contains("windows::receive(directory)"));
+    assert!(target.contains("windows::publish_ready(native)"));
     for forbidden in [
         "AppState::open",
         "ReadyTarget::new",
@@ -97,7 +83,7 @@ fn dispatch_tail_never_opens_appstate_adopts_or_serves_after_claim() {
     ] {
         assert!(
             !target.contains(forbidden),
-            "target dispatch must not reach {forbidden} before Ready publication"
+            "target entry must not reach {forbidden} before Ready publication"
         );
     }
 }

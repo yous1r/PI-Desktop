@@ -17,6 +17,7 @@ vi.mock("node:child_process", () => ({
 import {
   launchOwnerHandoffTarget,
   OwnerHandoffTargetProcess,
+  parseOwnerHandoffTargetReadyResponse,
 } from "./owner-handoff-target-process.js";
 import type { OwnerHandoffReadyOutcome } from "./owner-handoff-target.js";
 
@@ -65,7 +66,7 @@ function frame(value: unknown): Buffer {
   body.copy(bytes, 4);
   return bytes;
 }
-function setup(ready: OwnerHandoffReadyOutcome = readyOutcome) {
+function setup() {
   const child = new Child();
   spawnState.child = child;
   spawnState.calls = [];
@@ -75,15 +76,17 @@ function setup(ready: OwnerHandoffReadyOutcome = readyOutcome) {
     profileId,
     targetBuild,
     claim,
-    readyResources: { publishReady: () => ready },
     onStderr: () => {},
   });
   return { child, supervisor };
 }
+function nextFrame(child: Child): Promise<Buffer> {
+  return new Promise((resolve) => child.stdin.once("data", resolve));
+}
 afterEach(() => vi.useRealTimers());
 
 describe.skipIf(process.platform !== "win32")("restricted target process", () => {
-  it("spawns the exclusive --owner-target mode and serves the framed claim/response path", async () => {
+  it("spawns the exclusive --owner-target mode, claims, then sends one framed ready command", async () => {
     const { child, supervisor } = setup();
     expect(spawnState.calls).toHaveLength(1);
     const [binary, args, options] = spawnState.calls[0] as [string, string[], { stdio: string[]; windowsHide: boolean; env: NodeJS.ProcessEnv }];
@@ -93,9 +96,9 @@ describe.skipIf(process.platform !== "win32")("restricted target process", () =>
     expect(options.windowsHide).toBe(true);
     expect(options.env.PI_DESKTOP_DATA_DIR).toBe("C:\\fixture\\data");
 
-    const written = new Promise<Buffer>((resolve) => child.stdin.once("data", resolve));
+    const claimWritten = nextFrame(child);
     const starting = supervisor.start();
-    const bytes = await written;
+    const bytes = await claimWritten;
     expect(bytes.readUInt32LE(0)).toBe(bytes.length - 4);
     expect(JSON.parse(bytes.subarray(4).toString("utf8"))).toEqual({
       version: 1,
@@ -103,12 +106,50 @@ describe.skipIf(process.platform !== "win32")("restricted target process", () =>
       targetBuild,
       command: claim,
     });
+    const readyWritten = nextFrame(child);
     child.stdout.write(frame({ version: 1, record: claimedRecord }));
+    const readyBytes = await readyWritten;
+    expect(JSON.parse(readyBytes.subarray(4).toString("utf8"))).toMatchObject({
+      version: 1,
+      operation: "ready",
+      transferId: claim.transfer_id,
+      targetEpoch: claim.target_epoch,
+      expectedRevision: claimedRecord.revision,
+    });
+    child.stdout.write(frame({ version: 1, ready: readyOutcome }));
     await expect(starting).resolves.toEqual(readyOutcome);
     expect(supervisor.state).toBe("ready");
     await supervisor.dispose();
     expect(supervisor.isDisposed).toBe(true);
     expect(child.stdin.writableEnded).toBe(true);
+  });
+
+  it("propagates a framed ready refusal and disposes the same process", async () => {
+    const { child, supervisor } = setup();
+    const claimWritten = nextFrame(child);
+    const starting = supervisor.start();
+    await claimWritten;
+    const readyWritten = nextFrame(child);
+    child.stdout.write(frame({ version: 1, record: claimedRecord }));
+    await readyWritten;
+    child.stdout.write(frame({ version: 1, error: { code: "HANDOFF_TARGET_NOT_INITIALIZED" } }));
+    await expect(starting).rejects.toMatchObject({ errorCode: "HANDOFF_TARGET_NOT_INITIALIZED" });
+    expect(supervisor.state).toBe("ready-refused");
+    expect(child.stdin.writableEnded).toBe(true);
+  });
+
+  it("strictly parses the bounded Ready frame", () => {
+    expect(parseOwnerHandoffTargetReadyResponse({ version: 1, ready: readyOutcome })).toEqual(readyOutcome);
+    expect(() => parseOwnerHandoffTargetReadyResponse({ version: 1, ready: readyOutcome, extra: true }))
+      .toThrow("HANDOFF_INVALID_RESPONSE");
+    expect(() => parseOwnerHandoffTargetReadyResponse({ version: 1, error: { code: "secret/path" } }))
+      .toThrow("HANDOFF_INVALID_RESPONSE");
+    expect(() => parseOwnerHandoffTargetReadyResponse({
+      version: 1,
+      ready: { ...readyOutcome, record: { ...readyOutcome.record, revision: 1 } },
+    })).toThrow("HANDOFF_INVALID_RESPONSE");
+    expect(() => parseOwnerHandoffTargetReadyResponse({ version: 1, error: { code: "HANDOFF_READY_REFUSED" } }))
+      .toThrow("HANDOFF_READY_REFUSED");
   });
 
   it("fails closed on malformed stdout frames and disposes the child", async () => {

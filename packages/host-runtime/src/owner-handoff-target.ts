@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   OWNER_HANDOFF_REVISION_MAX,
   OwnerHandoffBuildSchema,
@@ -47,6 +48,16 @@ export type OwnerHandoffTargetEnvelope = {
   command: OwnerHandoffTargetClaim;
 };
 
+/** Second and final private command; all readiness facts are re-read in Rust. */
+export type OwnerHandoffTargetReadyRequest = {
+  version: 1;
+  operation: "ready";
+  requestId: string;
+  transferId: string;
+  targetEpoch: string;
+  expectedRevision: number;
+};
+
 /** Mirrors the Rust ReadyOutcome: the authoritative record plus its publication. */
 export type OwnerHandoffReadyOutcome = {
   record: OwnerHandoffRecord;
@@ -56,10 +67,15 @@ export type OwnerHandoffReadyOutcome = {
 /**
  * Trusted process-local seam implemented by the owner of the original
  * AppState/recovery completion, closed Rust and Node admission holds, the idle
- * sidecar, capability publication and live event stream. `publishReady` must
- * complete those checks and refuse on incomplete initialization, uncertainty,
- * pending work or disposal. A returned value is validated strictly; the
- * supervisor never invents or repairs a Ready publication.
+ * sidecar, capability publication and live event stream. When the transport
+ * implements `ready`, the same-process Rust ReadyOutcome is authoritative and
+ * this provider is not consulted; the provider remains for in-process tests
+ * and compositions that do not own the framed child.
+ *
+ * `publishReady` must complete those checks and refuse on incomplete
+ * initialization, uncertainty, pending work or disposal. A returned value is
+ * validated strictly; the supervisor never invents or repairs a Ready
+ * publication.
  */
 export interface OwnerHandoffTargetReadyResources {
   publishReady(claim: {
@@ -75,6 +91,8 @@ export interface OwnerHandoffTargetReadyResources {
  */
 export interface OwnerHandoffTargetTransport {
   call(request: OwnerHandoffTargetEnvelope, timeoutMs: number): Promise<OwnerHandoffResponse>;
+  /** Ask the same claimed Rust process to commit and return ReadyOutcome. */
+  ready?(request: OwnerHandoffTargetReadyRequest, timeoutMs: number): Promise<OwnerHandoffReadyOutcome>;
   confirmExit(timeoutMs: number): Promise<boolean>;
   /** False when a failed spawn never produced an original child to wait for. */
   hasProcess?(): boolean;
@@ -206,6 +224,29 @@ export function validateOwnerHandoffTargetReadyOutcome(
 }
 
 /**
+ * Build the one Ready command for a validated claim receipt. The request ID is
+ * generated once by the supervisor and retained across an ambiguous output; a
+ * new supervisor instance is a new explicit attempt, never an automatic retry.
+ */
+export function createOwnerHandoffTargetReadyRequest(
+  receipt: OwnerHandoffRecord,
+  requestId: string,
+): OwnerHandoffTargetReadyRequest {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(requestId) ||
+      receipt.revision < 1 || receipt.revision >= OWNER_HANDOFF_REVISION_MAX) {
+    throw failure("HANDOFF_INVALID_REQUEST");
+  }
+  return {
+    version: 1,
+    operation: "ready",
+    requestId,
+    transferId: receipt.id,
+    targetEpoch: receipt.targetEpoch,
+    expectedRevision: receipt.revision,
+  };
+}
+
+/**
  * Launch-side supervisor for the restricted successor. It owns only the
  * process lifecycle and the readiness gate: it never opens admission, never
  * starts AppState, never serves a request and never retries a claim. A child
@@ -216,6 +257,7 @@ export class OwnerHandoffTargetSupervisor {
   private readonly envelope: OwnerHandoffTargetEnvelope;
   private readonly claimTimeoutMs: number;
   private readonly readyTimeoutMs: number;
+  private readonly readyRequestId = randomUUID();
   private stateValue: OwnerHandoffTargetState = "spawned";
   private claimedValue?: OwnerHandoffRecord;
   private readyValue?: OwnerHandoffReadyOutcome;
@@ -289,16 +331,30 @@ export class OwnerHandoffTargetSupervisor {
       this.claimedValue = receipt;
       this.transition("claimed");
       const resources = this.options.readyResources;
-      if (!resources) throw failure(HANDOFF_TARGET_READY_UNAVAILABLE);
-      const outcome = await this.race(
-        Promise.resolve().then(() => resources.publishReady({
-          request: this.envelope.command,
-          receipt,
-        })),
-        this.readyTimeoutMs,
-        HANDOFF_TARGET_READY_TIMEOUT,
-        abort,
-      );
+      let outcome: OwnerHandoffReadyOutcome;
+      if (this.options.transport.ready) {
+        outcome = await this.race(
+          this.options.transport.ready(
+            createOwnerHandoffTargetReadyRequest(receipt, this.readyRequestId),
+            this.readyTimeoutMs,
+          ),
+          this.readyTimeoutMs,
+          "HANDOFF_IO_TIMEOUT",
+          abort,
+        );
+      } else if (resources) {
+        outcome = await this.race(
+          Promise.resolve().then(() => resources.publishReady({
+            request: this.envelope.command,
+            receipt,
+          })),
+          this.readyTimeoutMs,
+          HANDOFF_TARGET_READY_TIMEOUT,
+          abort,
+        );
+      } else {
+        throw failure(HANDOFF_TARGET_READY_UNAVAILABLE);
+      }
       this.readyValue = validateOwnerHandoffTargetReadyOutcome(outcome, receipt);
       this.transition("ready");
       return this.readyValue;

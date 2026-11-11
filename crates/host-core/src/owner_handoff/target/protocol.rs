@@ -1,5 +1,6 @@
 //! Private launch envelope. The nested command is the committed shared
 //! OwnerHandoffBootstrapCommand shape (including its snake_case field names).
+use super::ready::ReadyOutcome;
 use crate::owner_handoff::{
     model::{self, Build, VERSION},
     service::{Command, ContextIdentity},
@@ -120,4 +121,99 @@ impl BootstrapRequest {
             Command::Status { .. } => unreachable!("validated target request"),
         }
     }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+enum ReadyOperation {
+    Ready,
+}
+
+/// Second and final command on the restricted channel. It carries only the
+/// identity of the claim and one request ID; every readiness fact is read from
+/// the retained authority and journal by the target provider.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct ReadyRequest {
+    version: u32,
+    operation: ReadyOperation,
+    request_id: String,
+    transfer_id: String,
+    target_epoch: String,
+    expected_revision: i64,
+}
+
+impl ReadyRequest {
+    pub(crate) fn parse(frame: &[u8]) -> Result<Self> {
+        if frame.is_empty() || frame.len() > model::MAX_RECORD_BYTES {
+            bail!("HANDOFF_INVALID_FRAME");
+        }
+        // Never include serde's error text: an unknown field/value can contain
+        // attacker-supplied secrets. Duplicate fields are rejected by serde.
+        let request: Self = serde_json::from_slice(frame)
+            .map_err(|_| anyhow::anyhow!("HANDOFF_INVALID_REQUEST"))?;
+        request.validate()?;
+        Ok(request)
+    }
+
+    fn validate(&self) -> Result<()> {
+        if self.version != VERSION {
+            bail!("HANDOFF_UNSUPPORTED_VERSION");
+        }
+        match self.operation {
+            ReadyOperation::Ready => {}
+        }
+        for value in [&self.request_id, &self.transfer_id, &self.target_epoch] {
+            model::uuid(value).map_err(|_| anyhow::anyhow!("HANDOFF_INVALID_IDENTITY"))?;
+        }
+        if !(1..=MAX_REVISION).contains(&self.expected_revision) {
+            bail!("HANDOFF_INVALID_REVISION");
+        }
+        Ok(())
+    }
+
+    /// Bind the command to the exact committed claim this process still holds.
+    pub(super) fn check(&self, bootstrap: &super::bootstrap::TargetBootstrap) -> Result<()> {
+        self.validate()?;
+        if self.transfer_id != bootstrap.record().id || self.target_epoch != bootstrap.owner().epoch
+        {
+            bail!("HANDOFF_TARGET_IDENTITY_MISMATCH");
+        }
+        if self.expected_revision != bootstrap.record().revision {
+            bail!("HANDOFF_STALE_REVISION");
+        }
+        Ok(())
+    }
+
+    pub(crate) fn request_id(&self) -> &str {
+        &self.request_id
+    }
+}
+
+/// Bounded success frame consumed by the Node supervisor. The nested outcome
+/// is the same `ReadyOutcome` serialized by the journal receipt path.
+pub(super) fn ready_reply(outcome: &ReadyOutcome) -> Result<Vec<u8>> {
+    Ok(model::encode(&serde_json::json!({"version": VERSION, "ready": outcome}))?.into_bytes())
+}
+
+/// Bounded classified refusal sent before the target process exits. The code
+/// vocabulary is fixed; incidental text, paths and capabilities never leave.
+pub(super) fn ready_error_reply(error: &anyhow::Error) -> Result<Vec<u8>> {
+    let message = error.to_string();
+    let code = if message.starts_with("HANDOFF_")
+        && message.len() <= 128
+        && message
+            .bytes()
+            .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_')
+    {
+        message
+    } else if error.downcast_ref::<rusqlite::Error>().is_some() {
+        "HANDOFF_STORAGE_ERROR".into()
+    } else {
+        "HANDOFF_REFUSED".into()
+    };
+    Ok(
+        model::encode(&serde_json::json!({"version": VERSION, "error": {"code": code}}))?
+            .into_bytes(),
+    )
 }

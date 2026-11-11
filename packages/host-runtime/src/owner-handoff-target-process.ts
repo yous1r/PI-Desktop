@@ -2,15 +2,21 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { isAbsolute } from "node:path";
 import {
   OWNER_HANDOFF_MAX_RECORD_BYTES,
+  OWNER_HANDOFF_REVISION_MAX,
   parseOwnerHandoffBootstrapCommand,
+  parseOwnerHandoffReady,
   parseOwnerHandoffResponse,
   stripProxyEnv,
+  type OwnerHandoffReady,
+  type OwnerHandoffRecord,
   type OwnerHandoffResponse,
 } from "@pi-desktop/shared";
 import { confirmChildExit } from "./process-exit-confirmation.js";
 import {
   OwnerHandoffTargetSupervisor,
+  type OwnerHandoffReadyOutcome,
   type OwnerHandoffTargetEnvelope,
+  type OwnerHandoffTargetReadyRequest,
   type OwnerHandoffTargetSupervisorOptions,
   type OwnerHandoffTargetTransport,
 } from "./owner-handoff-target.js";
@@ -24,8 +30,19 @@ export type OwnerHandoffTargetProcessOptions = {
   onStderr: (text: string) => void;
 };
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const ERROR_CODE = /^HANDOFF_[A-Z0-9_]{1,120}$/;
+
 function failure(errorCode: string): Error {
   return Object.assign(new Error(errorCode), { errorCode });
+}
+function frame(value: unknown): Buffer {
+  const body = Buffer.from(JSON.stringify(value));
+  if (body.length < 1 || body.length > OWNER_HANDOFF_MAX_RECORD_BYTES) throw failure("HANDOFF_INVALID_FRAME");
+  const bytes = Buffer.alloc(4 + body.length);
+  bytes.writeUInt32LE(body.length);
+  body.copy(bytes, 4);
+  return bytes;
 }
 function envelopeBytes(request: OwnerHandoffTargetEnvelope): Buffer {
   if (!request || request.version !== 1 || !/^[0-9a-f]{64}$/.test(request.profileId)) {
@@ -33,29 +50,72 @@ function envelopeBytes(request: OwnerHandoffTargetEnvelope): Buffer {
   }
   const command = parseOwnerHandoffBootstrapCommand(request.command);
   if (command.operation !== "claim") throw failure("HANDOFF_CLAIM_REQUIRED");
-  const body = Buffer.from(JSON.stringify(request));
-  if (body.length < 1 || body.length > OWNER_HANDOFF_MAX_RECORD_BYTES) throw failure("HANDOFF_INVALID_FRAME");
-  const bytes = Buffer.alloc(4 + body.length);
-  bytes.writeUInt32LE(body.length);
-  body.copy(bytes, 4);
-  return bytes;
+  return frame(request);
 }
+function readyBytes(request: OwnerHandoffTargetReadyRequest): Buffer {
+  if (!request || request.version !== 1 || request.operation !== "ready" ||
+      !UUID.test(request.requestId) || !UUID.test(request.transferId) ||
+      !UUID.test(request.targetEpoch) || !Number.isInteger(request.expectedRevision) ||
+      request.expectedRevision < 1 || request.expectedRevision > OWNER_HANDOFF_REVISION_MAX) {
+    throw failure("HANDOFF_INVALID_REQUEST");
+  }
+  return frame(request);
+}
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+/**
+ * Strict Ready frame: exactly `{version, ready}` or `{version, error:{code}}`.
+ * The nested outcome must contain the exact authoritative record and a ready
+ * publication bound to it; incidental text never crosses this boundary.
+ */
+export function parseOwnerHandoffTargetReadyResponse(value: unknown): OwnerHandoffReadyOutcome {
+  if (!isRecord(value) || value.version !== 1 || Object.keys(value).length !== 2) {
+    throw failure("HANDOFF_INVALID_RESPONSE");
+  }
+  if ("error" in value) {
+    const error = value.error;
+    if (!isRecord(error) || Object.keys(error).length !== 1 ||
+        typeof error.code !== "string" || !ERROR_CODE.test(error.code)) {
+      throw failure("HANDOFF_INVALID_RESPONSE");
+    }
+    throw failure(error.code);
+  }
+  const outcome = value.ready;
+  if (!isRecord(outcome) || Object.keys(outcome).length !== 2 ||
+      !("record" in outcome) || !("ready" in outcome)) {
+    throw failure("HANDOFF_INVALID_RESPONSE");
+  }
+  let record: OwnerHandoffRecord;
+  try {
+    const parsed = parseOwnerHandoffResponse({ version: 1, record: outcome.record });
+    if ("error" in parsed) throw new Error("HANDOFF_INVALID_RESPONSE");
+    record = parsed.record;
+    parseOwnerHandoffReady(outcome.ready, record);
+  } catch {
+    throw failure("HANDOFF_INVALID_RESPONSE");
+  }
+  return { record, ready: outcome.ready as OwnerHandoffReady };
+}
+
+type Pending = {
+  resolve: (value: unknown) => void;
+  reject: (error: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+};
 
 /**
  * Original `--owner-target` child over the private framed channel. One claim
- * call is expected; the transport fails closed on an invalid frame, stream
- * closure or timeout and never looks up a PID it did not spawn.
+ * call and at most one ready call are expected; the transport fails closed on
+ * an invalid frame, stream closure or timeout and never looks up a PID it did
+ * not spawn.
  */
 export class OwnerHandoffTargetProcess implements OwnerHandoffTargetTransport {
   private readonly child: ChildProcessWithoutNullStreams;
   private readonly buffer = Buffer.alloc(OWNER_HANDOFF_MAX_RECORD_BYTES + 4);
   private received = 0;
   private length?: number;
-  private pending?: {
-    resolve: (response: OwnerHandoffResponse) => void;
-    reject: (error: Error) => void;
-    timer: ReturnType<typeof setTimeout>;
-  };
+  private pending?: Pending;
   private failed?: Error;
   private disposal?: Promise<void>;
   private spawnFailed = false;
@@ -112,10 +172,10 @@ export class OwnerHandoffTargetProcess implements OwnerHandoffTargetTransport {
       this.fail("HANDOFF_INVALID_FRAME");
       return;
     }
-    let response: OwnerHandoffResponse;
+    let value: unknown;
     try {
       const text = new TextDecoder("utf-8", { fatal: true }).decode(this.buffer.subarray(4, this.received));
-      response = parseOwnerHandoffResponse(JSON.parse(text));
+      value = JSON.parse(text);
     } catch {
       this.fail("HANDOFF_INVALID_FRAME");
       return;
@@ -129,7 +189,7 @@ export class OwnerHandoffTargetProcess implements OwnerHandoffTargetTransport {
     this.pending = undefined;
     this.received = 0;
     this.length = undefined;
-    pending.resolve(response);
+    pending.resolve(value);
   };
 
   private readonly onClosed = (): void => { this.fail("HANDOFF_TRANSPORT_CLOSED"); };
@@ -140,35 +200,11 @@ export class OwnerHandoffTargetProcess implements OwnerHandoffTargetTransport {
   private readonly onExit = (): void => { this.exited = true; };
 
   call(request: OwnerHandoffTargetEnvelope, timeoutMs = 15_000): Promise<OwnerHandoffResponse> {
-    if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) {
-      return Promise.reject(new RangeError("handoff timeout must be an integer from 1 to 30000 ms"));
-    }
-    if (this.failed) return Promise.reject(this.failed);
-    if (this.exited || this.spawnFailed) {
-      return Promise.reject(failure("HANDOFF_TRANSPORT_CLOSED"));
-    }
-    if (this.pending) return Promise.reject(failure("HANDOFF_CHANNEL_BUSY"));
-    if (request.profileId !== this.options.profileId) {
-      return Promise.reject(failure("HANDOFF_INVALID_IDENTITY"));
-    }
-    let bytes: Buffer;
-    try {
-      bytes = envelopeBytes(request);
-    } catch (error) {
-      return Promise.reject(error);
-    }
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => this.fail("HANDOFF_IO_TIMEOUT"), timeoutMs);
-      timer.unref?.();
-      this.pending = { resolve, reject, timer };
-      try {
-        this.child.stdin.write(bytes, (error) => {
-          if (error) this.fail("HANDOFF_TRANSPORT_CLOSED");
-        });
-      } catch {
-        this.fail("HANDOFF_TRANSPORT_CLOSED");
-      }
-    });
+    return this.send(envelopeBytes(request), timeoutMs, parseOwnerHandoffResponse);
+  }
+
+  ready(request: OwnerHandoffTargetReadyRequest, timeoutMs = 30_000): Promise<OwnerHandoffReadyOutcome> {
+    return this.send(readyBytes(request), timeoutMs, parseOwnerHandoffTargetReadyResponse);
   }
 
   confirmExit(timeoutMs = 2_000): Promise<boolean> {
@@ -194,6 +230,42 @@ export class OwnerHandoffTargetProcess implements OwnerHandoffTargetTransport {
       if (!(await this.confirmExit())) throw failure("HANDOFF_EXIT_UNCONFIRMED");
     })();
     return this.disposal;
+  }
+
+  private send<T>(bytes: Buffer, timeoutMs: number, parse: (value: unknown) => T): Promise<T> {
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) {
+      return Promise.reject(new RangeError("handoff timeout must be an integer from 1 to 30000 ms"));
+    }
+    if (this.failed) return Promise.reject(this.failed);
+    if (this.exited || this.spawnFailed) {
+      return Promise.reject(failure("HANDOFF_TRANSPORT_CLOSED"));
+    }
+    if (this.pending) return Promise.reject(failure("HANDOFF_CHANNEL_BUSY"));
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => this.fail("HANDOFF_IO_TIMEOUT"), timeoutMs);
+      timer.unref?.();
+      this.pending = {
+        resolve: (value) => {
+          try {
+            resolve(parse(value));
+          } catch (error) {
+            // An unparsable reply poisons this ambiguous transport; a later
+            // call must never be matched against another frame.
+            this.failed = error instanceof Error ? error : failure("HANDOFF_INVALID_FRAME");
+            reject(error);
+          }
+        },
+        reject,
+        timer,
+      };
+      try {
+        this.child.stdin.write(bytes, (error) => {
+          if (error) this.fail("HANDOFF_TRANSPORT_CLOSED");
+        });
+      } catch {
+        this.fail("HANDOFF_TRANSPORT_CLOSED");
+      }
+    });
   }
 
   private fail(code: string): void {
