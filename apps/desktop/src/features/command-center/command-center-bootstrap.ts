@@ -127,16 +127,25 @@ export function useCommandCenterLiveProvider(): CommandCenterDataProvider | unde
 export async function bootstrapCommandCenterFromTransport(
   transport: CommandCenterTransport,
 ): Promise<() => void> {
-  let hosts: readonly { hostKey: string; hostId: string; expectedHostEpoch: string; commandCenter: boolean }[];
+  let host: { hostKey: string; hostId: string; expectedHostEpoch: string; commandCenter: boolean } | undefined;
   try {
-    hosts = await transport.hosts();
+    // The selected Host wins while it is connected; else the bridge's first
+    // capable Host is the compatibility default.
+    const observed = await transport.observationHost?.();
+    if (observed !== null && observed !== undefined) {
+      host = observed;
+    } else {
+      const hosts = await transport.hosts();
+      host = hosts.find((candidate) =>
+        candidate.commandCenter === true && candidate.hostId.length > 0 && candidate.expectedHostEpoch.length > 0);
+    }
   } catch (error) {
     console.warn("Command-center capability read failed", error);
     return () => {};
   }
-  const host = hosts.find((candidate) =>
-    candidate.commandCenter === true && candidate.hostId.length > 0 && candidate.expectedHostEpoch.length > 0);
-  if (host === undefined) return () => {};
+  if (host === undefined || host.commandCenter !== true || host.hostId.length === 0 || host.expectedHostEpoch.length === 0) {
+    return () => {};
+  }
 
   const context = createCommandCenterObservationContext();
   let session: CommandCenterMonitorSession | undefined;

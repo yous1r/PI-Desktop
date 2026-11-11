@@ -8,6 +8,8 @@
  */
 export const COMMAND_CENTER_IPC = Object.freeze({
   capability: "pi-desktop/command-center/capability",
+  selection: "pi-desktop/command-center/selection",
+  observationHost: "pi-desktop/command-center/observationHost",
   monitorPage: "pi-desktop/command-center/monitorPage",
   ping: "pi-desktop/command-center/ping",
   workspaceList: "pi-desktop/command-center/workspaceList",
@@ -37,6 +39,10 @@ export type CommandCenterPingReply = Readonly<{ ok: true; serverTime: string }>;
 export type CommandCenterPreloadApi = {
   /** Connected Hosts that negotiated the optional commandCenter capability. */
   hosts(): Promise<readonly CommandCenterHostDescriptor[]>;
+  /** Select the observed Host; `null` restores the first-capable-host default. */
+  selectHost(hostKey: string | null): Promise<CommandCenterHostDescriptor | null>;
+  /** Selected Host while it stays connected, else the first capable Host. */
+  observationHost(): Promise<CommandCenterHostDescriptor | null>;
   /** Bounded monitor page; omit `token` for the current first page. */
   monitorPage(hostKey: string, request: CommandCenterMonitorPageRequest): Promise<unknown>;
   /** Existing authenticated connection ping, used only for observation freshness. */

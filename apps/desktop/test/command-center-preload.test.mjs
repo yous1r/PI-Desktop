@@ -21,6 +21,8 @@ const { build } = requireFromAgentRuntime("esbuild");
 
 const CHANNELS = {
   capability: "pi-desktop/command-center/capability",
+  selection: "pi-desktop/command-center/selection",
+  observationHost: "pi-desktop/command-center/observationHost",
   monitorPage: "pi-desktop/command-center/monitorPage",
   ping: "pi-desktop/command-center/ping",
   workspaceList: "pi-desktop/command-center/workspaceList",
@@ -78,10 +80,15 @@ test("the preload bridge exposes only fixed command-center channels and unwraps 
     echoed: CHANNELS.monitorPage, args: ["remote:one", { version: 1, token: "page-token-9" }],
   });
   assert.deepEqual(await bridge.commandCenter.ping("remote:one"), { ok: true, serverTime: "2026-01-01T00:00:00.000Z" });
+  assert.equal((await bridge.commandCenter.selectHost("remote:one")).echoed, CHANNELS.selection);
+  assert.equal((await bridge.commandCenter.observationHost()).echoed, CHANNELS.observationHost);
+  assert.equal((await bridge.commandCenter.selectHost(null)).echoed, CHANNELS.selection);
   await bridge.commandCenter.workspaceList("remote:one");
   await bridge.commandCenter.receiptList("remote:one", { afterSequence: 0, limit: 10 });
   assert.deepEqual(calls.map((call) => call.channel), [
-    CHANNELS.capability, CHANNELS.monitorPage, CHANNELS.ping, CHANNELS.workspaceList, CHANNELS.receiptList,
+    CHANNELS.capability, CHANNELS.monitorPage, CHANNELS.ping,
+    CHANNELS.selection, CHANNELS.observationHost, CHANNELS.selection,
+    CHANNELS.workspaceList, CHANNELS.receiptList,
   ]);
 
   // Dedicated channels are not reachable through the generic whitelist.

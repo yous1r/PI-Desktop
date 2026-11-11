@@ -62,6 +62,10 @@ const api = {
   },
   commandCenter: {
     hosts: () => commandCenterInvoke<readonly CommandCenterHostDescriptor[]>(COMMAND_CENTER_IPC.capability),
+    selectHost: (hostKey: string | null) =>
+      commandCenterInvoke<CommandCenterHostDescriptor | null>(COMMAND_CENTER_IPC.selection, hostKey),
+    observationHost: () =>
+      commandCenterInvoke<CommandCenterHostDescriptor | null>(COMMAND_CENTER_IPC.observationHost),
     monitorPage: (hostKey: string, request: CommandCenterMonitorPageRequest) =>
       commandCenterInvoke<unknown>(COMMAND_CENTER_IPC.monitorPage, hostKey, request),
     ping: (hostKey: string) => commandCenterInvoke<CommandCenterPingReply>(COMMAND_CENTER_IPC.ping, hostKey),

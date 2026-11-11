@@ -38,6 +38,28 @@ function hostKey(value: unknown): string {
   return value;
 }
 
+/** `null` clears an explicit selection; anything else must be a valid key. */
+function selectableHostKey(value: unknown): string | null {
+  return value === null ? null : hostKey(value);
+}
+
+/**
+ * Selected Host while it remains connected, else the first capable Host.
+ * A closed Host therefore falls back without a second state store.
+ */
+function resolveObservationHost(
+  boot: CommandCenterIpcBootPort,
+  selectedHostKey: string | null,
+): { host: CommandCenterHostDescriptor | null; selectedHostKey: string | null } {
+  const hosts = boot.commandCenterHosts();
+  if (selectedHostKey !== null) {
+    const selected = hosts.find((host) => host.hostKey === selectedHostKey);
+    if (selected !== undefined) return { host: selected, selectedHostKey };
+    selectedHostKey = null;
+  }
+  return { host: hosts[0] ?? null, selectedHostKey };
+}
+
 function monitorPageRequest(value: unknown): CommandCenterMonitorPageRequest {
   if (value === null || typeof value !== "object" || Array.isArray(value)) return invalid("invalid monitor page request");
   const input = value as Record<string, unknown>;
@@ -67,6 +89,8 @@ function receiptListRequest(value: unknown): CommandCenterReceiptListRequest {
 }
 
 export function registerCommandCenterIpc({ registrar, getBoot }: CommandCenterIpcDependencies): void {
+  // One explicit selection per registered bridge; absent means first capable.
+  let selectedHostKey: string | null = null;
   const requireBoot = (): CommandCenterIpcBootPort => {
     const boot = getBoot();
     if (!boot) {
@@ -79,6 +103,24 @@ export function registerCommandCenterIpc({ registrar, getBoot }: CommandCenterIp
     const boot = getBoot();
     if (!boot) return [];
     return boot.commandCenterHosts();
+  });
+
+  registrar.handle(COMMAND_CENTER_IPC.selection, async (rawHostKey: unknown): Promise<CommandCenterHostDescriptor | null> => {
+    const requested = selectableHostKey(rawHostKey);
+    const boot = requireBoot();
+    if (requested !== null && !boot.commandCenterHosts().some((host) => host.hostKey === requested)) {
+      throw Object.assign(new Error("unknown command-center Host"), { errorCode: ErrorCodes.NOT_FOUND });
+    }
+    selectedHostKey = requested;
+    return resolveObservationHost(boot, selectedHostKey).host;
+  });
+
+  registrar.handle(COMMAND_CENTER_IPC.observationHost, async (): Promise<CommandCenterHostDescriptor | null> => {
+    const boot = getBoot();
+    if (!boot) return null;
+    const resolved = resolveObservationHost(boot, selectedHostKey);
+    selectedHostKey = resolved.selectedHostKey;
+    return resolved.host;
   });
 
   registrar.handle(COMMAND_CENTER_IPC.monitorPage, async (rawHostKey: unknown, rawRequest: unknown): Promise<unknown> =>

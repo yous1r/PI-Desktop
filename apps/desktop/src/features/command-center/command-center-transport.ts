@@ -15,6 +15,10 @@ export type CommandCenterPingReply = Readonly<{ ok: true; serverTime: string }>;
 /** Everything the renderer may ask of one already-connected Host. */
 export type CommandCenterTransport = {
   hosts(): Promise<readonly CommandCenterHostDescriptor[]>;
+  /** Optional explicit selection; absent keeps the first-capable-host default. */
+  selectHost?(hostKey: string | null): Promise<CommandCenterHostDescriptor | null>;
+  /** Selected Host while connected, else the first capable Host. */
+  observationHost?(): Promise<CommandCenterHostDescriptor | null>;
   monitorPage(hostKey: string, request: CommandCenterMonitorPageRequest): Promise<unknown>;
   ping(hostKey: string): Promise<CommandCenterPingReply>;
   workspaceList(hostKey: string): Promise<unknown>;
