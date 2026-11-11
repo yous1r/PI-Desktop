@@ -9,6 +9,8 @@ const { createRemoteHostsBoot } = await import("../electron/main/bootstrap/remot
 const { createBackendRouter } = await import("../electron/main/remote/backend-router.ts");
 const { createRacpRemoteHostClient } = await import("../electron/main/remote/racp-remote-host-client.ts");
 const { harness, OWNER_TOKEN, MemoryLink } = await import("@pi-desktop/racp/test-harness");
+const { OwnerHandoffSuccessor } = await import("../../../packages/host-runtime/src/owner-handoff-successor.ts");
+const { OwnerHandoffTargetSupervisor } = await import("../../../packages/host-runtime/src/owner-handoff-target.ts");
 const golden = JSON.parse(await readFile(new URL("../../../packages/shared/test/fixtures/owner-handoff.json", import.meta.url), "utf8"));
 const root = fileURLToPath(new URL("../../..", import.meta.url));
 
@@ -87,6 +89,42 @@ function readyStatus(h, nativeRecord) {
     ownerEpoch: nativeRecord.targetEpoch, recordRevision: 6, eventEpoch: h.host.hub.hostStream().epoch,
     protocolVersion: 11, snapshotRequired: true };
   return async () => ({ response: { version: 1, record: nativeRecord }, ready });
+}
+
+/** Real OwnerHandoffSuccessor with a fake framed transport and original reader. */
+function successorFixture(h, nativeRecord) {
+  const epoch = h.host.hub.hostStream().epoch;
+  const release = { ...structuredClone(nativeRecord), phase: "release_pending", revision: 4 };
+  const readyRecord = { ...structuredClone(nativeRecord), phase: "ready", revision: 6 };
+  const ready = { version: 1, transferId: nativeRecord.id, profileId: nativeRecord.profile,
+    ownerEpoch: nativeRecord.targetEpoch, recordRevision: readyRecord.revision, eventEpoch: epoch,
+    protocolVersion: 11, snapshotRequired: true };
+  const transport = {
+    calls: 0, readyCalls: 0, disposed: 0,
+    async call(request) {
+      transport.calls += 1;
+      const command = request.command;
+      return { version: 1, record: { ...nativeRecord, id: command.transfer_id, profile: request.profileId,
+        sourceEpoch: command.source_epoch, targetEpoch: command.target_epoch, revision: command.expected_revision + 1,
+        phase: "target_claimed", targetBuild: request.targetBuild } };
+    },
+    async ready() { transport.readyCalls += 1; return { record: readyRecord, ready }; },
+    async confirmExit() { return true; },
+    hasProcess() { return true; },
+    async dispose() { transport.disposed += 1; },
+  };
+  let reads = 0;
+  const successor = new OwnerHandoffSuccessor({
+    target: { transferId: nativeRecord.id, sourceEpoch: nativeRecord.sourceEpoch, profileId: nativeRecord.profile },
+    claim: { ...golden.bootstrap[1] },
+    targetBuild: nativeRecord.targetBuild,
+    readOriginal: async () => ({ version: 1, record: reads++ === 0 ? release : readyRecord }),
+    eventEpoch: async () => epoch,
+    launch: context => new OwnerHandoffTargetSupervisor({
+      transport, profileId: context.profileId, targetBuild: context.targetBuild, claim: context.claim,
+    }),
+  });
+  return { successor, transport };
 }
 
 async function bootFixture(t, h, extra = {}) {
@@ -171,6 +209,39 @@ test("an opted-in host reattaches across a RACP reconnect and keeps the reserved
   assert.ok(attaches.length >= 2);
   assert.ok(attaches.every(call => call.params.role === "viewer"));
   assert.deepEqual(h.runtime.prompts, []);
+});
+
+test("a configured resolver that declines a host leaves it on the old lifecycle", async t => {
+  const h = await sevenSessionHarness();
+  const { boot } = await bootFixture(t, h, { handoffAttachment: () => undefined });
+  assert.equal((await boot.addHost(record("plain"))).connected, true);
+  assert.equal(boot.handoffState("plain"), undefined);
+  assert.equal(h.host.hub.subscriptionCount(), 8);
+});
+
+test("an opted-in host launches the successor composition and disposes its child", async t => {
+  const h = await sevenSessionHarness();
+  const nativeRecord = { ...structuredClone(golden.response.record) };
+  const { successor, transport } = successorFixture(h, nativeRecord);
+  const { boot, state } = await bootFixture(t, h, {
+    handoffAttachment: ({ hostKey }) => hostKey === "attached" ? {
+      target: { transferId: nativeRecord.id, sourceEpoch: nativeRecord.sourceEpoch, profileId: nativeRecord.profile },
+      sessionId: "s6",
+      successor,
+    } : undefined,
+  });
+  assert.equal((await boot.addHost(record("attached"))).connected, true);
+  await until(() => boot.handoffState("attached")?.state === "attached");
+  assert.equal(transport.calls, 1);
+  assert.equal(transport.readyCalls, 1);
+  assert.equal(h.host.hub.subscriptionCount(), 8);
+  const attaches = state.calls.flat().filter(call => call.method === "session/attach" && call.params.sessionId === "s6");
+  assert.ok(attaches.length >= 1);
+  assert.ok(attaches.every(call => call.params.role === "viewer"));
+  assert.deepEqual(h.runtime.prompts, []);
+  await boot.closeAll();
+  assert.equal(transport.disposed, 1);
+  assert.equal(h.host.hub.subscriptionCount(), 0);
 });
 
 test("replacing an opted-in host disposes the previous attachment", async t => {

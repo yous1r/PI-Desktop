@@ -51,8 +51,9 @@ export type DesktopHandoffReattachmentState = OwnerAttachmentState | "unavailabl
 export type DesktopHandoffReattachmentDetail = Readonly<{ code?: string }>;
 
 export type DesktopHandoffReattachmentOptions = {
-  /** Opt-in authority resolver. Never called until the port is enabled. */
-  authority(): DesktopHandoffReattachmentAuthority;
+  /** Opt-in authority resolver. Never called until the port is enabled. A
+   * composition that must launch/join a successor may resolve asynchronously. */
+  authority(): DesktopHandoffReattachmentAuthority | Promise<DesktopHandoffReattachmentAuthority>;
   /** Release the retained original observation. Invoked at most once per port. */
   detachOriginal: OwnerAttachmentOptions["detachOriginal"];
   /** Read the durable transfer record and its Ready payload for the original host. */
@@ -218,7 +219,7 @@ export function createDesktopHandoffReattachment(
     await retire(code);
     if (!enabled || disposed) return;
     let next: DesktopHandoffReattachmentAuthority;
-    try { next = options.authority(); }
+    try { next = await options.authority(); }
     catch (error) { report(error); publish("unavailable", codeOf(error)); return; }
     if (previous && (previous.target.transferId !== next.target.transferId ||
         previous.target.sourceEpoch !== next.target.sourceEpoch ||
@@ -251,7 +252,7 @@ export function createDesktopHandoffReattachment(
         if (disposed) throw failure("HANDOFF_ATTACHMENT_DISPOSED");
         if (enabled) return;
         let next: DesktopHandoffReattachmentAuthority;
-        try { next = options.authority(); }
+        try { next = await options.authority(); }
         catch (error) { report(error); publish("error", codeOf(error)); throw error; }
         if (next.isClosed()) {
           const error = failure("HANDOFF_ATTACHMENT_DISCONNECTED");
