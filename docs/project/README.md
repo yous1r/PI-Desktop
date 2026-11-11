@@ -17,6 +17,7 @@
 - AI command center monitor join: [C3 integration contract](ai-command-center-monitor-integration-contract.md) (required authorized producer/change/bounds contract and acceptance; not a wire protocol or enablement).
 - AI command center Batch 1: [Reconstructed worktree baseline](ai-command-center-batch1-baseline.md) · [Delivery, wiring and remaining work](ai-command-center-batch1-delivery.md) (H3 entry, C3 registration, U1 mount, schema alignment and the blocked joins).
 - AI command center Batch 3: [Capability, supervisor, reattachment, monitor and live-data wiring](ai-command-center-batch3-delivery.md) (approved capability advertisement, C4 dispatch claims, H3 supervisor slice, H4 composition, M1 producer and the remaining joins).
+- AI command center Batch 4: [Same-process Ready, commandCenter RPC, bootstrap composition and real monitor transport](ai-command-center-batch4-delivery.md) (Rust Ready frame, private commandCenter RPC, Desktop opt-in bootstrap, HostRpcPort monitor provider and the remaining serving joins).
 
 - Historical project board (archived; last refreshed 2026-08-11 for the 0.5.x line): [`BOARD.md`](BOARD.md)
 - Documentation/code alignment audit: [2026-07-30 audit](2026-07-30-docs-code-audit.md)
