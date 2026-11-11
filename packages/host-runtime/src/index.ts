@@ -7,6 +7,7 @@ export * from "./owner-handoff-exchange.js";
 export * from "./owner-handoff-attachment.js";
 export * from "./owner-handoff-target.js";
 export * from "./owner-handoff-target-process.js";
+export * from "./owner-handoff-successor.js";
 export * from "./command-center-repository.js";
 export * from "./command-center-host.js";
 export * from "./command-center-monitor.js";

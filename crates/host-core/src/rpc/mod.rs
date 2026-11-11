@@ -1,4 +1,5 @@
 mod command_center_rpc;
+mod target_serve;
 mod config_sync_rpc;
 mod gen_ui;
 mod modes_rpc;

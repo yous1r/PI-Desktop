@@ -36,17 +36,34 @@ export type { RemoteHostSummary };
 export type RemoteHostAdapterFactory = (record: RemoteHostRecord) => RacpRemoteHostClient;
 
 /**
+ * Production successor composition, satisfied structurally by host-runtime
+ * `OwnerHandoffSuccessor`. Declared here so bootstrap depends on the contract,
+ * not the package entry point.
+ */
+export type RemoteHandoffSuccessorPort = {
+  readonly target: OwnerAttachmentTarget;
+  /** Launch/claim the target and resolve once its Ready publication exists. */
+  ensureStarted(): Promise<unknown>;
+  /** Authenticated identity from the claim; never from Ready. */
+  identity(): OwnerAttachmentIdentity;
+  /** Strict original-host record + target Ready/event-epoch reader. */
+  readStatus(target: OwnerAttachmentTarget, signal: AbortSignal): Promise<{ response: unknown; ready?: unknown }>;
+  dispose(): Promise<void>;
+};
+
+/**
  * Opt-in observation definition for one paired Host. A command-center composition
- * root supplies it; bootstrap owns only the lifetime. `identity` must read the
- * authenticated target-owner handshake after connect (never a Ready payload).
- * `readStatus` is the durable record + Ready reader; while the H3 Ready join is
- * absent it is omitted and the port fails closed with
- * `HANDOFF_ATTACHMENT_READY_UNAVAILABLE` instead of synthesizing a record.
+ * root supplies it; bootstrap owns only the lifetime. Prefer `successor`: it
+ * launches the target and supplies the claim identity plus strict record/Ready
+ * status. `identity`/`readStatus` remain explicit ports for compositions without
+ * a successor; without a Ready reader the port still fails closed with
+ * `HANDOFF_ATTACHMENT_READY_UNAVAILABLE`.
  */
 export type RemoteHandoffAttachmentRequest = {
   target: OwnerAttachmentTarget;
-  identity(): OwnerAttachmentIdentity;
   sessionId: string;
+  successor?: RemoteHandoffSuccessorPort;
+  identity?: () => OwnerAttachmentIdentity | Promise<OwnerAttachmentIdentity>;
   /** Durable record + Ready reader. Absent fails closed with
    * HANDOFF_ATTACHMENT_READY_UNAVAILABLE; bootstrap never fabricates one. */
   readStatus?: DesktopHandoffReattachmentOptions["readStatus"];
@@ -71,6 +88,7 @@ export type RemoteHandoffAttachmentResolver = (host: {
  */
 export const HANDOFF_ATTACHMENT_SESSION_SUBSCRIPTIONS = 5;
 export const HANDOFF_ATTACHMENT_READY_UNAVAILABLE = "HANDOFF_ATTACHMENT_READY_UNAVAILABLE";
+export const HANDOFF_ATTACHMENT_IDENTITY_UNAVAILABLE = "HANDOFF_ATTACHMENT_IDENTITY_UNAVAILABLE";
 
 export type RemoteWorkspaceToolInput = {
   hostKey: string; path: string; sessionId: string; turnId: string;
@@ -95,6 +113,16 @@ export type BootRemoteHostsOptions = {
 export type RemoteLiveSessionSummary = Pick<RacpSession, "id" | "title" | "mode" | "permissionMode" | "status" | "activeTurnId" | "workspaceLabel"> & {
   source: "remote"; hostKey: string; hostLabel: string;
 };
+/** One connected Host that advertises the optional command-center capability. */
+export type RemoteCommandCenterHost = {
+  hostKey: string;
+  label: string;
+  hostId: string;
+  expectedHostEpoch: string;
+  commandCenter: true;
+};
+export type RemoteCommandCenterMonitorPageRequest = { version: 1; token?: string };
+export type RemoteCommandCenterReceiptListRequest = { afterSequence: number; limit: number };
 export interface RemoteHostsBoot {
   open(): Promise<number>;
   listSessions(): Promise<RemoteLiveSessionSummary[]>;
@@ -124,6 +152,16 @@ export interface RemoteHostsBoot {
   workspacePluginFiles(hostKey: string, input: WorkspacePluginFilesRequest): Promise<unknown>;
   /** Existing live connection only: never reconnect/replay a mutation implicitly. */
   workspaceClient(hostKey: string): RemoteHostClient;
+  /** Connected Hosts that negotiated the optional command-center capability. */
+  commandCenterHosts(): RemoteCommandCenterHost[];
+  /** Bounded monitor page from the Host's monitor port; capability-gated. */
+  commandCenterMonitorPage(hostKey: string, request: RemoteCommandCenterMonitorPageRequest): Promise<unknown>;
+  /** Existing authenticated `connection/ping` reply for observation freshness. */
+  commandCenterPing(hostKey: string): Promise<unknown>;
+  /** Existing read-only workspace list for the command-center surface. */
+  commandCenterWorkspaceList(hostKey: string): Promise<unknown>;
+  /** Existing bounded receipt list for the command-center surface. */
+  commandCenterReceiptList(hostKey: string, request: RemoteCommandCenterReceiptListRequest): Promise<unknown>;
   /** Opt-in observation state for one host, or undefined when it did not opt in. */
   handoffState(hostKey: string): { state: DesktopHandoffReattachmentState; code?: string } | undefined;
   readonly registry: RemoteHostRegistry;
@@ -174,13 +212,30 @@ function handoffReadyUnavailable(): Error {
   });
 }
 
-/** One port per opted-in host. The caller owns the injected Ready source and
- * presentation callbacks; bootstrap owns construction, connection capture and
- * disposal with the host. */
+function handoffIdentityUnavailable(): Error {
+  return Object.assign(new Error(HANDOFF_ATTACHMENT_IDENTITY_UNAVAILABLE), {
+    code: HANDOFF_ATTACHMENT_IDENTITY_UNAVAILABLE,
+    errorCode: HANDOFF_ATTACHMENT_IDENTITY_UNAVAILABLE,
+  });
+}
+
+/** One port per opted-in host. A successor composition owns the target child,
+ * strict `readStatus` and claim identity; an explicit identity/readStatus pair
+ * remains available for compositions without a successor. Bootstrap owns
+ * construction, connection capture and disposal with the host. */
 function createHostHandoffAttachment(record: RemoteHostRecord, adapter: RacpRemoteHostClient,
   request: RemoteHandoffAttachmentRequest,
   log: (level: "info" | "warn" | "error", message: string, data?: unknown) => void): DesktopHandoffReattachment {
   const client = adapter.client;
+  const successor = request.successor;
+  if (successor && (successor.target.transferId !== request.target.transferId ||
+      successor.target.sourceEpoch !== request.target.sourceEpoch ||
+      successor.target.profileId !== request.target.profileId)) {
+    throw handoffIdentityUnavailable();
+  }
+  const identity = request.identity ?? (successor ? () => successor.identity() : undefined);
+  if (!identity) throw handoffIdentityUnavailable();
+  const readStatus = request.readStatus ?? (successor ? (target, signal) => successor.readStatus(target, signal) : undefined);
   // The adapter's published state lags behind RACP while a reconnect is
   // recovering (it reads "reconnecting" inside the reconnect callback), so this
   // gate refuses only states whose transport is gone. Identity is re-captured
@@ -190,11 +245,15 @@ function createHostHandoffAttachment(record: RemoteHostRecord, adapter: RacpRemo
     const state = client.state?.();
     return state === "disconnected" || state === "error";
   };
-  return createDesktopHandoffReattachment({
-    authority() {
+  const port = createDesktopHandoffReattachment({
+    async authority() {
+      // A successor composition launches/joins the target before the claim
+      // identity exists; the identity values never come from Ready.
+      if (successor) await successor.ensureStarted();
+      const resolved = await identity();
       return {
         target: request.target,
-        identity: request.identity(),
+        identity: resolved,
         client,
         assertCurrent() {
           if (isClosed()) {
@@ -205,13 +264,42 @@ function createHostHandoffAttachment(record: RemoteHostRecord, adapter: RacpRemo
       };
     },
     detachOriginal: request.detachOriginal ?? (async () => undefined),
-    readStatus: request.readStatus ?? (async () => { throw handoffReadyUnavailable(); }),
+    readStatus: readStatus ?? (async () => { throw handoffReadyUnavailable(); }),
     sessionId: request.sessionId,
     onSnapshot: request.onSnapshot ?? (() => undefined),
     onEvent: request.onEvent ?? (() => undefined),
     onState: request.onState ?? (() => undefined),
     log: (level, message, data) => log(level, `remote host ${record.hostKey} ${message}`, data),
   });
+  let disposal: Promise<void> | undefined;
+  return {
+    get state() { return port.state; },
+    get detail() { return port.detail; },
+    enable: () => port.enable(),
+    ownerChanged: () => port.ownerChanged(),
+    disable: () => port.disable(),
+    dispose() {
+      disposal ??= (async () => {
+        let failure: unknown;
+        const disposePort = async () => {
+          try { await port.dispose(); }
+          catch (error) { failure = error; }
+        };
+        const disposeSuccessor = async () => {
+          try { await successor?.dispose(); }
+          catch (error) { failure ??= error; }
+        };
+        // While the successor is still launching, stopping the child first
+        // aborts the pending claim instead of waiting out its Ready timeout.
+        // Once the attachment owns live streams, release them before the child.
+        const streaming = port.state === "attached" || port.state === "resync-required" || port.state === "error";
+        if (streaming) { await disposePort(); await disposeSuccessor(); }
+        else { await disposeSuccessor(); await disposePort(); }
+        if (failure !== undefined) throw failure;
+      })();
+      return disposal;
+    },
+  };
 }
 
 export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHostsBoot {
@@ -236,6 +324,16 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
   const connectedHost = (key: string) => {
     const host = opened.get(key);
     return host?.adapter.state() === "connected" ? host : undefined;
+  };
+  const requireCommandCenterHost = (key: string) => {
+    const host = connectedHost(key);
+    if (!host) throw unavailable();
+    if (host.adapter.commandCenterCapability?.() !== true || !host.adapter.commandCenterObserverIdentity?.()) {
+      throw Object.assign(new Error("this Host does not offer command-center monitor pages"), {
+        errorCode: "CAPABILITY_UNAVAILABLE",
+      });
+    }
+    return host;
   };
   const catalog = createRemoteSessionCatalog({
     getHost: (key) => {
@@ -563,6 +661,46 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       const host = connectedHost(hostKey);
       if (!host) throw Object.assign(new Error("Remote workspace is disconnected"), { errorCode: "TERMINAL_HOST_OFFLINE", code: "HOST_DISCONNECTED" });
       return host.adapter.client;
+    },
+    commandCenterHosts() {
+      const hosts: RemoteCommandCenterHost[] = [];
+      for (const [hostKey, host] of opened) {
+        if (host.adapter.commandCenterCapability?.() !== true) continue;
+        const identity = host.adapter.commandCenterObserverIdentity?.();
+        if (!identity) continue;
+        hosts.push({ hostKey, label: host.label, ...identity, commandCenter: true });
+      }
+      return hosts;
+    },
+    async commandCenterMonitorPage(hostKey, request) {
+      const host = requireCommandCenterHost(hostKey);
+      const result = await host.adapter.client.request("commandCenter/monitorPage", request);
+      if (connectedHost(hostKey) !== host) throw unavailable();
+      return result;
+    },
+    async commandCenterPing(hostKey) {
+      const host = requireCommandCenterHost(hostKey);
+      const result = await host.adapter.client.request("connection/ping", {});
+      if (connectedHost(hostKey) !== host) throw unavailable();
+      return result;
+    },
+    async commandCenterWorkspaceList(hostKey) {
+      const host = requireCommandCenterHost(hostKey);
+      const identity = host.adapter.commandCenterObserverIdentity?.();
+      if (!identity) throw unavailable();
+      const result = await host.adapter.client.request("commandCenter/workspace/list", { version: 1, hostId: identity.hostId });
+      if (connectedHost(hostKey) !== host) throw unavailable();
+      return result;
+    },
+    async commandCenterReceiptList(hostKey, request) {
+      const host = requireCommandCenterHost(hostKey);
+      const identity = host.adapter.commandCenterObserverIdentity?.();
+      if (!identity) throw unavailable();
+      const result = await host.adapter.client.request("commandCenter/receipt/list", {
+        version: 1, hostId: identity.hostId, afterSequence: request.afterSequence, limit: request.limit,
+      });
+      if (connectedHost(hostKey) !== host) throw unavailable();
+      return result;
     },
     handoffState(hostKey) {
       const handoff = opened.get(hostKey)?.handoff;
