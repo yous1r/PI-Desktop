@@ -129,17 +129,15 @@ function unavailable(capability: string): OperationHandler {
 }
 
 /**
- * Command-center availability comes only from the negotiated RACP capability
- * block. `RacpServerCapabilitiesSchema` deliberately has no command-center
- * field, so this gate is closed and every request fails with
- * CAPABILITY_UNAVAILABLE before the dispatcher or the control service runs.
- * Enabling the operations requires adding the capability field together with
- * the producer/consumer path in one change; a bound control service alone must
- * never expose them.
+ * Command-center availability comes from the negotiated RACP capability block
+ * and the bound connection-scoped dispatcher. Both must be present: the
+ * capability is advertised only by a Host that opted in, and a bound service
+ * alone must never expose the operations (fail closed).
  */
 function requireCommandCenter(context: OperationContext): CommandCenterDispatch {
-  const advertised = (context.capabilities as unknown as { commandCenter?: unknown }).commandCenter === true;
-  if (!advertised) throw new RacpError("CAPABILITY_UNAVAILABLE", "this Host does not offer command-center control");
+  if (context.capabilities.commandCenter !== true) {
+    throw new RacpError("CAPABILITY_UNAVAILABLE", "this Host does not offer command-center control");
+  }
   if (!context.commandCenter) throw new RacpError("CAPABILITY_UNAVAILABLE", "command-center control is not bound to this connection");
   return context.commandCenter;
 }

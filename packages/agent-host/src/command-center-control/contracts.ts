@@ -1,6 +1,7 @@
 import {
-  commandCenterWithinBytes, parseCommandCenterInterventionRequest,
-  type CommandCenterInterventionRequest, type CommandCenterReceipt, type CommandCenterWorkspace,
+  COMMAND_CENTER_MAX_RECEIPT_BYTES, commandCenterWithinBytes, parseCommandCenterInterventionRequest,
+  type CommandCenterInterventionRequest, type CommandCenterReceipt, type CommandCenterReceiptStatus,
+  type CommandCenterWorkspace,
 } from "@pi-desktop/shared";
 import { RacpError } from "../errors.js";
 import type { Principal } from "../ports.js";
@@ -61,10 +62,43 @@ export type CommandCenterRepositoryContext = {
   binding: CommandCenterBinding;
   auth: { subject: string; roles: Principal["roles"]; sessionIds: string[]; workspaceIds: string[] };
 };
+
+/**
+ * Receipt states the C4 dispatch path may acknowledge. `recorded` is the durable
+ * dispatch claim itself, so it is never an acknowledgement target.
+ */
+export const COMMAND_CENTER_ACK_STATUSES = [
+  "accepted", "consumed", "completed", "rejected", "conflicted", "interrupted", "outcome_unknown",
+] as const;
+export type CommandCenterAckStatus = (typeof COMMAND_CENTER_ACK_STATUSES)[number];
+export type CommandCenterReceiptError = { code: string; message: string };
+
+/**
+ * Private receipt transition request. It is the only dispatch/ACK persistence
+ * path: the C2 receipt journal stays the single store, and the expected revision
+ * makes a repeated or racing acknowledgement a no-op instead of a second effect.
+ */
+export type CommandCenterAckRequest = Mutation & {
+  requestId: string;
+  expectedRevision: number;
+  status: CommandCenterAckStatus;
+  effectiveGoalRevision?: number;
+  error?: CommandCenterReceiptError;
+};
+
+/** Public control operations plus the private C2 receipt transition. */
+export type CommandCenterRepositoryRequests = CommandCenterRequests & {
+  "intervention/ack": CommandCenterAckRequest;
+};
+export type CommandCenterRepositoryMethod = keyof CommandCenterRepositoryRequests;
+export type CommandCenterRepositoryResults = CommandCenterResults & {
+  "intervention/ack": { entry: CommandCenterReceiptEntry; replayed: boolean };
+};
+
 export interface CommandCenterRepository {
-  call<M extends CommandCenterMethod>(
-    method: M, input: CommandCenterRequests[M], context: CommandCenterRepositoryContext,
-  ): Promise<CommandCenterResults[M]>;
+  call<M extends CommandCenterRepositoryMethod>(
+    method: M, input: CommandCenterRepositoryRequests[M], context: CommandCenterRepositoryContext,
+  ): Promise<CommandCenterRepositoryResults[M]>;
 }
 export type CommandCenterAccess = { kind: "session" | "workspace"; id: string; permission: "read" | "control" };
 
@@ -134,4 +168,47 @@ export function parseCommandCenterRequest<M extends CommandCenterMethod>(method:
   if (method === "receipt/list") { keys.push("afterSequence", "limit"); integer(input.afterSequence, 0); integer(input.limit, 1, 100); }
   strictKeys(input, keys, optional);
   return input as CommandCenterRequests[M];
+}
+
+const RECEIPT_ERROR_CODE = /^[A-Z][A-Z0-9_]{0,63}$/;
+
+function receiptError(value: unknown): CommandCenterReceiptError {
+  const error = record(value);
+  strictKeys(error, ["code", "message"]);
+  if (typeof error.code !== "string" || !RECEIPT_ERROR_CODE.test(error.code)) invalid();
+  if (typeof error.message !== "string" || !error.message.length || [...error.message].length > 512 || error.message.includes("\0")) invalid();
+  return { code: error.code, message: error.message };
+}
+
+/**
+ * Validate the private ACK request built by `CommandCenterControl`. It mirrors
+ * the shared receipt rules the contract can enforce without a previous entry:
+ * `recorded` is not acknowledgeable, rejected/conflicted require an error, and
+ * accepted/consumed/completed must not carry one.
+ */
+export function parseCommandCenterAckRequest(value: unknown): CommandCenterAckRequest {
+  if (!commandCenterWithinBytes(value, COMMAND_CENTER_MAX_RECEIPT_BYTES)) invalid();
+  const input = record(JSON.parse(JSON.stringify(value)));
+  if (input.version !== 1) invalid();
+  hostId(input.hostId); uuid(input.expectedHostEpoch); uuid(input.requestId); integer(input.expectedRevision, 1);
+  if (typeof input.status !== "string" || !(COMMAND_CENTER_ACK_STATUSES as readonly string[]).includes(input.status)) invalid();
+  strictKeys(
+    input,
+    ["version", "hostId", "expectedHostEpoch", "requestId", "expectedRevision", "status"],
+    ["effectiveGoalRevision", "error"],
+  );
+  if (input.effectiveGoalRevision !== undefined) integer(input.effectiveGoalRevision, 0);
+  const status = input.status as CommandCenterReceiptStatus;
+  const error = input.error === undefined ? undefined : receiptError(input.error);
+  if ((status === "rejected" || status === "conflicted") && error === undefined) invalid();
+  if ((status === "accepted" || status === "consumed" || status === "completed") && error !== undefined) invalid();
+  return { ...(input as CommandCenterAckRequest), ...(error ? { error } : {}) };
+}
+
+/** Repository-side request parsing: public control requests plus the private ACK. */
+export function parseCommandCenterRepositoryRequest<M extends CommandCenterRepositoryMethod>(
+  method: M, value: unknown,
+): CommandCenterRepositoryRequests[M] {
+  if (method === "intervention/ack") return parseCommandCenterAckRequest(value) as CommandCenterRepositoryRequests[M];
+  return parseCommandCenterRequest(method, value) as CommandCenterRepositoryRequests[M];
 }

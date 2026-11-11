@@ -481,6 +481,13 @@ export const RacpServerCapabilitiesSchema = Type.Object({
   workspaceTerminal: Type.Optional(Type.Boolean()),
   workspaceProcesses: Type.Optional(Type.Integer({minimum:1,maximum:1})),
   workspacePlugins: Type.Optional(Type.Integer({ minimum: 1, maximum: 1 })),
+  /**
+   * Command-center control (`commandCenter/*`) is reachable on this connection.
+   * Additive and opt-in (C3/C4): the field is absent, never `false`, unless the
+   * Host both binds the control service and explicitly advertises it. Clients
+   * must treat an absent field exactly like `false`.
+   */
+  commandCenter: Type.Optional(Type.Boolean()),
   notifications: Type.Boolean(),
   bindings: Type.Array(Type.Union([Type.Literal("RACP-WS"), Type.Literal("RACP-HTTP"), Type.Literal("RACP-GRPC")])),
 });
@@ -637,10 +644,10 @@ export const RACP_OPERATIONS = {
   /** List directories under a Host path, for the remote folder picker; bounded and owner-only. */
   "project/browse": { role: "owner", profile: "remote-host", mutation: false },
   /**
-   * Command-center control (C3). Names and roles mirror `CommandCenterControl`;
-   * the shared schema has no command-center capability field, so the RACP
-   * server refuses every one of these operations with CAPABILITY_UNAVAILABLE
-   * until capability negotiation and the producer/consumer path ship together.
+   * Command-center control (C3). Names and roles mirror `CommandCenterControl`.
+   * The optional `commandCenter` capability is advertised only when a Host binds
+   * the control service and explicitly opts in; otherwise the RACP server refuses
+   * every one of these operations with CAPABILITY_UNAVAILABLE before dispatch.
    */
   "commandCenter/workspace/list": { role: "viewer", profile: "remote-host", mutation: false },
   "commandCenter/workspace/get": { role: "viewer", profile: "remote-host", mutation: false },

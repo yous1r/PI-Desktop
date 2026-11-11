@@ -228,7 +228,11 @@ export type Harness = {
   }>;
 };
 
-export async function harness(options: { limits?: Partial<import("@pi-desktop/shared").RacpLimits>; operations?: Partial<RacpHostOperations> } = {}): Promise<Harness> {
+export async function harness(options: {
+  limits?: Partial<import("@pi-desktop/shared").RacpLimits>;
+  operations?: Partial<RacpHostOperations>;
+  advertiseCommandCenter?: boolean;
+} = {}): Promise<Harness> {
   const { host, runtime, sessions, approvals } = buildHost(options.limits);
   const { store, authenticator } = await credentialStore();
   const operations = { ...fakeOperations(sessions), ...options.operations };
@@ -241,6 +245,7 @@ export async function harness(options: { limits?: Partial<import("@pi-desktop/sh
     limits: options.limits,
     log: () => undefined,
     initializeTimeoutMs: 1_000,
+    ...(options.advertiseCommandCenter === undefined ? {} : { advertiseCommandCenter: options.advertiseCommandCenter }),
   });
   const links: MemoryLink[] = [];
   return {

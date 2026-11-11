@@ -62,6 +62,12 @@ export type RacpServerOptions = {
   admission?: { isClosed(): boolean };
   /** Deadline for `connection/initialize` after the socket opened (spec §12). */
   initializeTimeoutMs?: number;
+  /**
+   * Explicit opt-in for the additive command-center capability. It takes effect
+   * only when `operations.commandCenter` is bound as well; the default `false`
+   * keeps every existing Host's negotiated capability block byte-identical.
+   */
+  advertiseCommandCenter?: boolean;
 };
 
 type Subscription = { id: string; sessionId?: string };
@@ -191,6 +197,9 @@ export class RacpServer {
       workspaceTerminal: Boolean(options.operations.workspaceTerminal),
       ...(options.operations.workspaceProcesses ? {workspaceProcesses:1 as const} : {}),
       ...(options.operations.workspacePlugins ? { workspacePlugins: 1 as const } : {}),
+      ...(options.operations.commandCenter && options.advertiseCommandCenter === true
+        ? { commandCenter: true as const }
+        : {}),
       notifications: false,
       bindings: ["RACP-WS"],
     };

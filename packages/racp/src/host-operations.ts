@@ -117,11 +117,10 @@ export type RacpHostOperations = {
   /** Owner-only: revoke a paired device (spec `session/revoke`). */
   revokeDevice?: (deviceId: string) => Promise<boolean>;
   /**
-   * Command-center control service. `pi-host` deliberately does not bind it:
-   * no RACP capability advertises command-center operations, so every
-   * `commandCenter/*` request still fails CAPABILITY_UNAVAILABLE. Binding it
-   * only lets the server own and dispose a per-connection dispatcher so the
-   * teardown path exists before the producer/consumer wiring lands.
+   * Command-center control service. Binding it owns a per-connection dispatcher
+   * and teardown path; the operations stay refused with CAPABILITY_UNAVAILABLE
+   * unless the server is also constructed with `advertiseCommandCenter: true`.
+   * Both are required, so a bound service alone never exposes the namespace.
    */
   commandCenter?: CommandCenterControl;
 };

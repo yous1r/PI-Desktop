@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import {
-  RacpError, parseCommandCenterRequest, parseCommandCenterRepositoryResult,
-  type CommandCenterBinding, type CommandCenterMethod, type CommandCenterRepository,
-  type CommandCenterRepositoryContext, type CommandCenterRequests, type CommandCenterResults,
+  RacpError, parseCommandCenterRepositoryRequest, parseCommandCenterRepositoryResult,
+  type CommandCenterBinding, type CommandCenterRepository,
+  type CommandCenterRepositoryContext, type CommandCenterRepositoryMethod, type CommandCenterRepositoryRequests,
+  type CommandCenterRepositoryResults,
   type HostRpcPort,
 } from "@pi-desktop/agent-host";
 import { commandCenterCanonicalPayload, commandCenterReceiptBindsRequest, type CommandCenterInterventionRequest } from "@pi-desktop/shared";
@@ -14,8 +15,8 @@ import { commandCenterCanonicalPayload, commandCenterReceiptBindsRequest, type C
 export class RustCommandCenterRepository implements CommandCenterRepository {
   constructor(private readonly transport: HostRpcPort, private readonly hostIdentity: () => CommandCenterBinding) {}
 
-  async call<M extends CommandCenterMethod>(method: M, input: CommandCenterRequests[M], context: CommandCenterRepositoryContext): Promise<CommandCenterResults[M]> {
-    const request = parseCommandCenterRequest(method, input);
+  async call<M extends CommandCenterRepositoryMethod>(method: M, input: CommandCenterRepositoryRequests[M], context: CommandCenterRepositoryContext): Promise<CommandCenterRepositoryResults[M]> {
+    const request = parseCommandCenterRepositoryRequest(method, input);
     const binding = { ...context.binding };
     const assertCurrent = () => {
       const current = this.hostIdentity();
@@ -53,13 +54,21 @@ export class RustCommandCenterRepository implements CommandCenterRepository {
     assertCurrent();
     const result = parseCommandCenterRepositoryResult(method, response);
     if (method === "intervention/record") {
-      const outcome = result as CommandCenterResults["intervention/record"];
+      const outcome = result as CommandCenterRepositoryResults["intervention/record"];
       const intervention = request as CommandCenterInterventionRequest;
       const fingerprint = createHash("sha256").update(commandCenterCanonicalPayload(intervention)).digest("hex");
       if (!commandCenterReceiptBindsRequest(outcome.entry.receipt, intervention) || outcome.entry.receipt.fingerprint !== fingerprint ||
           outcome.entry.hostId !== binding.hostId || outcome.entry.hostEpoch !== binding.hostEpoch ||
           outcome.entry.commandWorkspaceId !== intervention.commandWorkspaceId || outcome.entry.membershipRevision !== intervention.expectedMembershipRevision) {
         throw new RacpError("INTERNAL", "command-center repository returned an unrelated receipt", { retriable: false });
+      }
+    } else if (method === "intervention/ack") {
+      const outcome = result as CommandCenterRepositoryResults["intervention/ack"];
+      const ack = request as CommandCenterRepositoryRequests["intervention/ack"];
+      if (outcome.entry.receipt.requestId !== ack.requestId ||
+          outcome.entry.receipt.status !== ack.status ||
+          outcome.entry.hostId !== binding.hostId || outcome.entry.hostEpoch !== binding.hostEpoch) {
+        throw new RacpError("INTERNAL", "command-center repository returned an unrelated acknowledgement", { retriable: false });
       }
     }
     return result;

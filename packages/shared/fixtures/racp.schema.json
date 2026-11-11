@@ -2238,6 +2238,9 @@
             "minimum": 1,
             "maximum": 1
           },
+          "commandCenter": {
+            "type": "boolean"
+          },
           "notifications": {
             "type": "boolean"
           },
