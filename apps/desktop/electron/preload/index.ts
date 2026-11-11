@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
+import type { Result } from "@pi-desktop/shared";
 import { IPC, IPC_WHITELIST } from "@pi-desktop/shared/protocol";
+import {
+  COMMAND_CENTER_IPC,
+  type CommandCenterHostDescriptor,
+  type CommandCenterMonitorPageRequest,
+  type CommandCenterPingReply,
+  type CommandCenterReceiptListRequest,
+} from "./command-center-contract.js";
 
 const LOCALE_ARGUMENT_PREFIX = "--pi-desktop-locale=";
 
@@ -13,6 +21,21 @@ function assertChannel(channel: string) {
   if (!IPC_WHITELIST.has(channel)) {
     throw new Error(`IPC channel not allowed: ${channel}`);
   }
+}
+
+/** Fixed command-center channels only; the renderer cannot name an arbitrary one. */
+async function commandCenterInvoke<T>(channel: string, ...args: unknown[]): Promise<T> {
+  const result = await ipcRenderer.invoke(channel, ...args) as Result<T> | undefined;
+  if (result === undefined || typeof result !== "object" || typeof result.ok !== "boolean") {
+    throw new Error("command-center bridge returned an invalid reply");
+  }
+  if (!result.ok) {
+    const error = new Error(result.error.message) as Error & { code?: string; details?: unknown };
+    error.code = result.error.code;
+    error.details = result.error.details;
+    throw error;
+  }
+  return result.data;
 }
 
 const api = {
@@ -36,6 +59,15 @@ const api = {
     };
     ipcRenderer.on(IPC.event.liveVoicePort, listener);
     return () => ipcRenderer.removeListener(IPC.event.liveVoicePort, listener);
+  },
+  commandCenter: {
+    hosts: () => commandCenterInvoke<readonly CommandCenterHostDescriptor[]>(COMMAND_CENTER_IPC.capability),
+    monitorPage: (hostKey: string, request: CommandCenterMonitorPageRequest) =>
+      commandCenterInvoke<unknown>(COMMAND_CENTER_IPC.monitorPage, hostKey, request),
+    ping: (hostKey: string) => commandCenterInvoke<CommandCenterPingReply>(COMMAND_CENTER_IPC.ping, hostKey),
+    workspaceList: (hostKey: string) => commandCenterInvoke<unknown>(COMMAND_CENTER_IPC.workspaceList, hostKey),
+    receiptList: (hostKey: string, request: CommandCenterReceiptListRequest) =>
+      commandCenterInvoke<unknown>(COMMAND_CENTER_IPC.receiptList, hostKey, request),
   },
   channels: IPC,
   // Synchronous platform info so the renderer can style window chrome

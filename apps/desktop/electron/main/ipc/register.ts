@@ -34,6 +34,8 @@ import { registerBackgroundTasksIpc } from "./background-tasks-ipc";
 import { registerSkillsIpc } from "./skills-ipc";
 import { registerAgentImportIpc } from "./agent-import-ipc";
 import { registerRemoteHostIpc } from "./remote-host-ipc";
+import { registerCommandCenterIpc } from "./command-center-ipc";
+import { getActiveRemoteHostsBoot } from "../bootstrap/remote-hosts";
 import { fetchSkillMarketDocument, searchSkillMarket } from "../skill-market-catalog";
 import { registerWindowIpc } from "./window-ipc";
 import { registerWorktreeIpc } from "./worktree-ipc";
@@ -514,6 +516,9 @@ export function registerIpcHandlers(dependencies: RegisterIpcDependencies) {
   }
 
   registerRemoteHostIpc({ registrar });
+  // Dedicated fixed channels; the renderer receives only negotiated capability
+  // descriptors and bounded read results, never the RACP connection.
+  registerCommandCenterIpc({ registrar, getBoot: getActiveRemoteHostsBoot });
 
   registerMarketIpc({
     registrar,

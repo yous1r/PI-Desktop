@@ -141,6 +141,7 @@ test("the mounted page subscribes to the registry and leaves the fixture default
     /provider \?\? registeredProvider \?\? COMMAND_CENTER_FIXTURE_PROVIDER/,
     "an empty registry keeps the fixture default",
   );
+  assert.match(pageSource, /useCommandCenterTransportBootstrap\(\);/, "the route mounts the transport bootstrap");
 
   const first = bootstrap.createCommandCenterLiveProvider({
     capabilities: { commandCenter: true },
@@ -197,6 +198,75 @@ test("the mounted route uses the registered live provider and falls back to the 
   const fallback = render();
   assert.match(fallback, /role="status"[^>]*aria-label="Host Local Host, status offline"/);
   assert.match(fallback, /data-command-center="preview-notice"/);
+});
+
+function fakeTransport(overrides = {}) {
+  const calls = [];
+  const transport = {
+    hosts: async () => [{
+      hostKey: "remote:one", label: "One", hostId: "host_1",
+      expectedHostEpoch: "55555555-5555-4555-8555-555555555555", commandCenter: true,
+    }],
+    monitorPage: async (hostKey, request) => {
+      calls.push(["page", hostKey, request]);
+      return structuredClone(fixtures.COMMAND_CENTER_PREVIEW_SNAPSHOT);
+    },
+    ping: async (hostKey) => {
+      calls.push(["ping", hostKey]);
+      return { ok: true, serverTime: "2026-01-01T00:00:00.000Z" };
+    },
+    workspaceList: async (hostKey) => {
+      calls.push(["workspaces", hostKey]);
+      return { workspaces: structuredClone(fixtures.COMMAND_CENTER_PREVIEW_WORKSPACES) };
+    },
+    receiptList: async (hostKey, request) => {
+      calls.push(["receipts", hostKey, request]);
+      return { receipts: structuredClone(fixtures.COMMAND_CENTER_PREVIEW_RECEIPTS), nextAfterSequence: null };
+    },
+    ...overrides,
+  };
+  return { transport, calls };
+}
+
+test("the transport bootstrap builds the live provider only for a capable host", async () => {
+  const { transport, calls } = fakeTransport();
+  const cleanup = await bootstrap.bootstrapCommandCenterFromTransport(transport);
+  const provider = bootstrap.getCommandCenterLiveProvider();
+  assert.ok(provider, "a commandCenter-capable connected Host must register a provider");
+  await new Promise((done) => setImmediate(done));
+  const refreshed = await provider.refresh();
+  assert.equal(refreshed.kind, "published");
+  const state = provider.getState();
+  assert.equal(state.source, "session");
+  assert.equal(state.host.state, "connected");
+  assert.equal(state.workspaces.length, 3);
+  assert.equal(state.snapshot.rows.length, 3);
+  assert.equal(state.receipts.length, 2);
+
+  const kinds = calls.map((call) => call[0]);
+  assert.ok(kinds.includes("ping"), "health pings through the existing connection channel");
+  assert.ok(kinds.includes("page"));
+  assert.ok(kinds.includes("workspaces"));
+  assert.ok(kinds.includes("receipts"));
+  const pageCall = calls.find((call) => call[0] === "page");
+  assert.deepEqual(pageCall.slice(1), ["remote:one", { version: 1 }]);
+
+  cleanup();
+  assert.equal(bootstrap.getCommandCenterLiveProvider(), undefined);
+});
+
+test("a missing capability or unavailable bridge keeps the fixture default without fetching pages", async () => {
+  const noCapability = fakeTransport({ hosts: async () => [] });
+  const cleanup = await bootstrap.bootstrapCommandCenterFromTransport(noCapability.transport);
+  assert.equal(bootstrap.getCommandCenterLiveProvider(), undefined);
+  assert.deepEqual(noCapability.calls, []);
+  cleanup();
+
+  const failing = fakeTransport({ hosts: async () => { throw new Error("bridge offline"); } });
+  const failingCleanup = await bootstrap.bootstrapCommandCenterFromTransport(failing.transport);
+  assert.equal(bootstrap.getCommandCenterLiveProvider(), undefined);
+  assert.deepEqual(failing.calls, []);
+  failingCleanup();
 });
 
 test("the one-call bootstrap registers a capable provider and cleans it up", () => {

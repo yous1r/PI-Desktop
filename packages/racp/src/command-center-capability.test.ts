@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import * as Value from "typebox/value";
 import { CommandCenterControl, type CommandCenterBinding, type CommandCenterRepository } from "@pi-desktop/agent-host";
 import { RacpServerCapabilitiesSchema } from "@pi-desktop/shared";
+import type { CommandCenterMonitorPagePort } from "./command-center-monitor.js";
 import { flush, harness, OWNER_TOKEN, VIEWER_TOKEN } from "./test-harness.js";
 
 /** C3/C4 capability negotiation: the additive `commandCenter` field appears only
@@ -11,6 +12,21 @@ import { flush, harness, OWNER_TOKEN, VIEWER_TOKEN } from "./test-harness.js";
 const fixture = JSON.parse(
   readFileSync(new URL("../../shared/test/fixtures/command-center-control.json", import.meta.url), "utf8"),
 );
+const summaryFixture = JSON.parse(
+  readFileSync(new URL("../../shared/test/fixtures/command-center-summary.json", import.meta.url), "utf8"),
+);
+const monitorPage = summaryFixture.snapshot;
+
+function monitorPort(page: unknown = monitorPage) {
+  const calls: { request: unknown; principal: unknown }[] = [];
+  const port: CommandCenterMonitorPagePort = {
+    async page(request, context) {
+      calls.push({ request, principal: context.principal });
+      return structuredClone(page);
+    },
+  };
+  return { port, calls };
+}
 const binding: CommandCenterBinding = {
   hostId: "host_7c1e0a93b4d2f681",
   hostEpoch: "3f6b2a90-1c4d-4e88-9a71-5b2c8d0e6f14",
@@ -86,6 +102,61 @@ describe("command-center RACP capability advertisement", () => {
     });
     expect(receipt).toEqual(fixture.receipt);
     expect(calls.map((call) => call.method)).toEqual(["workspace/list", "receipt/get"]);
+  });
+
+  it("serves bounded monitor pages to a viewer only with the advertised capability and a bound port", async () => {
+    const { control } = realControl();
+    const { port, calls } = monitorPort();
+    const h = await harness({
+      operations: { commandCenter: control, commandCenterMonitorPage: port },
+      advertiseCommandCenter: true,
+    });
+    const viewer = await h.connect(VIEWER_TOKEN);
+    expect(viewer.client.initialized?.capabilities.commandCenter).toBe(true);
+
+    const first = await viewer.client.request("commandCenter/monitorPage", {
+      version: 1, hostId: binding.hostId,
+    });
+    expect(first).toEqual(monitorPage);
+    const second = await viewer.client.request("commandCenter/monitorPage", {
+      version: 1, hostId: binding.hostId, token: "page-token-2",
+    });
+    expect(second).toEqual(monitorPage);
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toMatchObject({ request: { version: 1, hostId: binding.hostId } });
+    expect(calls[1]).toMatchObject({ request: { token: "page-token-2" } });
+    expect(calls[0].principal).toMatchObject({ subject: "dev_viewer", roles: ["viewer"] });
+  });
+
+  it("refuses monitor pages without the advertised capability or a bound port", async () => {
+    const { control } = realControl();
+    const { port, calls } = monitorPort();
+    const notAdvertised = await harness({ operations: { commandCenter: control, commandCenterMonitorPage: port } });
+    const withoutCapability = await notAdvertised.connect(VIEWER_TOKEN);
+    await expect(withoutCapability.client.request("commandCenter/monitorPage", { version: 1, hostId: binding.hostId }))
+      .rejects.toMatchObject({ code: "CAPABILITY_UNAVAILABLE" });
+    expect(calls).toHaveLength(0);
+
+    const noPort = await harness({ operations: { commandCenter: control }, advertiseCommandCenter: true });
+    const withoutPort = await noPort.connect(VIEWER_TOKEN);
+    await expect(withoutPort.client.request("commandCenter/monitorPage", { version: 1, hostId: binding.hostId }))
+      .rejects.toMatchObject({ code: "CAPABILITY_UNAVAILABLE" });
+  });
+
+  it("rejects malformed and oversized monitor pages at the transport boundary", async () => {
+    const { control } = realControl();
+    const oversized = { ...monitorPage, rows: Array.from({ length: 101 }, () => monitorPage.rows[0]) };
+    const h = await harness({
+      operations: { commandCenter: control, commandCenterMonitorPage: monitorPort(oversized).port },
+      advertiseCommandCenter: true,
+    });
+    const viewer = await h.connect(VIEWER_TOKEN);
+    await expect(viewer.client.request("commandCenter/monitorPage", { version: 1, hostId: binding.hostId }))
+      .rejects.toMatchObject({ code: "RESOURCE_EXHAUSTED" });
+    await expect(viewer.client.request("commandCenter/monitorPage", { version: 2, hostId: binding.hostId }))
+      .rejects.toMatchObject({ code: "INVALID_ARGUMENT" });
+    await expect(viewer.client.request("commandCenter/monitorPage", { version: 1, hostId: binding.hostId, extra: true }))
+      .rejects.toMatchObject({ code: "INVALID_ARGUMENT" });
   });
 
   it("keeps role checks ahead of dispatch and refuses read operations for a role-less pairing", async () => {

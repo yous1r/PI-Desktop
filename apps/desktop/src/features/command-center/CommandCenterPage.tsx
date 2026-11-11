@@ -6,7 +6,10 @@ import {
   COMMAND_CENTER_I18N_NAMESPACE,
 } from "../../components/command-center";
 import { useAppStore } from "../../stores/app-store";
-import { useCommandCenterLiveProvider } from "./command-center-bootstrap";
+import {
+  useCommandCenterLiveProvider,
+  useCommandCenterTransportBootstrap,
+} from "./command-center-bootstrap";
 import {
   COMMAND_CENTER_FIXTURE_PROVIDER,
   type CommandCenterDataProvider,
@@ -34,6 +37,7 @@ export function CommandCenterPage({ provider }: { readonly provider?: CommandCen
   // A command-center-capable connection registers its provider in the app
   // bootstrap registry; an empty registry keeps the fixture preview.
   const registeredProvider = useCommandCenterLiveProvider();
+  useCommandCenterTransportBootstrap();
   const activeProvider = provider ?? registeredProvider ?? COMMAND_CENTER_FIXTURE_PROVIDER;
   const data = useSyncExternalStore(activeProvider.subscribe, activeProvider.getState, activeProvider.getState);
   useEffect(() => {

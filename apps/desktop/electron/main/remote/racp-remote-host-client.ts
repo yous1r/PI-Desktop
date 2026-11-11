@@ -12,6 +12,7 @@
  * `RacpClient` state machine without a socket.
  */
 import { AsyncLocalStorage } from "node:async_hooks";
+import { randomUUID } from "node:crypto";
 import {
   RacpClient,
   wsClientTransport,
@@ -111,6 +112,17 @@ export type RacpRemoteHostClient = {
    * same-version mismatch the desktop must realign (ADR 0327).
    */
   workspaceCapabilities?(): RemoteWorkspaceCapabilities | undefined;
+  /**
+   * Optional command-center capability from the same initialize result. Absent
+   * means the adapter predates the field; callers must treat it as `false`.
+   */
+  commandCenterCapability?(): boolean;
+  /**
+   * Local lifetime identity for the command-center observation context. The
+   * Host id comes from the authenticated handshake; the epoch is a per-adapter
+   * UUID, never a wire credential. It rotates when the adapter is recreated.
+   */
+  commandCenterObserverIdentity?(): { hostId: string; expectedHostEpoch: string } | undefined;
   /** Close the transport; safe to call before {@link connect} and after failure. */
   close(): Promise<void>;
   getHandoffActivity(): { operations: number; resources: number; uncontainedResources: number };
@@ -157,6 +169,15 @@ export function createRacpRemoteHostClient(
     notify(stateListeners, state);
     try { options.onStateChange?.(state); }
     catch (error) { options.log?.("warn", "remote state listener threw", { error: String(error) }); }
+  };
+  // One local lifetime id per adapter/connection generation. Reconnecting the
+  // same adapter keeps it; a replacement connection must create a new context.
+  const observerEpoch = randomUUID();
+  const commandCenterCapability = (): boolean => racp.initialized?.capabilities.commandCenter === true;
+  const commandCenterObserverIdentity = (): { hostId: string; expectedHostEpoch: string } | undefined => {
+    const hostId = racp.initialized?.server.hostId;
+    if (typeof hostId !== "string" || hostId.length === 0) return undefined;
+    return { hostId, expectedHostEpoch: observerEpoch };
   };
   const workspaceCapabilities = (): RemoteWorkspaceCapabilities | undefined => {
     const capabilities = racp.initialized?.capabilities;
@@ -294,6 +315,8 @@ export function createRacpRemoteHostClient(
     state: () => visibleState,
     getHandoffActivity: () => ownership.snapshot(),
     workspaceCapabilities,
+    commandCenterCapability,
+    commandCenterObserverIdentity,
     async connect() {
       ownership.assertAdmission();
       if (closed) { closed = false; closing = undefined; }

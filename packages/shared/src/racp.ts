@@ -662,6 +662,12 @@ export const RACP_OPERATIONS = {
   "commandCenter/intervention/record": { role: "controller", profile: "remote-host", mutation: true },
   "commandCenter/receipt/get": { role: "viewer", profile: "remote-host", mutation: false },
   "commandCenter/receipt/list": { role: "viewer", profile: "remote-host", mutation: false },
+  /**
+   * Bounded read-only monitor page (M1). Viewer role, behind the same optional
+   * `commandCenter` capability. A missing continuation token returns the
+   * current first page; the request never carries an authorization scope.
+   */
+  "commandCenter/monitorPage": { role: "viewer", profile: "remote-host", mutation: false },
 } as const satisfies Record<string, RacpOperationSpec>;
 export type RacpOperation = keyof typeof RACP_OPERATIONS;
 

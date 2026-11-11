@@ -1,4 +1,5 @@
 import type { Principal, SessionSummary, CommandCenterControl } from "@pi-desktop/agent-host";
+import type { CommandCenterMonitorPagePort } from "./command-center-monitor.js";
 import type {
   FsEntry,
   FsReadResult,
@@ -123,4 +124,10 @@ export type RacpHostOperations = {
    * Both are required, so a bound service alone never exposes the namespace.
    */
   commandCenter?: CommandCenterControl;
+  /**
+   * Bounded monitor page source bound to the authenticated connection scope.
+   * Optional: without it `commandCenter/monitorPage` stays CAPABILITY_UNAVAILABLE
+   * even when the control namespace is advertised.
+   */
+  commandCenterMonitorPage?: CommandCenterMonitorPagePort;
 };

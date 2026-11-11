@@ -1,4 +1,10 @@
 import { RacpError, COMMAND_CENTER_METHODS, type CommandCenterControl, type CommandCenterMethod, type Principal } from "@pi-desktop/agent-host";
+import {
+  COMMAND_CENTER_MONITOR_OPERATION,
+  parseCommandCenterMonitorPageRequest,
+  validateCommandCenterMonitorPageResponse,
+  type CommandCenterMonitorPagePort,
+} from "./command-center-monitor.js";
 
 /** Single wire namespace shared by the RACP catalog and this dispatcher. */
 export const COMMAND_CENTER_RACP_PREFIX = "commandCenter/" as const;
@@ -8,9 +14,14 @@ export const COMMAND_CENTER_RACP_PREFIX = "commandCenter/" as const;
 export type CommandCenterTransportContext = { principal: Principal };
 
 /** Every command-center operation name registered in the shared RACP catalog. */
-export const COMMAND_CENTER_OPERATIONS: readonly `commandCenter/${CommandCenterMethod}`[] = Object.freeze(
-  COMMAND_CENTER_METHODS.map((method): `commandCenter/${CommandCenterMethod}` => `${COMMAND_CENTER_RACP_PREFIX}${method}`),
-);
+export type CommandCenterOperation =
+  | `commandCenter/${CommandCenterMethod}`
+  | typeof COMMAND_CENTER_MONITOR_OPERATION;
+
+export const COMMAND_CENTER_OPERATIONS: readonly CommandCenterOperation[] = Object.freeze([
+  ...COMMAND_CENTER_METHODS.map((method): `commandCenter/${CommandCenterMethod}` => `${COMMAND_CENTER_RACP_PREFIX}${method}`),
+  COMMAND_CENTER_MONITOR_OPERATION,
+]);
 
 const COMMAND_CENTER_OPERATION_SET: ReadonlySet<string> = new Set(COMMAND_CENTER_OPERATIONS);
 
@@ -22,6 +33,8 @@ export function isCommandCenterOperation(operation: string): boolean {
 export type CommandCenterDispatchOptions = {
   /** Release whatever the dispatcher owns. Runs at most once. */
   onDispose?: () => void | Promise<void>;
+  /** Bounded monitor page source. Absent refuses monitorPage explicitly. */
+  monitorPage?: CommandCenterMonitorPagePort;
 };
 
 /** One connection's command-center transport. The connection owns it for its
@@ -50,6 +63,15 @@ export function createCommandCenterDispatch(
     },
     async dispatch(operation: string, params: unknown, context: CommandCenterTransportContext): Promise<unknown> {
       if (disposed) throw new RacpError("AGENT_UNAVAILABLE", "the command-center dispatcher is disposed");
+      if (operation === COMMAND_CENTER_MONITOR_OPERATION) {
+        if (!options.monitorPage) {
+          throw new RacpError("CAPABILITY_UNAVAILABLE", "command-center monitor pages are not offered by this Host");
+        }
+        const request = parseCommandCenterMonitorPageRequest(params);
+        const page = await options.monitorPage.page(request, { principal: context.principal });
+        if (disposed) throw new RacpError("AGENT_UNAVAILABLE", "the command-center dispatcher is disposed");
+        return validateCommandCenterMonitorPageResponse(page);
+      }
       const method = operation.startsWith(COMMAND_CENTER_RACP_PREFIX) ? operation.slice(COMMAND_CENTER_RACP_PREFIX.length) : "";
       if (!COMMAND_CENTER_METHODS.includes(method as CommandCenterMethod)) {
         throw new RacpError("METHOD_NOT_FOUND", "unknown command-center operation");

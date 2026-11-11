@@ -352,7 +352,9 @@ export class RacpServer {
     }
     // Own the dispatcher for the connection lifetime; release() disposes it.
     if (!connection.commandCenter && this.options.operations.commandCenter && isCommandCenterOperation(operation)) {
-      connection.commandCenter = createCommandCenterDispatch(this.options.operations.commandCenter);
+      connection.commandCenter = createCommandCenterDispatch(this.options.operations.commandCenter, {
+        monitorPage: this.options.operations.commandCenterMonitorPage,
+      });
     }
     const context: OperationContext = {
       connection,

@@ -27,6 +27,7 @@ const EXPECTED_SPECS: Record<string, { role: "viewer" | "controller" | "owner"; 
   "commandCenter/intervention/record": { role: "controller", mutation: true },
   "commandCenter/receipt/get": { role: "viewer", mutation: false },
   "commandCenter/receipt/list": { role: "viewer", mutation: false },
+  "commandCenter/monitorPage": { role: "viewer", mutation: false },
 };
 
 function controlSpy() {
