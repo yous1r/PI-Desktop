@@ -9,10 +9,11 @@ import {
  * Deterministic preview data for the mounted V3 command-center route.
  *
  * This module is data only: it opens no transport, registers no RACP operation
- * and does not pretend to be a live Host producer. The route renders exactly
- * these rows so the surface, its navigation and its local state can be used
- * and tested without a Host; `capabilities` stays absent, so every control
- * that would need a live path remains explicitly unavailable.
+ * and does not pretend to be a live Host producer. The route uses it as the
+ * default data provider and renders exactly these rows so the surface, its
+ * navigation and its local state can be used and tested without a Host;
+ * `capabilities` stays absent, so every control that would need a live path
+ * remains explicitly unavailable. An injected provider may supply live data.
  */
 export const COMMAND_CENTER_PREVIEW_WORKSPACES: readonly CommandCenterWorkspace[] = Object.freeze([
   {

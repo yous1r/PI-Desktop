@@ -313,9 +313,15 @@ test("the fixture user path keeps workspace focus, drafts and local history", ()
 test("the route keeps every unavailable control explicit and selects tasks locally", () => {
   assert.match(
     pageSource,
-    /hostStatus=\{\{ label: t\("route\.hostLabel"\), state: "offline" \}\}/,
-    "the Host status says offline instead of faking a connection",
+    /const activeProvider = provider \?\? COMMAND_CENTER_FIXTURE_PROVIDER/,
+    "the route defaults to the fixture provider when none is injected",
   );
+  assert.match(
+    pageSource,
+    /hostStatus=\{\{ label: t\("route\.hostLabel"\), state: data\.host\.state \}\}/,
+    "the Host status comes from the provider and defaults to offline instead of faking a connection",
+  );
+  assert.match(pageSource, /data\.source === "fixture" \? \(/, "the preview notice stays on the fixture path only");
   assert.doesNotMatch(pageSource, /capabilities=/, "the preview route advertises no capability");
   assert.doesNotMatch(pageSource, /onSubmitDraft=/, "the preview route invents no draft-submit port");
   assert.doesNotMatch(pageSource, /focusedTask=/, "no conversation is attached without a Host producer");
