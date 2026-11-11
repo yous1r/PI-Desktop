@@ -17,8 +17,8 @@ test("settings hides and inerts chat without aria-hiding a focused descendant", 
   )?.[0];
 
   assert.ok(chatShell, "chat shell must exist");
-  assert.match(chatShell, /hidden=\{page === "settings"\}/);
-  assert.match(chatShell, /inert=\{page === "settings" \? true : undefined\}/);
+  assert.match(chatShell, /hidden=\{page === "settings" \|\| page === "command-center"\}/);
+  assert.match(chatShell, /inert=\{page === "settings" \|\| page === "command-center" \? true : undefined\}/);
   assert.doesNotMatch(chatShell, /aria-hidden/);
 });
 
@@ -45,6 +45,6 @@ test("chat code loads inside the existing route boundary and stays mounted in Se
   );
   assert.match(
     appShell,
-    /className="app-chat-shell"[\s\S]*?hidden=\{page === "settings"\}[\s\S]*?<ChatSurface visible=\{page === "chat"\} \/>/,
+    /className="app-chat-shell"[\s\S]*?hidden=\{page === "settings" \|\| page === "command-center"\}[\s\S]*?<ChatSurface visible=\{page === "chat"\} \/>/,
   );
 });

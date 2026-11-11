@@ -12,9 +12,9 @@ test("Settings hides the mounted chat shell and keeps its portal layers out of v
     loadStyles(),
     readFile(new URL("../src/lib/portal-visibility.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(appShell, /<PortalVisibilityProvider visible=\{page !== "settings"\}>/);
-  assert.match(appShell, /className="app-chat-shell"[\s\S]*?hidden=\{page === "settings"\}/);
-  assert.match(appShell, /inert=\{page === "settings" \? true : undefined\}/);
+  assert.match(appShell, /<PortalVisibilityProvider visible=\{page !== "settings" && page !== "command-center"\}>/);
+  assert.match(appShell, /className="app-chat-shell"[\s\S]*?hidden=\{page === "settings" \|\| page === "command-center"\}/);
+  assert.match(appShell, /inert=\{page === "settings" \|\| page === "command-center" \? true : undefined\}/);
   const chatShell = appShell.match(/<div\s+className="app-chat-shell"[\s\S]*?>/)?.[0];
   assert.ok(chatShell, "chat shell must exist");
   assert.doesNotMatch(chatShell, /aria-hidden/);

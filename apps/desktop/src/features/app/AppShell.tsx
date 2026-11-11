@@ -42,6 +42,11 @@ const SettingsPage = lazy(() =>
     default: module.SettingsPage,
   })),
 );
+const CommandCenterPage = lazy(() =>
+  import("../../pages/CommandCenterPage").then((module) => ({
+    default: module.CommandCenterPage,
+  })),
+);
 const ScheduledPage = lazy(() =>
   import("../../pages/ScheduledPage").then((module) => ({
     default: module.ScheduledPage,
@@ -108,6 +113,10 @@ export function AppShell() {
     requestedWorkPanelWidth,
   } = useAppShellRuntime();
   const [toastAnchor, setToastAnchor] = useState<HTMLElement | null>(null);
+  // The command-center surface owns local drafts and recall history. Mount it
+  // on first visit and keep it mounted (hidden) like the chat shell, so
+  // stepping into Settings or a conversation cannot drop that local state.
+  const [commandCenterMounted, setCommandCenterMounted] = useState(false);
   useCopyTex();
 
   useEffect(() => {
@@ -115,6 +124,10 @@ export function AppShell() {
       console.error("Failed to preload the chat surface", error);
     });
   }, []);
+
+  useEffect(() => {
+    if (page === "command-center") setCommandCenterMounted(true);
+  }, [page]);
 
   useEffect(() => {
     if (!ready || page !== "chat" || !workPanelOpen) return;
@@ -149,11 +162,11 @@ export function AppShell() {
   if (ready) {
     shell = (
       <>
-        <PortalVisibilityProvider visible={page !== "settings"}>
+        <PortalVisibilityProvider visible={page !== "settings" && page !== "command-center"}>
           <div
             className="app-chat-shell"
-            hidden={page === "settings"}
-            inert={page === "settings" ? true : undefined}
+            hidden={page === "settings" || page === "command-center"}
+            inert={page === "settings" || page === "command-center" ? true : undefined}
           >
             {!sidebarCollapsed || sidebarExiting ? (
               <Sidebar
@@ -236,7 +249,7 @@ export function AppShell() {
                     </div>
                   </div>
                 )}
-                {page !== "settings" ? <UpdateBanner /> : null}
+                {page !== "settings" && page !== "command-center" ? <UpdateBanner /> : null}
 
                 {backendDown && (
                   <div
@@ -364,12 +377,23 @@ export function AppShell() {
             <SettingsPage />
           </Suspense>
         ) : null}
+        {commandCenterMounted || page === "command-center" ? (
+          <div
+            className="command-center-host"
+            hidden={page !== "command-center"}
+            inert={page !== "command-center" ? true : undefined}
+          >
+            <Suspense fallback={<RoutePending />}>
+              <CommandCenterPage />
+            </Suspense>
+          </div>
+        ) : null}
         <SearchDialog open={searchOpen} onClose={() => setSearchOpen(false)} />
-        <ToastHost anchorElement={page === "settings" ? null : toastAnchor} />
+        <ToastHost anchorElement={page === "settings" || page === "command-center" ? null : toastAnchor} />
         <LiveVoiceStatusHost />
         <PluginRendererHost />
         <ExtensionPromptHost />
-        {page === "settings" ? <UpdateBanner /> : null}
+        {page === "settings" || page === "command-center" ? <UpdateBanner /> : null}
       </>
     );
   }
@@ -381,6 +405,7 @@ export function AppShell() {
         "app-shell",
         !ready && "app-shell-boot",
         page === "settings" && ready && "settings-mode",
+        page === "command-center" && ready && "command-center-mode",
         sidebarCollapsed && "sidebar-collapsed",
         workPanelMaximized && "work-panel-maximized",
         showSplash && "is-booting",

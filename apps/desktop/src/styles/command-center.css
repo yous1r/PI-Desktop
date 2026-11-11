@@ -1,0 +1,80 @@
+/*
+  Command center — full-window V3 route.
+
+  The surface replaces the chat shell while open (no global left sidebar), so
+  this file owns only the route frame: the client-area column, the window drag
+  band inside the surface toolbar, the Windows/Linux window-control reserve and
+  the preview notice that keeps the fixture-backed state explicit.
+*/
+
+.app-shell.command-center-mode {
+  background: var(--ds-bg-primary);
+}
+
+/* Once visited, the route stays mounted like the chat shell: leaving it for
+   Settings or a conversation keeps its local drafts, focus and history. */
+.command-center-host {
+  display: flex;
+  align-self: stretch;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.command-center-host[hidden] {
+  display: none;
+}
+
+.command-center-route {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: var(--ds-bg-primary);
+}
+
+.command-center-route-surface {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.command-center-route [data-command-center="surface"] {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* V3 keeps the top toolbar in the title band: it is the drag region, while its
+   controls stay clickable. macOS traffic lights and Windows/Linux window
+   controls reserve their own top corners. */
+.command-center-route [data-command-center="toolbar"] {
+  min-height: var(--ds-toolbar-height);
+  padding-left: var(--ds-window-lead-inset, 8px);
+  -webkit-app-region: drag;
+}
+
+.command-center-route [data-command-center="toolbar"] button,
+.command-center-route [data-command-center="toolbar"] a,
+.command-center-route [data-command-center="toolbar"] [role="status"] {
+  -webkit-app-region: no-drag;
+}
+
+:root[data-platform="win32"] .command-center-route [data-command-center="toolbar"],
+:root[data-platform="linux"] .command-center-route [data-command-center="toolbar"] {
+  padding-right: var(--ds-window-controls-width);
+}
+
+.command-center-route-notice {
+  flex: none;
+  margin: 0;
+  border-top: 1px solid var(--ds-border-default);
+  padding: 6px 16px;
+  color: var(--ds-text-muted);
+  font-size: var(--text-xs);
+  background: var(--ds-bg-secondary);
+}

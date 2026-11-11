@@ -17,6 +17,26 @@ import { catalogs, flattenCatalog } from "../src/index.ts";
 
 const SRC = new URL("../../../apps/desktop/src/", import.meta.url);
 
+/**
+ * Renderer trees that receive a namespace-scoped `TFunction` instead of the
+ * default `translation` namespace. Their literal keys are checked against the
+ * command-center fragment pair below, exactly as the default-namespace scan
+ * checks the rest of the renderer.
+ */
+const COMMAND_CENTER_SCOPED_DIRS = [
+  "/apps/desktop/src/components/command-center/",
+  "/apps/desktop/src/features/command-center/",
+];
+
+function normalized(path) {
+  return path.split("\\").join("/");
+}
+
+function isCommandCenterScoped(path) {
+  const value = normalized(path);
+  return COMMAND_CENTER_SCOPED_DIRS.some((segment) => value.includes(segment));
+}
+
 /** Every .ts/.tsx file under the renderer source tree. */
 async function sources(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -40,6 +60,7 @@ function has(catalog, key) {
 const files = await sources(fileURLToPath(SRC));
 const used = new Map();
 for (const file of files) {
+  if (isCommandCenterScoped(file)) continue;
   const text = await readFile(file, "utf8");
   // Only dotted literals can be resolved statically.
   for (const match of text.matchAll(/\bt\(\s*"([a-zA-Z0-9_]+\.[a-zA-Z0-9_.]+)"/g)) {
@@ -65,3 +86,34 @@ for (const [id, catalog] of Object.entries(flats)) {
     );
   });
 }
+
+test("the command-center namespace keeps its en/zh-CN pairs and covers every literal key", async () => {
+  const fragment = async (name) =>
+    JSON.parse(
+      await readFile(
+        new URL(`../../../apps/desktop/src/components/command-center/locales/${name}`, import.meta.url),
+        "utf8",
+      ),
+    );
+  const enFragment = await fragment("en.json");
+  const zhFragment = await fragment("zh-CN.json");
+  const flatten = (node, prefix = "") =>
+    Object.entries(node).flatMap(([key, value]) =>
+      typeof value === "string" ? [`${prefix}${key}`] : flatten(value, `${prefix}${key}.`),
+    );
+  const enKeys = new Set(flatten(enFragment));
+  const zhKeys = new Set(flatten(zhFragment));
+  assert.deepEqual([...enKeys].sort(), [...zhKeys].sort(), "en and zh-CN carry the same namespace shape");
+
+  const keys = new Set();
+  for (const file of files) {
+    if (!isCommandCenterScoped(file)) continue;
+    const text = await readFile(file, "utf8");
+    for (const match of text.matchAll(/\bt\(\s*"([a-zA-Z0-9_]+\.[a-zA-Z0-9_.]+)"/g)) keys.add(match[1]);
+  }
+  assert.ok(keys.size > 40, `the command-center scan found ${keys.size} keys`);
+  for (const key of keys) {
+    assert.ok(enKeys.has(key), `missing English command-center label for ${key}`);
+    assert.ok(zhKeys.has(key), `missing Chinese command-center label for ${key}`);
+  }
+});

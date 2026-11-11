@@ -31,8 +31,9 @@ test("the sidebar footer is an action bar, not a fabricated identity", () => {
   }
 });
 
-test("footer exposes settings, plugins, scheduled tasks and notifications in one row", () => {
+test("footer exposes command center, settings, plugins, scheduled tasks and notifications in one row", () => {
   assert.match(sidebarSource, /className="footer-actions"/);
+  assert.match(sidebarSource, /data-nav="command-center"/);
   assert.match(sidebarSource, /data-nav="settings"/);
   assert.match(sidebarSource, /data-nav="plugins"/);
   const pluginsAction = sidebarSource.match(
@@ -50,7 +51,7 @@ test("footer exposes settings, plugins, scheduled tasks and notifications in one
   const actions = sidebarSource
     .split("<TooltipButton")
     .filter((chunk) => /className=(?:"footer-action"|\{`footer-action )/.test(chunk));
-  assert.equal(actions.length, 3);
+  assert.equal(actions.length, 4);
   for (const action of actions) {
     const attrs = action.slice(0, action.indexOf(">"));
     assert.match(attrs, /tooltip=/);

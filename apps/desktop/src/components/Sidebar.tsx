@@ -1,4 +1,5 @@
-import { IconClock } from "./icons";
+import { IconClock, IconMonitor } from "./icons";
+import { COMMAND_CENTER_I18N_NAMESPACE } from "./command-center/strings";
 import { RemoteProjectGroups } from "./remote/RemoteProjectGroups";
 import { groupRemoteProjectSessions } from "../lib/remote-project-catalog";
 import { isRemoteSession, sessionAllows } from "../lib/remote-session-safety";
@@ -260,6 +261,7 @@ export function Sidebar({
   onAnimationEnd?: ReactAnimationEventHandler<HTMLElement>;
 }) {
   const { t, i18n } = useTranslation();
+  const { t: tCommandCenter } = useTranslation(COMMAND_CENTER_I18N_NAMESPACE);
   const sessions = useAppStore((s) => s.sessions);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const selectingSessionId = useAppStore((s) => s.selectingSessionId);
@@ -2785,6 +2787,17 @@ export function Sidebar({
               aria-pressed={page === "scheduled"}
             >
               <IconClock size={14} aria-hidden />
+            </TooltipButton>
+            <TooltipButton
+              type="button"
+              className={`footer-action ${page === "command-center" ? "active" : ""}`}
+              data-nav="command-center"
+              tooltip={tCommandCenter("route.entryLabel")}
+              ariaLabel={tCommandCenter("route.entryLabel")}
+              onClick={() => setPage("command-center")}
+              aria-pressed={page === "command-center"}
+            >
+              <IconMonitor size={14} aria-hidden />
             </TooltipButton>
             <NotificationCenter onBeforeOpen={() => closeMenus(false)} />
           </div>

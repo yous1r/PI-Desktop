@@ -6,7 +6,7 @@ import {
   type AppLocale,
 } from "@pi-desktop/i18n/locale-info";
 import type { AppSettings } from "@pi-desktop/shared";
-import { loadRendererCatalog } from "./renderer-catalogs.ts";
+import { loadCommandCenterCatalog, loadRendererCatalog } from "./renderer-catalogs.ts";
 
 export type AppLanguageSetting = NonNullable<AppSettings["language"]>;
 
@@ -50,6 +50,13 @@ export async function applyAppLanguage(
       target,
       "translation",
       flattenCatalog(catalog as unknown as Record<string, unknown>),
+      true,
+      true,
+    );
+    i18n.addResourceBundle(
+      target,
+      "commandCenter",
+      loadCommandCenterCatalog(target),
       true,
       true,
     );

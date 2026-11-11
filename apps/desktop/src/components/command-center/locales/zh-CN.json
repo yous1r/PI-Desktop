@@ -1,5 +1,10 @@
 {
   "brand": "PI-Desktop",
+  "route": {
+    "entryLabel": "指令中心",
+    "hostLabel": "本地 Host",
+    "previewNotice": "仅预览数据——此版本未连接实时 Host。"
+  },
   "toolbar": {
     "navigation": "主导航",
     "overview": "总览",

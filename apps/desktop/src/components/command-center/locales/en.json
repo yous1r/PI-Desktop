@@ -1,5 +1,10 @@
 {
   "brand": "PI-Desktop",
+  "route": {
+    "entryLabel": "Command Center",
+    "hostLabel": "Local Host",
+    "previewNotice": "Preview data only — no live Host connection is available in this build."
+  },
   "toolbar": {
     "navigation": "Main navigation",
     "overview": "Overview",

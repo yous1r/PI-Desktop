@@ -4,6 +4,8 @@ import {
   type EnglishCatalog,
 } from "@pi-desktop/i18n/locale-info";
 import { en } from "@pi-desktop/i18n/locales/en";
+import commandCenterEn from "../components/command-center/locales/en.json" with { type: "json" };
+import commandCenterZh from "../components/command-center/locales/zh-CN.json" with { type: "json" };
 import { remoteEn, remoteZh } from "../locales/remote";
 
 type LocaleModule = { default: EnglishCatalog };
@@ -22,6 +24,15 @@ const localeLoaders: Record<NonEnglishLocale, () => Promise<LocaleModule>> = {
 
 const catalogCache = new Map<AppLocale, Promise<EnglishCatalog>>();
 
+/**
+ * The command-center surface owns its own i18next namespace. Only English and
+ * Simplified Chinese ship fragments in the baseline; every other locale
+ * resolves through the English fallback rather than falling back to raw keys.
+ */
+export function loadCommandCenterCatalog(locale: AppLocale): Record<string, unknown> {
+  return (locale === "zh-CN" ? commandCenterZh : commandCenterEn) as Record<string, unknown>;
+}
+
 export function loadRendererCatalog(locale: AppLocale): Promise<EnglishCatalog> {
   const cached = catalogCache.get(locale);
   if (cached) return cached;
@@ -37,7 +48,7 @@ export function loadRendererCatalog(locale: AppLocale): Promise<EnglishCatalog> 
 
 export async function loadRendererResources(
   locale: AppLocale,
-): Promise<Record<string, { translation: Record<string, string> }>> {
+): Promise<Record<string, Record<string, unknown>>> {
   const localeIds = [...new Set<AppLocale>(["en", locale])];
   const entries = await Promise.all(
     localeIds.map(async (id) => {
@@ -49,6 +60,7 @@ export async function loadRendererResources(
           translation: flattenCatalog(
             catalog as unknown as Record<string, unknown>,
           ),
+          commandCenter: loadCommandCenterCatalog(id),
         },
       ] as const;
     }),

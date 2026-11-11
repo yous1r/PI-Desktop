@@ -15,14 +15,17 @@ import type { SessionMeta } from "../lib/sidebar-preferences";
 import {
   IconAt,
   IconClock,
+  IconMonitor,
   IconNewSession,
   IconSearch,
   IconSettings,
   IconSliders,
 } from "./icons";
+import { COMMAND_CENTER_I18N_NAMESPACE } from "./command-center/strings";
 
 /** Navigable pages surfaced by the global search alongside sessions. */
 const PAGE_ENTRIES = [
+  { page: "command-center", labelKey: "route.entryLabel", icon: IconMonitor },
   { page: "scheduled", labelKey: "scheduled.title", icon: IconClock },
   { page: "plugins", labelKey: "nav.plugins", icon: IconAt },
 ] as const;
@@ -72,6 +75,7 @@ function highlightMatch(text: string, query: string) {
 
 export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation();
+  const { t: tCommandCenter } = useTranslation(COMMAND_CENTER_I18N_NAMESPACE);
   const sessions = useAppStore((s) => s.sessions);
   const sessionMeta = useAppStore((s) => s.sessionMeta);
   const openProjects = useAppStore((s) => s.openProjects);
@@ -206,8 +210,12 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
   const pageHits = useMemo<PageEntry[]>(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
-    return PAGE_ENTRIES.filter((entry) => t(entry.labelKey).toLowerCase().includes(q));
-  }, [query, t]);
+    const labelOf = (entry: PageEntry) =>
+      entry.page === "command-center"
+        ? tCommandCenter("route.entryLabel")
+        : t(entry.labelKey);
+    return PAGE_ENTRIES.filter((entry) => labelOf(entry).toLowerCase().includes(q));
+  }, [query, t, tCommandCenter]);
 
   const settingsHits = useMemo<SettingsSearchHit[]>(
     () =>
@@ -448,7 +456,12 @@ export function SearchDialog({ open, onClose }: { open: boolean; onClose: () => 
                   >
                     <Icon size={15} className="search-item-icon" />
                     <span className="search-item-title">
-                      {highlightMatch(t(entry.labelKey), query)}
+                      {highlightMatch(
+                        entry.page === "command-center"
+                          ? tCommandCenter("route.entryLabel")
+                          : t(entry.labelKey),
+                        query,
+                      )}
                     </span>
                   </button>
                 );
