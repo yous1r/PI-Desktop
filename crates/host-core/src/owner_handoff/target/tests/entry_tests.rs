@@ -70,6 +70,39 @@ async fn absent_or_invalid_private_transport_is_propagated_and_never_falls_throu
 }
 
 #[test]
+fn documented_refusal_is_a_stable_supervisor_visible_handoff_code() {
+    // The Node supervisor classifies refusals through this HANDOFF_* vocabulary;
+    // a generated, localized or path-bearing message cannot be consumed safely.
+    assert_eq!(ADOPTION_UNAVAILABLE, "HANDOFF_TARGET_ADOPTION_UNAVAILABLE");
+    let suffix = ADOPTION_UNAVAILABLE
+        .strip_prefix("HANDOFF_")
+        .expect("classified HANDOFF_ code");
+    assert!(!suffix.is_empty() && suffix.len() <= 120);
+    assert!(suffix
+        .bytes()
+        .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_'));
+}
+
+#[test]
+fn dispatch_tail_never_opens_appstate_adopts_or_serves_after_claim() {
+    let target = include_str!("../../target.rs");
+    assert!(target.contains("bail!(\"{ADOPTION_UNAVAILABLE}\")"));
+    for forbidden in [
+        "AppState::open",
+        "ReadyTarget::new",
+        "register_generation",
+        "Registry",
+        ".serve(",
+        "startup::inspect_directory",
+    ] {
+        assert!(
+            !target.contains(forbidden),
+            "target dispatch must not reach {forbidden} before Ready publication"
+        );
+    }
+}
+
+#[test]
 fn main_dispatches_target_mode_before_any_data_directory_or_appstate_side_effect() {
     let main = include_str!("../../../main.rs");
     let requested = main

@@ -13,7 +13,10 @@ export type OwnerHandoffProcessOptions = {
   onStderr: (text: string) => void;
 };
 
-/** Existing-profile-only restricted Host; never starts AppState or an Agent. */
+/** Existing-profile-only restricted Host; never starts AppState or an Agent.
+ * The successor `--owner-target` mode is owned by OwnerHandoffTargetProcess,
+ * which frames the BootstrapRequest envelope rather than a command.
+ */
 export class OwnerHandoffProcess {
   private readonly child: ChildProcessWithoutNullStreams;
   private readonly channel: OwnerHandoffChannel;

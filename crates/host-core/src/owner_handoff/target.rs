@@ -34,6 +34,13 @@ pub(crate) const FLAG: &str = "--owner-target";
 /// anyway would fake readiness, so it stops instead. The durable claim stays
 /// recoverable through the explicit Recover command; admission never opens and
 /// no AppState, migration, scheduler or recovery replay is started.
+///
+/// Process contract observed by the Node supervisor: after the framed claim
+/// receipt is written, the target process ends with this classified code on
+/// stderr (non-zero exit). The supervisor treats any such exit as terminal,
+/// never as Ready, and must dispose the original child. This code is stable and
+/// distinct from transport, claim and Ready refusals; do not replace it with a
+/// permissive tail or a second serving process.
 pub(crate) const ADOPTION_UNAVAILABLE: &str = "HANDOFF_TARGET_ADOPTION_UNAVAILABLE";
 
 /// The mode flag is the entire argv surface. Capability and identities belong
