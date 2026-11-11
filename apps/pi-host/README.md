@@ -99,6 +99,32 @@ creation. Active calls are owned by their originating connection and cancelled
 when it closes. Arguments/results are bounded to 1 MiB; operations are not
 replayed. Install a matching Host bundle before using this new workflow.
 
+## Command-center control (opt-in)
+
+Start with `pi-host --command-center` (default off) to bind the additive
+`commandCenter/*` RACP control and monitor operations to the same running
+host-core instance. The capability is advertised only after the real
+`app.handshake` succeeded; the bound control and monitor page ports use its
+`commandCenter.hostEpoch`. A host-core restart produces a new epoch, so stale
+mutations and monitor continuation tokens fail instead of reading old state.
+
+The paired single-user role model is unchanged: owners keep full scope, viewers
+read, controllers control session work; workspace mutations remain owner-only.
+Supported runtime actions are an exact active session target only:
+
+- `steer`/`reviseGoal` for a session whose `turnId` equals
+  `RuntimeService.activeTurnId(sessionId)`, dispatched through the runtime's own
+  steering path;
+- `stop` aborts that exact turn and reports `interrupted` only after the runtime
+  no longer reports it active; an unconfirmed stop reports `outcome_unknown`.
+
+`append`, delegation targets, inactive/mismatched turns and any unbound runtime
+consumer are refused with `CAPABILITY_UNAVAILABLE`/`CONFLICT` before a receipt
+could be marked accepted or consumed. The monitor page remains bounded (≤100
+rows, ≤64 KiB) and every row is re-authorized for its workspace and session.
+With the flag off, no operation key, monitor port or advertised capability is
+added.
+
 ## Legacy remote-Agent provider import operational behavior
 
 The UI sends only IDs to Main. Main sends a version-1 payload over SSH stdin to

@@ -18,6 +18,11 @@ export type PiHostConfig = {
   pairingLifetimeMs: number;
   /** Where the folder picker may browse; defaults to the user's home. */
   browseRoot: string;
+  /**
+   * Opt-in command-center RACP control/monitor surface. Default false keeps the
+   * negotiated catalog and capability block exactly as before.
+   */
+  commandCenter: boolean;
   logLevel: "info" | "warn" | "error";
 };
 
@@ -98,6 +103,7 @@ export function resolveConfig(args: CliArgs, env: NodeJS.ProcessEnv = process.en
     pair: args.pair === true || args.pair === "true",
     pairingLifetimeMs: Number(args["pairing-lifetime-ms"] ?? DEFAULT_PAIRING_LIFETIME_MS),
     browseRoot: resolve(String(args["browse-root"] ?? env.PI_HOST_BROWSE_ROOT ?? homedir())),
+    commandCenter: args["command-center"] === true || args["command-center"] === "true",
     logLevel: level === "warn" || level === "error" ? level : "info",
   };
 }

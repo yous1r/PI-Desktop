@@ -26,6 +26,12 @@ describe("config", () => {
     expect(() => resolveConfig({ "host-core": "/bin/hc", sidecar: "/s.js", port: "abc" }, {})).toThrow(/invalid port/);
     expect(resolveConfig({ "host-core": "/bin/hc", sidecar: "/s.js", "log-level": "warn" }, {}).logLevel).toBe("warn");
   });
+  it("parses the command-center opt-in flag (default off)", () => {
+    expect(resolveConfig({ "host-core": "/bin/hc", sidecar: "/s.js" }, {}).commandCenter).toBe(false);
+    expect(resolveConfig({ "host-core": "/bin/hc", sidecar: "/s.js", "command-center": true }, {}).commandCenter).toBe(true);
+    expect(parseArgs(["--command-center"])).toEqual({ "command-center": true });
+    expect(resolveConfig({ "host-core": "/bin/hc", sidecar: "/s.js", "command-center": "false" }, {}).commandCenter).toBe(false);
+  });
 });
 
 describe("identity and credentials", () => {

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Add the opt-in `--command-center` Host surface. It binds the additive
+  `commandCenter/*` RACP control and monitor operations to the running host-core
+  handshake epoch, keeps paired single-user roles unchanged, supports exact-turn
+  steer/reviseGoal and stop, and refuses append/delegation/inactive targets
+  without recording a false success. Default off.
+
 ## 0.22.3
 
 - Restore explicit SSH enrollment of an intact, stopped Host when its last

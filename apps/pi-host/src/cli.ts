@@ -39,6 +39,7 @@ async function main(): Promise<void> {
         "  --host-core <path>        pi-desktop-host-core binary",
         "  --sidecar <path>          agent sidecar entry",
         "  --browse-root <dir>       folder-picker root (default home)",
+        "  --command-center          expose commandCenter/* control + monitor (default off)",
         "  --log-level <level>       info | warn | error",
         "",
       ].join("\n"),

@@ -16,9 +16,10 @@ import {
   listPendingToolRequests,
 } from "@pi-desktop/host-runtime";
 import { DeviceTokenAuthenticator, RacpServer, bindRacpWebSocket, type RacpHostOperations, type WsBinding } from "@pi-desktop/racp";
-import { APP_VERSION, type AgentEventEnvelope } from "@pi-desktop/shared";
+import { APP_VERSION, PROTOCOL_VERSION, type AgentEventEnvelope } from "@pi-desktop/shared";
 
 import type { PiHostConfig } from "./config.js";
+import { attachPiHostCommandCenter, type PiHostCommandCenter } from "./command-center.js";
 import { FileCredentialStore, loadOrCreateHostId } from "./credentials.js";
 import { createHostOperations } from "./host-operations.js";
 import { createLogger, type HostLogger } from "./logger.js";
@@ -58,9 +59,10 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
   const store = new FileCredentialStore(config.dataDir);
   const authenticator = new DeviceTokenAuthenticator(store);
 
-  const state: { host: HostProcess | null; sidecar: AgentSidecar | null; stopping: boolean } = { host: null, sidecar: null, stopping: false };
+  const state: { host: HostProcess | null; sidecar: AgentSidecar | null; stopping: boolean; hostEpoch: string | null } = { host: null, sidecar: null, stopping: false, hostEpoch: null };
   const getHost = () => state.host;
   const getSidecar = () => state.sidecar;
+  const getHostEpoch = () => state.hostEpoch;
 
   // Closed before the first inspection await, so no new work can slip in.
   const maintenanceGate = new MaintenanceAdmission();
@@ -140,16 +142,28 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     host.onExit(({ intentional }) => {
       if (state.host !== host) return;
       state.host = null;
+      state.hostEpoch = null;
       if (intentional || state.stopping) return;
       log("error", "host-core exited unexpectedly");
       void supervisor.superviseRestart("host");
     });
     state.host = host;
     try {
-      await host.handshake();
+      // `HostProcess.handshake()` discards the result, but the command-center
+      // consumer needs the actual boot/fenced owner epoch from this instance.
+      const handshake = await host.call<{ commandCenter?: { version?: number; hostEpoch?: string } }>(
+        "app.handshake",
+        { protocolVersion: PROTOCOL_VERSION },
+      );
+      const epoch = handshake?.commandCenter?.hostEpoch;
+      if (config.commandCenter && (typeof epoch !== "string" || epoch.length === 0)) {
+        throw Object.assign(new Error("host-core did not report a command-center boot epoch"), { errorCode: "HOST_BOOTSTRAP_FAILED" });
+      }
+      state.hostEpoch = typeof epoch === "string" && epoch.length > 0 ? epoch : null;
       await host.call("session.recoverInflightMessages").catch((error: unknown) => log("warn", "in-flight recovery failed", { error: String(error) }));
     } catch (error) {
       if (state.host === host) state.host = null;
+      state.hostEpoch = null;
       await host.dispose();
       throw error;
     }
@@ -316,7 +330,19 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     workspaceProcesses,
   };
   owners.tools = () => (operations.workspaceTools as { inUse?: () => number } | undefined)?.inUse?.() ?? 0;
-  const server = new RacpServer({ agentHost, operations, authenticator, hostId, serverVersion: APP_VERSION, log, admission: maintenanceGate });
+  // Off unless `--command-center` opted in. Both the control service and the
+  // monitor page port use the same single host-core instance and its handshake
+  // epoch; the capability is advertised only after this binding succeeds.
+  const commandCenter: PiHostCommandCenter | undefined = attachPiHostCommandCenter({
+    config,
+    operations,
+    getHost,
+    hostId,
+    getHostEpoch,
+    runtime,
+    maintenanceClosed: () => maintenanceGate.isClosed(),
+  });
+  const server = new RacpServer({ agentHost, operations, authenticator, hostId, serverVersion: APP_VERSION, log, admission: maintenanceGate, ...(commandCenter ? { advertiseCommandCenter: true } : {}) });
   owners.clients = () => server.connectionCount();
   let binding: WsBinding;
   try {
@@ -326,6 +352,7 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
     maintenanceGate.dispose();
     await admin?.close();
     server.close();
+    await commandCenter?.dispose();
     workspaceTerminal?.dispose();
     workspacePlugins?.dispose(); workspaceProcesses.dispose();
     await terminal?.closeAll();
@@ -356,6 +383,7 @@ export async function startPiHost(config: PiHostConfig, options: { log?: HostLog
       await admin?.close();
       server.close();
       await binding.close();
+      await commandCenter?.dispose();
       workspaceTerminal?.dispose();
       workspacePlugins?.dispose(); workspaceProcesses.dispose();
       await terminal?.closeAll();
