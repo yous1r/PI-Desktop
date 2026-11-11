@@ -26,24 +26,24 @@ const VALID_ROLES: [&str; 4] = ["viewer", "controller", "approver", "owner"];
 const MAX_SCOPE_IDS: usize = 256;
 
 #[derive(Debug)]
-struct Binding {
-    host_id: String,
-    host_epoch: String,
+pub(super) struct Binding {
+    pub(super) host_id: String,
+    pub(super) host_epoch: String,
 }
 
 #[derive(Debug)]
-struct Auth {
-    subject: String,
-    roles: Vec<String>,
-    session_ids: Vec<String>,
-    workspace_ids: Vec<String>,
+pub(super) struct Auth {
+    pub(super) subject: String,
+    pub(super) roles: Vec<String>,
+    pub(super) session_ids: Vec<String>,
+    pub(super) workspace_ids: Vec<String>,
 }
 
 #[derive(Debug)]
-struct Envelope {
-    binding: Binding,
-    auth: Auth,
-    input: Value,
+pub(super) struct Envelope {
+    pub(super) binding: Binding,
+    pub(super) auth: Auth,
+    pub(super) input: Value,
 }
 
 fn string_array(value: &Value, key: &str) -> Result<Vec<String>> {
@@ -64,7 +64,7 @@ fn string_array(value: &Value, key: &str) -> Result<Vec<String>> {
         .collect()
 }
 
-fn envelope(params: &Value) -> Result<Envelope> {
+pub(super) fn envelope(params: &Value) -> Result<Envelope> {
     wire::keys(params, &["binding", "auth", "input"], &[])?;
     let binding = params.get("binding").expect("validated");
     wire::keys(binding, &["hostId", "hostEpoch"], &[])?;
@@ -102,7 +102,16 @@ fn envelope(params: &Value) -> Result<Envelope> {
 /// The binding must agree with the request identity and, when this Host runs an
 /// exclusive owner epoch, with the current epoch. A stale binding is refused
 /// before any repository call.
-fn verify_binding(binding: &Binding, input: &Value, current_epoch: Option<&str>) -> Result<()> {
+///
+/// `require_epoch` makes a missing current epoch a refusal instead of a skip:
+/// quota admission must never claim to have verified freshness on a Host that
+/// has no boot owner epoch.
+pub(super) fn verify_binding(
+    binding: &Binding,
+    input: &Value,
+    current_epoch: Option<&str>,
+    require_epoch: bool,
+) -> Result<()> {
     let input_host = wire::string(input, "hostId")?;
     if input_host != binding.host_id {
         bail!("CC_CONFLICT: request host does not match the bound host");
@@ -112,10 +121,14 @@ fn verify_binding(binding: &Binding, input: &Value, current_epoch: Option<&str>)
             bail!("CC_CONFLICT: request epoch does not match the bound host epoch");
         }
     }
-    if let Some(current) = current_epoch {
-        if binding.host_epoch != current {
+    match current_epoch {
+        Some(current) if binding.host_epoch != current => {
             bail!("CC_EPOCH_CONFLICT: the binding names a stale command-center owner epoch");
         }
+        None if require_epoch => {
+            bail!("CC_EPOCH_UNAVAILABLE: this Host has no boot owner epoch to verify against");
+        }
+        _ => {}
     }
     Ok(())
 }
@@ -132,7 +145,7 @@ fn required_role(method: &str) -> &'static str {
     }
 }
 
-fn roles_allow(roles: &[String], required: &str) -> bool {
+pub(super) fn roles_allow(roles: &[String], required: &str) -> bool {
     if roles
         .iter()
         .any(|role| !VALID_ROLES.contains(&role.as_str()))
@@ -148,7 +161,7 @@ fn roles_allow(roles: &[String], required: &str) -> bool {
     roles.iter().any(|role| role == required)
 }
 
-fn in_scope(scopes: &[String], id: &str) -> bool {
+pub(super) fn in_scope(scopes: &[String], id: &str) -> bool {
     scopes.iter().any(|scope| scope == id)
 }
 
@@ -189,8 +202,10 @@ pub(crate) async fn handle(
         )
     })?;
     let st = state.lock().await;
-    let current_epoch = crate::execution_fence::owner_epoch(&st.execution_fence);
-    handle_with_connection(st.db.conn(), current_epoch, method, &params)
+    // The Host supplies its actual boot/fenced owner epoch; a generic mutation
+    // never trusts a request-supplied epoch.
+    let current_epoch = st.command_center_owner_epoch().to_owned();
+    handle_with_connection(st.db.conn(), Some(&current_epoch), method, &params)
         .map_err(|error| rpc_err(1000, error.to_string(), "COMMAND_CENTER_REFUSED"))
 }
 
@@ -201,7 +216,7 @@ fn handle_with_connection(
     params: &Value,
 ) -> Result<Value> {
     let envelope = envelope(params)?;
-    verify_binding(&envelope.binding, &envelope.input, current_epoch)?;
+    verify_binding(&envelope.binding, &envelope.input, current_epoch, true)?;
     wire::validate(method, &envelope.input)?;
     authorize(&envelope.auth, method, &envelope.input)?;
     dispatch(
@@ -492,7 +507,7 @@ mod tests {
     }
 
     fn call(conn: &Connection, method: &str, params: Value) -> Result<Value> {
-        super::handle_with_connection(conn, None, method, &params)
+        super::handle_with_connection(conn, Some(EPOCH), method, &params)
     }
 
     fn expect_error<T: std::fmt::Debug>(result: Result<T>, needle: &str) {
@@ -954,6 +969,31 @@ mod tests {
             &envelope(base_input(), &["viewer"], vec![], vec![]),
         );
         expect_error(stale, "CC_EPOCH_CONFLICT");
+
+        // The current epoch is Host state, never a request field: a stale
+        // generic mutation is denied before any write.
+        let before = workspace::workspace(&conn, WORKSPACE)
+            .expect("read workspace")
+            .expect("workspace exists");
+        let stale_mutation = super::handle_with_connection(
+            &conn,
+            Some(STALE_EPOCH),
+            "workspace.rename",
+            &envelope(
+                json!({
+                    "version": 1, "hostId": HOST_ID, "expectedHostEpoch": EPOCH,
+                    "commandWorkspaceId": WORKSPACE, "expectedRevision": 1, "name": "Stale write",
+                }),
+                &["owner"],
+                vec![WORKSPACE],
+                vec![],
+            ),
+        );
+        expect_error(stale_mutation, "CC_EPOCH_CONFLICT");
+        let after = workspace::workspace(&conn, WORKSPACE)
+            .expect("read workspace")
+            .expect("workspace exists");
+        assert_eq!(after, before);
 
         expect_error(
             call(

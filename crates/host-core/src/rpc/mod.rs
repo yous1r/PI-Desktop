@@ -1,5 +1,6 @@
+mod command_center_admission;
+mod command_center_monitor;
 mod command_center_rpc;
-mod target_serve;
 mod config_sync_rpc;
 mod gen_ui;
 mod modes_rpc;
@@ -8,6 +9,7 @@ mod plugin_reviews_rpc;
 mod remote_tools;
 mod scheduled_rpc;
 mod scheduled_tools;
+pub(crate) mod target_serve;
 mod todos;
 mod window_corner_rpc;
 mod worktree_rpc;
@@ -1952,6 +1954,10 @@ async fn handle_request(
     }
 
     match method {
+        "commandCenter.monitor.cut" => command_center_monitor::handle(state, params).await,
+        method if method.starts_with("commandCenter.reservation.") => {
+            command_center_admission::handle(state, method, params).await
+        }
         method if method.starts_with("commandCenter.") => {
             command_center_rpc::handle(state, method, params).await
         }
@@ -2020,6 +2026,10 @@ async fn handle_request(
             Ok(json!({
                 "protocolVersion": PROTOCOL_VERSION,
                 "version": HOST_VERSION,
+                "commandCenter": {
+                    "version": 1,
+                    "hostEpoch": st.command_center_owner_epoch()
+                },
                 "capabilities": [
                     "tools", "sessions", "providers", "secrets", "plugins", "permissions",
                     "scheduled", "artifacts", "plans", "search", "turns", "notifications"

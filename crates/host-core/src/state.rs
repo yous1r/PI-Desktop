@@ -32,6 +32,9 @@ pub struct AppState {
     pub handoff_activity: crate::owner_handoff::activity::Activity,
     pub handoff_exchange: Option<Arc<crate::owner_handoff::exchange::Exchange>>,
     pub handoff_release: crate::owner_handoff::source::Release,
+    /// Error/handshake identity for this execution boot. It is not the Ready or
+    /// hub event epoch; only `event_epoch` describes the live event stream.
+    command_center_boot_epoch: String,
     /// Live event-stream epoch reported by the adopted event hub, if any.
     /// `None` means this state has no live stream identity yet; callers must
     /// treat a missing epoch as unavailable, never invent one.
@@ -132,6 +135,17 @@ impl AppState {
         self.event_epoch.as_deref()
     }
 
+    /// Mandatory command-center owner identity. Uses the adopted execution-fence
+    /// owner epoch when one exists, otherwise the per-instance boot fence. This
+    /// is an execution boot identity, never the Ready/hub event epoch.
+    pub(crate) fn command_center_owner_epoch(&self) -> &str {
+        #[cfg(windows)]
+        if let Some(registry) = &self.execution_fence {
+            return registry.epoch();
+        }
+        &self.command_center_boot_epoch
+    }
+
     /// Record the hub epoch once at startup. Only a real live source supplies
     /// this value; no target component may mint one for Ready.
     pub(crate) fn set_event_epoch(&mut self, epoch: Option<String>) {
@@ -178,6 +192,7 @@ impl AppState {
             data_dir: data_dir.to_path_buf(),
             execution_fence: None,
             handoff_activity,
+            command_center_boot_epoch: uuid::Uuid::new_v4().to_string(),
             event_epoch: None,
             handoff_exchange: None,
             handoff_release: crate::owner_handoff::source::Release::default(),
@@ -616,5 +631,18 @@ mod tests {
         // The released normal open path keeps its own behavior.
         let normal = AppState::open(data_dir.path()).unwrap();
         assert_eq!(normal.event_epoch(), None);
+    }
+
+    #[test]
+    fn command_center_owner_epoch_is_per_instance_and_not_the_event_epoch() {
+        let data_dir = tempfile::tempdir().unwrap();
+        let first = AppState::open(data_dir.path()).unwrap();
+        let second = AppState::open(data_dir.path()).unwrap();
+        let first_epoch = first.command_center_owner_epoch().to_string();
+        let second_epoch = second.command_center_owner_epoch().to_string();
+        assert!(!first_epoch.is_empty());
+        assert_ne!(first_epoch, second_epoch);
+        assert_eq!(first.event_epoch(), None);
+        assert_ne!(first_epoch, "hub-event-stream");
     }
 }
