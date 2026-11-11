@@ -22,6 +22,9 @@ import {
 import * as Value from "typebox/value";
 
 import type { ConnectionAuth, DeviceTokenAuthenticator } from "./auth.js";
+import {
+  createCommandCenterDispatch, isCommandCenterOperation, type CommandCenterDispatch,
+} from "./command-center-dispatch.js";
 import type { RacpHostOperations } from "./host-operations.js";
 import {
   encodeFrame,
@@ -76,6 +79,9 @@ export class RacpConnection {
   initialized = false;
   readonly subscriptions = new Map<string, Subscription>();
   readonly terminals = new Set<string>();
+  /** Connection-scoped command-center transport, created on first use and
+   * released by `RacpServer.release()`. Null when the Host binds no service. */
+  commandCenter: CommandCenterDispatch | null = null;
   private readonly pendingServerRequests = new Map<string, ServerRequestWaiter>();
   private serverRequestCounter = 0;
   private closed = false;
@@ -274,6 +280,12 @@ export class RacpServer {
       this.options.operations.terminal?.detach(terminalId);
     }
     connection.terminals.clear();
+    const commandCenter = connection.commandCenter;
+    if (commandCenter) {
+      void commandCenter.dispose().catch(() => {
+        this.options.log("warn", "command-center dispatcher cleanup failed", { connectionId: connection.id });
+      });
+    }
     this.options.operations.workspaceTerminal?.disconnect(connection.id);
     this.options.operations.workspacePlugins?.disconnect(connection.id);
     this.options.operations.workspaceProcesses?.disconnect(connection.id);
@@ -329,6 +341,10 @@ export class RacpServer {
     if (!rolesAllowOperation(connection.principal.roles, operation)) {
       throw new RacpError("FORBIDDEN", `principal lacks the role for ${operation}`);
     }
+    // Own the dispatcher for the connection lifetime; release() disposes it.
+    if (!connection.commandCenter && this.options.operations.commandCenter && isCommandCenterOperation(operation)) {
+      connection.commandCenter = createCommandCenterDispatch(this.options.operations.commandCenter);
+    }
     const context: OperationContext = {
       connection,
       principal: connection.principal,
@@ -337,6 +353,7 @@ export class RacpServer {
       authenticator: this.options.authenticator,
       limits: this.limits,
       capabilities: this.capabilities,
+      commandCenter: connection.commandCenter,
       traceId,
       now: this.now,
       deliverEvent: (envelope) => this.deliverEvent(connection, envelope),

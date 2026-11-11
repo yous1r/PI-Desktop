@@ -17,6 +17,7 @@ import Type from "typebox";
 import * as Value from "typebox/value";
 
 import type { DeviceTokenAuthenticator } from "./auth.js";
+import { COMMAND_CENTER_OPERATIONS, type CommandCenterDispatch } from "./command-center-dispatch.js";
 import type { RacpHostOperations } from "./host-operations.js";
 import type { RacpConnection } from "./server.js";
 
@@ -28,6 +29,9 @@ export type OperationContext = {
   authenticator: DeviceTokenAuthenticator;
   limits: RacpLimits;
   capabilities: RacpServerCapabilities;
+  /** Connection-scoped command-center dispatcher; present only when the Host
+   * binds a control service. Null never means "fall back to a default". */
+  commandCenter: CommandCenterDispatch | null;
   traceId: string;
   now: () => number;
   deliverEvent: (envelope: RacpEventEnvelope) => void;
@@ -122,6 +126,27 @@ function unavailable(capability: string): OperationHandler {
   return async () => {
     throw new RacpError("CAPABILITY_UNAVAILABLE", `${capability} is not offered by this Host`);
   };
+}
+
+/**
+ * Command-center availability comes only from the negotiated RACP capability
+ * block. `RacpServerCapabilitiesSchema` deliberately has no command-center
+ * field, so this gate is closed and every request fails with
+ * CAPABILITY_UNAVAILABLE before the dispatcher or the control service runs.
+ * Enabling the operations requires adding the capability field together with
+ * the producer/consumer path in one change; a bound control service alone must
+ * never expose them.
+ */
+function requireCommandCenter(context: OperationContext): CommandCenterDispatch {
+  const advertised = (context.capabilities as unknown as { commandCenter?: unknown }).commandCenter === true;
+  if (!advertised) throw new RacpError("CAPABILITY_UNAVAILABLE", "this Host does not offer command-center control");
+  if (!context.commandCenter) throw new RacpError("CAPABILITY_UNAVAILABLE", "command-center control is not bound to this connection");
+  return context.commandCenter;
+}
+
+function commandCenterHandler(operation: string): OperationHandler {
+  return async (context, params) =>
+    requireCommandCenter(context).dispatch(operation, params, { principal: context.principal });
 }
 
 /** The operation catalog bound to the Agent Host module and the Host operations. */
@@ -343,6 +368,12 @@ export function createOperations(): Map<RacpOperation, OperationHandler> {
   handlers.set("attachment/create", unavailable("attachments"));
   handlers.set("attachment/complete", unavailable("attachments"));
   handlers.set("tools/advertise", unavailable("tool relay"));
+
+  // Command-center control is registered in the catalog for stable names and
+  // role enforcement, but stays refused until capability negotiation ships.
+  for (const operation of COMMAND_CENTER_OPERATIONS) {
+    handlers.set(operation, commandCenterHandler(operation));
+  }
 
   handlers.set("session/revoke", async (context, params) => {
     const input = check(Type.Object({ deviceId: Type.String({ minLength: 1 }) }), params);

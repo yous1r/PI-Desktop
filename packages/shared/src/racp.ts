@@ -636,6 +636,25 @@ export const RACP_OPERATIONS = {
   "project/register": { role: "owner", profile: "remote-host", mutation: true },
   /** List directories under a Host path, for the remote folder picker; bounded and owner-only. */
   "project/browse": { role: "owner", profile: "remote-host", mutation: false },
+  /**
+   * Command-center control (C3). Names and roles mirror `CommandCenterControl`;
+   * the shared schema has no command-center capability field, so the RACP
+   * server refuses every one of these operations with CAPABILITY_UNAVAILABLE
+   * until capability negotiation and the producer/consumer path ship together.
+   */
+  "commandCenter/workspace/list": { role: "viewer", profile: "remote-host", mutation: false },
+  "commandCenter/workspace/get": { role: "viewer", profile: "remote-host", mutation: false },
+  "commandCenter/workspace/create": { role: "owner", profile: "remote-host", mutation: true },
+  "commandCenter/workspace/rename": { role: "owner", profile: "remote-host", mutation: true },
+  "commandCenter/workspace/setEnabled": { role: "owner", profile: "remote-host", mutation: true },
+  "commandCenter/workspace/delete": { role: "owner", profile: "remote-host", mutation: true },
+  "commandCenter/membership/get": { role: "viewer", profile: "remote-host", mutation: false },
+  "commandCenter/membership/list": { role: "viewer", profile: "remote-host", mutation: false },
+  "commandCenter/membership/bind": { role: "controller", profile: "remote-host", mutation: true },
+  "commandCenter/membership/remove": { role: "controller", profile: "remote-host", mutation: true },
+  "commandCenter/intervention/record": { role: "controller", profile: "remote-host", mutation: true },
+  "commandCenter/receipt/get": { role: "viewer", profile: "remote-host", mutation: false },
+  "commandCenter/receipt/list": { role: "viewer", profile: "remote-host", mutation: false },
 } as const satisfies Record<string, RacpOperationSpec>;
 export type RacpOperation = keyof typeof RACP_OPERATIONS;
 

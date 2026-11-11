@@ -667,6 +667,40 @@ the mutation did or did not run; inspect remote state before an explicit retry.
 This is a Desktop execution error mapping, not a new wire method or an
 exactly-once guarantee. Read/Glob/Grep retain their ordinary failure mapping.
 
+### 6.2.2 Command-center operations (catalogued, capability-gated)
+
+The C3 control service adds thirteen operations under the `commandCenter/*`
+namespace. They are entries in the shared `RACP_OPERATIONS` catalog with the
+`remote-host` profile, so roles and mutation flags are validated like any other
+operation, but they are **not advertised**. `RacpServerCapabilitiesSchema`
+deliberately has no command-center field, so `requireCommandCenter` fails closed
+and every one of these operations returns `CAPABILITY_UNAVAILABLE` before the
+dispatcher or the control service runs (§13). A bound control service alone cannot
+enable the path; enabling requires the capability field together with the complete
+producer/consumer qualification in one change. Clients must not infer availability
+from catalog membership.
+
+| Operation | Role | Mutation | Behavior |
+|---|---|---|---|
+| `commandCenter/workspace/list` | viewer | no | List command-center workspaces visible to the principal |
+| `commandCenter/workspace/get` | viewer | no | Return one workspace by `commandWorkspaceId` |
+| `commandCenter/workspace/create` | owner | yes | Create a workspace with a name and initial enabled state |
+| `commandCenter/workspace/rename` | owner | yes | Rename a workspace using its expected revision |
+| `commandCenter/workspace/setEnabled` | owner | yes | Enable or disable a workspace using its expected revision; live-work rules still apply |
+| `commandCenter/workspace/delete` | owner | yes | Delete a workspace that has no retained history |
+| `commandCenter/membership/get` | viewer | no | Return the workspace membership bound to a session |
+| `commandCenter/membership/list` | viewer | no | Page the memberships of one workspace |
+| `commandCenter/membership/bind` | controller | yes | Bind a session to a workspace with an expected revision |
+| `commandCenter/membership/remove` | controller | yes | Remove a membership with an expected revision |
+| `commandCenter/intervention/record` | controller | yes | Record one authorized intervention request and return its receipt entry; a repeated request replays the existing entry |
+| `commandCenter/receipt/get` | viewer | no | Return one retained receipt by request id |
+| `commandCenter/receipt/list` | viewer | no | Page retained receipts after a sequence |
+
+The role split follows the local `CommandCenterControl` surface: workspace and
+membership reads and both receipt reads use `viewer`; workspace writes use `owner`;
+membership and intervention mutations use `controller`. None of these roles is a
+substitute for the capability gate above.
+
 ### 6.3 Deferred operations
 
 The desktop offers these locally. RACP does not expose them yet; the names
@@ -1367,6 +1401,12 @@ D375 (2026-09-10) re-sequenced the deployments and extended the catalog:
   30-minute default approval lifetime for remote subscribers, and the
   `applyCeilingToPairedDevices` policy.
 
+Command-center C3 (2026-11-11) added thirteen `commandCenter/*` entries to the
+shared `RACP_OPERATIONS` catalog under the `remote-host` profile (§6.2.2). No
+command-center capability is added to `RacpServerCapabilitiesSchema` or
+advertised, so all thirteen operations remain `CAPABILITY_UNAVAILABLE` until the
+complete producer/consumer path passes in a later change.
+
 ## Workspace service profile (ADR 0340)
 
 The owner-only `workspace/plugin`, `workspace/process` and `workspace/terminal`
@@ -1383,9 +1423,11 @@ See [ADR 0340](../../adr/0340-workspace-plugin-execution.md).
 
 ## Command-center observation foundations
 
-The command-center C1 schemas have two internal consumers. They do not register
-RACP operations, change the negotiated catalog, or advertise monitor/intervention
-capabilities. Existing RACP authorization and connection behavior stay in force.
+The command-center C1 schemas have two internal consumers. C3 also registers
+thirteen `commandCenter/*` operations in the catalog (§6.2.2), but the server
+advertises no command-center capability: every such call returns
+`CAPABILITY_UNAVAILABLE` before dispatch, and no monitor/intervention capability
+is negotiated. Existing RACP authorization and connection behavior stay in force.
 
 `MonitorSnapshotStore` in Agent Host accepts only an already-authorized,
 consistent collection of C1 summary rows and its projection cursor. The caller

@@ -232,6 +232,32 @@ owner，工作区读取都按会话持久根、Host 忽略规则和 `PATH_OUTSID
 | `project/register` | owner | 将 Host 上的目录注册为项目：Host 规范化并校验路径，返回项目 id（D448） |
 | `project/browse` | owner | 列出 Host 某路径下的目录，有界，供远程目录选择器使用（D448） |
 
+命令中心操作（已登记，能力门禁关闭）：C3 控制服务在共享 `RACP_OPERATIONS` 目录中按
+`remote-host` profile 登记了 13 个 `commandCenter/*` 操作，用于角色与 mutation 校验，
+但**不对外宣告**。`RacpServerCapabilitiesSchema` 故意不含命令中心字段，
+`requireCommandCenter` 因此关闭，13 个操作全部在 dispatcher/控制服务运行前返回
+`CAPABILITY_UNAVAILABLE`（§6 错误表）。仅绑定控制服务不能启用该路径；启用须在同一变更中
+加入能力字段并完成生产者/消费者资格验证。客户端不得从目录成员资格推断可用性。
+
+| Operation | Role | Mutation | Behavior |
+|---|---|---|---|
+| `commandCenter/workspace/list` | viewer | no | 列出主体可见的命令中心工作区 |
+| `commandCenter/workspace/get` | viewer | no | 按 `commandWorkspaceId` 返回单个工作区 |
+| `commandCenter/workspace/create` | owner | yes | 创建工作区（名称与初始启用状态） |
+| `commandCenter/workspace/rename` | owner | yes | 按预期 revision 重命名工作区 |
+| `commandCenter/workspace/setEnabled` | owner | yes | 按预期 revision 启用或禁用工作区；仍受活动工作规则约束 |
+| `commandCenter/workspace/delete` | owner | yes | 删除没有保留历史的工作区 |
+| `commandCenter/membership/get` | viewer | no | 返回会话绑定的工作区成员关系 |
+| `commandCenter/membership/list` | viewer | no | 分页列出某工作区的成员关系 |
+| `commandCenter/membership/bind` | controller | yes | 按预期 revision 将会话绑定到工作区 |
+| `commandCenter/membership/remove` | controller | yes | 按预期 revision 移除成员关系 |
+| `commandCenter/intervention/record` | controller | yes | 记录一次授权干预请求并返回回执条目；重复请求重放已有条目 |
+| `commandCenter/receipt/get` | viewer | no | 按 request id 返回一条保留回执 |
+| `commandCenter/receipt/list` | viewer | no | 按序号分页返回保留回执 |
+
+角色划分沿用本地 `CommandCenterControl`：工作区读取、成员读取与回执读取为 viewer，工作区写入为
+owner，成员与干预写作为 controller；角色不能替代上述能力门禁。
+
 仍推迟的本地操作：
 
 | Reserved operation | Local equivalent | Why deferred |
@@ -376,5 +402,8 @@ idempotency key 时返回原结果；使用相同 key 发送不同输入则失�
 SSH 隧道部署与 loopback 规则、SSH 配对 owner 设备的上限豁免，并把 `RACP-HTTP`、
 cookie profile 与 Host link 标记为不排期；终端流式操作、`tools/advertise` 与
 `tool/execute` 中继、host-core 持久化的队列、远程订阅者 30 分钟默认审批寿命和
-`applyCeilingToPairedDevices` 策略同属该修订。
+`applyCeilingToPairedDevices` 策略同属该修订。命令中心 C3（2026-11-11）在共享
+`RACP_OPERATIONS` 目录中加入 13 个 `commandCenter/*` 操作（`remote-host` profile，
+见 §3）；能力协商与宣告尚未加入，全部操作保持 `CAPABILITY_UNAVAILABLE`，直到完整的
+生产者/消费者路径通过。
 完整状态机、示例和验收条款见英文源规格。

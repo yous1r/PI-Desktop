@@ -1,4 +1,4 @@
-import type { Principal, SessionSummary } from "@pi-desktop/agent-host";
+import type { Principal, SessionSummary, CommandCenterControl } from "@pi-desktop/agent-host";
 import type {
   FsEntry,
   FsReadResult,
@@ -116,4 +116,12 @@ export type RacpHostOperations = {
   };
   /** Owner-only: revoke a paired device (spec `session/revoke`). */
   revokeDevice?: (deviceId: string) => Promise<boolean>;
+  /**
+   * Command-center control service. `pi-host` deliberately does not bind it:
+   * no RACP capability advertises command-center operations, so every
+   * `commandCenter/*` request still fails CAPABILITY_UNAVAILABLE. Binding it
+   * only lets the server own and dispose a per-connection dispatcher so the
+   * teardown path exists before the producer/consumer wiring lands.
+   */
+  commandCenter?: CommandCenterControl;
 };

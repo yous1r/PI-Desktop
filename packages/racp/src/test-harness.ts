@@ -4,7 +4,7 @@ import { RacpError, AgentHost, type ApprovalPort, type Principal, type RuntimePo
 import { DeviceTokenAuthenticator, MemoryCredentialStore, hashToken, newDeviceToken, type ConnectionAuth } from "./auth.js";
 import { RacpClient, type ClientTransport, type ClientTransportFactory } from "./client.js";
 import type { RacpHostOperations } from "./host-operations.js";
-import { RacpServer, type ServerConnectionTransport } from "./server.js";
+import { RacpServer, type RacpConnection, type ServerConnectionTransport } from "./server.js";
 
 /** An in-memory transport pair: what `ws` provides, without a socket. */
 export class MemoryLink {
@@ -219,7 +219,13 @@ export type Harness = {
   store: MemoryCredentialStore;
   links: MemoryLink[];
   /** Open a client whose transport authenticates with `token` on every (re)connect. */
-  connect(token: string, options?: Partial<ConstructorParameters<typeof RacpClient>[0]>): Promise<{ client: RacpClient; events: import("@pi-desktop/shared").RacpEventEnvelope[]; link: () => MemoryLink }>;
+  connect(token: string, options?: Partial<ConstructorParameters<typeof RacpClient>[0]>): Promise<{
+    client: RacpClient;
+    events: import("@pi-desktop/shared").RacpEventEnvelope[];
+    link: () => MemoryLink;
+    /** The server-side connection of the most recent accepted transport. */
+    connection: () => RacpConnection | null;
+  }>;
 };
 
 export async function harness(options: { limits?: Partial<import("@pi-desktop/shared").RacpLimits>; operations?: Partial<RacpHostOperations> } = {}): Promise<Harness> {
@@ -249,6 +255,7 @@ export async function harness(options: { limits?: Partial<import("@pi-desktop/sh
     async connect(token, clientOptions = {}) {
       const events: import("@pi-desktop/shared").RacpEventEnvelope[] = [];
       let current: MemoryLink | null = null;
+      let currentConnection: RacpConnection | null = null;
       const transport: ClientTransportFactory = async () => {
         const auth: ConnectionAuth | null = await authenticator.authenticate({ authorization: `Bearer ${token}`, urlHasToken: false, connectionId: "pending" });
         if (!auth) throw Object.assign(new Error("unauthorized"), { errorCode: "REMOTE_AUTH_FAILED" });
@@ -257,6 +264,7 @@ export async function harness(options: { limits?: Partial<import("@pi-desktop/sh
         current = link;
         const accepted = server.accept(auth, link.serverSide());
         if (!accepted) throw Object.assign(new Error("refused"), { errorCode: "REMOTE_CONNECTION_FAILED" });
+        currentConnection = accepted;
         return link.clientSide();
       };
       const client = new RacpClient({
@@ -268,7 +276,7 @@ export async function harness(options: { limits?: Partial<import("@pi-desktop/sh
         ...clientOptions,
       });
       await client.connect();
-      return { client, events, link: () => current! };
+      return { client, events, link: () => current!, connection: () => currentConnection };
     },
   };
 }
