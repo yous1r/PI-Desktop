@@ -13,6 +13,7 @@ import {
 } from "@pi-desktop/shared";
 import { wsClientTransport } from "@pi-desktop/racp";
 import type { HostRpcPort } from "@pi-desktop/agent-host";
+import type { OwnerAttachmentIdentity, OwnerAttachmentTarget } from "@pi-desktop/host-runtime";
 import type { BackendRouter } from "../remote/backend-router.js";
 import { makeRemoteSessionId, parseRemoteSessionId } from "../remote/backend-router.js";
 import { createRacpRemoteHostClient, exchangePairingToken, type RacpRemoteHostClient } from "../remote/racp-remote-host-client.js";
@@ -22,6 +23,8 @@ import { createSshBootstrap, type SshBootstrapDeps } from "../remote/ssh-bootstr
 import { createSshTunnelManager, type SshTunnelManager } from "../remote/ssh-tunnel.js";
 import { createRemoteHostConnection, type RemoteHostConnection, type RemoteHostClient } from "../remote/remote-host-connection.js";
 import { createRemoteHostRegistry, type EncryptionPort, type RemoteHostRecord, type RemoteHostRegistry } from "../remote/remote-host-registry.js";
+import { createDesktopHandoffReattachment, type DesktopHandoffReattachment, type DesktopHandoffReattachmentOptions,
+  type DesktopHandoffReattachmentState } from "../runtime/handoff-reattachment.js";
 import { sshMetadataOf, sshHostRecord, transportOf } from "../remote/remote-host-metadata.js";
 import { createRemoteSessionCatalog } from "../remote/remote-session-catalog.js";
 import { syncRemoteProviders } from "../remote/remote-provider-transfer.js";
@@ -31,6 +34,44 @@ export { sshMetadataOf, sshHostRecord, transportOf } from "../remote/remote-host
 export type { RemoteHostSummary };
 
 export type RemoteHostAdapterFactory = (record: RemoteHostRecord) => RacpRemoteHostClient;
+
+/**
+ * Opt-in observation definition for one paired Host. A command-center composition
+ * root supplies it; bootstrap owns only the lifetime. `identity` must read the
+ * authenticated target-owner handshake after connect (never a Ready payload).
+ * `readStatus` is the durable record + Ready reader; while the H3 Ready join is
+ * absent it is omitted and the port fails closed with
+ * `HANDOFF_ATTACHMENT_READY_UNAVAILABLE` instead of synthesizing a record.
+ */
+export type RemoteHandoffAttachmentRequest = {
+  target: OwnerAttachmentTarget;
+  identity(): OwnerAttachmentIdentity;
+  sessionId: string;
+  /** Durable record + Ready reader. Absent fails closed with
+   * HANDOFF_ATTACHMENT_READY_UNAVAILABLE; bootstrap never fabricates one. */
+  readStatus?: DesktopHandoffReattachmentOptions["readStatus"];
+  /** Release a retained original observation; bootstrap holds none, so a
+   * composition root that owns one must supply this. */
+  detachOriginal?: DesktopHandoffReattachmentOptions["detachOriginal"];
+  onSnapshot?: DesktopHandoffReattachmentOptions["onSnapshot"];
+  onEvent?: DesktopHandoffReattachmentOptions["onEvent"];
+  onState?: DesktopHandoffReattachmentOptions["onState"];
+};
+/** Return undefined for hosts that stay on the existing remote-host behaviour. */
+export type RemoteHandoffAttachmentResolver = (host: {
+  hostKey: string;
+  client: RemoteHostClient;
+}) => RemoteHandoffAttachmentRequest | undefined;
+
+/**
+ * RACP allows eight subscriptions per connection. A normal remote host uses one
+ * host stream plus up to seven session streams. An attached host reserves the
+ * attachment's host and session streams, so it may watch five sessions
+ * (1 host + 5 sessions + 2 attachment streams = 8).
+ */
+export const HANDOFF_ATTACHMENT_SESSION_SUBSCRIPTIONS = 5;
+export const HANDOFF_ATTACHMENT_READY_UNAVAILABLE = "HANDOFF_ATTACHMENT_READY_UNAVAILABLE";
+
 export type RemoteWorkspaceToolInput = {
   hostKey: string; path: string; sessionId: string; turnId: string;
   toolCallId: string; toolName: string; args: unknown; timeoutMs?: number;
@@ -48,6 +89,8 @@ export type BootRemoteHostsOptions = {
   tunnels?: SshTunnelManager;
   sshBootstrap?: Partial<SshBootstrapDeps>;
   isAdmissionClosed?: () => boolean;
+  /** Explicit opt-in only; absent keeps every host on the existing lifecycle. */
+  handoffAttachment?: RemoteHandoffAttachmentResolver;
 };
 export type RemoteLiveSessionSummary = Pick<RacpSession, "id" | "title" | "mode" | "permissionMode" | "status" | "activeTurnId" | "workspaceLabel"> & {
   source: "remote"; hostKey: string; hostLabel: string;
@@ -81,6 +124,8 @@ export interface RemoteHostsBoot {
   workspacePluginFiles(hostKey: string, input: WorkspacePluginFilesRequest): Promise<unknown>;
   /** Existing live connection only: never reconnect/replay a mutation implicitly. */
   workspaceClient(hostKey: string): RemoteHostClient;
+  /** Opt-in observation state for one host, or undefined when it did not opt in. */
+  handoffState(hostKey: string): { state: DesktopHandoffReattachmentState; code?: string } | undefined;
   readonly registry: RemoteHostRegistry;
 }
 let activeRemoteHostsBoot: RemoteHostsBoot | null = null;
@@ -90,6 +135,8 @@ export function getActiveRemoteHostsBoot(): RemoteHostsBoot | null { return acti
 type OpenHost = {
   hostKey: string; label: string; url: string;
   adapter: RacpRemoteHostClient; connection: RemoteHostConnection;
+  /** Present only on an opted-in host; owned by this host's lifecycle. */
+  handoff?: DesktopHandoffReattachment;
 };
 function unavailable(): Error {
   return Object.assign(new Error("remote host is unavailable"), { errorCode: "AGENT_UNAVAILABLE" });
@@ -118,6 +165,53 @@ function assertWorkspaceCapabilities(adapter: RacpRemoteHostClient): void {
     new Error("the remote Host predates the workspace tools and files this Desktop release requires"),
     { errorCode: "HOST_VERSION_MISMATCH", retriable: false },
   );
+}
+
+function handoffReadyUnavailable(): Error {
+  return Object.assign(new Error(HANDOFF_ATTACHMENT_READY_UNAVAILABLE), {
+    code: HANDOFF_ATTACHMENT_READY_UNAVAILABLE,
+    errorCode: HANDOFF_ATTACHMENT_READY_UNAVAILABLE,
+  });
+}
+
+/** One port per opted-in host. The caller owns the injected Ready source and
+ * presentation callbacks; bootstrap owns construction, connection capture and
+ * disposal with the host. */
+function createHostHandoffAttachment(record: RemoteHostRecord, adapter: RacpRemoteHostClient,
+  request: RemoteHandoffAttachmentRequest,
+  log: (level: "info" | "warn" | "error", message: string, data?: unknown) => void): DesktopHandoffReattachment {
+  const client = adapter.client;
+  // The adapter's published state lags behind RACP while a reconnect is
+  // recovering (it reads "reconnecting" inside the reconnect callback), so this
+  // gate refuses only states whose transport is gone. Identity is re-captured
+  // for every attachment generation, and the RACP request itself refuses a dead
+  // socket.
+  const isClosed = () => {
+    const state = client.state?.();
+    return state === "disconnected" || state === "error";
+  };
+  return createDesktopHandoffReattachment({
+    authority() {
+      return {
+        target: request.target,
+        identity: request.identity(),
+        client,
+        assertCurrent() {
+          if (isClosed()) {
+            throw Object.assign(new Error("HANDOFF_ATTACHMENT_DISCONNECTED"), { code: "HANDOFF_ATTACHMENT_DISCONNECTED" });
+          }
+        },
+        isClosed,
+      };
+    },
+    detachOriginal: request.detachOriginal ?? (async () => undefined),
+    readStatus: request.readStatus ?? (async () => { throw handoffReadyUnavailable(); }),
+    sessionId: request.sessionId,
+    onSnapshot: request.onSnapshot ?? (() => undefined),
+    onEvent: request.onEvent ?? (() => undefined),
+    onState: request.onState ?? (() => undefined),
+    log: (level, message, data) => log(level, `remote host ${record.hostKey} ${message}`, data),
+  });
 }
 
 export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHostsBoot {
@@ -232,7 +326,19 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
     const completion = Promise.withResolvers<void>();
     hostClosings.set(host, completion.promise);
     // Publish the completion before external cleanup callbacks can reenter.
-    void activity.cleanup([
+    const handoff = host.handoff;
+    void activity.cleanup(handoff ? [
+      // The attachment releases its RACP subscriptions while the captured
+      // connection is still open; only then may the host close the socket.
+      async () => {
+        try { await handoff.dispose(); }
+        finally {
+          try { await host.connection.close(); }
+          finally { await host.adapter.close(); }
+        }
+      },
+      () => tunnels.close(host.hostKey),
+    ] : [
       () => host.connection.close(),
       () => host.adapter.close(),
       () => tunnels.close(host.hostKey),
@@ -267,8 +373,13 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
     catch (error) { await activity.cleanup([() => tunnels.close(record.hostKey)]); throw error; }
     const adapter = buildAdapter({ ...record, url });
     activity.own(adapter);
+    let handoffRequest: RemoteHandoffAttachmentRequest | undefined;
+    try { handoffRequest = options.handoffAttachment?.({ hostKey: record.hostKey, client: adapter.client }); }
+    catch (error) { log("warn", `remote host ${record.hostKey} handoff attachment config failed`, { error: String(error) }); }
     const connection = createRemoteHostConnection({
       hostKey: record.hostKey, hostLabel: record.label, client: adapter.client, router: options.router,
+      // Reserve the attachment's host + session streams before any session is watched.
+      ...(handoffRequest ? { maxSessionSubscriptions: HANDOFF_ATTACHMENT_SESSION_SUBSCRIPTIONS } : {}),
       emit: (channel, payload) => {
         if (closed) return;
         if (channel === IPC.event.sessionsChanged) void refresh(record.hostKey);
@@ -276,7 +387,7 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       },
       log,
     });
-    const live = { hostKey: record.hostKey, label: record.label, adapter, connection, url };
+    const live: OpenHost = { hostKey: record.hostKey, label: record.label, adapter, connection, url };
     openingHosts.add(live);
     try {
       assertOpen();
@@ -290,6 +401,20 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       await connection.open();
       assertOpen();
       opened.set(record.hostKey, live);
+      if (handoffRequest) {
+        try {
+          const handoff = createHostHandoffAttachment(record, adapter, handoffRequest, log);
+          live.handoff = handoff;
+          // Observation never blocks Host readiness. A missing Ready source
+          // rejects enable() with HANDOFF_ATTACHMENT_READY_UNAVAILABLE and the
+          // port stays in an explicit error state.
+          void activity.track(() => handoff.enable()).catch(error => {
+            log("warn", `remote host ${record.hostKey} handoff attachment unavailable`, { error: String(error) });
+          });
+        } catch (error) {
+          log("warn", `remote host ${record.hostKey} handoff attachment failed`, { error: String(error) });
+        }
+      }
       await refresh(record.hostKey);
       assertOpen();
       return live;
@@ -438,6 +563,12 @@ export function createRemoteHostsBoot(options: BootRemoteHostsOptions): RemoteHo
       const host = connectedHost(hostKey);
       if (!host) throw Object.assign(new Error("Remote workspace is disconnected"), { errorCode: "TERMINAL_HOST_OFFLINE", code: "HOST_DISCONNECTED" });
       return host.adapter.client;
+    },
+    handoffState(hostKey) {
+      const handoff = opened.get(hostKey)?.handoff;
+      if (!handoff) return undefined;
+      const code = handoff.detail?.code;
+      return code === undefined ? { state: handoff.state } : { state: handoff.state, code };
     },
     async workspaceFiles(hostKey, input) {
       await ensureReady(hostKey);

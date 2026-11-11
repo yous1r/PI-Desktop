@@ -70,6 +70,8 @@ export type DesktopHandoffReattachmentOptions = {
 
 export type DesktopHandoffReattachment = {
   readonly state: DesktopHandoffReattachmentState;
+  /** Last explicit failure code, retained after a fail-closed transition. */
+  readonly detail: DesktopHandoffReattachmentDetail | undefined;
   /** Capture the authenticated authority and reconcile one snapshot. */
   enable(): Promise<void>;
   /** The authenticated owner/authorization generation changed; reattach. */
@@ -231,23 +233,36 @@ export function createDesktopHandoffReattachment(
     publish("reconciling");
     try { await handle.attachment.reconcile(options.sessionId); }
     catch (error) {
-      if (current === handle && stateValue !== "error") { report(error); publish("error", codeOf(error)); }
+      if (current === handle) {
+        // The attachment already reported its own cycle error; retain the code
+        // so a fail-closed port exposes why it is unavailable.
+        if (stateValue !== "error") report(error);
+        publish("error", codeOf(error));
+      }
     }
   }
 
   return {
     get state() { return stateValue; },
+    get detail() { return lastCode === undefined ? undefined : { code: lastCode }; },
     async enable() {
       if (disposed) throw failure("HANDOFF_ATTACHMENT_DISPOSED");
       await enqueue(async () => {
         if (disposed) throw failure("HANDOFF_ATTACHMENT_DISPOSED");
         if (enabled) return;
-        const next = options.authority();
-        if (next.isClosed()) throw failure("HANDOFF_ATTACHMENT_DISCONNECTED");
-        if (next.client.state?.() !== undefined && next.client.state() !== "connected") {
-          throw failure("HANDOFF_REATTACHMENT_UNAVAILABLE");
+        let next: DesktopHandoffReattachmentAuthority;
+        try { next = options.authority(); }
+        catch (error) { report(error); publish("error", codeOf(error)); throw error; }
+        if (next.isClosed()) {
+          const error = failure("HANDOFF_ATTACHMENT_DISCONNECTED");
+          report(error); publish("error", error.code); throw error;
         }
-        watch(next.client);
+        if (next.client.state?.() !== undefined && next.client.state() !== "connected") {
+          const error = failure("HANDOFF_REATTACHMENT_UNAVAILABLE");
+          report(error); publish("error", error.code); throw error;
+        }
+        try { watch(next.client); }
+        catch (error) { report(error); publish("error", codeOf(error)); throw error; }
         enabled = true;
         authority = next;
         const handle = create(next);
@@ -255,7 +270,10 @@ export function createDesktopHandoffReattachment(
         publish("reconciling");
         try { await handle.attachment.reconcile(options.sessionId); }
         catch (error) {
-          if (current === handle && stateValue !== "error") { report(error); publish("error", codeOf(error)); }
+          if (current === handle) {
+            if (stateValue !== "error") report(error);
+            publish("error", codeOf(error));
+          }
           throw error;
         }
       });

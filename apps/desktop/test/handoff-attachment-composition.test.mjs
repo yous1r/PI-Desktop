@@ -136,6 +136,7 @@ test("a changed authenticated owner epoch is refused without repainting", async 
   f.state.recovered = Promise.withResolvers();
   f.state.link.drop(); await f.state.recovered.promise;
   assert.equal(f.port.state, "error");
+  assert.equal(f.port.detail?.code, "HANDOFF_ATTACHMENT_AUTH_MISMATCH");
   assert.match(String(f.errors.at(-1)?.message ?? f.errors.at(-1)), /HANDOFF_ATTACHMENT_AUTH_MISMATCH/);
   assert.equal(f.frames.length, 1);
   assert.deepEqual(f.painted, []);
