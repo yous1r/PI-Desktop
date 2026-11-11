@@ -672,13 +672,20 @@ exactly-once guarantee. Read/Glob/Grep retain their ordinary failure mapping.
 The C3 control service adds thirteen operations under the `commandCenter/*`
 namespace. They are entries in the shared `RACP_OPERATIONS` catalog with the
 `remote-host` profile, so roles and mutation flags are validated like any other
-operation, but they are **not advertised**. `RacpServerCapabilitiesSchema`
-deliberately has no command-center field, so `requireCommandCenter` fails closed
-and every one of these operations returns `CAPABILITY_UNAVAILABLE` before the
-dispatcher or the control service runs (§13). A bound control service alone cannot
-enable the path; enabling requires the capability field together with the complete
-producer/consumer qualification in one change. Clients must not infer availability
-from catalog membership.
+operation. The server advertises the additive optional `commandCenter` boolean
+capability only when a Host has bound the control service **and** explicitly opts
+in (`advertiseCommandCenter: true`, default false). Without that advertisement
+`requireCommandCenter` fails closed and every one of these operations returns
+`CAPABILITY_UNAVAILABLE` before the dispatcher or the control service runs (§13).
+A bound control service alone cannot enable the path, and clients must not infer
+availability from catalog membership.
+
+A successful `commandCenter/intervention/record` is also the single durable
+dispatch claim for its `(requestId, fingerprint)`: a repeated request replays the
+retained receipt, a changed payload conflicts, and a lost dispatch reply is
+reconciled from the retained receipt before any retry. Runtime completion is
+persisted once through the private `commandCenter.intervention.ack` exchange with
+an expected-revision CAS; a stale host or owner epoch is refused without writing.
 
 | Operation | Role | Mutation | Behavior |
 |---|---|---|---|

@@ -232,12 +232,17 @@ owner，工作区读取都按会话持久根、Host 忽略规则和 `PATH_OUTSID
 | `project/register` | owner | 将 Host 上的目录注册为项目：Host 规范化并校验路径，返回项目 id（D448） |
 | `project/browse` | owner | 列出 Host 某路径下的目录，有界，供远程目录选择器使用（D448） |
 
-命令中心操作（已登记，能力门禁关闭）：C3 控制服务在共享 `RACP_OPERATIONS` 目录中按
-`remote-host` profile 登记了 13 个 `commandCenter/*` 操作，用于角色与 mutation 校验，
-但**不对外宣告**。`RacpServerCapabilitiesSchema` 故意不含命令中心字段，
-`requireCommandCenter` 因此关闭，13 个操作全部在 dispatcher/控制服务运行前返回
-`CAPABILITY_UNAVAILABLE`（§6 错误表）。仅绑定控制服务不能启用该路径；启用须在同一变更中
-加入能力字段并完成生产者/消费者资格验证。客户端不得从目录成员资格推断可用性。
+命令中心操作（已登记，能力门禁可选开启）：C3 控制服务在共享 `RACP_OPERATIONS` 目录中按
+`remote-host` profile 登记了 13 个 `commandCenter/*` 操作，用于角色与 mutation 校验。
+仅当 Host 已绑定控制服务**且**显式选择开启（`advertiseCommandCenter: true`，默认 false）
+时，服务端才在握手中宣告可选的 `commandCenter` 布尔能力；未宣告时 `requireCommandCenter`
+保持关闭，13 个操作全部在 dispatcher/控制服务运行前返回 `CAPABILITY_UNAVAILABLE`（§6
+错误表）。仅绑定控制服务不能启用该路径，客户端不得从目录成员资格推断可用性。
+
+`commandCenter/intervention/record` 成功落库的回执同时是该 `(requestId, fingerprint)` 的
+唯一持久派发凭据：重复请求返回原回执，payload 变化返回冲突，派发回复丢失时先用保留回执
+对账、不盲目重试。运行时完成通过私有 `commandCenter.intervention.ack` 以预期 revision 的
+CAS 只持久化一次；host/owner epoch 过期一律拒绝且不写入。
 
 | Operation | Role | Mutation | Behavior |
 |---|---|---|---|

@@ -41,6 +41,7 @@
     "@earendil-works/pi-mcp": "1.4.0",
     "@pi-desktop/agent-host": "workspace:*",
     "@pi-desktop/agent-runtime": "workspace:*",
+    "@pi-desktop/command-center-client": "workspace:*",
     "@pi-desktop/host-runtime": "workspace:*",
     "@pi-desktop/i18n": "workspace:*",
     "@pi-desktop/plugin-devkit": "workspace:*",
