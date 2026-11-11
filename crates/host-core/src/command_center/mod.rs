@@ -34,6 +34,7 @@
 //! executes it.
 #![allow(dead_code)] // The RPC surface that consumes these APIs lands separately.
 
+pub(crate) mod api;
 pub(crate) mod goal;
 pub(crate) mod identity;
 pub(crate) mod limits;

@@ -1,3 +1,4 @@
+mod command_center_rpc;
 mod config_sync_rpc;
 mod gen_ui;
 mod modes_rpc;
@@ -1950,6 +1951,9 @@ async fn handle_request(
     }
 
     match method {
+        method if method.starts_with("commandCenter.") => {
+            command_center_rpc::handle(state, method, params).await
+        }
         crate::owner_handoff::exchange_protocol::COMPLETE => {
             crate::owner_handoff::exchange::complete(state, params)
                 .await
