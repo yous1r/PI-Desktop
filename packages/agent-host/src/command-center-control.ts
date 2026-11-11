@@ -1,14 +1,23 @@
 import { createHash } from "node:crypto";
 import {
-  commandCenterCanonicalPayload, commandCenterConsumptionBindsReceipt, commandCenterReceiptBindsRequest,
-  commandCenterReceiptCanTransition, commandCenterWithinBytes, rolesAllowOperation,
-  type CommandCenterExecutionTarget, type CommandCenterInterventionRequest, type CommandCenterOperation,
-  type CommandCenterReceipt,
+  COMMAND_CENTER_ADMISSION_LIMITS, commandCenterAdmissionHoldsCapacity,
+  commandCenterCanonicalPayload, commandCenterConsumptionBindsReceipt, commandCenterExecutionKey,
+  commandCenterReceiptBindsRequest, commandCenterReceiptCanTransition, commandCenterWithinBytes,
+  parseCommandCenterAdmissionSnapshot, rolesAllowOperation,
+  type CommandCenterAdmissionSnapshot, type CommandCenterExecutionTarget,
+  type CommandCenterInterventionRequest, type CommandCenterOperation, type CommandCenterReceipt,
 } from "@pi-desktop/shared";
 import { RacpError } from "./errors.js";
 import type { Principal } from "./ports.js";
+import type {
+  CommandCenterAdmissionAuth,
+  CommandCenterAdmissionPort,
+  CommandCenterAdmissionReservation,
+} from "./command-center-control/admission.js";
 import {
-  COMMAND_CENTER_METHODS, commandCenterMutation, hostId, parseCommandCenterConsumptionRequest,
+  COMMAND_CENTER_METHODS, commandCenterMutation, hostId,
+  parseCommandCenterAdmissionHoldRequest, parseCommandCenterAdmissionReleaseRequest,
+  parseCommandCenterAdmissionRequest, parseCommandCenterConsumptionRequest,
   parseCommandCenterRequest, text, uuid,
   type CommandCenterAccess, type CommandCenterBinding,
   type CommandCenterMethod, type CommandCenterReceiptEntry,
@@ -17,6 +26,7 @@ import {
   type CommandCenterResults,
 } from "./command-center-control/contracts.js";
 export * from "./command-center-control/contracts.js";
+export * from "./command-center-control/admission.js";
 export { parseCommandCenterRepositoryResult } from "./command-center-control/results.js";
 
 /** Default window the exact-target consumer gets to report an acknowledgement. */
@@ -62,6 +72,12 @@ export type CommandCenterControlOptions = {
   /** Current session/workspace ACL policy, independent of membership and readiness. */
   authorize(principal: Principal, access: CommandCenterAccess): Promise<boolean>;
   runtime?: CommandCenterRuntimeHandoff;
+  /**
+   * Shared admission/reservation authority every entry point must consult.
+   * Required by `createCommandCenterHost` when `runtimeMode` is `required`;
+   * without it the control service fails closed for admission requests.
+   */
+  admission?: CommandCenterAdmissionPort;
   /** Injected clock for dispatch deadlines; deterministic tests must pass one. */
   now?: () => number;
   dispatchTimeoutMs?: number;
@@ -397,6 +413,233 @@ export class CommandCenterControl {
       throw new RacpError("INTERNAL", "command-center repository returned an unexpected consumption receipt", { retriable: false });
     }
     return { receipt: outcome.entry.receipt, replayed: outcome.replayed };
+  }
+
+  /** True when a shared admission authority is bound to this control service. */
+  hasAdmission(): boolean {
+    return this.options.admission !== undefined;
+  }
+
+  /**
+   * Reserve one live execution slot through the C2 admission authority.
+   *
+   * This is the single control-level seam every entry point must consult. The
+   * control service keeps no counts: 12-per-workspace / 36-per-Host, duplicate
+   * admission and terminal release are decided by the injected port.
+   */
+  async admitExecution(
+    authenticatedPrincipal: Principal,
+    value: unknown,
+  ): Promise<CommandCenterAdmissionReservation> {
+    const principal = this.admissionPrincipal(authenticatedPrincipal, true);
+    const input = parseCommandCenterAdmissionRequest(value);
+    const binding = this.admissionBinding(input.hostId, input.expectedHostEpoch);
+    this.assertAdmissionOpen(binding);
+    const auth = this.admissionAuth(principal);
+    await this.requireAdmissionControl(principal, binding, auth, "workspace", input.commandWorkspaceId);
+    await this.requireAdmissionControl(principal, binding, auth, "session", sessionId(input.target));
+    const port = this.admissionPort();
+    this.assertAdmissionOpen(binding);
+    const reservation = await port.reserve({
+      binding,
+      auth,
+      workspaceId: input.commandWorkspaceId,
+      membershipRevision: input.expectedMembershipRevision,
+      execution: input.target,
+    });
+    this.assertOwnerCurrent(binding);
+    this.assertReservation(reservation, input.target, input.commandWorkspaceId, input.expectedMembershipRevision);
+    await this.assertAdmissionStillAllowed(principal, binding, "workspace", input.commandWorkspaceId);
+    await this.assertAdmissionStillAllowed(principal, binding, "session", sessionId(input.target));
+    return reservation;
+  }
+
+  /** Move a reserve to a still-capacity state (stopping/outcome_unknown). */
+  async holdExecution(
+    authenticatedPrincipal: Principal,
+    value: unknown,
+  ): Promise<CommandCenterAdmissionReservation> {
+    const principal = this.admissionPrincipal(authenticatedPrincipal, true);
+    const input = parseCommandCenterAdmissionHoldRequest(value);
+    const binding = this.admissionBinding(input.hostId, input.expectedHostEpoch);
+    const auth = this.admissionAuth(principal);
+    await this.requireAdmissionControl(principal, binding, auth, "workspace", input.commandWorkspaceId);
+    await this.requireAdmissionControl(principal, binding, auth, "session", sessionId(input.target));
+    const port = this.admissionPort();
+    this.assertOwnerCurrent(binding);
+    const reservation = await port.hold({
+      binding,
+      auth,
+      workspaceId: input.commandWorkspaceId,
+      execution: input.target,
+      from: input.from,
+      to: input.to,
+      evidence: input.evidence,
+    });
+    this.assertOwnerCurrent(binding);
+    this.assertReservation(reservation, input.target, null, null);
+    if (!commandCenterAdmissionHoldsCapacity(reservation.state)) {
+      throw new RacpError("INTERNAL", "command-center admission returned a terminal hold state", { retriable: false });
+    }
+    await this.assertAdmissionStillAllowed(principal, binding, "workspace", input.commandWorkspaceId);
+    await this.assertAdmissionStillAllowed(principal, binding, "session", sessionId(input.target));
+    return reservation;
+  }
+
+  /** Release a terminal slot exactly once; a duplicate release returns false. */
+  async releaseExecution(
+    authenticatedPrincipal: Principal,
+    value: unknown,
+  ): Promise<{ released: boolean }> {
+    const principal = this.admissionPrincipal(authenticatedPrincipal, true);
+    const input = parseCommandCenterAdmissionReleaseRequest(value);
+    const binding = this.admissionBinding(input.hostId, input.expectedHostEpoch);
+    const auth = this.admissionAuth(principal);
+    await this.requireAdmissionControl(principal, binding, auth, "workspace", input.commandWorkspaceId);
+    await this.requireAdmissionControl(principal, binding, auth, "session", sessionId(input.target));
+    const port = this.admissionPort();
+    this.assertOwnerCurrent(binding);
+    const outcome = await port.release({
+      binding,
+      auth,
+      workspaceId: input.commandWorkspaceId,
+      execution: input.target,
+      to: input.to,
+      evidence: input.evidence,
+    });
+    this.assertOwnerCurrent(binding);
+    if (!outcome || typeof outcome.released !== "boolean") {
+      throw new RacpError("INTERNAL", "command-center admission returned an invalid release", { retriable: false });
+    }
+    await this.assertAdmissionStillAllowed(principal, binding, "workspace", input.commandWorkspaceId);
+    await this.assertAdmissionStillAllowed(principal, binding, "session", sessionId(input.target));
+    return outcome;
+  }
+
+  /**
+   * Current live counts and frozen limits for the Host, read-only.
+   *
+   * The global quota count is always visible; workspace rows are only returned
+   * for the explicit ids the caller is authorized to read. The C2 adapter
+   * applies the same filter on its side, so a scope cannot be widened by the
+   * request.
+   */
+  async admissionState(
+    authenticatedPrincipal: Principal,
+    workspaceIds: readonly string[] = [],
+  ): Promise<CommandCenterAdmissionSnapshot> {
+    const principal = this.admissionPrincipal(authenticatedPrincipal, false);
+    const binding = { ...this.options.hostIdentity() };
+    hostId(binding.hostId); uuid(binding.hostEpoch);
+    const auth = this.admissionAuth(principal);
+    for (const workspaceId of workspaceIds) {
+      uuid(workspaceId);
+      const allowed = await this.options.authorize(principal, { kind: "workspace", id: workspaceId, permission: "read" });
+      this.assertOwnerCurrent(binding);
+      if (!allowed) forbidden();
+      if (!auth.workspaceIds.includes(workspaceId)) auth.workspaceIds.push(workspaceId);
+    }
+    const port = this.admissionPort();
+    this.assertOwnerCurrent(binding);
+    const snapshot = await port.snapshot({ binding, auth });
+    this.assertOwnerCurrent(binding);
+    try {
+      return parseCommandCenterAdmissionSnapshot(snapshot);
+    } catch {
+      throw new RacpError("INTERNAL", "command-center admission returned an invalid state", { retriable: false });
+    }
+  }
+
+  private admissionAuth(principal: Principal): CommandCenterAdmissionAuth {
+    return {
+      subject: principal.subject,
+      roles: [...principal.roles],
+      sessionIds: [],
+      workspaceIds: [],
+    };
+  }
+
+  private async requireAdmissionControl(
+    principal: Principal,
+    binding: CommandCenterBinding,
+    auth: CommandCenterAdmissionAuth,
+    kind: "session" | "workspace",
+    id: string,
+  ): Promise<void> {
+    const allowed = await this.options.authorize(principal, { kind, id, permission: "control" });
+    this.assertOwnerCurrent(binding);
+    if (!allowed) forbidden();
+    const grants = kind === "session" ? auth.sessionIds : auth.workspaceIds;
+    if (!grants.includes(id)) grants.push(id);
+  }
+
+  /**
+   * Re-check the same scope after the transport await. A permission revocation
+   * during the C2 call cannot be hidden by publishing the reservation result.
+   */
+  private async assertAdmissionStillAllowed(
+    principal: Principal,
+    binding: CommandCenterBinding,
+    kind: "session" | "workspace",
+    id: string,
+  ): Promise<void> {
+    const allowed = await this.options.authorize(principal, { kind, id, permission: "control" });
+    this.assertOwnerCurrent(binding);
+    if (!allowed) forbidden();
+  }
+
+  private admissionPrincipal(source: Principal, mutation: boolean): Principal {
+    const principal = { ...source, roles: [...source.roles] };
+    text(principal.subject, 256);
+    if (principal.roles.some((role) => !["viewer", "controller", "approver", "owner"].includes(role))) forbidden();
+    if (!rolesAllowOperation(principal.roles, mutation ? "turn/start" : "session/get")) forbidden();
+    return principal;
+  }
+
+  private admissionBinding(expectedHostId: string, expectedEpoch: string): CommandCenterBinding {
+    const binding = { ...this.options.hostIdentity() };
+    hostId(binding.hostId); uuid(binding.hostEpoch);
+    if (binding.hostId !== expectedHostId || binding.hostEpoch !== expectedEpoch) conflict();
+    return binding;
+  }
+
+  private admissionPort(): CommandCenterAdmissionPort {
+    const port = this.options.admission;
+    if (!port) {
+      throw new RacpError("CAPABILITY_UNAVAILABLE", "command-center admission is not bound", { retriable: false });
+    }
+    return port;
+  }
+
+  private assertOwnerCurrent(binding: CommandCenterBinding): void {
+    const current = this.options.hostIdentity();
+    if (current.hostId !== binding.hostId || current.hostEpoch !== binding.hostEpoch) conflict();
+  }
+
+  private assertAdmissionOpen(binding: CommandCenterBinding): void {
+    this.assertOwnerCurrent(binding);
+    if (this.options.mutationsClosed()) {
+      throw new RacpError("HOST_BUSY", "command-center admission is closed for owner handoff", { retriable: false });
+    }
+  }
+
+  private assertReservation(
+    reservation: CommandCenterAdmissionReservation,
+    target: CommandCenterExecutionTarget,
+    workspaceId: string | null,
+    membershipRevision: number | null,
+  ): void {
+    if (!reservation ||
+        reservation.executionKey !== commandCenterExecutionKey(target) ||
+        (workspaceId !== null && reservation.workspaceId !== workspaceId) ||
+        (membershipRevision !== null && reservation.membershipRevision !== membershipRevision) ||
+        !commandCenterAdmissionHoldsCapacity(reservation.state) ||
+        !Number.isSafeInteger(reservation.hostLive) || reservation.hostLive < 0 ||
+        reservation.hostLive > COMMAND_CENTER_ADMISSION_LIMITS.maxLivePerHost ||
+        !Number.isSafeInteger(reservation.workspaceLive) || reservation.workspaceLive < 0 ||
+        reservation.workspaceLive > COMMAND_CENTER_ADMISSION_LIMITS.maxLivePerWorkspace) {
+      throw new RacpError("INTERNAL", "command-center admission returned an invalid reservation", { retriable: false });
+    }
   }
 
   private async reconcileConsumptionEntry(

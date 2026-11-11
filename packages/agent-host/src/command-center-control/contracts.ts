@@ -1,7 +1,10 @@
 import {
-  COMMAND_CENTER_MAX_RECEIPT_BYTES, commandCenterWithinBytes, parseCommandCenterConsumption,
+  COMMAND_CENTER_ADMISSION_STATES, COMMAND_CENTER_MAX_RECEIPT_BYTES,
+  commandCenterAdmissionHoldsCapacity, commandCenterWithinBytes,
+  parseCommandCenterConsumption, parseCommandCenterExecutionTarget,
   parseCommandCenterInterventionRequest,
-  type CommandCenterConsumption, type CommandCenterInterventionRequest, type CommandCenterReceipt,
+  type CommandCenterAdmissionState, type CommandCenterConsumption, type CommandCenterExecutionTarget,
+  type CommandCenterInterventionRequest, type CommandCenterReceipt,
   type CommandCenterReceiptStatus, type CommandCenterWorkspace,
 } from "@pi-desktop/shared";
 import { RacpError } from "../errors.js";
@@ -100,6 +103,31 @@ export type CommandCenterConsumptionRequest = Mutation & {
   requestId: string;
   expectedRevision: number;
   consumption: CommandCenterConsumption;
+};
+
+/** One new main/child/Worker execution asking the shared admission authority. */
+export type CommandCenterAdmissionRequest = Mutation & {
+  commandWorkspaceId: string;
+  expectedMembershipRevision: number;
+  target: CommandCenterExecutionTarget;
+};
+
+/** A non-terminal state move that must retain its capacity slot. */
+export type CommandCenterAdmissionHoldRequest = Mutation & {
+  commandWorkspaceId: string;
+  target: CommandCenterExecutionTarget;
+  from: CommandCenterAdmissionState;
+  to: CommandCenterAdmissionState;
+  evidence: string;
+};
+
+/** Terminal release evidence; the C2 transition releases exactly once. */
+export type CommandCenterAdmissionReleaseRequest = Mutation & {
+  commandWorkspaceId: string;
+  target: CommandCenterExecutionTarget;
+  /** Terminal state the reservation settles as. */
+  to: CommandCenterAdmissionState;
+  evidence: string;
 };
 
 /** Public control operations plus the private C2 receipt transition. */
@@ -251,4 +279,64 @@ export function parseCommandCenterRepositoryRequest<M extends CommandCenterRepos
 ): CommandCenterRepositoryRequests[M] {
   if (method === "intervention/ack") return parseCommandCenterAckRequest(value) as CommandCenterRepositoryRequests[M];
   return parseCommandCenterRequest(method, value) as CommandCenterRepositoryRequests[M];
+}
+
+function executionTarget(value: unknown): CommandCenterExecutionTarget {
+  try { return parseCommandCenterExecutionTarget(value); } catch { return invalid(); }
+}
+
+function admissionState(value: unknown): CommandCenterAdmissionState {
+  if (typeof value !== "string" || !(COMMAND_CENTER_ADMISSION_STATES as readonly string[]).includes(value)) invalid();
+  return value as CommandCenterAdmissionState;
+}
+
+function admissionMutation(value: unknown): Record<string, unknown> {
+  if (!commandCenterWithinBytes(value, COMMAND_CENTER_MAX_RECEIPT_BYTES)) invalid();
+  const input = record(JSON.parse(JSON.stringify(value)));
+  if (input.version !== 1) invalid();
+  hostId(input.hostId); uuid(input.expectedHostEpoch);
+  return input;
+}
+
+/** Validate one new-execution admission request for the C2 reservation port. */
+export function parseCommandCenterAdmissionRequest(value: unknown): CommandCenterAdmissionRequest {
+  const input = admissionMutation(value);
+  strictKeys(
+    input,
+    ["version", "hostId", "expectedHostEpoch", "commandWorkspaceId", "expectedMembershipRevision", "target"],
+  );
+  uuid(input.commandWorkspaceId); integer(input.expectedMembershipRevision, 1);
+  return { ...(input as CommandCenterAdmissionRequest), target: executionTarget(input.target) };
+}
+
+/** Validate one non-terminal hold; both states must still occupy capacity. */
+export function parseCommandCenterAdmissionHoldRequest(value: unknown): CommandCenterAdmissionHoldRequest {
+  const input = admissionMutation(value);
+  strictKeys(input, ["version", "hostId", "expectedHostEpoch", "commandWorkspaceId", "target", "from", "to", "evidence"]);
+  uuid(input.commandWorkspaceId);
+  const from = admissionState(input.from);
+  const to = admissionState(input.to);
+  if (!commandCenterAdmissionHoldsCapacity(from) || !commandCenterAdmissionHoldsCapacity(to)) invalid();
+  return {
+    ...(input as CommandCenterAdmissionHoldRequest),
+    target: executionTarget(input.target),
+    from,
+    to,
+    evidence: text(input.evidence, 128),
+  };
+}
+
+/** Validate one terminal release request; C2 requires bounded evidence. */
+export function parseCommandCenterAdmissionReleaseRequest(value: unknown): CommandCenterAdmissionReleaseRequest {
+  const input = admissionMutation(value);
+  strictKeys(input, ["version", "hostId", "expectedHostEpoch", "commandWorkspaceId", "target", "to", "evidence"]);
+  uuid(input.commandWorkspaceId);
+  const to = admissionState(input.to);
+  if (commandCenterAdmissionHoldsCapacity(to)) invalid();
+  return {
+    ...(input as CommandCenterAdmissionReleaseRequest),
+    target: executionTarget(input.target),
+    to,
+    evidence: text(input.evidence, 128),
+  };
 }

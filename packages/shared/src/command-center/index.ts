@@ -6,6 +6,7 @@
  * adapters and their integration tests.
  */
 export * from "./primitives.js";
+export * from "./admission.js";
 export * from "./errors.js";
 export * from "./identity.js";
 export * from "./goal.js";

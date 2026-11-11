@@ -5,6 +5,7 @@
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
     "rootDir": "src",
     "composite": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "ES2024.Promise"],
     "types": ["node"]
   },
   "include": ["src/**/*"],

@@ -1,13 +1,16 @@
 import {
   CommandCenterControl,
   type CommandCenterAccess,
+  type CommandCenterAdmissionPort,
   type CommandCenterBinding,
   type CommandCenterRuntimeHandoff,
   type HostRpcPort,
   type Principal,
 } from "@pi-desktop/agent-host";
+import type { CommandCenterAdmissionSnapshot } from "@pi-desktop/shared";
 
 import { RustCommandCenterRepository } from "./command-center-repository.js";
+import { createRustCommandCenterAdmissionPort } from "./command-center-admission.js";
 
 /**
  * Structural mirror of `@pi-desktop/racp`'s `CommandCenterDispatch`.
@@ -62,6 +65,12 @@ export type CommandCenterHostPorts = {
   createDispatch: CommandCenterDispatchFactory;
   /** Exact-target runtime consumer. Omitted keeps the C3 record-only boundary. */
   runtime?: CommandCenterRuntimeHandoff;
+  /**
+   * Shared admission/reservation authority (12/workspace, 36/Host, exactly-once
+   * release). Required when `runtimeMode` is `required`; without a real C2-backed
+   * implementation the Host must not claim it can execute the control path.
+   */
+  admission?: CommandCenterAdmissionPort;
   /** Explicit dispatch requirement; see `CommandCenterRuntimeMode`. */
   runtimeMode?: CommandCenterRuntimeMode;
   dispatchTimeoutMs?: number;
@@ -72,6 +81,10 @@ export type CommandCenterHost = {
   readonly control: CommandCenterControl;
   /** The effective dispatch mode; never silently promoted to `required`. */
   readonly runtimeMode: CommandCenterRuntimeMode;
+  /** The injected admission authority, or null when the Host is record-only. */
+  readonly admission: CommandCenterAdmissionPort | null;
+  /** Current live counts and limits, read through the admission authority. */
+  admissionState(principal: Principal, workspaceIds?: readonly string[]): Promise<CommandCenterAdmissionSnapshot>;
   /** One host-owned dispatcher bound to this control. */
   readonly dispatch: CommandCenterDispatchPort;
   /** Create an additional connection-scoped dispatcher; dispose covers all. */
@@ -118,11 +131,22 @@ export function createCommandCenterHost(ports: CommandCenterHostPorts): CommandC
   if (runtime !== undefined && typeof runtime.canRecord !== "function") {
     throw new Error("command-center host requires a valid runtime canRecord port");
   }
+  const admission = ports.admission ?? (runtimeMode === "required"
+    ? createRustCommandCenterAdmissionPort(transport, hostIdentity)
+    : undefined);
+  if (admission !== undefined) {
+    for (const method of ["reserve", "hold", "release", "snapshot"] as const) {
+      if (typeof admission[method] !== "function") {
+        throw new Error(`command-center host requires a valid admission ${method} port`);
+      }
+    }
+  }
   if (runtimeMode === "required") {
     if (runtime === undefined) throw new Error("command-center host requires a runtime dispatch consumer");
     if (typeof runtime.dispatch !== "function") {
       throw new Error("command-center host requires a runtime dispatch consumer");
     }
+    if (admission === undefined) throw new Error("command-center host requires an admission port");
   }
 
   const repository = new RustCommandCenterRepository(transport, hostIdentity);
@@ -134,6 +158,7 @@ export function createCommandCenterHost(ports: CommandCenterHostPorts): CommandC
     now: () => clock.now(),
     ...(ports.dispatchTimeoutMs === undefined ? {} : { dispatchTimeoutMs: ports.dispatchTimeoutMs }),
     ...(runtime === undefined ? {} : { runtime }),
+    ...(admission === undefined ? {} : { admission }),
   });
 
   const dispatches = new Set<CommandCenterDispatchPort>();
@@ -151,6 +176,9 @@ export function createCommandCenterHost(ports: CommandCenterHostPorts): CommandC
     repository,
     control,
     runtimeMode,
+    admission: admission ?? null,
+    admissionState: (principal: Principal, workspaceIds?: readonly string[]) =>
+      control.admissionState(principal, workspaceIds),
     dispatch,
     createDispatch: create,
     async dispose(): Promise<void> {

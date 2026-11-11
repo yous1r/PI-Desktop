@@ -1,6 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import type { CommandCenterControl, CommandCenterBinding, Principal } from "@pi-desktop/agent-host";
+import { commandCenterExecutionKey } from "@pi-desktop/shared";
+import type {
+  CommandCenterAdmissionPort,
+  CommandCenterAdmissionReservation,
+  CommandCenterBinding,
+  CommandCenterControl,
+  Principal,
+} from "@pi-desktop/agent-host";
 import {
   createCommandCenterHost,
   type CommandCenterDispatchFactory,
@@ -66,6 +73,43 @@ function fakeDispatchFactory() {
   return { factory, seen, disposed };
 }
 
+function fakeAdmission(): CommandCenterAdmissionPort {
+  return {
+    async reserve(request): Promise<CommandCenterAdmissionReservation> {
+      return {
+        executionKey: commandCenterExecutionKey(request.execution),
+        workspaceId: request.workspaceId,
+        membershipRevision: request.membershipRevision,
+        state: "reserved",
+        hostLive: 1,
+        workspaceLive: 1,
+      };
+    },
+    async hold(request) {
+      return {
+        executionKey: commandCenterExecutionKey(request.execution),
+        workspaceId: "7d1e4c20-8a3b-4f56-9c12-2e7a9b0d4f31",
+        membershipRevision: 1,
+        state: request.to,
+        hostLive: 1,
+        workspaceLive: 1,
+      };
+    },
+    async release() {
+      return { released: true };
+    },
+    async snapshot() {
+      return {
+        version: 1,
+        hostLive: 0,
+        maxHostLive: 36,
+        maxWorkspaceLive: 12,
+        workspaces: [],
+      };
+    },
+  };
+}
+
 function ports(overrides: Partial<CommandCenterHostPorts> = {}): CommandCenterHostPorts {
   return {
     transport: fakeTransport().port,
@@ -124,17 +168,62 @@ describe("command-center host composition", () => {
     }))).toThrow(/invalid dispatch factory result/);
   });
 
-  it("fails closed when dispatch is required and no exact-target consumer was injected", () => {
+  it("fails closed when dispatch or admission is required and no port was injected", () => {
     expect(() => createCommandCenterHost(ports({ runtimeMode: "required" }))).toThrow(/runtime dispatch consumer/);
     expect(() => createCommandCenterHost(ports({
       runtimeMode: "required",
       runtime: { canRecord: () => true },
     }))).toThrow(/runtime dispatch consumer/);
     expect(() => createCommandCenterHost(ports({
+      runtimeMode: "required",
+      runtime: { canRecord: () => true, dispatch: async () => ({ status: "accepted" as const }) },
+    }))).not.toThrow();
+    expect(() => createCommandCenterHost(ports({
+      runtimeMode: "required",
+      admission: { reserve: undefined } as unknown as CommandCenterAdmissionPort,
+    }))).toThrow(/admission reserve port/);
+    expect(() => createCommandCenterHost(ports({
       runtimeMode: "unknown" as never,
     }))).toThrow(/unknown runtime mode/);
     const recordOnly = createCommandCenterHost(ports());
     expect(recordOnly.runtimeMode).toBe("record-only");
+    expect(recordOnly.admission).toBeNull();
+  });
+
+  it("exposes admission state through the composed host", async () => {
+    const admission = fakeAdmission();
+    const host = createCommandCenterHost(ports({ admission }));
+    expect(host.admission).toBe(admission);
+    await expect(host.admissionState(owner)).resolves.toMatchObject({
+      hostLive: 0,
+      maxHostLive: 36,
+      maxWorkspaceLive: 12,
+    });
+  });
+
+  it("uses the real Rust admission adapter for required mode when none is injected", async () => {
+    const calls: { method: string; params: Record<string, unknown> }[] = [];
+    const transport = {
+      async call<T = unknown>(method: string, params?: Record<string, unknown>): Promise<T> {
+        calls.push({ method, params: params ?? {} });
+        if (method === "commandCenter.reservation.state") {
+          return { version: 1, hostLive: 3, maxHostLive: 36, maxWorkspaceLive: 12, workspaces: [] } as T;
+        }
+        throw new Error(`Unexpected transport call: ${method}`);
+      },
+    };
+    const host = createCommandCenterHost(ports({
+      transport,
+      runtimeMode: "required",
+      runtime: { canRecord: () => true, dispatch: async () => ({ status: "accepted" as const }) },
+    }));
+    expect(host.admission).not.toBeNull();
+    await expect(host.admissionState(owner)).resolves.toMatchObject({ hostLive: 3 });
+    expect(calls.map((call) => call.method)).toEqual(["commandCenter.reservation.state"]);
+    const envelope = calls[0].params as { binding: { hostId: string; hostEpoch: string }; auth: { subject: string }; input: { version: number; hostId: string } };
+    expect(envelope.binding).toEqual({ hostId: binding.hostId, hostEpoch: binding.hostEpoch });
+    expect(envelope.auth.subject).toBe(owner.subject);
+    expect(envelope.input).toEqual({ version: 1, hostId: binding.hostId });
   });
 
   it("routes an injected exact-target dispatch through the composed control service", async () => {
@@ -163,6 +252,7 @@ describe("command-center host composition", () => {
       transport,
       runtimeMode: "required",
       runtime: { canRecord: () => true, dispatch },
+      admission: fakeAdmission(),
     }));
     const result = await host.control.call("intervention/record", fixture.request as never, owner);
     expect(dispatch).toHaveBeenCalledTimes(1);
