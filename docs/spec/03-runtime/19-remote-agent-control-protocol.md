@@ -669,8 +669,8 @@ exactly-once guarantee. Read/Glob/Grep retain their ordinary failure mapping.
 
 ### 6.2.2 Command-center operations (catalogued, capability-gated)
 
-The C3 control service adds thirteen operations under the `commandCenter/*`
-namespace. They are entries in the shared `RACP_OPERATIONS` catalog with the
+The C3 control service and bounded monitor reader add fourteen operations under
+the `commandCenter/*` namespace. They are entries in the shared `RACP_OPERATIONS` catalog with the
 `remote-host` profile, so roles and mutation flags are validated like any other
 operation. The server advertises the additive optional `commandCenter` boolean
 capability only when a Host has bound the control service **and** explicitly opts
@@ -702,6 +702,22 @@ an expected-revision CAS; a stale host or owner epoch is refused without writing
 | `commandCenter/intervention/record` | controller | yes | Record one authorized intervention request and return its receipt entry; a repeated request replays the existing entry |
 | `commandCenter/receipt/get` | viewer | no | Return one retained receipt by request id |
 | `commandCenter/receipt/list` | viewer | no | Page retained receipts after a sequence |
+| `commandCenter/monitorPage` | viewer | no | Read one bounded summary page; continuation handles are connection- and authorization-scope-bound |
+
+The production `pi-host` composition is part of this repository under
+`apps/pi-host`. Its command-center mode uses the existing installation Host ID,
+the Rust boot owner epoch, the shared control service and a Rust-backed monitor
+page port. The default remote-workspace mode is unchanged. Missing or unsupported
+runtime consumers refuse intervention instead of reporting a fabricated result.
+
+`monitorPage` accepts `{version: 1, hostId, token?}`. No principal, role or scope
+can be supplied in the request. The trusted Node page source reads the private
+Rust C2 cut and checks read access to each row's workspace and session before
+capture. Pages are limited to 100 rows and 64 KiB; handles bind principal,
+connection, roles, owner epoch and the authorized scope. Access revocation,
+connection replacement, epoch change, expiry or disposal refuses the retained
+handle without substituting a newer page. Snapshot watermarks describe a complete
+C2 cut; they are not a claim that a live event was delivered.
 
 The role split follows the local `CommandCenterControl` surface: workspace and
 membership reads and both receipt reads use `viewer`; workspace writes use `owner`;

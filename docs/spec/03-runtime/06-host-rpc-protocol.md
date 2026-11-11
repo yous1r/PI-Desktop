@@ -110,6 +110,39 @@ Other RPCs, including permission decisions and tool cancellation, bypass this
 write queue. They still obey Rust's unchanged 32-request admission limit; this
 is not a reservation against arbitrary concurrent tool/control traffic.
 
+### 2.2 Private command-center persistence and boot fencing
+
+The ordinary `app.handshake` response includes an additive
+`commandCenter: {version: 1, hostEpoch: <uuid>}` field. It identifies this Rust
+process's execution owner, using the native execution-fence epoch when present
+and an instance-unique boot epoch otherwise. It is not the RACP event cursor,
+Node wrapper generation, an authorization credential or permission to transfer
+ownership. Existing clients may ignore the new field; command-center adapters
+must bind it before sending persistence requests. A restarted process rejects
+the preceding boot epoch even on platforms without native handoff support.
+
+The private `commandCenter.*` methods receive `{binding, auth, input}` only from
+the trusted Node composition. Node derives the principal and scopes from its
+existing authenticated transport; neither the RACP request nor renderer IPC can
+provide that envelope. The Rust adapter validates roles, applicable scopes,
+request identity and current owner epoch before calling the existing C2
+repositories. These methods add no network listener or second database writer.
+
+| Private method | Purpose |
+|---|---|
+| `commandCenter.reservation.reserve` | Reserve capacity and read its counts inside the same immediate C2 transaction; refuse the 13th workspace / 37th Host reservation |
+| `commandCenter.reservation.hold` | Validate the exact workspace/execution/owner and advance to a capacity-retaining state |
+| `commandCenter.reservation.release` | Apply an evidence-backed terminal transition once; a duplicate returns `released: false` with no second event |
+| `commandCenter.reservation.state` | Return the global Host count and only explicitly authorized workspace counts |
+| `commandCenter.monitor.cut` | Read a bounded, consistent reservation/goal summary cut without reading transcripts; the public page source reauthorizes every row |
+
+Unknown, stopping and interrupted reservations retain capacity. Queued inputs
+that have not reserved a runtime occupy no execution slot. Stored receipts and
+transition evidence are retained across reopen. Lost responses are not evidence
+that a mutation failed and are never automatically resent by these adapters.
+The `CC_*` refusal family is mapped to bounded RACP error categories without
+exposing SQLite diagnostics or private filesystem paths.
+
 ### Request
 
 ```json

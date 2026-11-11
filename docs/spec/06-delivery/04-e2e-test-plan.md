@@ -10750,6 +10750,8 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 
 | Acceptance | Scenarios |
 |---|---|
+| C / Security / Persistence — Real command-center private RPC, quotas, receipts and WS monitor path | E2E-COMMAND-CENTER-private-rpc-control |
+| Security / Lifecycle — Target Ready requires a native root and retained ownership | E2E-HANDOFF-target-real-root |
 | Quality — Command-center P0 runtime baseline (partial evidence for proposed AC-07) | E2E-COMMAND-CENTER-runtime-baseline |
 | Quality — Command-center one-hour fixed-context diagnostic | E2E-COMMAND-CENTER-runtime-soak |
 | C / Security / Quality — Command-center internal paging and portable receipt consumers | E2E-COMMAND-CENTER-observation-foundations |
@@ -21041,3 +21043,66 @@ Voice/LiveVoice remains deferred; the earlier isolation incident is unresolved.
   required for full M1/W2 qualification.
 - **Status:** Results are recorded in the
   [continuation evidence](../../project/ai-command-center-continuation.md).
+
+### E2E-COMMAND-CENTER-private-rpc-control
+
+- **Title:** Real Rust persistence, admission and authenticated WebSocket observation.
+- **Milestone:** C2/C3/C4/M1 integration slice, not capacity or release qualification.
+- **Preconditions:** Candidate host-core binary and the same candidate's built
+  shared, Agent Host, host-runtime and RACP packages; isolated scratch/home/profile.
+- **Entry:** `PI_DESKTOP_HOST_BIN=<candidate> PI_SCRATCH_DIR=<isolated-dir>
+  pnpm test:e2e:command-center-control`.
+- **Steps:**
+  1. Start the production `HostProcess`, handshake and bind the Rust boot epoch.
+     Start authenticated RACP-WS on an ephemeral loopback port; use isolated test
+     credentials only. Create three workspaces and bind real test sessions.
+  2. Reserve twelve executions per workspace in C2; reject the 13th workspace
+     and 37th Host reservation. Repeat a reservation and verify unchanged counts.
+  3. Record one goal intervention, accept it at the deterministic external runtime
+     boundary, replay the exact request and reject changed payload under its ID.
+     Report an execution-boundary consumption and verify the persisted revision.
+  4. Drop one actual committed ACK response and reconcile through receipt lookup
+     without another runtime dispatch. Verify another principal cannot read it.
+  5. Read real Rust reservation/goal cuts through the WebSocket monitor page port.
+     Check workspace/session ACL filtering, cross-connection handle refusal and
+     permission-revocation invalidation.
+  6. Hold an unknown outcome without releasing its slot. Release with terminal
+     evidence twice, observing exactly one decrement. Stop and confirm the Rust
+     child, reopen the populated profile and reject an old owner epoch.
+- **Expected:** The single C2 transaction/receipt authority determines quotas and
+  idempotence; monitor reads no transcript/model context; children and the socket
+  are closed. No real provider, running user profile or user desktop is involved.
+- **Specs:** [Host RPC](../03-runtime/06-host-rpc-protocol.md#22-private-command-center-persistence-and-boot-fencing),
+  [RACP command-center operations](../03-runtime/19-remote-agent-control-protocol.md#622-command-center-operations-catalogued-capability-gated).
+- **Acceptance:** PASS plus `cleanupConfirmed: true` in the scratch report, with
+  candidate/base revisions and binary/script hashes. The deterministic runtime
+  acknowledgement is not an actual model result or a 36-agent performance test.
+- **Status:** Implemented; results apply only to the recorded candidate and inputs.
+
+### E2E-HANDOFF-target-real-root
+
+- **Title:** Refuse synthetic Ready and bind the real target root.
+- **Milestone:** H3 native-root safety; full source-to-successor H5 remains separate.
+- **Preconditions:** Windows native test runner, candidate host-core and isolated
+  journal/profile. No running user Desktop or provider is required.
+- **Entry:** `cargo test -p host-core owner_handoff::target --locked`; Node target
+  supervisor/process tests cover framed transport chunking and owned cleanup.
+- **Steps:**
+  1. Attempt Ready with an unrooted generation; reject before writing the ready
+     phase. Exercise mismatched ticket, stale claim and missing live epoch.
+  2. Prepare the claimed generation's real Job and one-use pipe; start a test
+     child from the captured coordinator and bind its original process identity.
+     Require its registration ACK and running lease before Ready can commit.
+  3. Check that the target directory lock is retained outside the Tokio runtime's
+     lifetime. No fallback to ordinary startup or newly generated owner is allowed.
+  4. Split valid frames across arbitrary chunks and coalesce receipt/launch frames
+     in one chunk; parse all valid frames with per-frame bounds. On cancellation,
+     disposal or late sidecar-launch completion release the original resource.
+- **Expected:** No unrooted Ready exception, no PID-only adoption and no fabricated
+  event epoch. A failed initialization remains recoverable and cannot reopen
+  admission. A child helper ignore is infrastructure, not omitted acceptance.
+- **Specs:** [Idle handoff](../../project/ai-command-center-idle-handoff.md).
+- **Acceptance:** Native target tests and Node transport/cleanup tests pass. Full
+  production sidecar launch, notification bridge and H5 journey remain unqualified
+  until their own process-bound results exist.
+- **Status:** Safety/regression slice implemented; full production H5 NOT RUN.

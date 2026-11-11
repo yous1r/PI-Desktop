@@ -58,5 +58,5 @@ journey, real cross-process successor launch, device/hardware qualification.
    until then C4 dispatch should stay opt-in with no runtime dispatch injected.
 5. Real pi-host binding: `operations.commandCenter = host.control`,
    `advertiseCommandCenter: true` and `createDispatch: createCommandCenterDispatch`
-   belong to the external pi-host repository.
+   belong to the in-repository headless Host at `apps/pi-host` (corrected in Batch 6; an earlier report wrongly called it external).
 6. External lanes remain out of scope for now: N1, W1/W2, Q1-Q3, X1, Voice.

@@ -233,10 +233,10 @@ owner，工作区读取都按会话持久根、Host 忽略规则和 `PATH_OUTSID
 | `project/browse` | owner | 列出 Host 某路径下的目录，有界，供远程目录选择器使用（D448） |
 
 命令中心操作（已登记，能力门禁可选开启）：C3 控制服务在共享 `RACP_OPERATIONS` 目录中按
-`remote-host` profile 登记了 13 个 `commandCenter/*` 操作，用于角色与 mutation 校验。
+`remote-host` profile 登记了 14 个 `commandCenter/*` 操作（含只读监控分页），用于角色与 mutation 校验。
 仅当 Host 已绑定控制服务**且**显式选择开启（`advertiseCommandCenter: true`，默认 false）
 时，服务端才在握手中宣告可选的 `commandCenter` 布尔能力；未宣告时 `requireCommandCenter`
-保持关闭，13 个操作全部在 dispatcher/控制服务运行前返回 `CAPABILITY_UNAVAILABLE`（§6
+保持关闭，14 个操作全部在 dispatcher/控制服务运行前返回 `CAPABILITY_UNAVAILABLE`（§6
 错误表）。仅绑定控制服务不能启用该路径，客户端不得从目录成员资格推断可用性。
 
 `commandCenter/intervention/record` 成功落库的回执同时是该 `(requestId, fingerprint)` 的
@@ -259,6 +259,17 @@ CAS 只持久化一次；host/owner epoch 过期一律拒绝且不写入。
 | `commandCenter/intervention/record` | controller | yes | 记录一次授权干预请求并返回回执条目；重复请求重放已有条目 |
 | `commandCenter/receipt/get` | viewer | no | 按 request id 返回一条保留回执 |
 | `commandCenter/receipt/list` | viewer | no | 按序号分页返回保留回执 |
+| `commandCenter/monitorPage` | viewer | no | 读取有界摘要页；续页句柄绑定认证连接与授权范围 |
+
+生产 `pi-host` 组合代码位于本仓库 `apps/pi-host`。命令中心模式沿用既有安装 Host ID，
+使用 Rust 当前启动 owner epoch、共享控制服务及 Rust 支持的监控页端口。原远程工作区
+模式默认不变；缺少或不支持的运行时消费者明确拒绝干预，不合成成功结果。
+
+`monitorPage` 请求为 `{version: 1, hostId, token?}`，不得带主体、角色或授权范围。
+可信 Node 页源读取私有 Rust C2 快照，对每行工作区和会话校验只读权限后才捕获页面。
+每页最多 100 行、64 KiB；句柄绑定主体、连接、角色、owner epoch 和授权范围。
+撤销权限、替换连接、epoch 变化、过期或 dispose 均拒绝旧句柄，不替换为新页。
+快照 watermark 代表完整 C2 切面，不代表已交付实时事件。
 
 角色划分沿用本地 `CommandCenterControl`：工作区读取、成员读取与回执读取为 viewer，工作区写入为
 owner，成员与干预写作为 controller；角色不能替代上述能力门禁。

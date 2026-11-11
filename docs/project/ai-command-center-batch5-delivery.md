@@ -57,7 +57,7 @@ real binary successor launch, real-device qualification.
 5. C4: a real exact-target runtime must call `acknowledgeConsumption` after
    accepted; entry-point quotas and exact-generation Stop remain open, and C2
    has no per-intent boundary whitelist.
-6. Monitor: external pi-host must bind the monitor page port with a trusted
+6. Monitor: the in-repository headless Host (`apps/pi-host`) must bind the monitor page port with a trusted
    scope key; RACP initialize has no Host epoch, so the observer identity stays a
    local lifecycle value; Host selection UI is absent.
 7. External lanes remain out of scope: N1, W1/W2, Q1-Q3, X1, Voice.

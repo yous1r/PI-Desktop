@@ -1,6 +1,6 @@
 # ADR: A resource-bounded AI command center with independent execution and multiple clients
 
-- Status: Proposed; selected design for review, not approved or implemented
+- Status: Approved for core implementation; partial candidate, not release-qualified
 - Date: 2026-11-08
 - Evidence baseline: `origin/main` at `fd28eb89866ac513912ed109716e7120cf60f18c` (v0.22.3)
 - Requirements and release gates: [AI command center requirements](../project/ai-command-center-requirements.md)
@@ -58,8 +58,16 @@ implementation must synchronize the affected specification.
 
 This record selects the target architecture, ownership, client strategy,
 resource model, and external-application integration policy. The companion
-requirements define observable behavior and acceptance. Neither document changes
-current defaults, the protocol, storage versions, or release status.
+requirements define observable behavior and acceptance. The user approved the
+core handoff/control/monitor implementation and branch-only publication as
+`AI-Panel`; external devices and Voice remain later qualification lanes.
+Implementation remains incremental and preserves defaults unless a caller opts
+in. Approval is not native-platform, throughput, security or release evidence.
+
+The production headless composition exists in this repository under
+`apps/pi-host`; prior handoff reports describing it as an unavailable external
+repository were incorrect. Current executable wiring and candidate-bound checks,
+not those reports or this ADR, determine which gates are satisfied.
 
 The first command-center deployment has one authoritative execution Host and up
 to three admitted command workspaces. A command workspace is an operational group

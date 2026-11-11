@@ -19,6 +19,7 @@
 - AI command center Batch 3: [Capability, supervisor, reattachment, monitor and live-data wiring](ai-command-center-batch3-delivery.md) (approved capability advertisement, C4 dispatch claims, H3 supervisor slice, H4 composition, M1 producer and the remaining joins).
 - AI command center Batch 4: [Same-process Ready, commandCenter RPC, bootstrap composition and real monitor transport](ai-command-center-batch4-delivery.md) (Rust Ready frame, private commandCenter RPC, Desktop opt-in bootstrap, HostRpcPort monitor provider and the remaining serving joins).
 - AI command center Batch 5: [Consumed ACK, restricted serving foundation, successor composition and monitor page transport](ai-command-center-batch5-delivery.md) (runtime seam, restricted AppState/adoption, OwnerHandoffSuccessor, commandCenter/monitorPage and the remaining serving/root joins).
+- AI command center Batch 6: [Real Rust quota/monitor cuts, native-root Ready and production pi-host binding](ai-command-center-batch6-delivery.md) (C2-authoritative admission, boot-owner epoch fencing, real Job/pipe root join, pi-host --command-center, and the two real end-to-end scripts).
 
 - Historical project board (archived; last refreshed 2026-08-11 for the 0.5.x line): [`BOARD.md`](BOARD.md)
 - Documentation/code alignment audit: [2026-07-30 audit](2026-07-30-docs-code-audit.md)
