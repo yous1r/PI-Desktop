@@ -1,5 +1,58 @@
 use super::*;
 
+#[test]
+fn adopt_reuses_the_captured_owner_without_a_new_random_epoch() {
+    let directory = tempfile::tempdir().unwrap();
+    drop(crate::db::Database::open_in_dir(directory.path()).unwrap());
+    let identity = Identity::current().unwrap();
+    let coordinator = Arc::new(Coordinator::capture(&identity).unwrap());
+    let owner = Owner {
+        version: VERSION,
+        epoch: uuid::Uuid::new_v4().to_string(),
+        profile: crate::owner_handoff::model::digest(b"adopt fixture profile"),
+        host: record(std::process::id(), &identity),
+        coordinator: record(coordinator.pid, &coordinator.identity),
+    };
+    let mut journal = Journal::open(&directory.path().join("pi.sqlite"), false).unwrap();
+    journal.register_owner(&owner).unwrap();
+    let registry = Registry::adopt(
+        directory.path(),
+        identity.clone(),
+        Arc::clone(&coordinator),
+        owner.clone(),
+    )
+    .unwrap();
+    assert_eq!(registry.epoch(), owner.epoch);
+    assert_eq!(registry.owner(), &owner);
+    // The exact active row is reused; no second owner was registered.
+    let (epoch, profile, transfer) = registry.read_source(None).unwrap();
+    assert_eq!(epoch, owner.epoch);
+    assert_eq!(profile, owner.profile);
+    assert!(transfer.is_none());
+    assert_eq!(
+        registry
+            .journal
+            .as_ref()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .active_owners()
+            .unwrap(),
+        vec![owner.clone()]
+    );
+    // Normal start still mints its own owner epoch.
+    assert_ne!(
+        Registry::start(directory.path()).unwrap().epoch(),
+        owner.epoch
+    );
+
+    let wrong = Owner {
+        host: record(std::process::id() + 1, &identity),
+        ..owner
+    };
+    assert!(Registry::adopt(directory.path(), identity, coordinator, wrong,).is_err());
+}
+
 #[tokio::test]
 async fn pending_registration_is_not_confirmed_until_cancelled() {
     let directory = tempfile::tempdir().unwrap();

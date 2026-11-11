@@ -19,6 +19,7 @@ mod bootstrap_tests;
 mod entry_tests;
 mod ready_resources_tests;
 mod ready_tests;
+mod serving_tests;
 
 fn id() -> String {
     uuid::Uuid::new_v4().to_string()

@@ -13,6 +13,8 @@ mod protocol;
 mod ready;
 mod ready_resources;
 #[cfg(windows)]
+pub(crate) mod serving;
+#[cfg(windows)]
 mod windows;
 
 pub(crate) use bootstrap::TargetBootstrap;

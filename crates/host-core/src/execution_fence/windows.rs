@@ -124,6 +124,35 @@ pub struct Registry {
     journal: Option<Arc<Mutex<Journal>>>,
 }
 impl Registry {
+    /// Adopt the captured successor owner/coordinator instead of minting a new
+    /// owner epoch. The journal must already contain this exact active owner;
+    /// no registration row is inserted and normal `start` behavior is unchanged.
+    pub fn adopt(
+        directory: &Path,
+        identity: Identity,
+        coordinator: Arc<Coordinator>,
+        owner: Owner,
+    ) -> Result<Self> {
+        owner.validate()?;
+        if record(std::process::id(), &identity) != owner.host
+            || record(coordinator.pid, &coordinator.identity) != owner.coordinator
+        {
+            bail!("HANDOFF_OWNER_CHANGED");
+        }
+        if native::exited(coordinator.handle.as_raw_handle())? {
+            bail!("HANDOFF_COORDINATOR_EXITED");
+        }
+        let journal = Journal::open(&directory.join("pi.sqlite"), false)?;
+        // Exact active row only; a retired/replaced owner is never adopted.
+        journal.inspect_source(&owner, None)?;
+        Ok(Self {
+            identity,
+            coordinator,
+            current: None,
+            owner,
+            journal: Some(Arc::new(Mutex::new(journal))),
+        })
+    }
     pub fn start(directory: &Path) -> Result<Self> {
         let identity = Identity::current()?;
         let coordinator = Arc::new(Coordinator::capture(&identity)?);
@@ -144,6 +173,14 @@ impl Registry {
     }
     pub fn epoch(&self) -> &str {
         &self.owner.epoch
+    }
+    /// Captured successor owner retained by adoption (`start` keeps its own).
+    pub fn owner(&self) -> &Owner {
+        &self.owner
+    }
+    /// Current generation only after a real registration bound its root.
+    pub fn active_generation(&self) -> Option<&str> {
+        self.current.as_ref().map(|lease| lease.generation.as_str())
     }
     pub fn inspect(&self, epoch: &str, profile: &str, generation: &str) -> Result<Status> {
         if self.owner.epoch != epoch || self.owner.profile != profile {

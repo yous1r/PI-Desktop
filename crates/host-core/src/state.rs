@@ -32,6 +32,10 @@ pub struct AppState {
     pub handoff_activity: crate::owner_handoff::activity::Activity,
     pub handoff_exchange: Option<Arc<crate::owner_handoff::exchange::Exchange>>,
     pub handoff_release: crate::owner_handoff::source::Release,
+    /// Live event-stream epoch reported by the adopted event hub, if any.
+    /// `None` means this state has no live stream identity yet; callers must
+    /// treat a missing epoch as unavailable, never invent one.
+    event_epoch: Option<String>,
     pub db: Database,
     pub secrets: SecretStore,
     pub workspace: WorkspaceState,
@@ -98,73 +102,73 @@ pub struct AppState {
     pub mode_gate_executions: crate::mode_runs::GateExecutions,
 }
 
+/// Explicit startup mode. Normal keeps the released Host behavior; the
+/// restricted successor skips recovery/reconciliation writes that belong to the
+/// original source and are not allowed before Ready.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum AppStateOpenMode {
+    Normal,
+    RestrictedTarget,
+}
+
 impl AppState {
     pub(crate) fn has_pending_permissions(&self) -> bool {
         !self.pending_permissions.is_empty()
     }
 
     pub fn open(data_dir: &std::path::Path) -> Result<Self> {
+        Self::open_in_mode(data_dir, AppStateOpenMode::Normal)
+    }
+
+    /// Restricted successor state: open the database and construct the
+    /// process-local registries without replaying source recovery, scheduled
+    /// work or plugin reconciliation. Admission remains closed by the caller.
+    pub(crate) fn open_restricted_target(data_dir: &std::path::Path) -> Result<Self> {
+        Self::open_in_mode(data_dir, AppStateOpenMode::RestrictedTarget)
+    }
+
+    /// The live event-stream epoch or `None` when no hub has published one.
+    pub(crate) fn event_epoch(&self) -> Option<&str> {
+        self.event_epoch.as_deref()
+    }
+
+    /// Record the hub epoch once at startup. Only a real live source supplies
+    /// this value; no target component may mint one for Ready.
+    pub(crate) fn set_event_epoch(&mut self, epoch: Option<String>) {
+        self.event_epoch = epoch;
+    }
+
+    fn open_in_mode(data_dir: &std::path::Path, mode: AppStateOpenMode) -> Result<Self> {
         let db = Database::open_in_dir(data_dir)?;
         let handoff_activity = crate::owner_handoff::activity::Activity::default();
-        crate::scheduled::automation::recover(&db)?;
-        // Replies that were still streaming when the previous process ended
-        // are promoted into their transcripts before any client can read them
-        // (D299). The turn sweep inside `open` has already marked those turns
-        // aborted, so the promoted rows land under an aborted turn.
-        match crate::sessions::recover_orphaned_sessions(&db) {
-            Ok(restored) if restored > 0 => {
-                tracing::info!(
-                    count = restored,
-                    "restored orphaned session rows from transcripts"
-                );
-            }
-            Ok(_) => {}
-            Err(error) => {
-                handoff_activity.mark_uncertain();
-                tracing::warn!(%error, "orphaned session sweep failed");
-            }
-        }
-        match crate::sessions::recover_inflight_messages(&db, false) {
-            Ok(recovered) if !recovered.is_empty() => {
-                tracing::info!(count = recovered.len(), "recovered in-flight replies");
-            }
-            Ok(_) => {}
-            Err(error) => {
-                handoff_activity.mark_uncertain();
-                tracing::warn!(%error, "in-flight reply sweep failed");
-            }
-        }
-        // A staged mode run's claim dies with the process that dispatched
-        // its turn: such runs pause and nothing is replayed.
-        match crate::mode_runs::recover(&db) {
-            Ok(0) => {}
-            Ok(count) => tracing::info!(count, "paused mode runs with stale claims"),
-            Err(error) => {
-                handoff_activity.mark_uncertain();
-                tracing::error!(%error, "mode run recovery failed");
-            }
+        if mode == AppStateOpenMode::Normal {
+            Self::recover_normal(&db, &handoff_activity)?;
         }
         let secrets = SecretStore::open(data_dir)?;
         // The marketplace channel is read before the manager builds its first
         // catalog, so a source configured for networks without GitHub access
         // applies on launch instead of only after a manual refresh.
         let app_settings = db.get_setting("app").unwrap_or_default();
-        crate::network_proxy::apply_from_settings(app_settings.as_ref());
-        // The WebDAV transport reads this before it allows a plaintext hop, so
-        // it has to be in place on launch and not only after a settings write.
-        crate::network_policy::apply_from_settings(app_settings.as_ref());
+        if mode == AppStateOpenMode::Normal {
+            crate::network_proxy::apply_from_settings(app_settings.as_ref());
+            // The WebDAV transport reads this before it allows a plaintext hop, so
+            // it has to be in place on launch and not only after a settings write.
+            crate::network_policy::apply_from_settings(app_settings.as_ref());
+        }
         let (channel, custom_url) =
             crate::plugins::market_channel_from_settings(app_settings.as_ref());
         let plugins = PluginManager::new(data_dir, channel, custom_url);
-        // Provider rows a plugin declared are rebuilt from the registry on
-        // launch, so the table matches the enabled plugins whatever path
-        // (install, enable, an upgraded manifest) last changed them.
-        match crate::plugins::reconcile_all(&db, &secrets, &plugins) {
-            Ok(0) => {}
-            Ok(count) => tracing::info!(count, "reconciled plugin provider rows"),
-            Err(error) => {
-                handoff_activity.mark_uncertain();
-                tracing::warn!(%error, "plugin provider reconciliation failed");
+        if mode == AppStateOpenMode::Normal {
+            // Provider rows a plugin declared are rebuilt from the registry on
+            // launch, so the table matches the enabled plugins whatever path
+            // (install, enable, an upgraded manifest) last changed them.
+            match crate::plugins::reconcile_all(&db, &secrets, &plugins) {
+                Ok(0) => {}
+                Ok(count) => tracing::info!(count, "reconciled plugin provider rows"),
+                Err(error) => {
+                    handoff_activity.mark_uncertain();
+                    tracing::warn!(%error, "plugin provider reconciliation failed");
+                }
             }
         }
         let mcp_servers = McpServerRegistry::new(data_dir);
@@ -174,6 +178,7 @@ impl AppState {
             data_dir: data_dir.to_path_buf(),
             execution_fence: None,
             handoff_activity,
+            event_epoch: None,
             handoff_exchange: None,
             handoff_release: crate::owner_handoff::source::Release::default(),
             db,
@@ -206,6 +211,51 @@ impl AppState {
             hashline: crate::tools::HashlineStore::new(),
             mode_gate_executions: crate::mode_runs::GateExecutions::default(),
         })
+    }
+
+    fn recover_normal(
+        db: &Database,
+        handoff_activity: &crate::owner_handoff::activity::Activity,
+    ) -> Result<()> {
+        crate::scheduled::automation::recover(db)?;
+        // Replies that were still streaming when the previous process ended
+        // are promoted into their transcripts before any client can read them
+        // (D299). The turn sweep inside `open` has already marked those turns
+        // aborted, so the promoted rows land under an aborted turn.
+        match crate::sessions::recover_orphaned_sessions(db) {
+            Ok(restored) if restored > 0 => {
+                tracing::info!(
+                    count = restored,
+                    "restored orphaned session rows from transcripts"
+                );
+            }
+            Ok(_) => {}
+            Err(error) => {
+                handoff_activity.mark_uncertain();
+                tracing::warn!(%error, "orphaned session sweep failed");
+            }
+        }
+        match crate::sessions::recover_inflight_messages(db, false) {
+            Ok(recovered) if !recovered.is_empty() => {
+                tracing::info!(count = recovered.len(), "recovered in-flight replies");
+            }
+            Ok(_) => {}
+            Err(error) => {
+                handoff_activity.mark_uncertain();
+                tracing::warn!(%error, "in-flight reply sweep failed");
+            }
+        }
+        // A staged mode run's claim dies with the process that dispatched
+        // its turn: such runs pause and nothing is replayed.
+        match crate::mode_runs::recover(db) {
+            Ok(0) => {}
+            Ok(count) => tracing::info!(count, "paused mode runs with stale claims"),
+            Err(error) => {
+                handoff_activity.mark_uncertain();
+                tracing::error!(%error, "mode run recovery failed");
+            }
+        }
+        Ok(())
     }
 
     fn rate_allowed(
@@ -553,5 +603,18 @@ mod tests {
         assert!(!state.allow_plugin_import("plugin.one", true));
         assert!((0..20).all(|_| state.allow_plugin_delete("plugin.one")));
         assert!(!state.allow_plugin_delete("plugin.one"));
+    }
+
+    #[test]
+    fn restricted_target_open_is_explicit_and_never_mints_an_event_epoch() {
+        let data_dir = tempfile::tempdir().unwrap();
+        let mut state = AppState::open_restricted_target(data_dir.path()).unwrap();
+        assert_eq!(state.event_epoch(), None);
+        // Only an adopted live hub may publish the epoch.
+        state.set_event_epoch(Some("hub-event-stream".into()));
+        assert_eq!(state.event_epoch(), Some("hub-event-stream"));
+        // The released normal open path keeps its own behavior.
+        let normal = AppState::open(data_dir.path()).unwrap();
+        assert_eq!(normal.event_epoch(), None);
     }
 }
