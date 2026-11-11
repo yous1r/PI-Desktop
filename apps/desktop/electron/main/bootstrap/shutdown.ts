@@ -15,6 +15,11 @@ import type { UserMcpRuntime } from "../user-mcp";
 import type { McpControlServer } from "../mcp-control";
 import type { McpOAuthManager } from "../mcp-oauth";
 import { getActiveRemoteHostsBoot, setActiveRemoteHostsBoot } from "./remote-hosts";
+import {
+  disposeCommandCenterHandoffBeforeRemoteHosts,
+  getActiveCommandCenterHandoffBoot,
+  setActiveCommandCenterHandoffBoot,
+} from "./command-center-handoff";
 import type { LiveCallService } from "../live-voice/call-service";
 import type { SpeechService } from "../services/speech-service";
 
@@ -196,11 +201,23 @@ export function registerShutdownHandlers({
       const modeShutdown = modeRuns?.dispose();
       await disposeWorkspaceTerminals();
       await liveCallService?.endForLifecycle("app-quit");
+      // The command-center successor children own restricted target processes,
+      // so they stop before the paired remote hosts close their sockets. Both
+      // boots are captured eagerly: clearing the active references must not skip
+      // either cleanup.
+      const commandCenterHandoff = getActiveCommandCenterHandoffBoot();
+      const remoteHosts = getActiveRemoteHostsBoot();
+      setActiveCommandCenterHandoffBoot(null);
+      setActiveRemoteHostsBoot(null);
       // Close every paired remote host before the local host-core so any
       // in-flight remote turn's abort still goes over a live socket. Bounded
       // parallelism inside `closeAll`; safe to run before local disposals.
-      const remoteHostsShutdown = getActiveRemoteHostsBoot()?.closeAll();
-      setActiveRemoteHostsBoot(null);
+      const remoteHostsShutdown = commandCenterHandoff
+        ? disposeCommandCenterHandoffBeforeRemoteHosts(
+            commandCenterHandoff,
+            () => remoteHosts?.closeAll() ?? Promise.resolve(),
+          )
+        : remoteHosts?.closeAll() ?? Promise.resolve();
       // Replies still streaming are stopped through the sidecar first so their
       // aborted final rows can reach the transcript while host-core is alive;
       // whatever does not make it in time is covered by the last checkpoint

@@ -19,7 +19,11 @@ import {
   OwnerHandoffTargetProcess,
   parseOwnerHandoffTargetReadyResponse,
 } from "./owner-handoff-target-process.js";
-import type { OwnerHandoffReadyOutcome } from "./owner-handoff-target.js";
+import type {
+  OwnerHandoffReadyOutcome,
+  OwnerHandoffTargetLaunch,
+  OwnerHandoffTargetTicket,
+} from "./owner-handoff-target.js";
 
 const fixture = JSON.parse(readFileSync(new URL("../../shared/test/fixtures/owner-handoff.json", import.meta.url), "utf8"));
 const claim = fixture.bootstrap[1];
@@ -33,6 +37,21 @@ const claimedRecord = {
 const readyOutcome: OwnerHandoffReadyOutcome = {
   record: { ...claimedRecord, phase: "ready", revision: claimedRecord.revision + 1 },
   ready: { ...fixture.ready, recordRevision: claimedRecord.revision + 1 },
+};
+const TICKET_GENERATION = "77777777-7777-4777-8777-777777777777";
+const launch: OwnerHandoffTargetLaunch = {
+  version: 1,
+  operation: "launch-sidecar",
+  transferId: claim.transfer_id,
+  targetEpoch: claim.target_epoch,
+  ticket: {
+    version: 1,
+    generation: TICKET_GENERATION,
+    address: `\\\\.\\pipe\\pi-execution-v1-${TICKET_GENERATION}`,
+    capability: "88888888-8888-4888-8888-888888888888",
+    ownerPid: 321,
+    ownerCreatedAt: "134115649234567890",
+  },
 };
 
 class Child extends EventEmitter {
@@ -70,15 +89,22 @@ function setup() {
   const child = new Child();
   spawnState.child = child;
   spawnState.calls = [];
+  const launched: OwnerHandoffTargetTicket[] = [];
+  const sidecar = {
+    launched,
+    launch(ticket: OwnerHandoffTargetTicket) { launched.push(ticket); },
+    eventEpoch: () => "hub-event-epoch",
+  };
   const supervisor = launchOwnerHandoffTarget({
     binaryPath: "C:\\fixture\\host.exe",
     dataDir: "C:\\fixture\\data",
     profileId,
     targetBuild,
     claim,
+    sidecar,
     onStderr: () => {},
   });
-  return { child, supervisor };
+  return { child, supervisor, sidecar };
 }
 function nextFrame(child: Child): Promise<Buffer> {
   return new Promise((resolve) => child.stdin.once("data", resolve));
@@ -86,8 +112,8 @@ function nextFrame(child: Child): Promise<Buffer> {
 afterEach(() => vi.useRealTimers());
 
 describe.skipIf(process.platform !== "win32")("restricted target process", () => {
-  it("spawns the exclusive --owner-target mode, claims, then sends one framed ready command", async () => {
-    const { child, supervisor } = setup();
+  it("spawns --owner-target, claims, receives launch-sidecar and sends attach-epoch", async () => {
+    const { child, supervisor, sidecar } = setup();
     expect(spawnState.calls).toHaveLength(1);
     const [binary, args, options] = spawnState.calls[0] as [string, string[], { stdio: string[]; windowsHide: boolean; env: NodeJS.ProcessEnv }];
     expect(binary).toBe("C:\\fixture\\host.exe");
@@ -106,16 +132,19 @@ describe.skipIf(process.platform !== "win32")("restricted target process", () =>
       targetBuild,
       command: claim,
     });
-    const readyWritten = nextFrame(child);
+    const attachWritten = nextFrame(child);
     child.stdout.write(frame({ version: 1, record: claimedRecord }));
-    const readyBytes = await readyWritten;
-    expect(JSON.parse(readyBytes.subarray(4).toString("utf8"))).toMatchObject({
+    child.stdout.write(frame(launch));
+    const attachBytes = await attachWritten;
+    expect(JSON.parse(attachBytes.subarray(4).toString("utf8"))).toMatchObject({
       version: 1,
-      operation: "ready",
+      operation: "attachEpoch",
       transferId: claim.transfer_id,
       targetEpoch: claim.target_epoch,
       expectedRevision: claimedRecord.revision,
+      eventEpoch: "hub-event-epoch",
     });
+    expect(sidecar.launched).toEqual([launch.ticket]);
     child.stdout.write(frame({ version: 1, ready: readyOutcome }));
     await expect(starting).resolves.toEqual(readyOutcome);
     expect(supervisor.state).toBe("ready");
@@ -124,16 +153,17 @@ describe.skipIf(process.platform !== "win32")("restricted target process", () =>
     expect(child.stdin.writableEnded).toBe(true);
   });
 
-  it("propagates a framed ready refusal and disposes the same process", async () => {
+  it("propagates a framed attach-epoch refusal and disposes the same process", async () => {
     const { child, supervisor } = setup();
     const claimWritten = nextFrame(child);
     const starting = supervisor.start();
     await claimWritten;
-    const readyWritten = nextFrame(child);
+    const attachWritten = nextFrame(child);
     child.stdout.write(frame({ version: 1, record: claimedRecord }));
-    await readyWritten;
-    child.stdout.write(frame({ version: 1, error: { code: "HANDOFF_TARGET_NOT_INITIALIZED" } }));
-    await expect(starting).rejects.toMatchObject({ errorCode: "HANDOFF_TARGET_NOT_INITIALIZED" });
+    child.stdout.write(frame(launch));
+    await attachWritten;
+    child.stdout.write(frame({ version: 1, error: { code: "HANDOFF_TARGET_ROOT_BIND_FAILED" } }));
+    await expect(starting).rejects.toMatchObject({ errorCode: "HANDOFF_TARGET_ROOT_BIND_FAILED" });
     expect(supervisor.state).toBe("ready-refused");
     expect(child.stdin.writableEnded).toBe(true);
   });
@@ -150,6 +180,39 @@ describe.skipIf(process.platform !== "win32")("restricted target process", () =>
     })).toThrow("HANDOFF_INVALID_RESPONSE");
     expect(() => parseOwnerHandoffTargetReadyResponse({ version: 1, error: { code: "HANDOFF_READY_REFUSED" } }))
       .toThrow("HANDOFF_READY_REFUSED");
+  });
+
+  it("parses two coalesced frames in one stdout chunk", async () => {
+    const { child, supervisor } = setup();
+    const claimWritten = nextFrame(child);
+    const starting = supervisor.start();
+    await claimWritten;
+    const attachWritten = nextFrame(child);
+    child.stdout.write(Buffer.concat([
+      frame({ version: 1, record: claimedRecord }),
+      frame(launch),
+    ]));
+    await attachWritten;
+    child.stdout.write(frame({ version: 1, ready: readyOutcome }));
+    await expect(starting).resolves.toEqual(readyOutcome);
+    await supervisor.dispose();
+  });
+
+  it("parses a claim receipt split across every byte", async () => {
+    const { child, supervisor } = setup();
+    const claimWritten = nextFrame(child);
+    const starting = supervisor.start();
+    await claimWritten;
+    const attachWritten = nextFrame(child);
+    const claimBytes = frame({ version: 1, record: claimedRecord });
+    for (let index = 0; index < claimBytes.length; index += 1) {
+      child.stdout.write(claimBytes.subarray(index, index + 1));
+    }
+    child.stdout.write(frame(launch));
+    await attachWritten;
+    child.stdout.write(frame({ version: 1, ready: readyOutcome }));
+    await expect(starting).resolves.toEqual(readyOutcome);
+    await supervisor.dispose();
   });
 
   it("fails closed on malformed stdout frames and disposes the child", async () => {

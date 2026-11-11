@@ -31,6 +31,11 @@ export type OwnerHandoffTargetState = (typeof OWNER_HANDOFF_TARGET_STATES)[numbe
 export const HANDOFF_TARGET_READY_UNAVAILABLE = "HANDOFF_TARGET_READY_UNAVAILABLE";
 export const HANDOFF_TARGET_READY_REFUSED = "HANDOFF_TARGET_READY_REFUSED";
 export const HANDOFF_TARGET_READY_TIMEOUT = "HANDOFF_TARGET_READY_TIMEOUT";
+export const HANDOFF_TARGET_SIDECAR_UNAVAILABLE = "HANDOFF_TARGET_SIDECAR_UNAVAILABLE";
+export const HANDOFF_TARGET_SIDECAR_TIMEOUT = "HANDOFF_TARGET_SIDECAR_TIMEOUT";
+export const HANDOFF_TARGET_SIDECAR_DISPOSE_FAILED = "HANDOFF_TARGET_SIDECAR_DISPOSE_FAILED";
+export const HANDOFF_TARGET_EVENT_EPOCH_UNAVAILABLE = "HANDOFF_TARGET_EVENT_EPOCH_UNAVAILABLE";
+export const HANDOFF_TARGET_LAUNCH_TIMEOUT = "HANDOFF_TARGET_LAUNCH_TIMEOUT";
 export const HANDOFF_CANCELLED = "HANDOFF_CANCELLED";
 export const HANDOFF_DISPOSED = "HANDOFF_DISPOSED";
 export const HANDOFF_INVALID_STATE = "HANDOFF_INVALID_STATE";
@@ -57,6 +62,48 @@ export type OwnerHandoffTargetReadyRequest = {
   targetEpoch: string;
   expectedRevision: number;
 };
+
+/** One-use execution-fence ticket created for the prepared target generation. */
+export type OwnerHandoffTargetTicket = {
+  version: 1;
+  generation: string;
+  address: string;
+  capability: string;
+  ownerPid: number;
+  ownerCreatedAt: string;
+};
+
+/** Rust -> Node launch frame; the sidecar runner must consume this ticket. */
+export type OwnerHandoffTargetLaunch = {
+  version: 1;
+  operation: "launch-sidecar";
+  transferId: string;
+  targetEpoch: string;
+  ticket: OwnerHandoffTargetTicket;
+};
+
+/** Node -> Rust frame carrying the live host-hub event epoch. */
+export type OwnerHandoffTargetAttachEpoch = {
+  version: 1;
+  operation: "attachEpoch";
+  requestId: string;
+  transferId: string;
+  targetEpoch: string;
+  expectedRevision: number;
+  eventEpoch: string;
+};
+
+/** Owned sidecar process/resource. The supervisor disposes it on every exit. */
+export interface OwnerHandoffTargetSidecarResource {
+  dispose(): Promise<void> | void;
+}
+
+/** Injected sidecar start + live hub epoch provider for the target root join. */
+export interface OwnerHandoffTargetSidecar {
+  launch(ticket: OwnerHandoffTargetTicket): Promise<OwnerHandoffTargetSidecarResource | void> |
+    OwnerHandoffTargetSidecarResource | void;
+  eventEpoch(): Promise<string> | string;
+}
 
 /** Mirrors the Rust ReadyOutcome: the authoritative record plus its publication. */
 export type OwnerHandoffReadyOutcome = {
@@ -91,6 +138,10 @@ export interface OwnerHandoffTargetReadyResources {
  */
 export interface OwnerHandoffTargetTransport {
   call(request: OwnerHandoffTargetEnvelope, timeoutMs: number): Promise<OwnerHandoffResponse>;
+  /** Read the bounded launch-sidecar frame sent after the claim receipt. */
+  receiveLaunch?(timeoutMs: number): Promise<OwnerHandoffTargetLaunch>;
+  /** Send the live hub epoch and receive the committed ReadyOutcome. */
+  attachEpoch?(request: OwnerHandoffTargetAttachEpoch, timeoutMs: number): Promise<OwnerHandoffReadyOutcome>;
   /** Ask the same claimed Rust process to commit and return ReadyOutcome. */
   ready?(request: OwnerHandoffTargetReadyRequest, timeoutMs: number): Promise<OwnerHandoffReadyOutcome>;
   confirmExit(timeoutMs: number): Promise<boolean>;
@@ -106,13 +157,18 @@ export type OwnerHandoffTargetSupervisorOptions = {
   claim: OwnerHandoffTargetClaim;
   /** Absent means the supervisor must report `HANDOFF_TARGET_READY_UNAVAILABLE`. */
   readyResources?: OwnerHandoffTargetReadyResources;
+  /** Required when the transport exposes the launch frame/attach epoch path. */
+  sidecar?: OwnerHandoffTargetSidecar;
   claimTimeoutMs?: number;
   readyTimeoutMs?: number;
+  sidecarTimeoutMs?: number;
+  epochTimeoutMs?: number;
   onState?: (state: OwnerHandoffTargetState) => void;
 };
 
 type HandoffError = Error & { errorCode: string };
 type AbortSlot = { promise: Promise<never>; reject: (error: Error) => void };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 function failure(errorCode: string, cause?: unknown): HandoffError {
   const error = new Error(errorCode, cause === undefined ? undefined : { cause });
@@ -247,6 +303,79 @@ export function createOwnerHandoffTargetReadyRequest(
 }
 
 /**
+ * Strict launch frame from Rust. Bound to the exact claim and one-use ticket;
+ * unknown fields, wrong versions and non-UUID identities are refused before any
+ * sidecar launcher sees the ticket.
+ */
+export function validateOwnerHandoffTargetLaunch(
+  value: unknown,
+  claim: OwnerHandoffTargetClaim,
+): OwnerHandoffTargetLaunch {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw failure("HANDOFF_INVALID_RESPONSE");
+  }
+  const launch = value as Record<string, unknown>;
+  const keys = Object.keys(launch).sort().join(",");
+  if (keys !== "operation,targetEpoch,ticket,transferId,version" || launch.version !== 1 ||
+      launch.operation !== "launch-sidecar" || launch.transferId !== claim.transfer_id ||
+      launch.targetEpoch !== claim.target_epoch) {
+    throw failure("HANDOFF_RESPONSE_MISMATCH");
+  }
+  const ticket = launch.ticket;
+  if (!ticket || typeof ticket !== "object" || Array.isArray(ticket)) {
+    throw failure("HANDOFF_INVALID_RESPONSE");
+  }
+  const raw = ticket as Record<string, unknown>;
+  const addressPrefix = "\\\\.\\pipe\\pi-execution-v1-";
+  if (Object.keys(raw).sort().join(",") !==
+        "address,capability,generation,ownerCreatedAt,ownerPid,version" ||
+      raw.version !== 1 || typeof raw.address !== "string" ||
+      typeof raw.capability !== "string" || !UUID.test(raw.capability) ||
+      typeof raw.generation !== "string" || !UUID.test(raw.generation) ||
+      raw.address !== `${addressPrefix}${raw.generation}` ||
+      !Number.isInteger(raw.ownerPid) || (raw.ownerPid as number) < 1 ||
+      typeof raw.ownerCreatedAt !== "string" || !/^[1-9][0-9]{0,19}$/.test(raw.ownerCreatedAt)) {
+    throw failure("HANDOFF_INVALID_RESPONSE");
+  }
+  return {
+    version: 1,
+    operation: "launch-sidecar",
+    transferId: launch.transferId as string,
+    targetEpoch: launch.targetEpoch as string,
+    ticket: {
+      version: 1,
+      generation: raw.generation as string,
+      address: raw.address as string,
+      capability: raw.capability as string,
+      ownerPid: raw.ownerPid as number,
+      ownerCreatedAt: raw.ownerCreatedAt as string,
+    },
+  };
+}
+
+/** Build the one attach-epoch command bound to the validated claim receipt. */
+export function createOwnerHandoffTargetAttachEpoch(
+  receipt: OwnerHandoffRecord,
+  requestId: string,
+  eventEpoch: string,
+): OwnerHandoffTargetAttachEpoch {
+  if (!UUID.test(requestId) || receipt.revision < 1 ||
+      receipt.revision >= OWNER_HANDOFF_REVISION_MAX ||
+      eventEpoch.length === 0 || eventEpoch.length > 256 || eventEpoch.includes("\0")) {
+    throw failure(HANDOFF_TARGET_EVENT_EPOCH_UNAVAILABLE);
+  }
+  return {
+    version: 1,
+    operation: "attachEpoch",
+    requestId,
+    transferId: receipt.id,
+    targetEpoch: receipt.targetEpoch,
+    expectedRevision: receipt.revision,
+    eventEpoch,
+  };
+}
+
+/**
  * Launch-side supervisor for the restricted successor. It owns only the
  * process lifecycle and the readiness gate: it never opens admission, never
  * starts AppState, never serves a request and never retries a claim. A child
@@ -257,6 +386,8 @@ export class OwnerHandoffTargetSupervisor {
   private readonly envelope: OwnerHandoffTargetEnvelope;
   private readonly claimTimeoutMs: number;
   private readonly readyTimeoutMs: number;
+  private readonly sidecarTimeoutMs: number;
+  private readonly epochTimeoutMs: number;
   private readonly readyRequestId = randomUUID();
   private stateValue: OwnerHandoffTargetState = "spawned";
   private claimedValue?: OwnerHandoffRecord;
@@ -269,6 +400,7 @@ export class OwnerHandoffTargetSupervisor {
   private disposed = false;
   private disposal?: Promise<void>;
   private cleanupPromise?: Promise<void>;
+  private sidecarResource?: OwnerHandoffTargetSidecarResource;
 
   constructor(private readonly options: OwnerHandoffTargetSupervisorOptions) {
     if (!/^[0-9a-f]{64}$/.test(options.profileId)) throw failure("HANDOFF_INVALID_IDENTITY");
@@ -279,6 +411,8 @@ export class OwnerHandoffTargetSupervisor {
     if (command.expected_revision >= OWNER_HANDOFF_REVISION_MAX) throw failure("HANDOFF_INVALID_REVISION");
     this.claimTimeoutMs = checkTimeout(options.claimTimeoutMs, 15_000);
     this.readyTimeoutMs = checkTimeout(options.readyTimeoutMs, 30_000);
+    this.sidecarTimeoutMs = checkTimeout(options.sidecarTimeoutMs, 15_000);
+    this.epochTimeoutMs = checkTimeout(options.epochTimeoutMs, 5_000);
     // Copy once; no later caller mutation can retarget the private frame.
     this.envelope = Object.freeze({
       version: 1,
@@ -332,7 +466,45 @@ export class OwnerHandoffTargetSupervisor {
       this.transition("claimed");
       const resources = this.options.readyResources;
       let outcome: OwnerHandoffReadyOutcome;
-      if (this.options.transport.ready) {
+      if (this.options.transport.receiveLaunch && this.options.transport.attachEpoch) {
+        const sidecar = this.options.sidecar;
+        if (!sidecar) throw failure(HANDOFF_TARGET_SIDECAR_UNAVAILABLE);
+        const launch = validateOwnerHandoffTargetLaunch(
+          await this.race(
+            this.options.transport.receiveLaunch(this.readyTimeoutMs),
+            this.readyTimeoutMs,
+            HANDOFF_TARGET_LAUNCH_TIMEOUT,
+            abort,
+          ),
+          this.envelope.command,
+        );
+        await this.race(
+          Promise.resolve().then(() => sidecar.launch(launch.ticket)).then((resource) => {
+            if (!resource) return;
+            // A late launch after cancel/dispose must not leave an owned child.
+            if (this.disposed || this.stateValue === "ready-refused") {
+              return Promise.resolve(resource.dispose()).then(() => undefined);
+            }
+            this.sidecarResource = resource;
+          }),
+          this.sidecarTimeoutMs,
+          HANDOFF_TARGET_SIDECAR_TIMEOUT,
+          abort,
+        );
+        const eventEpoch = await this.race(
+          Promise.resolve().then(() => sidecar.eventEpoch()),
+          this.epochTimeoutMs,
+          HANDOFF_TARGET_EVENT_EPOCH_UNAVAILABLE,
+          abort,
+        );
+        const attach = createOwnerHandoffTargetAttachEpoch(receipt, this.readyRequestId, eventEpoch);
+        outcome = await this.race(
+          this.options.transport.attachEpoch(attach, this.readyTimeoutMs),
+          this.readyTimeoutMs,
+          HANDOFF_TARGET_READY_TIMEOUT,
+          abort,
+        );
+      } else if (this.options.transport.ready) {
         outcome = await this.race(
           this.options.transport.ready(
             createOwnerHandoffTargetReadyRequest(receipt, this.readyRequestId),
@@ -459,14 +631,23 @@ export class OwnerHandoffTargetSupervisor {
   private async disposeTransport(): Promise<HandoffError | undefined> {
     if (!this.cleanupPromise) {
       this.cleanupPromise = (async () => {
+        const resource = this.sidecarResource;
+        this.sidecarResource = undefined;
+        if (resource) {
+          try {
+            await resource.dispose();
+          } catch (error) {
+            this.cleanupValue = classify(error, HANDOFF_TARGET_SIDECAR_DISPOSE_FAILED);
+          }
+        }
         const hadProcess = this.options.transport.hasProcess?.() ?? true;
         try {
           await this.options.transport.dispose();
           if (hadProcess && !(await this.options.transport.confirmExit(0))) {
-            this.cleanupValue = failure("HANDOFF_EXIT_UNCONFIRMED");
+            this.cleanupValue ??= failure("HANDOFF_EXIT_UNCONFIRMED");
           }
         } catch (error) {
-          this.cleanupValue = classify(error, "HANDOFF_EXIT_UNCONFIRMED");
+          this.cleanupValue ??= classify(error, "HANDOFF_EXIT_UNCONFIRMED");
         }
       })();
     }

@@ -6,14 +6,18 @@ import {
   HANDOFF_DISPOSED,
   HANDOFF_TARGET_READY_TIMEOUT,
   HANDOFF_TARGET_READY_UNAVAILABLE,
+  HANDOFF_TARGET_SIDECAR_UNAVAILABLE,
   OwnerHandoffTargetSupervisor,
   createOwnerHandoffTargetReadyRequest,
   validateOwnerHandoffTargetClaimReceipt,
   validateOwnerHandoffTargetReadyOutcome,
   type OwnerHandoffReadyOutcome,
+  type OwnerHandoffTargetAttachEpoch,
   type OwnerHandoffTargetEnvelope,
+  type OwnerHandoffTargetLaunch,
   type OwnerHandoffTargetReadyRequest,
   type OwnerHandoffTargetReadyResources,
+  type OwnerHandoffTargetSidecar,
   type OwnerHandoffTargetTransport,
 } from "./owner-handoff-target.js";
 
@@ -68,6 +72,41 @@ class ReadyTransport extends FakeTransport {
     this.readyCalls.push(request);
     this.readyTimeouts.push(timeoutMs);
     return this.readyResponder(request);
+  }
+}
+const TICKET_GENERATION = "77777777-7777-4777-8777-777777777777";
+function launchFrame(transferId: string, targetEpoch: string): OwnerHandoffTargetLaunch {
+  return {
+    version: 1,
+    operation: "launch-sidecar",
+    transferId,
+    targetEpoch,
+    ticket: {
+      version: 1,
+      generation: TICKET_GENERATION,
+      address: `\\\\.\\pipe\\pi-execution-v1-${TICKET_GENERATION}`,
+      capability: "88888888-8888-4888-8888-888888888888",
+      ownerPid: 321,
+      ownerCreatedAt: "134115649234567890",
+    },
+  };
+}
+class JoinTransport extends FakeTransport {
+  readonly attachCalls: OwnerHandoffTargetAttachEpoch[] = [];
+  readonly launch: OwnerHandoffTargetLaunch;
+  constructor(
+    private readonly outcome: OwnerHandoffReadyOutcome = readyOutcome,
+    responder?: Responder,
+  ) {
+    super(responder);
+    this.launch = launchFrame(claim.transfer_id, claim.target_epoch);
+  }
+  receiveLaunch(): Promise<OwnerHandoffTargetLaunch> {
+    return Promise.resolve(this.launch);
+  }
+  attachEpoch(request: OwnerHandoffTargetAttachEpoch): Promise<OwnerHandoffReadyOutcome> {
+    this.attachCalls.push(request);
+    return Promise.resolve(this.outcome);
   }
 }
 function build(overrides: Partial<ConstructorParameters<typeof OwnerHandoffTargetSupervisor>[0]> = {}) {
@@ -141,8 +180,80 @@ describe("restricted target supervisor", () => {
     await supervisor.dispose();
   });
 
-  it("fails closed on a classified ready refusal from the same process", async () => {
-    const transport = new ReadyTransport(() => Promise.reject(
+  it("launches the sidecar ticket, attaches the live hub epoch, then accepts Ready", async () => {
+    const transport = new JoinTransport();
+    const launched: unknown[] = [];
+    let sidecarDisposed = 0;
+    const sidecar: OwnerHandoffTargetSidecar = {
+      launch: (ticket) => {
+        launched.push(ticket);
+        return { dispose: () => { sidecarDisposed += 1; } };
+      },
+      eventEpoch: () => "hub-event-epoch",
+    };
+    const supervisor = new OwnerHandoffTargetSupervisor({
+      transport, profileId, targetBuild, claim, sidecar,
+    });
+    await expect(supervisor.start()).resolves.toEqual(readyOutcome);
+    expect(launched).toEqual([transport.launch.ticket]);
+    expect(transport.attachCalls).toHaveLength(1);
+    expect(transport.attachCalls[0]).toMatchObject({
+      version: 1,
+      operation: "attachEpoch",
+      transferId: claim.transfer_id,
+      targetEpoch: claim.target_epoch,
+      expectedRevision: claimedRecord.revision,
+      eventEpoch: "hub-event-epoch",
+    });
+    expect(transport.attachCalls[0]!.requestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
+    expect(supervisor.state).toBe("ready");
+    expect(sidecarDisposed).toBe(0);
+    await supervisor.dispose();
+    expect(sidecarDisposed).toBe(1);
+  });
+
+  it("disposes a sidecar resource that resolves after cancellation", async () => {
+    const transport = new JoinTransport();
+    let releaseLaunch!: (resource: { dispose(): void }) => void;
+    let markLaunched!: () => void;
+    const launched = new Promise<void>((resolve) => { markLaunched = resolve; });
+    let disposed = 0;
+    const sidecar: OwnerHandoffTargetSidecar = {
+      launch: () => {
+        markLaunched();
+        return new Promise((resolve) => {
+          releaseLaunch = (resource) => resolve(resource);
+        });
+      },
+      eventEpoch: () => "hub-event-epoch",
+    };
+    const supervisor = new OwnerHandoffTargetSupervisor({
+      transport, profileId, targetBuild, claim, sidecar,
+    });
+    const starting = supervisor.start();
+    await launched;
+    await supervisor.cancel();
+    await expect(starting).rejects.toMatchObject({ errorCode: HANDOFF_CANCELLED });
+    releaseLaunch({ dispose: () => { disposed += 1; } });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(disposed).toBe(1);
+    expect(transport.attachCalls).toEqual([]);
+  });
+
+  it("refuses the launch path without a sidecar provider", async () => {
+    const transport = new JoinTransport();
+    const supervisor = new OwnerHandoffTargetSupervisor({ transport, profileId, targetBuild, claim });
+    await expect(supervisor.start()).rejects.toMatchObject({
+      errorCode: HANDOFF_TARGET_SIDECAR_UNAVAILABLE,
+    });
+    expect(supervisor.state).toBe("ready-refused");
+    expect(transport.attachCalls).toEqual([]);
+    expect(transport.disposed).toBe(1);
+  });
+
+  it("fails closed on a classified ready refusal from the same process", async () => {    const transport = new ReadyTransport(() => Promise.reject(
       Object.assign(new Error("HANDOFF_TARGET_NOT_INITIALIZED"), { errorCode: "HANDOFF_TARGET_NOT_INITIALIZED" }),
     ));
     const supervisor = new OwnerHandoffTargetSupervisor({ transport, profileId, targetBuild, claim });

@@ -23,6 +23,10 @@ import { createAgentHostBridge, type AgentHostBridge } from "../agent-host-bridg
 import { createBackendRouter, type BackendRouter } from "../remote/backend-router";
 import { createRemoteHostsBoot, setActiveRemoteHostsBoot } from "./remote-hosts";
 import {
+  createCommandCenterHandoffBoot,
+  setActiveCommandCenterHandoffBoot,
+} from "./command-center-handoff";
+import {
   createMcpControlController,
   McpControlServer,
   mcpControlRendererEvent,
@@ -238,12 +242,23 @@ export function registerApplicationStartup(deps: StartupDependencies): void {
       log: (level, message, data) =>
         logger.app("runtime", level, message, { data: formatRemoteLogData(data) }),
     });
+    // H5 command-center successor composition. There is no feature flag here:
+    // the root is idle until the existing owner-handoff command registers a
+    // prepared transfer on it (see command-center-handoff.ts). Until then the
+    // resolver returns undefined for every host and the lifecycle is unchanged.
+    const commandCenterHandoff = createCommandCenterHandoffBoot({
+      dataDir,
+      log: (level, message, data) =>
+        logger.app("runtime", level, message, { data: formatRemoteLogData(data) }),
+    });
+    setActiveCommandCenterHandoffBoot(commandCenterHandoff);
     // Every paired remote `pi-host` opens against the router this boot just
     // created. An empty registry (default install with no user pairing) makes
     // this a full no-op — nothing connects, no backend registers, every
     // renderer call keeps hitting the local handler byte-for-byte.
     const remoteHostsBoot = createRemoteHostsBoot({
       dataDir,
+      handoffAttachment: host => commandCenterHandoff.handoffAttachment(host),
       encryption: {
         // Electron's safeStorage exposes `isEncryptionAvailable`; the port
         // keeps the shorter `isAvailable` name so a Node-side test can drop

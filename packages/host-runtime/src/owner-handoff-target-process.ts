@@ -15,7 +15,9 @@ import { confirmChildExit } from "./process-exit-confirmation.js";
 import {
   OwnerHandoffTargetSupervisor,
   type OwnerHandoffReadyOutcome,
+  type OwnerHandoffTargetAttachEpoch,
   type OwnerHandoffTargetEnvelope,
+  type OwnerHandoffTargetLaunch,
   type OwnerHandoffTargetReadyRequest,
   type OwnerHandoffTargetSupervisorOptions,
   type OwnerHandoffTargetTransport,
@@ -60,6 +62,26 @@ function readyBytes(request: OwnerHandoffTargetReadyRequest): Buffer {
     throw failure("HANDOFF_INVALID_REQUEST");
   }
   return frame(request);
+}
+function attachEpochBytes(request: OwnerHandoffTargetAttachEpoch): Buffer {
+  if (!request || request.version !== 1 || request.operation !== "attachEpoch" ||
+      !UUID.test(request.requestId) || !UUID.test(request.transferId) ||
+      !UUID.test(request.targetEpoch) || !Number.isInteger(request.expectedRevision) ||
+      request.expectedRevision < 1 || request.expectedRevision > OWNER_HANDOFF_REVISION_MAX ||
+      typeof request.eventEpoch !== "string" || request.eventEpoch.length === 0 ||
+      request.eventEpoch.length > 256 || request.eventEpoch.includes("\0")) {
+    throw failure("HANDOFF_INVALID_REQUEST");
+  }
+  return frame(request);
+}
+function parseLaunchFrame(value: unknown): OwnerHandoffTargetLaunch {
+  // The supervisor binds the launch frame to the exact claim after this shape
+  // check; the transport never interprets the ticket.
+  if (!isRecord(value) || value.version !== 1 || value.operation !== "launch-sidecar" ||
+      !isRecord(value.ticket)) {
+    throw failure("HANDOFF_INVALID_RESPONSE");
+  }
+  return value as unknown as OwnerHandoffTargetLaunch;
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -112,10 +134,10 @@ type Pending = {
  */
 export class OwnerHandoffTargetProcess implements OwnerHandoffTargetTransport {
   private readonly child: ChildProcessWithoutNullStreams;
-  private readonly buffer = Buffer.alloc(OWNER_HANDOFF_MAX_RECORD_BYTES + 4);
-  private received = 0;
-  private length?: number;
+  /** Incremental parser buffer: one chunk may hold many frames or partial ones. */
+  private buffer = Buffer.alloc(0);
   private pending?: Pending;
+  private readonly frames: unknown[] = [];
   private failed?: Error;
   private disposal?: Promise<void>;
   private spawnFailed = false;
@@ -154,42 +176,48 @@ export class OwnerHandoffTargetProcess implements OwnerHandoffTargetTransport {
 
   private readonly onData = (chunk: unknown): void => {
     if (this.failed) return;
-    if (!Buffer.isBuffer(chunk) || !this.pending || chunk.length > this.buffer.length - this.received) {
+    if (!Buffer.isBuffer(chunk)) {
       this.fail("HANDOFF_INVALID_FRAME");
       return;
     }
-    chunk.copy(this.buffer, this.received);
-    this.received += chunk.length;
-    if (this.length === undefined && this.received >= 4) {
-      this.length = this.buffer.readUInt32LE();
-      if (this.length < 1 || this.length > OWNER_HANDOFF_MAX_RECORD_BYTES) {
+    this.buffer = Buffer.concat([this.buffer, chunk]);
+    // At most one queued unsolicited frame plus a partial frame may be held.
+    if (this.buffer.length > (OWNER_HANDOFF_MAX_RECORD_BYTES + 4) * 6) {
+      this.fail("HANDOFF_INVALID_FRAME");
+      return;
+    }
+    while (this.buffer.length >= 4) {
+      const length = this.buffer.readUInt32LE(0);
+      if (length < 1 || length > OWNER_HANDOFF_MAX_RECORD_BYTES) {
+        this.fail("HANDOFF_INVALID_FRAME");
+        return;
+      }
+      if (this.buffer.length < length + 4) return;
+      const body = this.buffer.subarray(4, length + 4);
+      this.buffer = this.buffer.subarray(length + 4);
+      let value: unknown;
+      try {
+        const text = new TextDecoder("utf-8", { fatal: true }).decode(body);
+        value = JSON.parse(text);
+      } catch {
+        this.fail("HANDOFF_INVALID_FRAME");
+        return;
+      }
+      const pending = this.pending;
+      if (pending) {
+        clearTimeout(pending.timer);
+        this.pending = undefined;
+        pending.resolve(value);
+        continue;
+      }
+      // The launch-sidecar frame is unsolicited: it can arrive before the
+      // supervisor attaches its pending receive. Keep a tiny bounded queue.
+      this.frames.push(value);
+      if (this.frames.length > 4) {
         this.fail("HANDOFF_INVALID_FRAME");
         return;
       }
     }
-    if (this.length === undefined || this.received < this.length + 4) return;
-    if (this.received !== this.length + 4) {
-      this.fail("HANDOFF_INVALID_FRAME");
-      return;
-    }
-    let value: unknown;
-    try {
-      const text = new TextDecoder("utf-8", { fatal: true }).decode(this.buffer.subarray(4, this.received));
-      value = JSON.parse(text);
-    } catch {
-      this.fail("HANDOFF_INVALID_FRAME");
-      return;
-    }
-    const pending = this.pending;
-    if (!pending) {
-      this.fail("HANDOFF_INVALID_FRAME");
-      return;
-    }
-    clearTimeout(pending.timer);
-    this.pending = undefined;
-    this.received = 0;
-    this.length = undefined;
-    pending.resolve(value);
   };
 
   private readonly onClosed = (): void => { this.fail("HANDOFF_TRANSPORT_CLOSED"); };
@@ -205,6 +233,19 @@ export class OwnerHandoffTargetProcess implements OwnerHandoffTargetTransport {
 
   ready(request: OwnerHandoffTargetReadyRequest, timeoutMs = 30_000): Promise<OwnerHandoffReadyOutcome> {
     return this.send(readyBytes(request), timeoutMs, parseOwnerHandoffTargetReadyResponse);
+  }
+
+  /** Wait for the unsolicited launch-sidecar frame after the claim receipt. */
+  receiveLaunch(timeoutMs = 30_000): Promise<OwnerHandoffTargetLaunch> {
+    return this.awaitFrame(timeoutMs, parseLaunchFrame);
+  }
+
+  /** Send the live hub epoch and receive the committed ReadyOutcome. */
+  attachEpoch(
+    request: OwnerHandoffTargetAttachEpoch,
+    timeoutMs = 30_000,
+  ): Promise<OwnerHandoffReadyOutcome> {
+    return this.send(attachEpochBytes(request), timeoutMs, parseOwnerHandoffTargetReadyResponse);
   }
 
   confirmExit(timeoutMs = 2_000): Promise<boolean> {
@@ -230,6 +271,42 @@ export class OwnerHandoffTargetProcess implements OwnerHandoffTargetTransport {
       if (!(await this.confirmExit())) throw failure("HANDOFF_EXIT_UNCONFIRMED");
     })();
     return this.disposal;
+  }
+
+  private awaitFrame<T>(timeoutMs: number, parse: (value: unknown) => T): Promise<T> {
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 30_000) {
+      return Promise.reject(new RangeError("handoff timeout must be an integer from 1 to 30000 ms"));
+    }
+    if (this.failed) return Promise.reject(this.failed);
+    if (this.exited || this.spawnFailed) {
+      return Promise.reject(failure("HANDOFF_TRANSPORT_CLOSED"));
+    }
+    if (this.frames.length > 0) {
+      const value = this.frames.shift();
+      try {
+        return Promise.resolve(parse(value));
+      } catch (error) {
+        this.failed = error instanceof Error ? error : failure("HANDOFF_INVALID_FRAME");
+        return Promise.reject(error);
+      }
+    }
+    if (this.pending) return Promise.reject(failure("HANDOFF_CHANNEL_BUSY"));
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => this.fail("HANDOFF_IO_TIMEOUT"), timeoutMs);
+      timer.unref?.();
+      this.pending = {
+        resolve: (value) => {
+          try {
+            resolve(parse(value));
+          } catch (error) {
+            this.failed = error instanceof Error ? error : failure("HANDOFF_INVALID_FRAME");
+            reject(error);
+          }
+        },
+        reject,
+        timer,
+      };
+    });
   }
 
   private send<T>(bytes: Buffer, timeoutMs: number, parse: (value: unknown) => T): Promise<T> {
@@ -277,9 +354,7 @@ export class OwnerHandoffTargetProcess implements OwnerHandoffTargetTransport {
       clearTimeout(pending.timer);
       pending.reject(this.failed);
     }
-    this.buffer.fill(0);
-    this.received = 0;
-    this.length = undefined;
+    this.buffer = Buffer.alloc(0);
     this.child.stdout.off("data", this.onData);
     this.child.stdout.resume();
   }
