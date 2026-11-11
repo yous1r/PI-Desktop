@@ -16,6 +16,58 @@
   [control contracts](ai-command-center-control-contracts.md),
   [monitor integration contract](ai-command-center-monitor-integration-contract.md).
 
+## Batch 1 worktree (2026-11-11)
+
+- Batch 1 request branch `feat/command-center-wiring-20261111` runs in
+  `D:\Packages\PI-Desktop\.worktrees\command-center-wiring-20261111` at base
+  `1cdb4ce1d` (containing fetched `main` `e977efc96`). Its uncommitted
+  command-center baseline was copied from the original request worktree
+  `command-center-continuation-20261110` (read-only, untouched), so it is a
+  **reconstructed working tree**, not a committed candidate.
+- Q0 baseline qualification of that reconstructed tree: [Batch 1 worktree
+  baseline](ai-command-center-batch1-baseline.md) and
+  [.artifacts/batch1-baseline-evidence.json](../../.artifacts/batch1-baseline-evidence.json)
+  record the executed commands, real counts, environmental limitations and the
+  manifest comparison against the copied baseline. That baseline changes no
+  accepted/verified/blocked status below.
+- Final lane results (2026-11-11, from lane logs; not re-run by Q0):
+  - **C3 registered, capability-gated**: thirteen `commandCenter/*` operations are
+    in `RACP_OPERATIONS` (profile `remote-host`; viewer for workspace/membership
+    reads and receipts, owner for workspace writes, controller for
+    membership/intervention mutations).
+    `RacpServerCapabilitiesSchema` has no command-center field, so every one
+    returns `CAPABILITY_UNAVAILABLE` before dispatch. Evidence: RACP **42/5**
+    (was 33/4; +9 registration/dispatch tests), shared package `test` **1,616/144**
+    (includes built `dist` copies; source-only 808/72).
+  - **H3 target entry implemented, fail-closed**: `--owner-target` validates the
+    exclusive argv/private-stdin channel and commits the claim; it then stops with
+    `HANDOFF_TARGET_ADOPTION_UNAVAILABLE` because no supervisor adopts the captured
+    owner/coordinator and no Ready publication exists. `owner_handoff::target`
+    **22/22**; full `cargo test -p host-core owner_handoff --locked --offline`
+    **146/0** after the coordinated schema-30→31 bump (shared TS literal, fixtures,
+    host-runtime test, e2e scripts; shared package **1,616/1,616**). Supervisor
+    adoption, Ready publication and same-process serving remain open.
+  - **U1 mounted (fixture preview)**: page `command-center` is full-screen in
+    `AppShell` (chat shell hidden/inert, no global left sidebar), entered from the
+    Sidebar footer icon and the global-search Pages entry; the work panel is
+    hidden and the page stays mounted to retain draft/focus/history. The
+    `commandCenter` i18n namespace is registered for en and zh-CN (other locales
+    fall back to en) in the main.tsx initial resources, the renderer-catalogs
+    loader and `renderer-language` `addResourceBundle`; the renderer-keys scan is
+    namespace-aware with en/zh key-parity checks. Fixtures are deterministic and
+    the Host is explicitly offline; overview lower areas stay noninteractive.
+    Verification: route/components/user-path/view **27/27**, i18n **33/33**
+    (catalogs 13/13, renderer-keys 11/11), shell/nav/i18n **105/105**,
+    sidebar **115/115**, renderer-only `tsc` exit 0, desktop lint OK. The desktop
+    package typecheck still fails only with 89 pre-existing `electron/main` errors
+    (workspace dist/Pi dependency environment), zero in `apps/desktop/src`.
+    **Remaining gap**: fixture preview only; no live Host producer and no Electron
+    journey was run.
+- Lead final verification on the current tree (independent): desktop
+  command-center **27/27**, i18n **33/33**, RACP **42/42** (5 files),
+  command-center-client **259/259** (15 files), Rust `command_center` **59/0**,
+  Rust `owner_handoff` **146/0** (H3 schema fix).
+
 ## Verification snapshot (2026-11-11)
 
 - Dependency head unchanged at `1cdb4ce1d797ab94b024a2c478ecd01d50cb2b2f`; this
@@ -47,9 +99,12 @@
   worktree because the provisioned Pi dependency copy lacks the branch patches;
   this remains recorded, not passing. OS-temp directory creation is denied to the
   test process, so affected suites use repository scratch space.
-- Production wiring remains incomplete: H3 `--owner-target` entry and supervisor
-  adoption, C3 RACP/IPC registration, C4 dispatch claims, U1 route mount and
-  H5 cross-process acceptance are not wired. Details:
+- Production wiring remains incomplete: H3 supervisor adoption (the entry is
+  implemented fail-closed and stops with `HANDOFF_TARGET_ADOPTION_UNAVAILABLE`),
+  C3 capability advertisement (the catalog registration exists but stays
+  unavailable), C4 dispatch claims, the U1 live Host producer/Electron journey
+  (route mount is verified with deterministic fixtures only) and H5 cross-process
+  acceptance are not wired. Details:
   [takeover provenance](ai-command-center-takeover-provenance.md) and
   [takeover evidence](ai-command-center-takeover-evidence.json).
 
@@ -60,15 +115,15 @@
 | H0 handoff contracts | Accepted in source history (`bf5c042b7`) | Project H0 record; not re-run in this branch |
 | H1 Desktop coordinator/adapters | R01-R09 accepted (`a360fc505`, base `e977efc96`) | [H1 acceptance record](ai-command-center-p0-evidence/h1-adapters-verification.md); ten fixed native gaps remain |
 | H2 Rust source prepare/cancel/fence/release | Scoped candidate accepted (`011a7dd59`) | [H2 acceptance record](ai-command-center-p0-evidence/h2-source-verification.md); full transfer still H5 |
-| H3 restricted successor bootstrap | Code + module wiring; CLI integration **pending** | The previously ignored `owner_handoff/target` module is now tracked and declared; **16 Rust tests pass** (readiness CAS/receipts, recovery, strict envelope). The `--owner-target` process entry point is not wired and no cross-process launch has been exercised |
+| H3 restricted successor bootstrap | Entry implemented fail-closed; supervisor adoption **pending** | `--owner-target` validates the exclusive argv/private-stdin channel, commits the claim, then returns `HANDOFF_TARGET_ADOPTION_UNAVAILABLE` (no supervisor, no Ready resources, no AppState/recovery start). Target **22/22**, full `owner_handoff` **146/0** after the coordinated schema-30→31 bump. Admission stays closed and no cross-process launch has been exercised |
 | H4 epoch-aware client reattachment | Code taken over; wiring **pending** | `OwnerHandoffAttachment` and its transport ports are in this branch and typecheck in isolation; real reconnect composition is unverified |
 | H5 integrated idle transfer | **Blocked** | Needs H1-H4 acceptance and the real authorization path |
 | C1 versioned control contracts | Accepted (`decb07c4c`) | 47 contract tests in this branch |
-| C2 workspaces/membership/reservations/goals/receipts | Code + migration wired; RACP registration **pending** | 59 command-center tests pass (56 module + 3 versioned-migration tests); `SCHEMA_VERSION` is 31 with a v30 backup and atomic upgrade validated on a populated file |
-| C3 authorized control/receipt APIs | Code taken over; registration **pending** | Control service, Rust repository adapter and RACP dispatcher are present and compile; no RACP/IPC catalog registration or capability advertisement |
+| C2 workspaces/membership/reservations/goals/receipts | Code + migration wired; exposed through C3 | 59 command-center tests pass (56 module + 3 versioned-migration tests); `SCHEMA_VERSION` is 31 with a v30 backup and atomic upgrade validated on a populated file. RACP exposure is the C3 registration below |
+| C3 authorized control/receipt APIs | **Registered, capability-gated unavailable** | Thirteen `commandCenter/*` operations are in `RACP_OPERATIONS` with roles/mutation flags. No command-center capability is advertised, so all return `CAPABILITY_UNAVAILABLE`; capability advertisement and the complete producer/consumer path remain open. Evidence: RACP **42/5**, shared package **1,616/144** |
 | C4 all-entry quota and main/child control | **Blocked** | Depends on C3 |
 | M1 bounded monitor projection | Foundations done; producer **blocked** | Store, barrier contract test, reader, live summary, health and session composition pass here; real authorized producer needs C2/C3 ([contract](ai-command-center-monitor-integration-contract.md)) |
-| U1 V3 Desktop surfaces | Code taken over; mounting **pending** | Components, view model and locales are in this branch; 25 desktop tests pass; not mounted in the app route and no i18n namespace registration |
+| U1 V3 Desktop surfaces | **Mounted (fixture preview)**; live producer/Electron journey pending | Full-screen `command-center` route in AppShell with Sidebar footer and global-search Pages entries, hidden work panel, mount retained for draft/focus/history; `commandCenter` i18n namespace registered for en/zh-CN with namespace-aware key-parity checks. **27/27** route/component/user-path/view, i18n **33/33**, shell/nav/i18n **105/105**, sidebar **115/115**, renderer-only `tsc` exit 0, desktop lint OK; package typecheck still shows only pre-existing `electron/main` dist errors. No live Host producer and no real Electron journey was run |
 | N1 native application association | **Blocked by design** | Window-generation identity, privilege and detach policy are not settled; nominated programs/versions absent |
 | W1 browser HTTPS edge | **Blocked** | Requires deployment/security decisions, enrollment/revocation workflow and environment |
 | W2 Web/PWA client | Foundations done; product **blocked** | Portal receipt model and monitor session are browser-safe and tested; real device/network acceptance needs W1, M1, C4, H5, E4 |
@@ -89,20 +144,24 @@
 - Repository consumer checks: twelve browser-boundary checks against current
   source **and** emitted package artifacts, including a real 1,025-page Host
   generation, live changes and a composed session.
-- A dependent consumer (`racp`) builds against this branch and passes 30 tests.
+- A dependent consumer (`racp`) builds against this branch and passes 42 tests
+  across five files after the C3 registration tests were added.
 - C3 authorization/transport boundary tests added in this branch: **15** control
   service tests (roles, scope, owner fencing, mutation closure, receipt
   replay/conflict, capability gate, response budget) and **7** Rust repository
   adapter tests (private stdio payload, error-family mapping, no retry, owner
   change, malformed result, receipt binding). The RACP dispatcher factory is
   exported and covered by **3** seam tests (prefix list, namespace stripping,
-  principal forwarding, unknown-operation refusal). Catalog registration in
-  RACP/IPC remains pending, and capability flags stay unavailable.
+  principal forwarding, unknown-operation refusal). The shared `RACP_OPERATIONS`
+  catalog now also carries the thirteen `commandCenter/*` entries and RACP passes
+  **42 tests across 5 files**, but capability flags stay unavailable: every
+  command-center call returns `CAPABILITY_UNAVAILABLE` before dispatch.
 - Taken-over C2/C3/H3/H4/U1/Q0 code: Rust `command_center` module compiles and its
-  **56 tests pass**; taken-over Desktop command-center/attachment tests **25 pass**;
-  Q0 harness **24 pass**; isolated typechecks pass for the Host-runtime attachment/
-  repository files and the Desktop surface. All are uncommitted and not wired into
-  production paths.
+  **56 tests pass**; Desktop command-center/attachment tests **25 pass** and the U1
+  route mount adds view/user-path/route tests for **27/27**; Q0 harness **24 pass**;
+  isolated typechecks pass for the Host-runtime attachment/repository files and the
+  renderer-only Desktop surface. All are uncommitted; the command-center UI remains
+  a fixture preview and the production producer path is still unwired.
 - Documentation: 642 pages and 88 English/Chinese pairs.
 - Known environment limitation: `host-runtime`/`agent-runtime` cannot build here
   because the provisioned Pi dependency copy lacks the branch's patches; this is
@@ -111,15 +170,15 @@
 
 ## Required to unblock
 
-1. Register the C3 control service in the RACP/IPC catalog with authenticated
-   principals, roles and explicit connection cleanup; keep capability flags
-   unavailable until the complete producer/consumer path passes
+1. Advertise the `commandCenter/*` capability only after the authorized
+   producer/consumer path, C4 claims and connection cleanup pass; until then keep
+   all thirteen registered operations `CAPABILITY_UNAVAILABLE`
    ([integration contract](ai-command-center-monitor-integration-contract.md)).
 2. Compose the H3/H4 successor bootstrap and attachment helpers with the real
    supervisor/transport, then complete H5 full transfer acceptance.
-3. Mount the U1 surface in the Desktop route, register its i18n namespace and pass
-   a real Electron journey; run the monitor integration acceptance against the real
-   repository/transport.
+3. Connect the mounted U1 surface to a live Host producer and run a real Electron
+   journey; it currently renders deterministic fixtures only. Run the monitor
+   integration acceptance against the real repository/transport.
 4. Provide the nominated target machines, programs, devices and deployment scope
    for Q1-Q3/W1-W2/N1; otherwise record them as open qualification limits.
 5. Voice/LiveVoice remains the final planned stage.

@@ -92,6 +92,15 @@ advertisement, no Desktop route mount or i18n registration, and no H3/H4/H5
 composition with the real supervisor. Those are the remaining integration steps;
 none may be inferred from the files existing.
 
+> Batch 1 update (2026-11-11): C3 later registered thirteen `commandCenter/*`
+> operations in the shared RACP catalog; the roles, capability gate and exact test
+> counts are recorded in the
+> [acceptance index](ai-command-center-acceptance-index.md#batch-1-worktree-2026-11-11).
+> No capability is advertised, so every call still returns
+> `CAPABILITY_UNAVAILABLE`. The "no RACP/IPC catalog registration" statements above
+> describe the earlier continuation snapshot and are kept as history; they do not
+> describe the current tree.
+
 ## Preserved invariants
 
 - Rust remains the only database owner. No migration, second task store,

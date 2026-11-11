@@ -22,7 +22,12 @@
   `target/tests.rs` uses the repository target scratch directory (the host denies
   OS-temp directory creation) and `target/tests/bootstrap_tests.rs` pins the
   envelope build to the current `SCHEMA_VERSION` because the shared H2 fixture
-  intentionally records schema 30.
+  records schema 31 after the coordinated schema bump: the shared
+  `OwnerHandoffBuildSchema` TS literal, the shared owner-handoff fixtures, the
+  host-runtime attachment test and the owner-handoff e2e scripts moved from 30 to
+  31 together. Verified after the bump by Rust
+  `cargo test -p host-core owner_handoff --locked --offline` **146/0** and the
+  shared package suite **1616/1616**.
 - Integration edits made here (not in the source): `packages/agent-host/src/index.ts` now exports the command-center control module so consumers (RACP dispatcher, Rust repository adapter) can import the shared control service and contracts.
 
 ## Verification performed after the copy
@@ -85,6 +90,12 @@ storage spec now records schema v31.
 ## Boundary
 
 This record does not claim product acceptance. The copied code remains uncommitted work in this request branch, authored in another request; this branch preserves its content with provenance instead of rewriting it. The C2 persistence migration is now wired (schema v31); capability advertisement, RACP catalog registration and UI mounting still require the plan's integration gates and must not be inferred from these files existing.
+
+> Batch 1 update (2026-11-11): C3 later added thirteen `commandCenter/*` entries
+> to the shared RACP catalog in this worktree. They remain capability-gated
+> unavailable (`CAPABILITY_UNAVAILABLE`), so the statement above still describes
+> the copied baseline and no product acceptance follows. See the
+> [acceptance index](ai-command-center-acceptance-index.md#batch-1-worktree-2026-11-11).
 
 
 

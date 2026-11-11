@@ -1,0 +1,1121 @@
+{
+  "schema": 1,
+  "task": "task-4",
+  "agent": "q0-verify",
+  "generatedAt": "2026-11-11T05:13:17.109Z",
+  "reconstructedTree": {
+    "caveat": "Reconstructed working tree: the command-center baseline is uncommitted work copied from the original request worktree. Not a committed candidate; no commit/push was made.",
+    "worktree": "D:\\Packages\\PI-Desktop\\.worktrees\\command-center-wiring-20261111",
+    "branch": "feat/command-center-wiring-20261111",
+    "head": "1cdb4ce1d797ab94b024a2c478ecd01d50cb2b2f",
+    "baseMain": "e977efc96b6b735aeef5066a0b66c6565ad5691f",
+    "sourceWorktree": "D:\\Packages\\PI-Desktop\\.worktrees\\command-center-continuation-20261110 (read-only, untouched)",
+    "primaryCheckout": "D:\\Packages\\PI-Desktop (coordination/build-cache only; no source edits)",
+    "baselineManifest": {
+      "path": ".artifacts/batch1-baseline-manifest.json",
+      "entries": 160,
+      "sha256": "9fb90ba717d437678aae4e687ddc653ae45f2affbca901eb0e3c4c05580da49b"
+    }
+  },
+  "environment": {
+    "os": "Microsoft Windows 10 Pro 10.0.19045 x64",
+    "cpuCount": 6,
+    "memoryGiB": 24,
+    "node": "v24.12.0",
+    "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "cargoTargetDir": "D:\\Packages\\PI-Desktop\\target (host cache reused via CARGO_TARGET_DIR)",
+    "scratchDir": "<worktree>\\.artifacts\\scratch\\q0 (PI_SCRATCH_DIR)",
+    "pnpmLauncher": "BROKEN: D:\\mise_data\\shims\\pnpm.exe resolves to a missing pnpm entry; package suites were run via installed `node node_modules/vitest/vitest.mjs run`. No install performed.",
+    "verifyUi": "not run (out of scope)"
+  },
+  "suites": [
+    {
+      "id": "desktop-node-command-center-and-attachment",
+      "lane": "baseline",
+      "status": "PASS",
+      "cwd": "<worktree>",
+      "command": "node --test apps/desktop/test/command-center-*.test.mjs apps/desktop/test/handoff-attachment.test.mjs",
+      "runner": "node --test",
+      "inputFiles": 4,
+      "tests": 25,
+      "passed": 25,
+      "failed": 0,
+      "skipped": 0,
+      "durationSeconds": 73.81,
+      "executedAt": "2026-11-11T11:41:15+08:00",
+      "log": ".artifacts/logs/desktop-command-center.log",
+      "logSha256": "2ad95b41dc3c54d75ff40d8fd07edcc64d5b8ab7218ac72fd06ea174a68b27ef",
+      "note": "Three command-center-*.test.mjs files plus handoff-attachment.test.mjs; Node's own glob expansion."
+    },
+    {
+      "id": "command-center-client-vitest",
+      "lane": "baseline",
+      "status": "PASS",
+      "cwd": "packages/command-center-client",
+      "command": "node node_modules/vitest/vitest.mjs run",
+      "runner": "vitest 4.1.11",
+      "testFiles": 15,
+      "tests": 259,
+      "passed": 259,
+      "failed": 0,
+      "durationSeconds": 14.42,
+      "executedAt": "2026-11-11T11:42:45+08:00",
+      "log": ".artifacts/logs/client-vitest.log",
+      "logSha256": "18d88e15a5ab4fe8cf55a130b08161297c0f216c49e4e3a14837eb2339e39516",
+      "note": "Package `test` script is exactly `vitest run`; pnpm launcher is broken, so the installed entry point was used."
+    },
+    {
+      "id": "racp-vitest-baseline",
+      "lane": "baseline",
+      "status": "PASS",
+      "cwd": "packages/racp",
+      "command": "node node_modules/vitest/vitest.mjs run",
+      "runner": "vitest 4.1.11",
+      "testFiles": 4,
+      "tests": 33,
+      "passed": 33,
+      "failed": 0,
+      "durationSeconds": 5,
+      "executedAt": "2026-11-11T11:46:24+08:00",
+      "log": ".artifacts/logs/racp-vitest.log",
+      "logSha256": "a1a847462ae7be7cccab8fc7af542931f8af43500149d38aaa73d43535f7de95",
+      "note": "Baseline state before the C3 lane added command-center-registration.test.ts (post-lane observation below)."
+    },
+    {
+      "id": "shared-command-center-filter",
+      "lane": "baseline",
+      "status": "PASS",
+      "cwd": "packages/shared",
+      "command": "node node_modules/vitest/vitest.mjs run src/command-center",
+      "runner": "vitest 4.1.11",
+      "testFiles": 10,
+      "tests": 59,
+      "passed": 59,
+      "failed": 0,
+      "durationSeconds": 3.44,
+      "executedAt": "2026-11-11T11:47:20+08:00",
+      "log": ".artifacts/logs/shared-vitest-cc-src.log",
+      "logSha256": "d4d644da8d01b6d94da021df6c1d053fa995b00ad7084e45218601dec33a3342",
+      "note": "A bare `command-center` filter (log shared-vitest-cc.log) also matches stale dist/command-center/*.js duplicates: 20 files / 118 tests, 59 of them duplicated. The src-only run is the meaningful count."
+    },
+    {
+      "id": "agent-host-command-center-filter",
+      "lane": "baseline",
+      "status": "PASS",
+      "cwd": "packages/agent-host",
+      "command": "node node_modules/vitest/vitest.mjs run command-center",
+      "runner": "vitest 4.1.11",
+      "testFiles": 1,
+      "tests": 15,
+      "passed": 15,
+      "failed": 0,
+      "durationSeconds": 3.61,
+      "executedAt": "2026-11-11T11:47:25+08:00",
+      "log": ".artifacts/logs/agent-host-vitest-cc.log",
+      "logSha256": "7568c3dc691863e1d3e8af026f7924f20ba74716ee8d2f294ef80f5dc5f3913b"
+    },
+    {
+      "id": "shared-full-source",
+      "lane": "extended-baseline",
+      "status": "PASS",
+      "cwd": "packages/shared",
+      "command": "node node_modules/vitest/vitest.mjs run src",
+      "runner": "vitest 4.1.11",
+      "testFiles": 72,
+      "tests": 808,
+      "passed": 808,
+      "failed": 0,
+      "durationSeconds": 17.43,
+      "executedAt": "2026-11-11T11:47:59+08:00",
+      "log": ".artifacts/logs/shared-vitest-src-full.log",
+      "logSha256": "d10b3f648eb7c228ca1434d449830bb6fe156eab56d91eb13081360b4efac902"
+    },
+    {
+      "id": "agent-host-full-source",
+      "lane": "extended-baseline",
+      "status": "PASS",
+      "cwd": "packages/agent-host",
+      "command": "node node_modules/vitest/vitest.mjs run src",
+      "runner": "vitest 4.1.11",
+      "testFiles": 12,
+      "tests": 151,
+      "passed": 151,
+      "failed": 0,
+      "durationSeconds": 10.53,
+      "executedAt": "2026-11-11T11:48:19+08:00",
+      "log": ".artifacts/logs/agent-host-vitest-src-full.log",
+      "logSha256": "1a49eae2474aedf31982fa7414b336ca88d42e44d56b4ed9c8e2c4c07aadc973"
+    },
+    {
+      "id": "host-core-command-center",
+      "lane": "baseline",
+      "status": "PASS",
+      "cwd": "<worktree>",
+      "command": "$env:CARGO_TARGET_DIR='D:\\Packages\\PI-Desktop\\target'; cargo test -p host-core command_center --locked --offline",
+      "runner": "cargo test",
+      "tests": 59,
+      "passed": 59,
+      "failed": 0,
+      "ignored": 0,
+      "filteredOut": 1323,
+      "durationSeconds": 0.76,
+      "executedAt": "2026-11-11T12:04:02+08:00",
+      "log": ".artifacts/logs/cargo-command-center-offline.log",
+      "logSha256": "5c4bc3caa1459611911207350794ba4bdfc79e6d0c2c42f6fc4e87a0e84dfea0",
+      "firstRun": {
+        "command": "$env:CARGO_TARGET_DIR='D:\\Packages\\PI-Desktop\\target'; cargo test -p host-core command_center --locked",
+        "tests": 59,
+        "passed": 59,
+        "failed": 0,
+        "filteredOut": 1316,
+        "testDurationSeconds": 0.89,
+        "compileSeconds": 108,
+        "executedAt": "2026-11-11T11:40:40+08:00",
+        "log": ".artifacts/logs/cargo-command-center.log",
+        "logSha256": "e36ba5b4c6a7fbde0a787adda4d74b3166c200e9bb6939bf3e4d70defac2af7c"
+      },
+      "note": "Final run compiled against the host Cargo cache with --offline. Filtered-out count grew by seven because the H3 lane added entry tests outside the command_center name filter."
+    },
+    {
+      "id": "command-center-baseline-harness",
+      "lane": "baseline",
+      "status": "PASS",
+      "cwd": "<worktree>",
+      "command": "$env:PI_SCRATCH_DIR='<worktree>\\.artifacts\\scratch\\q0'; node --test scripts/e2e/command-center/*.test.mjs scripts/e2e-command-center-curve.test.mjs",
+      "runner": "node --test",
+      "tests": 48,
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "durationSeconds": 0.84,
+      "executedAt": "2026-11-11T11:49:27+08:00",
+      "log": ".artifacts/logs/baseline-node-test.log",
+      "logSha256": "01010057383fe55b6543004ad9781556b12e7e8272cf1906af1091617c56b85f",
+      "note": "Matches package script test:command-center-baseline. The curve test requires PI_SCRATCH_DIR because OS-temp creation is denied on this host."
+    },
+    {
+      "id": "foundations-consumer-source-mode",
+      "lane": "baseline",
+      "status": "PASS",
+      "cwd": "<worktree>",
+      "command": "node scripts/check-command-center-foundations.mjs",
+      "runner": "node script",
+      "checks": 12,
+      "checksPassed": 12,
+      "durationSeconds": 3.2,
+      "executedAt": "2026-11-11T11:49:57+08:00",
+      "log": ".artifacts/logs/foundations-src.log",
+      "logSha256": "1b60461cd876c6bdb311646f91c33f6ae47f114c85f0e7c0bd9a4779ac0941e9",
+      "output": {
+        "status": "PASS",
+        "inputs": "current-source",
+        "liveProductQualification": false
+      }
+    },
+    {
+      "id": "host-runtime-attachment-and-adapter",
+      "lane": "extended-baseline",
+      "status": "PASS",
+      "cwd": "packages/host-runtime",
+      "command": "node node_modules/vitest/vitest.mjs run src/owner-handoff-attachment.test.ts src/command-center-repository.test.ts",
+      "runner": "vitest 4.1.11",
+      "testFiles": 2,
+      "tests": 36,
+      "passed": 36,
+      "failed": 0,
+      "durationSeconds": 5.37,
+      "executedAt": "2026-11-11T11:55:43+08:00",
+      "log": ".artifacts/logs/host-runtime-attachment.log",
+      "logSha256": "eface30da67717eea23b93f7d89d171148d2f4709f0be6c5d94d68ea8f6184b8"
+    },
+    {
+      "id": "cargo-fmt-check",
+      "lane": "extended-baseline",
+      "status": "PASS",
+      "cwd": "<worktree>",
+      "command": "cargo fmt --check",
+      "runner": "cargo fmt",
+      "exitCode": 0,
+      "durationSeconds": 2,
+      "executedAt": "2026-11-11T11:50:29+08:00",
+      "log": ".artifacts/logs/cargo-fmt.log",
+      "logSha256": "cc258d839e50d5e0cf220528399d5c29a6bcc5c3a9ee2616a915627e0363d91d",
+      "note": "Informational formatting gate; no diff."
+    },
+    {
+      "id": "agent-runtime-typecheck",
+      "lane": "extended-baseline",
+      "status": "PASS",
+      "cwd": "packages/agent-runtime",
+      "command": "node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+      "runner": "tsc",
+      "exitCode": 0,
+      "durationSeconds": 9.6,
+      "executedAt": "2026-11-11T11:56:45+08:00",
+      "log": ".artifacts/logs/agent-runtime-tsc.log",
+      "logSha256": "cc258d839e50d5e0cf220528399d5c29a6bcc5c3a9ee2616a915627e0363d91d",
+      "note": "Typecheck only; the full package build/test path is not claimed."
+    },
+    {
+      "id": "host-runtime-typecheck",
+      "lane": "limitation",
+      "status": "FAIL-ENVIRONMENT",
+      "cwd": "packages/host-runtime",
+      "command": "node node_modules/typescript/bin/tsc -p tsconfig.json --noEmit",
+      "runner": "tsc",
+      "exitCode": 2,
+      "durationSeconds": 5.4,
+      "executedAt": "2026-11-11T11:56:22+08:00",
+      "log": ".artifacts/logs/host-runtime-tsc.log",
+      "logSha256": "6e11fae90e62d0410263c0a3484774b8cab9da64b6e6fdfa12a20435b46525d9",
+      "errors": [
+        "src/inflight-checkpoint.ts(145,32): TS2550 Promise.withResolvers missing for the configured lib target",
+        "src/workspace-plugin-mcp.ts(9,67): TS2344 'execution' not in keyof PluginManifest",
+        "src/workspace-plugin-mcp.ts(10,51): TS2339 'main' does not exist on type '{}'",
+        "src/workspace-plugin-mcp.ts(53,43): TS2345 PluginManifest not assignable to Pick<PluginManifest,'execution'>"
+      ],
+      "note": "Pre-existing provisioned Pi dependency-copy/lib-target mismatch; not a command-center test failure and not a pass."
+    },
+    {
+      "id": "foundations-consumer-built-mode",
+      "lane": "not-run",
+      "status": "NOT RUN",
+      "cwd": "<worktree>",
+      "command": "node scripts/check-command-center-foundations.mjs --built",
+      "reason": "packages/command-center-client/dist is absent in the reconstructed worktree; rebuilding package output is outside the Q0 write scope."
+    },
+    {
+      "id": "host-core-clippy",
+      "lane": "not-run",
+      "status": "NOT RUN",
+      "command": "cargo clippy -p host-core --all-targets",
+      "reason": "Known host limitation: compiling ring in the MSVC environment fails before project code is linted. Not attempted again here; never reported as passing."
+    },
+    {
+      "id": "verify-ui",
+      "lane": "not-run",
+      "status": "NOT RUN",
+      "command": "(none)",
+      "reason": "Explicitly out of scope for this task; no Desktop instance or profile was used."
+    }
+  ],
+  "postLaneObservations": [
+    {
+      "id": "racp-vitest-after-c3-edits",
+      "status": "PASS",
+      "cwd": "packages/racp",
+      "command": "node node_modules/vitest/vitest.mjs run",
+      "testFiles": 5,
+      "tests": 42,
+      "passed": 42,
+      "failed": 0,
+      "durationSeconds": 5.79,
+      "executedAt": "2026-11-11T12:05:22+08:00",
+      "log": ".artifacts/logs/racp-vitest-postlane.log",
+      "logSha256": "c14ac3db9c787b31846b9c725c9bf16462616ba1e8817c304c04b6f3dd49c5b5",
+      "note": "C3 lane added command-center-registration.test.ts (9 extra tests) after the baseline racp run."
+    },
+    {
+      "id": "shared-command-center-after-c3-edits",
+      "status": "PASS",
+      "cwd": "packages/shared",
+      "command": "node node_modules/vitest/vitest.mjs run src/command-center",
+      "testFiles": 10,
+      "tests": 59,
+      "passed": 59,
+      "failed": 0,
+      "durationSeconds": 5.31,
+      "executedAt": "2026-11-11T12:05:31+08:00",
+      "log": ".artifacts/logs/shared-vitest-cc-postlane.log",
+      "logSha256": "7b8b24cd83a7dcc91e53c9acf61f20e19017aa6f45564fee1e518a434a9ffd64"
+    },
+    {
+      "id": "agent-host-command-center-after-c3-edits",
+      "status": "PASS",
+      "cwd": "packages/agent-host",
+      "command": "node node_modules/vitest/vitest.mjs run command-center",
+      "testFiles": 1,
+      "tests": 15,
+      "passed": 15,
+      "failed": 0,
+      "durationSeconds": 4.79,
+      "executedAt": "2026-11-11T12:05:39+08:00",
+      "log": ".artifacts/logs/agent-host-vitest-cc-postlane.log",
+      "logSha256": "d8e86a1952e99591d563ce4b872cc72ef866fdc05e5de176d50a661a7b4bc010"
+    }
+  ],
+  "laneResults": {
+    "c3": {
+      "status": "REGISTERED_CAPABILITY_GATED",
+      "source": ".artifacts/scratch/c3/report.md",
+      "operations": [
+        {
+          "operation": "commandCenter/workspace/list",
+          "role": "viewer",
+          "mutation": false
+        },
+        {
+          "operation": "commandCenter/workspace/get",
+          "role": "viewer",
+          "mutation": false
+        },
+        {
+          "operation": "commandCenter/workspace/create",
+          "role": "owner",
+          "mutation": true
+        },
+        {
+          "operation": "commandCenter/workspace/rename",
+          "role": "owner",
+          "mutation": true
+        },
+        {
+          "operation": "commandCenter/workspace/setEnabled",
+          "role": "owner",
+          "mutation": true
+        },
+        {
+          "operation": "commandCenter/workspace/delete",
+          "role": "owner",
+          "mutation": true
+        },
+        {
+          "operation": "commandCenter/membership/get",
+          "role": "viewer",
+          "mutation": false
+        },
+        {
+          "operation": "commandCenter/membership/list",
+          "role": "viewer",
+          "mutation": false
+        },
+        {
+          "operation": "commandCenter/membership/bind",
+          "role": "controller",
+          "mutation": true
+        },
+        {
+          "operation": "commandCenter/membership/remove",
+          "role": "controller",
+          "mutation": true
+        },
+        {
+          "operation": "commandCenter/intervention/record",
+          "role": "controller",
+          "mutation": true
+        },
+        {
+          "operation": "commandCenter/receipt/get",
+          "role": "viewer",
+          "mutation": false
+        },
+        {
+          "operation": "commandCenter/receipt/list",
+          "role": "viewer",
+          "mutation": false
+        }
+      ],
+      "capabilityAdvertised": false,
+      "gate": "RacpServerCapabilitiesSchema has no command-center field; requireCommandCenter reads the negotiated block and every operation throws CAPABILITY_UNAVAILABLE before the dispatcher or control service runs.",
+      "tests": {
+        "racp": {
+          "command": "corepack pnpm --filter @pi-desktop/racp test",
+          "files": 5,
+          "tests": 42,
+          "passed": 42,
+          "note": "baseline 4 files / 33 tests; +9 registration/dispatch tests"
+        },
+        "shared": {
+          "command": "corepack pnpm --filter @pi-desktop/shared test",
+          "files": 144,
+          "tests": 1616,
+          "passed": 1616,
+          "note": "package test script; includes built dist copies. Source-only is 808/72."
+        }
+      },
+      "commands": [
+        "corepack pnpm --filter @pi-desktop/shared build (exit 0)",
+        "corepack pnpm --filter @pi-desktop/shared typecheck (exit 0)",
+        "corepack pnpm --filter @pi-desktop/shared test (144 files / 1616 tests)",
+        "corepack pnpm --filter @pi-desktop/racp typecheck (exit 0)",
+        "corepack pnpm --filter @pi-desktop/racp build (exit 0)",
+        "corepack pnpm --filter @pi-desktop/racp test (5 files / 42 tests)",
+        "corepack pnpm --filter @pi-desktop/agent-host typecheck (exit 0)",
+        "git diff --check (clean)"
+      ],
+      "notRun": [
+        "full repo pnpm lint / -r test / build:js",
+        "Electron / verify:ui",
+        "cargo"
+      ]
+    },
+    "h3": {
+      "status": "ENTRY_IMPLEMENTED_FAIL_CLOSED",
+      "sources": [
+        ".artifacts/scratch/h3/process-checks.log",
+        ".artifacts/scratch/h3/cargo-test-owner-handoff.log",
+        ".artifacts/scratch/h3/process-checks-2.log",
+        ".artifacts/scratch/h3/cargo-test-owner-handoff-after.log",
+        ".artifacts/scratch/h3/shared-vitest-after.log"
+      ],
+      "commands": [
+        {
+          "command": "cargo fmt --check",
+          "exitCode": 0
+        },
+        {
+          "command": "cargo check -p host-core",
+          "exitCode": 0
+        },
+        {
+          "command": "cargo build -p host-core --bin",
+          "exitCode": 0
+        },
+        {
+          "command": "cargo test -p host-core owner_handoff --locked --offline",
+          "tests": 146,
+          "passed": 146,
+          "failed": 0,
+          "filteredOut": 1236,
+          "durationSeconds": 32.69,
+          "executedAt": "2026-11-11T12:48:39+08:00",
+          "log": ".artifacts/scratch/h3/cargo-test-owner-handoff-after.log"
+        }
+      ],
+      "targetTests": {
+        "command": "cargo test -p host-core owner_handoff::target --locked --offline",
+        "tests": 22,
+        "passed": 22,
+        "failed": 0
+      },
+      "schemaBump": {
+        "from": 30,
+        "to": 31,
+        "coordinatedFiles": [
+          "packages/shared/src/owner-handoff.ts (OwnerHandoffBuildSchema Type.Literal(31))",
+          "packages/shared/test/fixtures/owner-handoff*.json (schema 31)",
+          "packages/host-runtime/src/owner-handoff-attachment.test.ts (fixture schema 31)",
+          "scripts/e2e-owner-handoff.mjs, e2e-owner-handoff-client.mjs, e2e-owner-source.mjs, e2e-owner-source-mutations.mjs (build identity schema 31)"
+        ],
+        "evidence": {
+          "rustOwnerHandoff": "146/0",
+          "sharedPackage": "1616/1616"
+        }
+      },
+      "entryBehavior": "Validates the exclusive --owner-target argv/private-stdin channel, commits the claim and sends the framed result, then stops with HANDOFF_TARGET_ADOPTION_UNAVAILABLE; no supervisor adopts the captured owner/coordinator, no Ready resources are published, and no AppState/migration/scheduler/recovery replay starts.",
+      "preBumpRun": {
+        "command": "cargo test -p host-core owner_handoff --locked --offline",
+        "tests": 146,
+        "passed": 140,
+        "failed": 6,
+        "failedTests": [
+          "owner_handoff::source::tests::source_command_helpers_carry_identity_transfer_mutation_and_phase",
+          "owner_handoff::source::tests::source_contract_matches_shared_fixture_for_reads_and_mutations",
+          "owner_handoff::source::tests::source_receipts_bind_operation_identity_target_and_phase",
+          "owner_handoff::source::tests::source_receipts_bind_phase_but_not_historic_revision_progress",
+          "owner_handoff::source::tests::source_reply_cannot_substitute_identity_or_advertise_readiness",
+          "owner_handoff::tests::journal_shared_wire_fixture_preserves_native_identity_and_bootstrap_commands"
+        ],
+        "log": ".artifacts/scratch/h3/cargo-test-owner-handoff.log",
+        "note": "Before the coordinated schema bump; all six passed afterwards (146/0)."
+      },
+      "processChecks": {
+        "missingProfile": "HANDOFF_DATABASE_MISSING (exit 1)",
+        "privateStdinAbsent": "HANDOFF_PRIVATE_PIPE_REQUIRED (exit 1)",
+        "invalidFrame": "HANDOFF_INVALID_FRAME (exit 1)",
+        "conflictAfter": "usage: --owner-handoff (private framed stdin only) (exit 1)",
+        "conflictBefore": "usage: --owner-handoff (private framed stdin only) (exit 1)",
+        "unknownArg": "usage: --owner-target (private framed stdin only) (exit 1)",
+        "positional": "usage: --owner-target (private framed stdin only) (exit 1)",
+        "profileDatabase": "DATABASE_UNCHANGED"
+      },
+      "gaps": [
+        "no supervisor adopts the captured owner/coordinator",
+        "no Ready publication",
+        "no same-process restricted serving",
+        "admission stays closed"
+      ]
+    },
+    "u1": {
+      "status": "MOUNTED_FIXTURE_PREVIEW",
+      "source": ".artifacts/scratch/u1/validation.md",
+      "mount": {
+        "route": "command-center page is full-screen in AppShell (chat shell hidden/inert, no global left sidebar)",
+        "entries": [
+          "Sidebar footer icon",
+          "global search Pages entry"
+        ],
+        "behavior": "work panel hidden; page stays mounted to retain draft/focus/history",
+        "i18n": "commandCenter namespace registered for en and zh-CN (other locales fall back to en) in main.tsx initial resources, renderer-catalogs loader and renderer-language addResourceBundle; renderer-keys scan is namespace-aware with en/zh key-parity checks",
+        "data": "deterministic fixtures only; Host explicitly offline; overview lower areas noninteractive"
+      },
+      "verification": {
+        "commandCenterRouteComponentsUserPathView": {
+          "tests": 27,
+          "passed": 27,
+          "failed": 0
+        },
+        "i18n": {
+          "files": 3,
+          "tests": 33,
+          "passed": 33,
+          "catalogs": "13/13",
+          "rendererKeys": "11/11"
+        },
+        "shellNavigationI18n": {
+          "tests": 105,
+          "passed": 105
+        },
+        "sidebarSuites": {
+          "tests": 115,
+          "passed": 115
+        },
+        "rendererTypecheck": "exit 0 (renderer-only tsconfig)",
+        "desktopLint": "OK (style tokens)",
+        "desktopPackageTypecheck": "FAILED with 89 pre-existing electron/main errors from missing workspace package dists; zero errors in apps/desktop/src or changed files"
+      },
+      "remainingGaps": [
+        "fixture preview only",
+        "no live Host producer",
+        "no real Electron journey"
+      ],
+      "observedFiles": [
+        "apps/desktop/src/features/command-center/CommandCenterPage.tsx (new)",
+        "apps/desktop/src/features/command-center/command-center-fixtures.ts (new)",
+        "apps/desktop/src/styles/command-center.css (new)",
+        "modified: AppShell.tsx, useAppShellRuntime.tsx, renderer-catalogs.ts, renderer-language.ts, main.tsx, app-state.ts, globals.css"
+      ]
+    }
+  },
+  "leadFinalVerification": {
+    "source": "Lead re-run on the current tree (reported 2026-11-11)",
+    "desktopCommandCenter": "27/27",
+    "i18n": "33/33",
+    "racp": "42/42 (5 files)",
+    "commandCenterClient": "259/259 (15 files)",
+    "rustCommandCenter": "59/0",
+    "rustOwnerHandoff": "146/0 (H3 schema fix)"
+  },
+  "concurrencyEvents": [
+    {
+      "id": "h3-mid-edit-compile-failure",
+      "observedAt": [
+        "2026-11-11T11:57:03+08:00",
+        "2026-11-11T12:00:28+08:00"
+      ],
+      "status": "TRANSIENT-COMPILE-ERROR (not a Q0 suite result)",
+      "command": "cargo test -p host-core command_center --locked (before --offline retry)",
+      "error": "crates/host-core/src/owner_handoff/target.rs:62: E0308 / FnOnce not general enough for dispatch(directory, windows::receive)",
+      "logs": [
+        ".artifacts/logs/cargo-command-center-rerun.log",
+        ".artifacts/logs/cargo-command-center-rerun2.log"
+      ],
+      "resolution": "H3 fixed the in-flight edit; the 12:04 --offline run compiled and passed 59/59."
+    }
+  ],
+  "manifestComparison": {
+    "comparedAt": "2026-11-11T05:13:16.857Z",
+    "manifestPath": ".artifacts/batch1-baseline-manifest.json",
+    "summary": {
+      "changedInBaseline": 15,
+      "missing": 0,
+      "unchanged": 145,
+      "trackedModifiedAfterBaseline": 29,
+      "untrackedNewAfterBaselineListed": 15,
+      "scratchChurnExcluded": 77,
+      "rawUntrackedNewAfterBaseline": 92
+    },
+    "changedInBaseline": [
+      {
+        "path": "crates/host-core/src/main.rs",
+        "baselineSha256": "99F65BFC1274A77E20A773A8978C21ABA3E9532C145513F525773D9430B8C6E7",
+        "currentSha256": "3BE633353669F0D736EC5914BC9BFB6054E25A228742EE404CC232AC0FF35822",
+        "bytes": 6323,
+        "attribution": "h3-entry lane (Rust host-core)"
+      },
+      {
+        "path": "crates/host-core/src/owner_handoff/mod.rs",
+        "baselineSha256": "71FB727DEE179BDF899E118DDBDBE8B4122FC6D4EAA22EC866286DE85182CCEE",
+        "currentSha256": "53FBBA34F19A90BEEC30163CF149A349F39B1871B2C22B26512B469AF7730DA7",
+        "bytes": 1731,
+        "attribution": "h3-entry lane (Rust host-core)"
+      },
+      {
+        "path": "docs/spec/03-runtime/19-remote-agent-control-protocol.md",
+        "baselineSha256": "1E159551016580BDC69399CCBF2401115B02C6E804164EDEB81DF4880A87CD48",
+        "currentSha256": "84C297654FA50C1FF39565D79B5AD0FB522C959F74EB831F3C7E5457293E77A8",
+        "bytes": 70183,
+        "attribution": "q0-verify/docs"
+      },
+      {
+        "path": "docs/zh-CN/spec/03-runtime/19-remote-agent-control-protocol.md",
+        "baselineSha256": "6CCD4927C05FA26695E59C912436A421F8AF381E17B567F0305B6E4670E4BE41",
+        "currentSha256": "A1671F002B7459B8A6AA8D5040DE245D842B705D974DE5293E7C12711D274FC1",
+        "bytes": 24430,
+        "attribution": "q0-verify/docs"
+      },
+      {
+        "path": "apps/desktop/src/components/command-center/locales/en.json",
+        "baselineSha256": "C7E8657C22E92969D4D9D3E2C7828A8D288A8C06CE01A2F8203F63494DB3436C",
+        "currentSha256": "1DA172FC71744410DB6CD8599115D7D243BD0B206D1B506FED0742082D70F8AD",
+        "bytes": 3835,
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/components/command-center/locales/zh-CN.json",
+        "baselineSha256": "928FFB0F85B4BBB7CEE921172A904F9C44EB3CB5B45B3FB6150C141C673EF38D",
+        "currentSha256": "509261B68B700644685842AC7DC7F54B21BB291351770CADA6A11C3E0A787922",
+        "bytes": 3829,
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "crates/host-core/src/owner_handoff/target.rs",
+        "baselineSha256": "7BF747B5AD9BCB8A8C689677A398041D246DC3F6FFB818750795A86DA0F05EB3",
+        "currentSha256": "DAA856FF7AED343DAA0913FF34E9B7F26EC62E13F80D4F93C7431F062D3C0A10",
+        "bytes": 3897,
+        "attribution": "h3-entry lane (Rust host-core)"
+      },
+      {
+        "path": "crates/host-core/src/owner_handoff/target/tests.rs",
+        "baselineSha256": "1CE44F09AB26977C8ECA72DF403BD31FC63B43D27AEB8DA4A727A180FFF90D2F",
+        "currentSha256": "EB5F9044E0A06F4D58A9ABEF82C17A28268081934AAF47A75CD4BB25D57F86AA",
+        "bytes": 11167,
+        "attribution": "h3-entry lane (Rust host-core)"
+      },
+      {
+        "path": "docs/project/ai-command-center-acceptance-index.md",
+        "baselineSha256": "92E8F9393F585B7F143330E11ED584F87C8B70EF0B147C3B415756F09CBD4054",
+        "currentSha256": "149552F635C38BC81BCFDF2768560198DA8DDDDD7C21FB49EF2C384692ECECE8",
+        "bytes": 14994,
+        "attribution": "q0-verify/docs"
+      },
+      {
+        "path": "docs/project/ai-command-center-continuation.md",
+        "baselineSha256": "65CCB78BDAA02B95319B2A12A549211642CEFE266EB91B6B9AD306B4B581946A",
+        "currentSha256": "552E09F4EDE94E750770909DFAB61AAD275FDD75CAADF4A2601E1C32B9F37733",
+        "bytes": 31305,
+        "attribution": "q0-verify/docs"
+      },
+      {
+        "path": "docs/project/ai-command-center-final-handoff.md",
+        "baselineSha256": "082D05D7E0430962FD70F0BB8B1F06E6079621C53FE30078447EB4ED6D1759DD",
+        "currentSha256": "66BBF01DE318408B0454FDE49C699D344412734EA497CB852B273158702C930A",
+        "bytes": 7303,
+        "attribution": "q0-verify/docs"
+      },
+      {
+        "path": "docs/project/ai-command-center-takeover-provenance.md",
+        "baselineSha256": "3465EE1964117E6C5CED32EA53AFB3A1F55512A66606C80B25C0E282898C2784",
+        "currentSha256": "35D5355FD7978D9A966E439BCB827D1F1F306677A926915EABF15AC71DFDBCE2",
+        "bytes": 8221,
+        "attribution": "q0-verify/docs"
+      },
+      {
+        "path": "packages/host-runtime/src/owner-handoff-attachment.test.ts",
+        "baselineSha256": "24B3034286FBFE945B3FF47081DB0B91546D37837DCF80D2778298C70D3AC96E",
+        "currentSha256": "7C81341D13F92A46BF9910D6FD41545C485667E1371FED299AB486DDCA3597D5",
+        "bytes": 18331,
+        "attribution": "unattributed concurrent lane (host-runtime)"
+      },
+      {
+        "path": "packages/racp/src/command-center-dispatch.test.ts",
+        "baselineSha256": "7FB31448A5EAE3C8CCBF2B7A292E9C8EEBD652BBC87A742E11AE47EED952699C",
+        "currentSha256": "D84C1F778B1DD6D499A8D543AF10A185A00FCA0335056A302B68F0FCC74CD821",
+        "bytes": 3830,
+        "attribution": "c3-registry lane (RACP)"
+      },
+      {
+        "path": "packages/racp/src/command-center-dispatch.ts",
+        "baselineSha256": "54C8539BE2A605A545D974433E6D3B2D545DD53B984284E21B431F2CEA1D4E30",
+        "currentSha256": "57DBB8DA60DB8636E86F8F3B84036EE79D380E7A06E54A7AB9DA05DAF4A9F7AC",
+        "bytes": 3147,
+        "attribution": "c3-registry lane (RACP)"
+      }
+    ],
+    "trackedModifiedAfterBaseline": [
+      {
+        "path": "apps/desktop/src/components/SearchDialog.tsx",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/components/Sidebar.tsx",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/features/app/AppShell.tsx",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/features/app/useAppShellRuntime.tsx",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/lib/renderer-catalogs.ts",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/lib/renderer-language.ts",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/main.tsx",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/stores/app-state.ts",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/styles/globals.css",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/test/app-shell-settings-accessibility.test.mjs",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/test/sidebar-footer.test.mjs",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/test/sidebar-settings-return.test.mjs",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "crates/host-core/src/owner_handoff/tests.rs",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "h3-entry lane (Rust host-core)"
+      },
+      {
+        "path": "docs/project/ai-command-center-control-contracts.md",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "q0-verify/docs"
+      },
+      {
+        "path": "packages/i18n/test/renderer-keys.test.mjs",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "unattributed (inspect before claiming)"
+      },
+      {
+        "path": "packages/racp/src/host-operations.ts",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "c3-registry lane (RACP)"
+      },
+      {
+        "path": "packages/racp/src/operations.ts",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "c3-registry lane (RACP)"
+      },
+      {
+        "path": "packages/racp/src/server.ts",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "c3-registry lane (RACP)"
+      },
+      {
+        "path": "packages/racp/src/test-harness.ts",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "c3-registry lane (RACP)"
+      },
+      {
+        "path": "packages/shared/src/owner-handoff.test.ts",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "unattributed (inspect before claiming)"
+      },
+      {
+        "path": "packages/shared/src/owner-handoff.ts",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "unattributed (inspect before claiming)"
+      },
+      {
+        "path": "packages/shared/src/racp.ts",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "c3-registry lane (RACP)"
+      },
+      {
+        "path": "packages/shared/test/fixtures/owner-handoff-source.json",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "unattributed (inspect before claiming)"
+      },
+      {
+        "path": "packages/shared/test/fixtures/owner-handoff.json",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "unattributed (inspect before claiming)"
+      },
+      {
+        "path": "scripts/e2e-owner-handoff-client.mjs",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "unattributed (inspect before claiming)"
+      },
+      {
+        "path": "scripts/e2e-owner-handoff.mjs",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "unattributed (inspect before claiming)"
+      },
+      {
+        "path": "scripts/e2e-owner-source-mutations.mjs",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "unattributed (inspect before claiming)"
+      },
+      {
+        "path": "scripts/e2e-owner-source.mjs",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "unattributed (inspect before claiming)"
+      },
+      {
+        "path": "scripts/e2e/owner-query.mjs",
+        "code": " M",
+        "kind": "tracked-modified-after-baseline",
+        "attribution": "unattributed (inspect before claiming)"
+      }
+    ],
+    "untrackedNewAfterBaseline": [
+      {
+        "path": ".artifacts/batch1-baseline-evidence.json",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "q0-verify/artifacts"
+      },
+      {
+        "path": ".artifacts/batch1-baseline-manifest.json",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "q0-verify/artifacts"
+      },
+      {
+        "path": ".artifacts/scratch/q0/check-spec-ops.mjs",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "q0-verify/artifacts"
+      },
+      {
+        "path": ".artifacts/scratch/q0/compare-manifest.mjs",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "q0-verify/artifacts"
+      },
+      {
+        "path": ".artifacts/scratch/q0/manifest-diff.json",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "q0-verify/artifacts"
+      },
+      {
+        "path": ".artifacts/scratch/q0/write-evidence.mjs",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "q0-verify/artifacts"
+      },
+      {
+        "path": "apps/desktop/src/features/command-center/CommandCenterPage.tsx",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/features/command-center/command-center-fixtures.ts",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/pages/CommandCenterPage.tsx",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/src/styles/command-center.css",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "apps/desktop/test/command-center-route.test.mjs",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "u1-mount lane (Desktop)"
+      },
+      {
+        "path": "crates/host-core/src/owner_handoff/target/tests/argv_tests.rs",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "h3-entry lane (Rust host-core)"
+      },
+      {
+        "path": "crates/host-core/src/owner_handoff/target/tests/entry_tests.rs",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "h3-entry lane (Rust host-core)"
+      },
+      {
+        "path": "docs/project/ai-command-center-batch1-baseline.md",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "q0-verify/docs"
+      },
+      {
+        "path": "packages/racp/src/command-center-registration.test.ts",
+        "code": "??",
+        "kind": "untracked-new",
+        "attribution": "c3-registry lane (RACP)"
+      }
+    ],
+    "scratchChurnFilesExcluded": 77,
+    "gitStatusEntries": 269,
+    "note": "Entries attributed to q0-verify are this task's docs/evidence. Source changes belong to the H3/C3/U1 lanes and were not edited by Q0."
+  },
+  "failures": [
+    {
+      "id": "host-runtime-typecheck",
+      "classification": "pre-existing environment / dependency-copy failure",
+      "impact": "host-runtime and agent-runtime full package builds cannot be claimed; isolated command-center tests still pass."
+    }
+  ],
+  "limitations": [
+    "host-runtime/agent-runtime full package builds: provisioned Pi dependency copy lacks the branch's patched PluginManifest members (see host-runtime typecheck errors).",
+    "OS-temp directory creation is denied to test processes; PI_SCRATCH_DIR was required for the baseline curve test.",
+    "cargo clippy unavailable (ring/MSVC); static confidence limited to cargo test + cargo fmt --check.",
+    "pnpm launcher broken; installed tool entry points used directly, no installs.",
+    "No production-path evidence: the registered commandCenter/* operations were not exercised end to end (capability stays unavailable), no Desktop route mount was accepted, and no provider, profile, paid service or device was used."
+  ],
+  "c3DigestRefresh": {
+    "refreshedAt": "2026-11-11T05:13:17.221Z",
+    "reason": "C3 added the commandCenter/* catalog entries and registration tests after the Q0 baseline snapshot; these per-file digests supersede the stale takeover-evidence digests for these paths only.",
+    "note": "The original docs/project/ai-command-center-takeover-evidence.json is a record of the earlier tree and was intentionally NOT rewritten.",
+    "files": [
+      {
+        "path": "packages/racp/src/command-center-dispatch.ts",
+        "sha256": "57dbb8da60db8636e86f8f3b84036ee79d380e7a06e54a7ab9da05daf4a9f7ac",
+        "bytes": 3147
+      },
+      {
+        "path": "packages/racp/src/command-center-dispatch.test.ts",
+        "sha256": "d84c1f778b1dd6d499a8d543af10a185a00fca0335056a302b68f0fcc74cd821",
+        "bytes": 3830
+      },
+      {
+        "path": "packages/racp/src/operations.ts",
+        "sha256": "6dd73762f009757f8e5be9766ff9c0ef34c987664dfb7dab255e41c8a86d9766",
+        "bytes": 25341
+      },
+      {
+        "path": "packages/racp/src/server.ts",
+        "sha256": "62f766d24c23b07e3668677c046f3dbd72a71ef97b4da301e235cfceda909324",
+        "bytes": 15320
+      },
+      {
+        "path": "packages/racp/src/host-operations.ts",
+        "sha256": "ff3e93c137794ba15d43b65226a9697f42994386df14963a115c33cde47b63ca",
+        "bytes": 5555
+      },
+      {
+        "path": "packages/racp/src/test-harness.ts",
+        "sha256": "80c0214785a3c37505f51b21b7e5640a9df3875abe824f60222175d50624d795",
+        "bytes": 11357
+      },
+      {
+        "path": "packages/racp/src/command-center-registration.test.ts",
+        "sha256": "a8abdfc03d4fa5a384b7291fc45d21b4b9ba31b1e1b98938d0ad66784d29e6f8",
+        "bytes": 7246
+      },
+      {
+        "path": "packages/shared/src/racp.ts",
+        "sha256": "d09987bad8b1e6aa9d5807bc82fbdba10f9140f98fee28ec2ef967c9caec51e3",
+        "bytes": 43199
+      }
+    ]
+  },
+  "digests": {
+    "baselineDoc": {
+      "path": "docs/project/ai-command-center-batch1-baseline.md",
+      "sha256": "3e1418fe964a7257c47035427b5b79b6ef472debcc1ba8d9f2eff7db617f9d32",
+      "bytes": 16069
+    },
+    "acceptanceIndex": {
+      "path": "docs/project/ai-command-center-acceptance-index.md",
+      "sha256": "149552f635c38bc81bcfdf2768560198da8ddddd7c21fb49ef2c384692ecece8",
+      "bytes": 14994
+    },
+    "controlContracts": {
+      "path": "docs/project/ai-command-center-control-contracts.md",
+      "sha256": "d3f9d6e6efcc88bcffe4e3b3f776ad5f1a39acc0c49e5706edb5550f02a966e9",
+      "bytes": 22124
+    },
+    "finalHandoff": {
+      "path": "docs/project/ai-command-center-final-handoff.md",
+      "sha256": "66bbf01de318408b0454fde49c699d344412734ea497cb852b273158702c930a",
+      "bytes": 7303
+    },
+    "continuation": {
+      "path": "docs/project/ai-command-center-continuation.md",
+      "sha256": "552e09f4ede94e750770909dfab61aad275fdd75caadf4a2601e1c32b9f37733",
+      "bytes": 31305
+    },
+    "takeoverProvenance": {
+      "path": "docs/project/ai-command-center-takeover-provenance.md",
+      "sha256": "35d5355fd7978d9a966e439bcb827d1f1f306677a926915eabf15ac71dfdbce2",
+      "bytes": 8221
+    },
+    "racpSpecEn": {
+      "path": "docs/spec/03-runtime/19-remote-agent-control-protocol.md",
+      "sha256": "84c297654fa50c1ff39565d79b5ad0fb522c959f74eb831f3c7e5457293e77a8",
+      "bytes": 70183
+    },
+    "racpSpecZh": {
+      "path": "docs/zh-CN/spec/03-runtime/19-remote-agent-control-protocol.md",
+      "sha256": "a1671f002b7459b8a6aa8d5040de245d842b705d974de5293e7c12711d274fc1",
+      "bytes": 24430
+    },
+    "baselineManifest": {
+      "path": ".artifacts/batch1-baseline-manifest.json",
+      "sha256": "9fb90ba717d437678aae4e687ddc653ae45f2affbca901eb0e3c4c05580da49b",
+      "bytes": 26239
+    },
+    "manifestDiff": {
+      "path": ".artifacts/scratch/q0/manifest-diff.json",
+      "sha256": "fc7d71c024e82b1acfa8b40ef3bc37d0b0969b642e84d8bc28f1275842ba01f9",
+      "bytes": 27136
+    }
+  }
+}

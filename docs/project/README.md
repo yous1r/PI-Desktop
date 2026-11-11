@@ -11,8 +11,11 @@
 - AI command center Windows defect closure: [Full Rust validation](ai-command-center-p0-evidence/windows-validation.json) (1,103 passed, zero failures, one live-marketplace ignore; cmd and remote-permission process checks recorded in the backlog).
 - AI command center S03b: [Idle handoff protocol design](ai-command-center-idle-handoff.md) (local identity, execution fencing and source operations have scoped candidate evidence; complete transfer remains open).
 - AI command center independent continuation: [Observation foundations and evidence](ai-command-center-continuation.md) (bounded monitor pages, portable receipt consumers and connection health; production monitoring/browser integration remains open).
-- AI command center status: [Acceptance index and handoff](ai-command-center-acceptance-index.md)\n- AI command center takeover: [Authorized uncommitted-work provenance](ai-command-center-takeover-provenance.md) and [evidence](ai-command-center-takeover-evidence.json)\n- AI command center handoff: [Branch state, verified suites and remaining wiring](ai-command-center-final-handoff.md) (accepted, internally verified and blocked items with their evidence/dependency).
+- AI command center status: [Acceptance index and handoff](ai-command-center-acceptance-index.md)
+- AI command center takeover: [Authorized uncommitted-work provenance](ai-command-center-takeover-provenance.md) and [evidence](ai-command-center-takeover-evidence.json)
+- AI command center handoff: [Branch state, verified suites and remaining wiring](ai-command-center-final-handoff.md) (accepted, internally verified and blocked items with their evidence/dependency).
 - AI command center monitor join: [C3 integration contract](ai-command-center-monitor-integration-contract.md) (required authorized producer/change/bounds contract and acceptance; not a wire protocol or enablement).
+- AI command center Batch 1: [Reconstructed worktree baseline](ai-command-center-batch1-baseline.md) · [Delivery, wiring and remaining work](ai-command-center-batch1-delivery.md) (H3 entry, C3 registration, U1 mount, schema alignment and the blocked joins).
 
 - Historical project board (archived; last refreshed 2026-08-11 for the 0.5.x line): [`BOARD.md`](BOARD.md)
 - Documentation/code alignment audit: [2026-07-30 audit](2026-07-30-docs-code-audit.md)

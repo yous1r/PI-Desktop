@@ -1,0 +1,642 @@
+[
+  {
+    "path": ".gitignore",
+    "sha256": "4A6568DEE887E242B55453FE99F6F62F12C7C685338051566970339F748465F7"
+  },
+  {
+    "path": "biome.json",
+    "sha256": "77618046C77440BB51AD49012DBCEF95C8E7C4A9F28C1E1519B0941363DD95EC"
+  },
+  {
+    "path": "crates/host-core/src/db.rs",
+    "sha256": "930DE4C7B8DAA6C5F78762B6BFB193BF0D8F629AF9839EE351873DC57DDE1296"
+  },
+  {
+    "path": "crates/host-core/src/db/repositories.rs",
+    "sha256": "DA37876D7A1DF75B6707D686089C30364F6F3F6136AC3D5867F86DDE0406C7A8"
+  },
+  {
+    "path": "crates/host-core/src/main.rs",
+    "sha256": "99F65BFC1274A77E20A773A8978C21ABA3E9532C145513F525773D9430B8C6E7"
+  },
+  {
+    "path": "crates/host-core/src/owner_handoff/mod.rs",
+    "sha256": "71FB727DEE179BDF899E118DDBDBE8B4122FC6D4EAA22EC866286DE85182CCEE"
+  },
+  {
+    "path": "docs/project/README.md",
+    "sha256": "7383A40C274BEE212250628A7BBA193F024177A5E0C0AAEFAF66ABBE5C96EAB4"
+  },
+  {
+    "path": "docs/project/ai-command-center-schedule.md",
+    "sha256": "3C489BADC055C5FAA24048852EB8439B5A89178E71A4CAA7537800F5D0057993"
+  },
+  {
+    "path": "docs/spec/03-runtime/04-data-storage.md",
+    "sha256": "10624A190C31FE70D5A12B088CB38B024F55AF35DB71BDF8614E08C3FAADDB28"
+  },
+  {
+    "path": "docs/spec/03-runtime/19-remote-agent-control-protocol.md",
+    "sha256": "1E159551016580BDC69399CCBF2401115B02C6E804164EDEB81DF4880A87CD48"
+  },
+  {
+    "path": "docs/spec/06-delivery/04-e2e-test-plan.md",
+    "sha256": "D03D5B43C0E71DC440290A85C789A61D7D7E98FE07AB2D4A9811AEE74EAD17B6"
+  },
+  {
+    "path": "docs/zh-CN/spec/03-runtime/08-error-codes.md",
+    "sha256": "6C2BD7B89F1C7BF39488FB46E97366733563D7ECB693F3CCE46EF44AC1A07416"
+  },
+  {
+    "path": "docs/zh-CN/spec/03-runtime/19-remote-agent-control-protocol.md",
+    "sha256": "6CCD4927C05FA26695E59C912436A421F8AF381E17B567F0305B6E4670E4BE41"
+  },
+  {
+    "path": "docs/zh-CN/spec/06-delivery/04-e2e-test-plan.md",
+    "sha256": "FE2EEC6807762EA7689650C77220F05C1FFE647A7203F4D78F1E32A20966DF74"
+  },
+  {
+    "path": "package.json",
+    "sha256": "CB8B74644E7E1867A0A735899CABCA0A6A5C28AEC38B1D1BE297A554B227A7C8"
+  },
+  {
+    "path": "packages/agent-host/src/index.ts",
+    "sha256": "3DB5157D61B4263CC2362B18DB0DD15F2DDC8D8B66C5FFC2E2D909E33F5DCD1F"
+  },
+  {
+    "path": "packages/racp/src/index.ts",
+    "sha256": "D4B1F6A9B0DF4BEA979F541944DDEDAD7728BC7BBC9896BF2BFDFA48925B5909"
+  },
+  {
+    "path": "packages/shared/src/command-center/identity.ts",
+    "sha256": "BA421F1C521617AA81A6C3BA94AE7F58E2F412196BDDD836610EBCE73E46CF94"
+  },
+  {
+    "path": "pnpm-lock.yaml",
+    "sha256": "E5E6294FBBC45DD8D73D70E38AC8E73953C2D1678ADE73FFCFC328278D9734E3"
+  },
+  {
+    "path": "scripts/README.md",
+    "sha256": "3134F2A8F6EEB61B1B2C14C9520814B4DB718D807AB032B0EB9AA1FA813001AD"
+  },
+  {
+    "path": "apps/desktop/electron/main/runtime/handoff-attachment.ts",
+    "sha256": "B7D2320F4EA4600B724CF8FE6F40781B98F76A1C01406978BFA94600A5083879"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\CommandCenterHistoryPage.tsx",
+    "sha256": "3717370F0DA31F4E09FC426CDAB4450E487E9BCF24678428B8F1E6E5C2CE66C8"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\CommandCenterOverview.tsx",
+    "sha256": "033F7E6FBEA2DEC479EA7C908C49E56A04D285283EE5B1AFF80F97ABFCEA5B88"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\CommandCenterReceipts.tsx",
+    "sha256": "7338CD6D6D6E4CF6072A781DF9AD70A5156FBB07F667DF3FC44CB92261E8EB27"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\CommandCenterSurface.tsx",
+    "sha256": "3D3D84A44BEBE39EFB2A48AEBE2221378F0F5D272289631B78D0A0E02A5F0B27"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\CommandCenterTaskList.tsx",
+    "sha256": "3BD5ECC670EC30C4FB855D0CE39FD1EE7BE3C4A5A02BA80CD3339907B1A651A5"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\CommandCenterToolbar.tsx",
+    "sha256": "F9D49C2C8A25A605B53B99AC93AB96D1D84F23CF71BA36A33E671C463329C14A"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\CommandCenterWorkspaceEntries.tsx",
+    "sha256": "4DF16AAC40EFCE4279046AAEC7DEA30004CBBBCD242AC53E6C6883D8E56E132C"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\CommandCenterWorkspacePage.tsx",
+    "sha256": "A9D2D8186DF9CFF8DBC45DFC136781FD68C490EB0214A2572E2153F68C14EFB3"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\index.ts",
+    "sha256": "F9B0A3CE8D08EB291612D823DA5BC05E330D562E4ED08E3A371C00B35110778F"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\strings.ts",
+    "sha256": "AB86A264A734F4D9E748105595873421AFDB7FE571EC93130F8E4E13C6CBAB1F"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\locales\\en.json",
+    "sha256": "C7E8657C22E92969D4D9D3E2C7828A8D288A8C06CE01A2F8203F63494DB3436C"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\locales\\zh-CN.json",
+    "sha256": "928FFB0F85B4BBB7CEE921172A904F9C44EB3CB5B45B3FB6150C141C673EF38D"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\view\\command-center-view.ts",
+    "sha256": "32158E8E7D2176E3A417A13DF8F8064BFC2F63F9084A81DBF5EA66586AC231CC"
+  },
+  {
+    "path": "apps\\desktop\\src\\components\\command-center\\view\\use-command-center-view.ts",
+    "sha256": "82742005C0026F2CF8C87AAE1DDB96B7B504329C68A25EAC4E766BC4A4388725"
+  },
+  {
+    "path": "apps/desktop/test/command-center-components.test.mjs",
+    "sha256": "7672FAC25F5820F5B332A885FF613A9EE84489CB92A0630B1570555A015E7D84"
+  },
+  {
+    "path": "apps/desktop/test/command-center-user-path.test.mjs",
+    "sha256": "3CA81D842163262CA4C4A38320044B8CA151289B61A34A747DA680B2C79F425A"
+  },
+  {
+    "path": "apps/desktop/test/command-center-view.test.mjs",
+    "sha256": "3255B79C28E3A37E7B6B5439EB6C9482148F8484F1B67ECC5AA39493CD753D81"
+  },
+  {
+    "path": "apps/desktop/test/handoff-attachment.test.mjs",
+    "sha256": "DE57B8BBA087E824A663EB10F36F7FCED938C5753A1234E3F4C9D049CA676C95"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\fixture_tests.rs",
+    "sha256": "FD1C0070028F797BCA1CC89A1C590556312D598B7402215B35223359556EFD9F"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\goal_tests.rs",
+    "sha256": "D1102F1491153A6B62F2C6833EF18BE90539A160B767C6778BEFADC06DB6508C"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\goal.rs",
+    "sha256": "371398034D78C0069E632FD1CC7B98E84B645695A825690F4FBA8B7F5DFCCF4B"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\identity.rs",
+    "sha256": "BDE3474452E3AF1828B2D0DEE99CAAA5751FDB682210DABBEEA66F97ACB02FAE"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\key_tests.rs",
+    "sha256": "25B1D9918E72F67035F89AA55E58EE2746F762F227A39786D1830B7FE8EBAB55"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\limits.rs",
+    "sha256": "73174CF4EA767C06F7351D3F89E3F6E4570ADF7CDE06C642E1BA06942FE78643"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\mod.rs",
+    "sha256": "3E77A62C615E3D8A36CF513F0608BA967989AF0A7BB0375852E4875063E3167C"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\notification.rs",
+    "sha256": "28F673F698B89D548F30ABD35CCD79A3AE1ADAED79EB65749E7E205ADF5D30A7"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\payload.rs",
+    "sha256": "2A553B636476BAA4677EBE574FFF94BBF7E99C936414066B6F48C3F7E7BAB759"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\receipt_tests.rs",
+    "sha256": "E91B1FAA87BF07A9326B1412D17ACF0F6FF6EDB33CD122B00BECEECFB710CFDC"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\receipt.rs",
+    "sha256": "73178FB51775DC6F12D0B39482872E5F11E0176571F8E43FD91A265598A4DE26"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\reservation_tests.rs",
+    "sha256": "FEB66785DB7F4849023B6E2275F121767BB735250A2FBE40E9538A2D85DD672B"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\reservation.rs",
+    "sha256": "98D44CC927F30250F8E707FAE2122BDC9C8761112E11A691F0759F016D68083E"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\schema.rs",
+    "sha256": "0DDE52A0B35C4C877A9E9CA12B0D479EE370BD98BFE81789ABAE83B54DC4E47D"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\state.rs",
+    "sha256": "171C6649437C1F20F51DC781F34649CE87201972B7539E386B46C31D75D7622B"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\tests.rs",
+    "sha256": "F3CC89340DD814A281B4B6D747217784D7E1324A5BA866633B4744AAFCB1D42D"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\tx.rs",
+    "sha256": "772DF34B8C6DDC826AB5D2CAE036FFCB115ED9E5EA8A4C62C7CC30E805E1441C"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\workspace.rs",
+    "sha256": "D635F780251F11195D1B9D368FEC6859E197D9E59A7C086484E0EC786CC09578"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\api\\projection.rs",
+    "sha256": "6AAD5D8FD43E0A2B3B3D35F855FDF39CAAE0F8CC7EDEE20D4C68C6E4CC362C18"
+  },
+  {
+    "path": "crates\\host-core\\src\\command_center\\api\\wire.rs",
+    "sha256": "700464DD067FDF93C2AAB94FB8145AE09B924B48D6757C8C5E57C47066A03E84"
+  },
+  {
+    "path": "crates/host-core/src/db/command_center_migration.rs",
+    "sha256": "B44981D4AE1350D8892DD8D706473173A3BFFF42AC40F1A86D949247409D5D00"
+  },
+  {
+    "path": "crates/host-core/src/db/command_center_tests.rs",
+    "sha256": "D301DFE52709A449163E70C4FD53F845D77CE12E359AEDD4D000F5D532F712F2"
+  },
+  {
+    "path": "crates/host-core/src/owner_handoff/target.rs",
+    "sha256": "7BF747B5AD9BCB8A8C689677A398041D246DC3F6FFB818750795A86DA0F05EB3"
+  },
+  {
+    "path": "crates\\host-core\\src\\owner_handoff\\target\\bootstrap.rs",
+    "sha256": "BC4D9BA8C3CD76856EE6C4FD8B91A18167B96044FF0D210251D595B494ED5CEC"
+  },
+  {
+    "path": "crates\\host-core\\src\\owner_handoff\\target\\journal.rs",
+    "sha256": "D970B8A7E3605BD5B3A6E05601CA3743E294F2D184BA6D83E923A43A4B947346"
+  },
+  {
+    "path": "crates\\host-core\\src\\owner_handoff\\target\\preparation.rs",
+    "sha256": "B0F645670137F74FF8946784910F1090951F9CE912C182E18322D6AC6861BA7A"
+  },
+  {
+    "path": "crates\\host-core\\src\\owner_handoff\\target\\protocol.rs",
+    "sha256": "F042ACEE9F1BFB5A2751B2F273439FE20A622423D9A73D95B1A0164517E07BFC"
+  },
+  {
+    "path": "crates\\host-core\\src\\owner_handoff\\target\\ready.rs",
+    "sha256": "BF7EF0C864CC0E48BB1F5C86E4FF65D84099089E0E3D1D92BE73E46D72A7D7FE"
+  },
+  {
+    "path": "crates\\host-core\\src\\owner_handoff\\target\\tests.rs",
+    "sha256": "1CE44F09AB26977C8ECA72DF403BD31FC63B43D27AEB8DA4A727A180FFF90D2F"
+  },
+  {
+    "path": "crates\\host-core\\src\\owner_handoff\\target\\windows.rs",
+    "sha256": "28C2DDFFB06947F65614F8632D6542EFA0F53056202C0675C926016E183A615A"
+  },
+  {
+    "path": "crates\\host-core\\src\\owner_handoff\\target\\tests\\bootstrap_tests.rs",
+    "sha256": "8F6F9227F73FCE5D7B4CE433B6182BBDDDC2CA40EBF691CB8326679FF409C404"
+  },
+  {
+    "path": "crates\\host-core\\src\\owner_handoff\\target\\tests\\ready_tests.rs",
+    "sha256": "996C486C9F654EA7EBF3687BDBF52ADF6091E6A5AE4E34D9C54C21F3F8DD2AA6"
+  },
+  {
+    "path": "docs/project/ai-command-center-acceptance-index.md",
+    "sha256": "92E8F9393F585B7F143330E11ED584F87C8B70EF0B147C3B415756F09CBD4054"
+  },
+  {
+    "path": "docs/project/ai-command-center-continuation.md",
+    "sha256": "65CCB78BDAA02B95319B2A12A549211642CEFE266EB91B6B9AD306B4B581946A"
+  },
+  {
+    "path": "docs/project/ai-command-center-final-handoff.md",
+    "sha256": "082D05D7E0430962FD70F0BB8B1F06E6079621C53FE30078447EB4ED6D1759DD"
+  },
+  {
+    "path": "docs/project/ai-command-center-foundations-evidence.json",
+    "sha256": "9F1345021D9E919E24FC16B16B4C9858659159592643DABF07658A50D9BACFAA"
+  },
+  {
+    "path": "docs/project/ai-command-center-monitor-integration-contract.md",
+    "sha256": "F537C7AB7D56A454621CE748395489A40D137CB17950410A3A07BFA95623D951"
+  },
+  {
+    "path": "docs/project/ai-command-center-qualification-inputs.md",
+    "sha256": "BBC0041BC393BA34214C666A2A1C1684966BF44F873D395526808555883C3C62"
+  },
+  {
+    "path": "docs/project/ai-command-center-takeover-evidence.json",
+    "sha256": "1D0EA20DF16CF6B347B6349D8143A97CAEC0C0941573F21C23A08F6AD311F121"
+  },
+  {
+    "path": "docs/project/ai-command-center-takeover-provenance.md",
+    "sha256": "3465EE1964117E6C5CED32EA53AFB3A1F55512A66606C80B25C0E282898C2784"
+  },
+  {
+    "path": "packages/agent-host/src/command-center-control.test.ts",
+    "sha256": "910463AA88804B8F7CE91F1CF57172A7F00EAE286A283AEE3F664D944FD11485"
+  },
+  {
+    "path": "packages/agent-host/src/command-center-control.ts",
+    "sha256": "3CDF6ED5C5059EF5FAA0C0C13D66CB3AACF9173B94184AAA12BD5BCA323B015F"
+  },
+  {
+    "path": "packages\\agent-host\\src\\command-center-control\\contracts.ts",
+    "sha256": "D8F2FFDF4307BCD17FC3F461789C76235934A220838A051B282BB9A9099907FB"
+  },
+  {
+    "path": "packages\\agent-host\\src\\command-center-control\\results.ts",
+    "sha256": "DD074ED8C10CEF923BAC43EE44F637360943308F4399424FA503244B74796323"
+  },
+  {
+    "path": "packages\\agent-host\\src\\monitor\\generation.ts",
+    "sha256": "279B6F7CC8DA6A7CE38A5C2D915BCD502E96C9F3280FDF1F1975D25CE5ABA597"
+  },
+  {
+    "path": "packages\\agent-host\\src\\monitor\\projection-barrier.test.ts",
+    "sha256": "EF247ADBF70EA72CD45251CA2082887F169324DD1EF9A24DA2FF230F4464685D"
+  },
+  {
+    "path": "packages\\agent-host\\src\\monitor\\snapshot-failures.test.ts",
+    "sha256": "CB6BEB63C9DE472C40C586DBE9A0B9C7989BEE83CDFFF89C4406730F946979F8"
+  },
+  {
+    "path": "packages\\agent-host\\src\\monitor\\snapshot-retention.test.ts",
+    "sha256": "E1DDE3F3DE6B91DA9D2341595BF6B6FD537E7800F05F51768A7C75F4C9C09813"
+  },
+  {
+    "path": "packages\\agent-host\\src\\monitor\\snapshot-store.property.test.ts",
+    "sha256": "73F5ECCF75CAFCB08903AC3DAA2FB027083852D0C624290F95F95BB7AC4974BF"
+  },
+  {
+    "path": "packages\\agent-host\\src\\monitor\\snapshot-store.test-support.ts",
+    "sha256": "A640E13D9DF9410B1DD3601F37B06463556F830778A391140FBBC4F2F1BC4BAE"
+  },
+  {
+    "path": "packages\\agent-host\\src\\monitor\\snapshot-store.test.ts",
+    "sha256": "0D590B03F4B081815B7CA3842384A85BD760F26531955F04A04FD92F708A1EE7"
+  },
+  {
+    "path": "packages\\agent-host\\src\\monitor\\snapshot-store.ts",
+    "sha256": "F85E60785AAEF36766BC6C39D6E15F26F844456AD621B17AA1551541225917D5"
+  },
+  {
+    "path": "packages\\agent-host\\src\\monitor\\types.ts",
+    "sha256": "24B7BCAB01BFB78C2C8AF4EE71B3AEC0F9B1D20F5ED2DA47D93F7480CE5CB490"
+  },
+  {
+    "path": "packages\\command-center-client\\package.json",
+    "sha256": "C0CB1EA3B26A3B14587664382BF5037B3E6556BFA264A1F95557DA9919B1D3DE"
+  },
+  {
+    "path": "packages\\command-center-client\\README.md",
+    "sha256": "67940CD62A61561CB883921CD464959C62DEC2DCCBA3C1F9DA97B8722D7FFE72"
+  },
+  {
+    "path": "packages\\command-center-client\\tsconfig.json",
+    "sha256": "1A30F901FA0316E7E07E569B704F851081E500870DFF80F384D3AB63B66E108B"
+  },
+  {
+    "path": "packages\\command-center-client\\vitest.config.ts",
+    "sha256": "C96C051F4008BC1C7E75CD98D7D5C36437F2FB08F993499B046BCE007903EF1F"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\tsc",
+    "sha256": "53D2DB6099063644DAE32D967F1599966B683729D90CDB7D8A06BF1C3521F1A2"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\tsc.cmd",
+    "sha256": "0BBAC1C1E47A9E47D66F447012FDB154CE9992A853280E43C3C7DC33134A64A6"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\tsc.ps1",
+    "sha256": "F75864BF990872F9E6040094F596E128E563237FC2A8588DA160233D7BE32EB0"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\tsserver",
+    "sha256": "04495DEF26A7316D982E17C52F182E6462EC3CD4935F137D65F1FE3C6B6F2856"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\tsserver.cmd",
+    "sha256": "1DC6C04DBE089EB3A8DBA5E1B102E1DA6151770C60D9D4AE7CF89FF3CF994857"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\tsserver.ps1",
+    "sha256": "799CD888D64C94B933A60C124D48F74DDE51DC64DD51D125EAFD73E1AC20DC33"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\vite",
+    "sha256": "BA664CD18A741FDC61C76DF060DA96A926D630E7A8BD29A0FC1B515BFC52D957"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\vite.cmd",
+    "sha256": "4C1BE355F81AE5768C0C3384B12F66AFFF88FDA738D777C16907D1513FEDAB76"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\vite.ps1",
+    "sha256": "E0FC9FC66EC44946E91E5A0D4C0572CCF1AF0B907B30226ED0A7D944DD2924A1"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\vitest",
+    "sha256": "FB8B364D33F6609F185E63032CB7C2236C007062059BE455E230E5E03E15B8E8"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\vitest.cmd",
+    "sha256": "E0E070E0ACEC1C1872BF249C231BA15EEC96E64F10CD65764B9FEE03323DB141"
+  },
+  {
+    "path": "packages\\command-center-client\\node_modules\\.bin\\vitest.ps1",
+    "sha256": "DE3BE28E740E72F167C8DC10E4F86F9972D876B53AA3FCD47290BB85915EA769"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\attempt-safety.test.ts",
+    "sha256": "6A1E3B8A999091D8C0FB6ABE4F1050B08664922EDA210A003A5701218CA5E847"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\attempt.property.test.ts",
+    "sha256": "17E2BE7E5E4EBEF9BE7DBF327EEDD123460D781C49AAD9FB203D191DC5B59C20"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\attempt.test.ts",
+    "sha256": "B135F7A348145DE4160613924BA3731A727291226BABCA89E7486E8D260C1106"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\attempt.ts",
+    "sha256": "57D32DEA773EAB86925A17B6C864CA05A09B1EA426DE1F3C85A2CCB23A1ADC84"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\context.test.ts",
+    "sha256": "FADA5985CB25C5D9841A5FB389E071164113BAE31273BF3F20EBD8DF1464BD66"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\context.ts",
+    "sha256": "14F15ADCBC61BE4D39E22347FFA8DF57503D587003860CFF2C4C56F5A35A9EF0"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\index.ts",
+    "sha256": "40313C0B29E24F85D40FAF35E92F12F02E052E0459AE90AEA042BF809A55D779"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\types.ts",
+    "sha256": "3307724DEADD6EA5E8830705A4483D667690ECB71081C1D521C9AC06140F9B72"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\health\\controller.test.ts",
+    "sha256": "48336D8979D8788C46BFA34CFBB984C1BE48C1D6FDB458355B3D43BBB699A60B"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\health\\controller.ts",
+    "sha256": "60ADE78FDBEBB82C9522FEAF478119454642990C1F5865B7832FB08DF4ACBCC5"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\health\\failures.test.ts",
+    "sha256": "777E398AEA6D6723DBF8713857160F4215DCBCDD772799CA0767CA1ACCA39A80"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\health\\index.ts",
+    "sha256": "D79BA04E8D3312B4D6F2DE3D571B733BCCA2074F75B249B495BE1F6A1ABA01FF"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\health\\state.ts",
+    "sha256": "E455E8C6F51F6F670EF213E400DAF8F9E1780557D13038769DAED1D1B587FE4E"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\health\\timing.property.test.ts",
+    "sha256": "6ACBD6BDF31CC80ED54B231F4B5881EDC799C8E62DEF49ACFDFDE499F48FC17F"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\health\\types.ts",
+    "sha256": "1FEE08B6D64E07D0F5D4534EC1F41C84187678A98B8460E9319CA96163D35D0D"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\health\\validation.ts",
+    "sha256": "AC8E60E72B180BE685820F144C91284392342E587959F0BBD8616FCA34EBF82A"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\monitor\\index.ts",
+    "sha256": "E71B6A89B948133AA8ED33E5AF066F64B7BE35EB834B0A5ED16587F6ECBF1F1A"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\monitor\\pages.ts",
+    "sha256": "BF16B5B2387AA6AA01238FBF6D33FF24CA41E3A0707CE20837CDB220D5482204"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\monitor\\reader-limits.test.ts",
+    "sha256": "B52D22D4139B1A8AB9F0D65B51349B1BA54F4DCEE465A381537442743EE2F40D"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\monitor\\reader.property.test.ts",
+    "sha256": "DDF2A0CA4C31E1031DA85884A963DAD60678EBA43C300289AD9986C2F22452AF"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\monitor\\reader.test.ts",
+    "sha256": "68B09A9E648BDFCECE358A98F5247BFC103216EDD737984BDAE72C79E60C2922"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\monitor\\reader.ts",
+    "sha256": "03C0AEE10DE7E06D29E83458580A854AF6A54A4CC60F9D6AA936715E2C5B7F43"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\monitor\\types.ts",
+    "sha256": "C012C15BB4C70D79F97CE27D827B13B30CE587AD6F9466B354C14364D94370F2"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\session\\index.ts",
+    "sha256": "A27C1281D24795272B4F22BA84A73CF9B4CABB26A92199DD307F07FA0524670B"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\session\\safety.test.ts",
+    "sha256": "E41DB1A91B1C20463BA49C672E55A73BE70B29FB247AE3EE323EFB3FF51A6422"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\session\\session.test.ts",
+    "sha256": "BA00EBE32413794BBE4DB1A2B242E0D4AD7C4E90A093977167EF87569EA533AA"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\session\\session.ts",
+    "sha256": "1821A3F5B814138E0F41D3296F5A3A2F1C14C9AA52FCC4BA8364E033238527F6"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\session\\state.ts",
+    "sha256": "849773FC325F4514C8580818228FD9F9B58CB3C8A417BBCDD8B205AD10B741D2"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\session\\types.ts",
+    "sha256": "8D077FF730C40C57DAAE43C2D45CAAC4AA5E9F4EB6DCB28DB42E66AC3668B670"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\summary\\index.ts",
+    "sha256": "D5375BD86B773CE36C4C3D0B166F91CC4EFF49124E380514E6CBBE3C9CD74747"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\summary\\model.property.test.ts",
+    "sha256": "852C9EEBBBED0264F1046C8D975265B2C59774298E005C02D7BCE109BF785BC4"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\summary\\model.test.ts",
+    "sha256": "1B8821A9B677E7D36B27CB47409937221AFE22A2915E94851C4DB35D54D9B8F8"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\summary\\model.ts",
+    "sha256": "C38D08FF9803352D65479D91E62A20669FDBE75B5B590ACEDCDF9B4DE3EC3012"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\summary\\types.ts",
+    "sha256": "33C13EFE797022724FB0E6A14F70D9C2A38AA324FA47ACB6BC8D8FBC191C8F76"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\summary\\validation.test.ts",
+    "sha256": "AF649C46CECEECDB955E4CCD3D3962D9AEAAED42E598597DF1D1AB19F1CD0E32"
+  },
+  {
+    "path": "packages\\command-center-client\\src\\summary\\validation.ts",
+    "sha256": "97DAEF378DC064609905B6CE65CCF674AD0EE6C6ECD378B10C061EE47DA32894"
+  },
+  {
+    "path": "packages\\host-runtime\\src\\attachment\\ports.ts",
+    "sha256": "5BA479DF6654B671A3126037AE7A5F2C3C40539E1B84CFCD10A728D3368CFA38"
+  },
+  {
+    "path": "packages\\host-runtime\\src\\attachment\\stream.ts",
+    "sha256": "5DEA15A752C694D22D2DF969DE7F2606C1C95319F572E80D1867FCFB4DF7563C"
+  },
+  {
+    "path": "packages/host-runtime/src/command-center-repository.test.ts",
+    "sha256": "9057A90175974F44FB035D333A0D6D2962DA461C135112E2BE90371A444CE4B0"
+  },
+  {
+    "path": "packages/host-runtime/src/command-center-repository.ts",
+    "sha256": "3DB28A3D2DD58DF203886E8D583170BF5064FE782DFA34FBFE47243A1212EA4B"
+  },
+  {
+    "path": "packages/host-runtime/src/owner-handoff-attachment.test.ts",
+    "sha256": "24B3034286FBFE945B3FF47081DB0B91546D37837DCF80D2778298C70D3AC96E"
+  },
+  {
+    "path": "packages/host-runtime/src/owner-handoff-attachment.ts",
+    "sha256": "6C09EE52675E44F753C427901B687CAB1BE5173FD0875393B2D5BBC60EB1E98C"
+  },
+  {
+    "path": "packages/racp/src/command-center-dispatch.test.ts",
+    "sha256": "7FB31448A5EAE3C8CCBF2B7A292E9C8EEBD652BBC87A742E11AE47EED952699C"
+  },
+  {
+    "path": "packages/racp/src/command-center-dispatch.ts",
+    "sha256": "54C8539BE2A605A545D974433E6D3B2D545DD53B984284E21B431F2CEA1D4E30"
+  },
+  {
+    "path": "packages/shared/src/command-center/observation-owner.test.ts",
+    "sha256": "14E56230539D85E64F069DA17F2444B3A4D82B044CD38D311FA29638CF35D837"
+  },
+  {
+    "path": "scripts/check-command-center-foundations.mjs",
+    "sha256": "704A6582CDB21337E2EF481553D8940E4946A4AB3980216B9A1E14E6E754592E"
+  },
+  {
+    "path": "scripts/e2e/command-center/connection-health-consumer.mjs",
+    "sha256": "7C6C87923B14B487C9333CA8F19BB4282F6753E5528F37D7E850C73C5719F915"
+  },
+  {
+    "path": "scripts/e2e/command-center/monitor-session-consumer.mjs",
+    "sha256": "B0074B0E073ACF1297D29A67EDA7E9E21A64E2899BA4BEDE1F691F22E98C5B79"
+  },
+  {
+    "path": "scripts/e2e/command-center/qualification-manifest.mjs",
+    "sha256": "7AED011C8B46C9786D82D5B97760325925FE4163F7DB426D2FBE6112E29E58E1"
+  },
+  {
+    "path": "scripts/e2e/command-center/qualification-manifest.test.mjs",
+    "sha256": "69B64F9225D9281A66ABC13D580E3E3390F36471529F2D97834B8B5968FA231B"
+  },
+  {
+    "path": "scripts/e2e/command-center/qualification-validation.mjs",
+    "sha256": "9C0B161F09D7EEE4F96B89BF97C0C507EF27FF4940A62EFA9F791EC6FA93994F"
+  },
+  {
+    "path": "scripts/e2e/command-center/qualification-validation.test.mjs",
+    "sha256": "B53C46F10C6D4D48C0788D00ECD2997E701F542A199CE9866C7AD8DF8D1E0FA1"
+  }
+]

@@ -1,6 +1,6 @@
 # AI command center: P0 control contracts, version 1 draft
 
-- Status: C1 versioned shared schemas and producer/consumer fixtures are implemented. Runtime registration, persistence, authorization, dispatch and full product qualification are separate C2-C4/M1 work; no capability is advertised by this contract change.
+- Status: C1 versioned shared schemas and producer/consumer fixtures are implemented. C3 now registers thirteen `commandCenter/*` operations in the shared RACP catalog, but no command-center capability is advertised, so every one returns `CAPABILITY_UNAVAILABLE`. Runtime producers/consumers, capability advertisement and full product qualification remain open C4/M1 work.
 - Basis: [requirements](ai-command-center-requirements.md), [development design](ai-command-center-development-design.md), [schedule](ai-command-center-schedule.md).
 - Existing runtime evidence: [1 MiB validation](ai-command-center-1mib-validation.md).
 - Compatibility: keep the existing session, turn, delegation, permissions and transcript authorities. No new executor or transcript store.
@@ -10,8 +10,9 @@
 This document makes the P0 identity, capacity, goal and receipt draft specific
 enough to implement and test in P1/P3. It distinguishes an existing mechanism
 from an extension still to build. References are to current source paths; names
-under `commandCenter/*` remain proposed until schemas, producer, consumer,
-permissions and capability negotiation ship together.
+under `commandCenter/*` are now catalogued for authorization but remain
+unavailable until the producer, consumer, permissions and capability negotiation
+ship together.
 
 S02 can supply concrete contracts while S01 load qualification runs. It cannot
 close M0 without the representative main/child/Worker workload, native/mobile
@@ -41,10 +42,18 @@ generation after it. Canonical request fingerprints instead use recursively
 sorted object keys and preserved array order before SHA-256. These two encodings
 serve different purposes. Incompatible wire changes require a new version.
 
-No RACP operation or IPC channel is registered from these exports. Advertised
-command-center capability flags remain absent until authoritative producers,
-runtime consumers and their authorization tests are integrated. A true flag is
-currently rejected instead of implying an available implementation.
+C3 registers thirteen `commandCenter/*` operations in the shared
+`RACP_OPERATIONS` catalog (profile `remote-host`; `viewer` for workspace and
+membership reads and receipts, `owner` for workspace mutations, `controller` for
+membership and intervention mutations) and binds one dispatcher per connection; the
+RACP spec documents them in §6.2.2. No command-center capability flag is advertised:
+`RacpServerCapabilitiesSchema` has no such field, so `requireCommandCenter`
+throws `CAPABILITY_UNAVAILABLE` before the dispatcher or control service runs.
+Capability advertisement, the authorized producer/consumer path and C4 claims
+remain open; a bound control service alone does not expose the operations. The C1
+`parseCommandCenterCapabilities` validator also rejects a `true` value for every
+capability because `COMMAND_CENTER_IMPLEMENTED_CAPABILITIES` is empty, so a
+producer cannot advertise an incomplete path.
 
 
 ## Identity and authority
