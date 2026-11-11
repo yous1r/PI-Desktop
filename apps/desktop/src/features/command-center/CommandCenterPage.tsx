@@ -6,6 +6,7 @@ import {
   COMMAND_CENTER_I18N_NAMESPACE,
 } from "../../components/command-center";
 import { useAppStore } from "../../stores/app-store";
+import { useCommandCenterLiveProvider } from "./command-center-bootstrap";
 import {
   COMMAND_CENTER_FIXTURE_PROVIDER,
   type CommandCenterDataProvider,
@@ -30,12 +31,18 @@ export function CommandCenterPage({ provider }: { readonly provider?: CommandCen
   const { t } = useTranslation(COMMAND_CENTER_I18N_NAMESPACE);
   const setPage = useAppStore((state) => state.setPage);
   const [selectedTaskKey, setSelectedTaskKey] = useState<string>();
-  const activeProvider = provider ?? COMMAND_CENTER_FIXTURE_PROVIDER;
+  // A command-center-capable connection registers its provider in the app
+  // bootstrap registry; an empty registry keeps the fixture preview.
+  const registeredProvider = useCommandCenterLiveProvider();
+  const activeProvider = provider ?? registeredProvider ?? COMMAND_CENTER_FIXTURE_PROVIDER;
   const data = useSyncExternalStore(activeProvider.subscribe, activeProvider.getState, activeProvider.getState);
   useEffect(() => {
-    if (provider === undefined) return;
-    void provider.refresh();
-  }, [provider]);
+    // The fixture provider's refresh is a no-op; a live provider performs the
+    // explicit first read. The provider's owner remains the injection source.
+    void activeProvider.refresh().catch((error: unknown) => {
+      console.error("Command-center data refresh failed", error);
+    });
+  }, [activeProvider]);
 
   return (
     <div className="command-center-route" data-route="command-center">

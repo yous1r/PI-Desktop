@@ -313,8 +313,8 @@ test("the fixture user path keeps workspace focus, drafts and local history", ()
 test("the route keeps every unavailable control explicit and selects tasks locally", () => {
   assert.match(
     pageSource,
-    /const activeProvider = provider \?\? COMMAND_CENTER_FIXTURE_PROVIDER/,
-    "the route defaults to the fixture provider when none is injected",
+    /const activeProvider = provider \?\? registeredProvider \?\? COMMAND_CENTER_FIXTURE_PROVIDER/,
+    "the route falls back to the fixture provider when no explicit or bootstrapped provider exists",
   );
   assert.match(
     pageSource,

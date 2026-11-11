@@ -1,9 +1,12 @@
+import { randomUUID } from "node:crypto";
 import {
   MonitorSnapshotCaptureError,
   MonitorSnapshotStore,
   type Clock,
+  type CommandCenterBinding,
   type CommandCenterRepository,
   type CommandCenterRepositoryContext,
+  type HostRpcPort,
   type MonitorSnapshotLimits,
   type MonitorSnapshotPageRequest,
   type MonitorSnapshotPageResult,
@@ -21,6 +24,8 @@ import {
   type CommandCenterTaskTarget,
   type CommandCenterWorkspace,
 } from "@pi-desktop/shared";
+
+import { RustCommandCenterRepository } from "./command-center-repository.js";
 
 /**
  * Bounded incremental producer seam between the command-center repository and
@@ -218,13 +223,16 @@ export class CommandCenterMonitorProducer {
     if (!validScope(input.scopeKey)) return refused("invalid_scope");
     if (!validSequence(input.sequence)) return refused("invalid_sequence");
     if (this.#scopeKey !== null && this.#scopeKey !== input.scopeKey) return refused("scope_changed");
-    let rows: CommandCenterTaskSummary[];
+    const rows: CommandCenterTaskSummary[] = [];
     try {
-      rows = [...input.rows];
+      // Consume at most maxRows + 1 elements from a possibly unbounded iterator.
+      for (const row of input.rows) {
+        if (rows.length >= this.#maxRows) return this.#fail("capture", refused("row_limit"));
+        rows.push(row);
+      }
     } catch {
       return this.#fail("capture", refused("capture"));
     }
-    if (rows.length > this.#maxRows) return this.#fail("capture", refused("row_limit"));
     const lifecycle = this.#lifecycle;
     this.#publishing = true;
     try {
@@ -429,4 +437,242 @@ export function createCommandCenterMonitorProducer(
   options: CommandCenterMonitorProducerOptions,
 ): CommandCenterMonitorProducer {
   return new CommandCenterMonitorProducer(options);
+}
+
+/** One authorized, bounded source cut. The real C3/C2 adapter supplies this. */
+export type CommandCenterMonitorSourceCut = Readonly<{
+  sequence: number;
+  rows: Iterable<CommandCenterTaskSummary>;
+}>;
+
+/** Read-only source of authorized summary rows; it must never scan transcripts. */
+export type CommandCenterMonitorSource = {
+  cut(): Promise<CommandCenterMonitorSourceCut>;
+};
+
+export type CommandCenterMonitorProviderFailure =
+  | CommandCenterMonitorProducerFailure | "source_unavailable";
+
+export type CommandCenterMonitorProviderHealth = Readonly<{
+  status: "connected" | "stale" | "offline";
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  failure: CommandCenterMonitorProviderFailure | null;
+}>;
+
+export type CommandCenterMonitorProviderState = Readonly<{
+  epoch: string;
+  scopeKey: string | null;
+  sequence: number | null;
+  rows: number;
+  snapshot: CommandCenterMonitorSnapshot | null;
+  workspaces: readonly CommandCenterWorkspace[];
+  receipts: readonly CommandCenterReceipt[];
+  health: CommandCenterMonitorProviderHealth;
+}>;
+
+export type CommandCenterMonitorProviderRefreshResult =
+  | Readonly<{ kind: "published"; state: CommandCenterMonitorProviderState }>
+  | Readonly<{ kind: "refused"; reason: CommandCenterMonitorRefusal | "source_unavailable" }>
+  | Readonly<{ kind: "failed"; reason: "disposed" }>;
+
+/**
+ * Production-facing ports for one Host attachment.
+ *
+ * `transport` is the private Rust host-core stdio port. `hostIdentity` and
+ * `authorization` are re-read for every call and every await fence; the
+ * authorization block is minted by the trusted hosting service and never
+ * accepted from a client. `source` is the C3/C2 authorized cut adapter.
+ */
+export type CommandCenterMonitorProviderPorts = {
+  transport: HostRpcPort;
+  hostIdentity: () => CommandCenterBinding;
+  authorization: () => CommandCenterRepositoryContext["auth"];
+  source: CommandCenterMonitorSource;
+  /** Trusted lease identity: authorization generation plus filter identity. */
+  scopeKey: string;
+  /** Projection boot epoch; defaults to the Host epoch. */
+  epoch?: string;
+  clock: Clock;
+  tokens?: { next(): string };
+  maxRows?: number;
+  maxReceipts?: number;
+  snapshotLimits?: Partial<MonitorSnapshotLimits>;
+  staleAfterMs?: number;
+};
+
+export type CommandCenterMonitorProvider = {
+  getState(): CommandCenterMonitorProviderState;
+  /** One explicit refresh: source cut + bounded repository collection + publish. */
+  refresh(): Promise<CommandCenterMonitorProviderRefreshResult>;
+  page(request: MonitorSnapshotPageRequest): MonitorSnapshotPageResult;
+  dispose(): void;
+};
+
+const PROVIDER_SOURCE_FAILURE = "source_unavailable" as const;
+
+class MonitorProvider implements CommandCenterMonitorProvider {
+  readonly #hostIdentity: CommandCenterMonitorProviderPorts["hostIdentity"];
+  readonly #authorization: CommandCenterMonitorProviderPorts["authorization"];
+  readonly #source: CommandCenterMonitorSource;
+  readonly #scopeKey: string;
+  readonly #clock: Clock;
+  readonly #producer: CommandCenterMonitorProducer;
+  #failure: CommandCenterMonitorProviderFailure | null = null;
+  #failureAt = 0;
+  #lifecycle = 0;
+  #inflight: Promise<CommandCenterMonitorProviderRefreshResult> | null = null;
+  #disposed = false;
+
+  constructor(ports: CommandCenterMonitorProviderPorts, producer: CommandCenterMonitorProducer) {
+    this.#hostIdentity = ports.hostIdentity;
+    this.#authorization = ports.authorization;
+    this.#source = ports.source;
+    this.#scopeKey = ports.scopeKey;
+    this.#clock = ports.clock;
+    this.#producer = producer;
+  }
+
+  getState(): CommandCenterMonitorProviderState {
+    const state = this.#producer.getState();
+    if (this.#failure === null) return state;
+    return Object.freeze({
+      ...state,
+      health: Object.freeze({
+        status: "offline" as const,
+        lastSuccessAt: state.health.lastSuccessAt,
+        lastFailureAt: new Date(this.#failureAt).toISOString(),
+        failure: this.#failure,
+      }),
+    });
+  }
+
+  refresh(): Promise<CommandCenterMonitorProviderRefreshResult> {
+    if (this.#disposed) return Promise.resolve({ kind: "failed", reason: "disposed" });
+    if (this.#inflight !== null) return this.#inflight;
+    this.#inflight = this.#refreshOnce().finally(() => { this.#inflight = null; });
+    return this.#inflight;
+  }
+
+  async #refreshOnce(): Promise<CommandCenterMonitorProviderRefreshResult> {
+    const lifecycle = this.#lifecycle;
+    let before: CommandCenterBinding;
+    try {
+      before = this.#hostIdentity();
+    } catch {
+      return this.#sourceFailure();
+    }
+    if (!before || typeof before.hostId !== "string" || !before.hostId ||
+        typeof before.hostEpoch !== "string" || !before.hostEpoch) {
+      return this.#sourceFailure();
+    }
+    let cut: CommandCenterMonitorSourceCut;
+    try {
+      cut = await this.#source.cut();
+    } catch {
+      if (this.#disposed || this.#lifecycle !== lifecycle) return { kind: "failed", reason: "disposed" };
+      return this.#sourceFailure();
+    }
+    if (this.#disposed || this.#lifecycle !== lifecycle) return { kind: "failed", reason: "disposed" };
+    // Expected refusals are returned by the producer. An unexpected throw is a
+    // programming error and stays observable instead of being relabelled.
+    const publication = await this.#producer.publishCut({
+      scopeKey: this.#scopeKey, sequence: cut.sequence, rows: cut.rows,
+    });
+    if (this.#disposed || this.#lifecycle !== lifecycle) return { kind: "failed", reason: "disposed" };
+    let after: CommandCenterBinding;
+    try {
+      after = this.#hostIdentity();
+    } catch {
+      after = before;
+    }
+    if (after.hostId !== before.hostId || after.hostEpoch !== before.hostEpoch) {
+      // A binding change invalidates every page and cached row from the old owner.
+      this.#producer.reset({ epoch: after.hostEpoch });
+      this.#markFailure("owner_changed");
+      return { kind: "refused", reason: "owner_changed" };
+    }
+    if (publication.status === "published") {
+      this.#failure = null;
+      return { kind: "published", state: this.getState() };
+    }
+    return { kind: "refused", reason: publication.reason };
+  }
+
+  page(request: MonitorSnapshotPageRequest): MonitorSnapshotPageResult {
+    if (this.#disposed) return { status: "resync", reason: "disposed" };
+    return this.#producer.page(request);
+  }
+
+  dispose(): void {
+    if (this.#disposed) return;
+    this.#disposed = true;
+    this.#lifecycle += 1;
+    this.#producer.dispose();
+  }
+
+  #markFailure(failure: CommandCenterMonitorProviderFailure): void {
+    this.#failure = failure;
+    this.#failureAt = this.#clock.now();
+  }
+
+  #sourceFailure(): CommandCenterMonitorProviderRefreshResult {
+    this.#markFailure("source_unavailable");
+    return { kind: "refused", reason: PROVIDER_SOURCE_FAILURE };
+  }
+}
+
+function requireProviderPorts(ports: CommandCenterMonitorProviderPorts): void {
+  if (!ports || typeof ports !== "object") throw new Error("COMMAND_CENTER_MONITOR_INVALID_PORTS");
+  if (typeof ports.transport?.call !== "function") throw new Error("COMMAND_CENTER_MONITOR_REQUIRES_TRANSPORT");
+  if (typeof ports.hostIdentity !== "function") throw new Error("COMMAND_CENTER_MONITOR_REQUIRES_HOST_IDENTITY");
+  if (typeof ports.authorization !== "function") throw new Error("COMMAND_CENTER_MONITOR_REQUIRES_AUTHORIZATION");
+  if (typeof ports.source?.cut !== "function") throw new Error("COMMAND_CENTER_MONITOR_REQUIRES_SOURCE");
+  if (typeof ports.clock?.now !== "function") throw new Error("COMMAND_CENTER_MONITOR_REQUIRES_CLOCK");
+  if (typeof ports.scopeKey !== "string" || ports.scopeKey.length === 0 || ports.scopeKey.length > 512 ||
+      ports.scopeKey.includes("\0")) {
+    throw new Error("COMMAND_CENTER_MONITOR_INVALID_SCOPE");
+  }
+}
+
+/**
+ * Compose the real monitor path:
+ *
+ *   HostRpcPort -> RustCommandCenterRepository -> CommandCenterMonitorProducer
+ *               -> MonitorSnapshotStore
+ *
+ * The factory creates the repository adapter itself, so callers cannot inject a
+ * different workspace/receipt source. Only the authorized cut adapter is a
+ * separate port because C3/C2 owns that authorization boundary. A missing or
+ * refused transport leaves health explicitly offline; no row is synthesized.
+ */
+export function createCommandCenterMonitorProvider(
+  ports: CommandCenterMonitorProviderPorts,
+): CommandCenterMonitorProvider {
+  requireProviderPorts(ports);
+  const binding = ports.hostIdentity();
+  if (!binding || typeof binding.hostId !== "string" || typeof binding.hostEpoch !== "string") {
+    throw new Error("COMMAND_CENTER_MONITOR_INVALID_HOST_IDENTITY");
+  }
+  const context = (): CommandCenterRepositoryContext => {
+    const current = ports.hostIdentity();
+    const auth = ports.authorization();
+    return {
+      binding: { ...current },
+      auth: { ...auth, roles: [...auth.roles], sessionIds: [...auth.sessionIds], workspaceIds: [...auth.workspaceIds] },
+    };
+  };
+  const repository = new RustCommandCenterRepository(ports.transport, ports.hostIdentity);
+  const producer = new CommandCenterMonitorProducer({
+    repository,
+    context,
+    epoch: ports.epoch ?? binding.hostEpoch,
+    clock: ports.clock,
+    tokens: ports.tokens ?? { next: randomUUID },
+    ...(ports.maxRows === undefined ? {} : { maxRows: ports.maxRows }),
+    ...(ports.maxReceipts === undefined ? {} : { maxReceipts: ports.maxReceipts }),
+    ...(ports.snapshotLimits === undefined ? {} : { snapshotLimits: ports.snapshotLimits }),
+    ...(ports.staleAfterMs === undefined ? {} : { staleAfterMs: ports.staleAfterMs }),
+  });
+  return new MonitorProvider(ports, producer);
 }
