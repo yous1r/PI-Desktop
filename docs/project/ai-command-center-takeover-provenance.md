@@ -96,9 +96,3 @@ This record does not claim product acceptance. The copied code remains uncommitt
 > unavailable (`CAPABILITY_UNAVAILABLE`), so the statement above still describes
 > the copied baseline and no product acceptance follows. See the
 > [acceptance index](ai-command-center-acceptance-index.md#batch-1-worktree-2026-11-11).
-
-
-
-
-
-

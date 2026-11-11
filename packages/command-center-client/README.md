@@ -202,4 +202,3 @@ Agent Host and this package, run `node scripts/check-command-center-foundations.
 from the repository root to validate the emitted package consumers without
 source aliases. The same command without `--built` checks current source. Neither
 mode qualifies actual browser/mobile timing or a production network endpoint.
-

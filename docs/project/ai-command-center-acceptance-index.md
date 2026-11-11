@@ -185,16 +185,3 @@
 
 No item above is satisfied by copied-but-unwired code, an internal fixture, or this
 index itself.
-
-
-
-
-
-
-
-
-
-
-
-
-
