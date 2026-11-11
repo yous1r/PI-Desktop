@@ -26,12 +26,19 @@ mod transitions;
 
 pub fn validate_cli() -> anyhow::Result<()> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    source::validate_cli(&args)?;
+    validate_args(&args)
+}
+
+/// Each private mode owns its whole argv surface. `--owner-target` is parsed by
+/// the target module and can never be combined with another mode or argument.
+fn validate_args(args: &[std::ffi::OsString]) -> anyhow::Result<()> {
+    source::validate_cli(args)?;
     if args.iter().any(|arg| arg == "--owner-handoff")
         && (args.len() != 1 || args[0] != "--owner-handoff")
     {
         anyhow::bail!("usage: --owner-handoff (private framed stdin only)");
     }
+    target::requested(args)?;
     Ok(())
 }
 

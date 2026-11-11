@@ -14,7 +14,9 @@ use serde_json::{json, Value};
 use std::cell::Cell;
 use std::sync::Arc;
 
+mod argv_tests;
 mod bootstrap_tests;
+mod entry_tests;
 mod ready_tests;
 
 fn id() -> String {

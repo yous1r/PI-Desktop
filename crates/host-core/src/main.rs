@@ -53,6 +53,16 @@ use crate::state::AppState;
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
+fn data_directory() -> std::path::PathBuf {
+    std::env::var("PI_DESKTOP_DATA_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| {
+            dirs::home_dir()
+                .unwrap_or_else(|| std::path::PathBuf::from("."))
+                .join(".pi-desktop")
+        })
+}
+
 fn main() -> anyhow::Result<()> {
     // Locals drop in reverse order: Tokio must stop every background/blocking
     // task before the data-directory ownership handle can be released.
@@ -92,13 +102,15 @@ async fn run(
         .with_writer(std::io::stderr)
         .init();
 
-    let data_dir = std::env::var("PI_DESKTOP_DATA_DIR")
-        .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| {
-            dirs::home_dir()
-                .unwrap_or_else(|| std::path::PathBuf::from("."))
-                .join(".pi-desktop")
-        });
+    let data_dir = data_directory();
+    // The restricted successor entry is dispatched before the data directory is
+    // created, the data-directory lock is acquired, AppState is opened, or any
+    // startup inspection/recovery/migration runs. A target-mode process must
+    // never fall through to ordinary startup.
+    if owner_handoff::target::requested(&std::env::args_os().skip(1).collect::<Vec<_>>())? {
+        owner_handoff::target::run(&data_dir).await?;
+        return Ok(());
+    }
     if owner_control::query_cli(&data_dir).await? {
         return Ok(());
     }

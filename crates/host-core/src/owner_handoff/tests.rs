@@ -620,3 +620,40 @@ mod source_read;
 
 #[path = "tests/source_transitions.rs"]
 mod source_transitions;
+
+#[test]
+fn restricted_target_mode_is_exclusive_in_validate_cli() {
+    use std::ffi::OsString;
+    fn args(values: &[&str]) -> Vec<OsString> {
+        values.iter().map(OsString::from).collect()
+    }
+    for allowed in [&["--owner-target"][..], &[][..], &["--inspect"][..]] {
+        assert!(
+            super::validate_args(&args(allowed)).is_ok(),
+            "{allowed:?} must stay valid"
+        );
+    }
+    for other in [
+        "--owner-handoff",
+        "--owner-source",
+        "--owner-status",
+        "--owner-control",
+        "--execution-fence",
+        "--relocate-data",
+        "--internal-execution-runner",
+        "--unknown",
+        "--owner-target",
+    ] {
+        assert!(
+            super::validate_args(&args(&["--owner-target", other])).is_err(),
+            "--owner-target combined with {other} must be refused"
+        );
+        assert!(
+            super::validate_args(&args(&[other, "--owner-target"])).is_err(),
+            "{other} before --owner-target must be refused"
+        );
+    }
+    // The pre-existing private handoff mode keeps its own exclusive contract.
+    assert!(super::validate_args(&args(&["--owner-handoff"])).is_ok());
+    assert!(super::validate_args(&args(&["--owner-handoff", "--unknown"])).is_err());
+}
