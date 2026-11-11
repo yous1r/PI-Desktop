@@ -16,7 +16,7 @@ use tokio::sync::Mutex;
 use crate::command_center::api::{projection, wire};
 use crate::command_center::limits::{self, ReceiptError};
 use crate::command_center::state::ReceiptStatus;
-use crate::command_center::{receipt, workspace, BindSession, ReceiptTransition};
+use crate::command_center::{goal, receipt, workspace, BindSession, ReceiptTransition};
 use crate::db::now_ms;
 use crate::state::AppState;
 
@@ -342,11 +342,39 @@ fn dispatch(
             {
                 bail!("CC_FORBIDDEN: the receipt is outside the authenticated scope");
             }
-            if status == "consumed" {
+            if stored.revision != expected_revision {
                 bail!(
-                    "CC_CAPABILITY_UNAVAILABLE: consumption acknowledgements require the \
-                     execution-boundary path"
+                    "CC_TRANSITION_CONFLICT: receipt {} is at revision {}",
+                    stored.sequence,
+                    stored.revision
                 );
+            }
+            if status == "consumed" {
+                let evidence = input
+                    .get("consumption")
+                    .filter(|value| !value.is_null())
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "CC_INVALID_ARGUMENT: consumed requires the execution boundary evidence"
+                        )
+                    })?;
+                let consumption = wire::consumption(evidence)?;
+                let replayed = stored.status == ReceiptStatus::Consumed;
+                goal::acknowledge_consumption(
+                    conn,
+                    &binding.host_id,
+                    &auth.subject,
+                    &consumption,
+                    now_ms(),
+                )?;
+                let updated = receipt::receipt(conn, &binding.host_id, &auth.subject, request_id)?
+                    .ok_or_else(|| {
+                        anyhow::anyhow!("CC_CORRUPT_STORAGE: receipt vanished during consumption")
+                    })?;
+                return Ok(json!({
+                    "entry": projection::receipt(&updated)?,
+                    "replayed": replayed,
+                }));
             }
             let to = ReceiptStatus::parse(status)?;
             if to == ReceiptStatus::Recorded {
@@ -420,8 +448,9 @@ fn dispatch(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::command_center::identity::ExecutionTarget;
+    use crate::command_center::identity::{ExecutionTarget, TaskTarget};
     use crate::command_center::reservation::{self, ReservationRequest};
+    use crate::command_center::{goal, GoalCommit};
     use rusqlite::Connection;
     use serde_json::json;
 
@@ -543,6 +572,58 @@ mod tests {
             "expectedGoalRevision": 0,
             "target": {"kind": "session", "sessionId": SESSION, "turnId": TURN},
             "intent": {"kind": "append", "text": text},
+        })
+    }
+
+    fn seed_goal_to_four(conn: &Connection) {
+        let target = TaskTarget::session(SESSION);
+        for expected in 0..4 {
+            goal::commit_revision(
+                conn,
+                &GoalCommit {
+                    target: target.clone(),
+                    expected_desired_revision: expected,
+                    objective: format!("Seeded objective {expected}"),
+                    constraints: vec![],
+                    actor: "local:owner".to_owned(),
+                    request_id: uuid::Uuid::new_v4().to_string(),
+                    now: NOW + expected,
+                },
+            )
+            .expect("seed desired goal revision");
+        }
+    }
+
+    fn revise_goal_record_input() -> Value {
+        json!({
+            "version": 1,
+            "requestId": REQUEST_ID,
+            "hostId": HOST_ID,
+            "expectedHostEpoch": EPOCH,
+            "commandWorkspaceId": WORKSPACE,
+            "expectedMembershipRevision": 1,
+            "expectedGoalRevision": 4,
+            "target": {"kind": "session", "sessionId": SESSION, "turnId": TURN},
+            "intent": {"kind": "reviseGoal", "objective": "Ship the bounded control path", "constraints": []},
+        })
+    }
+
+    fn consumption_input(expected_revision: i64, consumed_revision: i64, boundary: &str) -> Value {
+        json!({
+            "version": 1,
+            "hostId": HOST_ID,
+            "expectedHostEpoch": EPOCH,
+            "requestId": REQUEST_ID,
+            "expectedRevision": expected_revision,
+            "status": "consumed",
+            "effectiveGoalRevision": consumed_revision,
+            "consumption": {
+                "version": 1,
+                "requestId": REQUEST_ID,
+                "target": {"kind": "session", "sessionId": SESSION, "turnId": TURN},
+                "consumedRevision": consumed_revision,
+                "boundary": boundary,
+            },
         })
     }
 
@@ -892,5 +973,65 @@ mod tests {
         );
 
         expect_error(ack(&conn, ack_input(1, "accepted")), "CC_RECEIPT_NOT_FOUND");
+    }
+
+    #[test]
+    fn consumed_ack_advances_effective_revision_once_with_boundary_evidence() {
+        let conn = db();
+        create_workspace(&conn, WORKSPACE);
+        bind_session(&conn);
+        reserve_live_execution(&conn);
+        seed_goal_to_four(&conn);
+
+        let recorded = call(
+            &conn,
+            "intervention.record",
+            envelope(
+                revise_goal_record_input(),
+                &["controller"],
+                vec![WORKSPACE],
+                vec![SESSION],
+            ),
+        )
+        .expect("record reviseGoal");
+        assert_eq!(recorded["entry"]["receipt"]["status"], "recorded");
+        assert_eq!(recorded["entry"]["receipt"]["desiredGoalRevision"], 5);
+
+        let accepted = ack(&conn, ack_input(1, "accepted")).expect("accept intent");
+        assert_eq!(accepted["entry"]["receipt"]["status"], "accepted");
+
+        let consumed = ack(&conn, consumption_input(2, 5, "model_step")).expect("consume intent");
+        assert_eq!(consumed["entry"]["receipt"]["status"], "consumed");
+        assert_eq!(consumed["entry"]["receipt"]["revision"], 3);
+        assert_eq!(consumed["entry"]["receipt"]["effectiveGoalRevision"], 5);
+        assert_eq!(consumed["replayed"], false);
+
+        let head = goal::goal_head(&conn, &TaskTarget::session(SESSION))
+            .expect("read goal head")
+            .expect("goal head exists");
+        assert_eq!(head.effective_revision, 5);
+
+        let duplicate =
+            ack(&conn, consumption_input(3, 5, "model_step")).expect("idempotent consume");
+        assert_eq!(duplicate["entry"]["receipt"]["status"], "consumed");
+        assert_eq!(duplicate["replayed"], true);
+
+        expect_error(
+            ack(&conn, consumption_input(2, 5, "model_step")),
+            "CC_TRANSITION_CONFLICT",
+        );
+        expect_error(
+            ack(&conn, consumption_input(3, 4, "model_step")),
+            "CC_CONSUMPTION_CONFLICT",
+        );
+        let mut missing = consumption_input(2, 5, "model_step");
+        missing
+            .as_object_mut()
+            .expect("object")
+            .remove("consumption");
+        expect_error(ack(&conn, missing), "CC_INVALID_ARGUMENT");
+        let mut bad_boundary = consumption_input(2, 5, "Invalid Boundary");
+        bad_boundary["consumption"]["boundary"] = json!("Invalid Boundary");
+        expect_error(ack(&conn, bad_boundary), "CC_INVALID_CONSUMPTION");
     }
 }

@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { describe, expect, it, vi } from "vitest";
 import type { CommandCenterControl, CommandCenterBinding, Principal } from "@pi-desktop/agent-host";
 import {
   createCommandCenterHost,
@@ -9,11 +10,26 @@ import {
 
 /** C4 host composition: explicit ports in, repository -> control -> dispatch out. */
 
+const fixture = JSON.parse(
+  readFileSync(new URL("../../shared/test/fixtures/command-center-control.json", import.meta.url), "utf8"),
+);
 const binding: CommandCenterBinding = {
   hostId: "host_7c1e0a93b4d2f681",
   hostEpoch: "3f6b2a90-1c4d-4e88-9a71-5b2c8d0e6f14",
 };
 const owner: Principal = { subject: "local:owner", roles: ["owner"] };
+const workspaceId = "7d1e4c20-8a3b-4f56-9c12-2e7a9b0d4f31";
+
+function receiptEntry(receipt: unknown) {
+  return {
+    receipt,
+    hostId: binding.hostId,
+    hostEpoch: binding.hostEpoch,
+    commandWorkspaceId: workspaceId,
+    membershipRevision: 7,
+    sequence: 1,
+  };
+}
 
 function fakeTransport() {
   const calls: { method: string; params: Record<string, unknown> }[] = [];
@@ -106,5 +122,51 @@ describe("command-center host composition", () => {
     expect(() => createCommandCenterHost(ports({
       createDispatch: (() => ({ methods: [], disposed: false })) as unknown as CommandCenterDispatchFactory,
     }))).toThrow(/invalid dispatch factory result/);
+  });
+
+  it("fails closed when dispatch is required and no exact-target consumer was injected", () => {
+    expect(() => createCommandCenterHost(ports({ runtimeMode: "required" }))).toThrow(/runtime dispatch consumer/);
+    expect(() => createCommandCenterHost(ports({
+      runtimeMode: "required",
+      runtime: { canRecord: () => true },
+    }))).toThrow(/runtime dispatch consumer/);
+    expect(() => createCommandCenterHost(ports({
+      runtimeMode: "unknown" as never,
+    }))).toThrow(/unknown runtime mode/);
+    const recordOnly = createCommandCenterHost(ports());
+    expect(recordOnly.runtimeMode).toBe("record-only");
+  });
+
+  it("routes an injected exact-target dispatch through the composed control service", async () => {
+    const request = fixture.request as { requestId: string };
+    const recorded = receiptEntry(fixture.receipt);
+    const accepted = receiptEntry(fixture.receipts.accepted);
+    const stored = new Map<string, unknown>();
+    const transport = {
+      async call<T = unknown>(method: string): Promise<T> {
+        switch (method) {
+          case "commandCenter.receipt.get":
+            return (stored.get(request.requestId) ?? null) as T;
+          case "commandCenter.intervention.record":
+            stored.set(request.requestId, recorded);
+            return { entry: recorded, replayed: false } as T;
+          case "commandCenter.intervention.ack":
+            stored.set(request.requestId, accepted);
+            return { entry: accepted, replayed: false } as T;
+          default:
+            throw new Error(`Unexpected transport call: ${method}`);
+        }
+      },
+    };
+    const dispatch = vi.fn(async () => ({ status: "accepted" as const }));
+    const host = createCommandCenterHost(ports({
+      transport,
+      runtimeMode: "required",
+      runtime: { canRecord: () => true, dispatch },
+    }));
+    const result = await host.control.call("intervention/record", fixture.request as never, owner);
+    expect(dispatch).toHaveBeenCalledTimes(1);
+    expect(result.receipt.status).toBe("accepted");
+    expect(result.replayed).toBe(false);
   });
 });

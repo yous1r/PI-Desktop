@@ -70,6 +70,11 @@ export class RustCommandCenterRepository implements CommandCenterRepository {
           outcome.entry.hostId !== binding.hostId || outcome.entry.hostEpoch !== binding.hostEpoch) {
         throw new RacpError("INTERNAL", "command-center repository returned an unrelated acknowledgement", { retriable: false });
       }
+      if (ack.status === "consumed" && (ack.consumption === undefined ||
+          outcome.entry.receipt.effectiveGoalRevision !== ack.consumption.consumedRevision ||
+          outcome.entry.receipt.desiredGoalRevision !== ack.consumption.consumedRevision)) {
+        throw new RacpError("INTERNAL", "command-center repository returned an unrelated consumption", { retriable: false });
+      }
     }
     return result;
   }

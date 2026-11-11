@@ -3,8 +3,8 @@ import * as Value from "typebox/value";
 import { describe, expect, it } from "vitest";
 import {
   COMMAND_CENTER_RECEIPT_RETENTION, COMMAND_CENTER_RECEIPT_STATUSES, COMMAND_CENTER_RECEIPT_TRANSITIONS,
-  CommandCenterReceiptSchema, commandCenterReceiptBindsRequest, commandCenterReceiptCanTransition,
-  parseCommandCenterReceipt,
+  CommandCenterReceiptSchema, commandCenterConsumptionBindsReceipt, commandCenterReceiptBindsRequest,
+  commandCenterReceiptCanTransition, parseCommandCenterReceipt,
 } from "./receipt.js";
 
 const fixture = JSON.parse(readFileSync(new URL("../../test/fixtures/command-center-control.json", import.meta.url), "utf8"));
@@ -64,5 +64,14 @@ describe("command-center intervention receipt contract", () => {
     expect(commandCenterReceiptCanTransition("interrupted", "accepted")).toBe(false);
     expect(commandCenterReceiptCanTransition("consumed", "accepted")).toBe(false);
     expect(COMMAND_CENTER_RECEIPT_TRANSITIONS.outcome_unknown).toEqual([]);
+  });
+
+  it("binds a consumption acknowledgement to the exact request, execution and committed revision", () => {
+    const accepted = fixture.receipts.accepted;
+    expect(commandCenterConsumptionBindsReceipt(fixture.consumption, accepted)).toBe(true);
+    expect(commandCenterConsumptionBindsReceipt({ ...fixture.consumption, requestId: "a1111111-1111-4111-8111-111111111111" }, accepted)).toBe(false);
+    expect(commandCenterConsumptionBindsReceipt({ ...fixture.consumption, consumedRevision: 4 }, accepted)).toBe(false);
+    expect(commandCenterConsumptionBindsReceipt({ ...fixture.consumption, target: fixture.targets.replacementExecution }, accepted)).toBe(false);
+    expect(commandCenterConsumptionBindsReceipt({ ...fixture.consumption, boundary: "Invalid Boundary" }, accepted)).toBe(false);
   });
 });

@@ -2,7 +2,7 @@
 use super::super::{
     identity::ExecutionTarget,
     limits,
-    payload::{InterventionIntent, InterventionRequest},
+    payload::{Consumption, InterventionIntent, InterventionRequest},
     state::StopScope,
 };
 use anyhow::{bail, Result};
@@ -182,6 +182,34 @@ pub(crate) fn mutation(method: &str) -> bool {
 /// Strict v1 acknowledgement conversion. `recorded` is the durable dispatch
 /// claim itself, never an acknowledgement target; consumption evidence is
 /// recorded by the execution-boundary path, not by this request.
+/// Strict v1 runtime consumption acknowledgement. It names the exact concrete
+/// execution, the committed desired revision and the supported scheduling
+/// boundary; C2 re-checks all three against the durable receipt.
+pub(crate) fn consumption(value: &Value) -> Result<Consumption> {
+    keys(
+        value,
+        &[
+            "version",
+            "requestId",
+            "target",
+            "consumedRevision",
+            "boundary",
+        ],
+        &[],
+    )?;
+    if integer(value, "version", 1)? != 1 {
+        bail!("CC_INVALID_ARGUMENT: unsupported consumption version");
+    }
+    let consumption = Consumption {
+        request_id: uuid(value, "requestId")?.to_owned(),
+        target: target(&value["target"])?,
+        consumed_revision: integer(value, "consumedRevision", 1)?,
+        boundary: string(value, "boundary")?.to_owned(),
+    };
+    consumption.validate()?;
+    Ok(consumption)
+}
+
 pub(crate) fn ack(value: &Value) -> Result<()> {
     keys(
         value,
@@ -193,7 +221,7 @@ pub(crate) fn ack(value: &Value) -> Result<()> {
             "expectedRevision",
             "status",
         ],
-        &["effectiveGoalRevision", "error"],
+        &["effectiveGoalRevision", "error", "consumption"],
     )?;
     uuid(value, "expectedHostEpoch")?;
     uuid(value, "requestId")?;
@@ -225,6 +253,24 @@ pub(crate) fn ack(value: &Value) -> Result<()> {
     }
     if value.get("effectiveGoalRevision").is_some() {
         integer(value, "effectiveGoalRevision", 0)?;
+    }
+    let consumption_value = value.get("consumption").filter(|value| !value.is_null());
+    if status == "consumed" && consumption_value.is_none() {
+        bail!("CC_INVALID_ARGUMENT: consumed requires the execution boundary evidence");
+    }
+    if status != "consumed" && consumption_value.is_some() {
+        bail!("CC_INVALID_ARGUMENT: consumption evidence is only valid for consumed");
+    }
+    if let Some(evidence) = consumption_value {
+        let evidence = consumption(evidence)?;
+        if evidence.request_id != uuid(value, "requestId")? {
+            bail!("CC_INVALID_ARGUMENT: consumption requestId does not match the acknowledgement");
+        }
+        if let Some(effective) = value.get("effectiveGoalRevision").and_then(Value::as_i64) {
+            if effective != evidence.consumed_revision {
+                bail!("CC_INVALID_ARGUMENT: effectiveGoalRevision must equal consumedRevision");
+            }
+        }
     }
     Ok(())
 }

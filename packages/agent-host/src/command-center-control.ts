@@ -1,14 +1,17 @@
 import { createHash } from "node:crypto";
 import {
-  commandCenterCanonicalPayload, commandCenterReceiptBindsRequest, commandCenterReceiptCanTransition,
-  commandCenterWithinBytes, rolesAllowOperation, type CommandCenterExecutionTarget,
-  type CommandCenterInterventionRequest, type CommandCenterOperation, type CommandCenterReceipt,
+  commandCenterCanonicalPayload, commandCenterConsumptionBindsReceipt, commandCenterReceiptBindsRequest,
+  commandCenterReceiptCanTransition, commandCenterWithinBytes, rolesAllowOperation,
+  type CommandCenterExecutionTarget, type CommandCenterInterventionRequest, type CommandCenterOperation,
+  type CommandCenterReceipt,
 } from "@pi-desktop/shared";
 import { RacpError } from "./errors.js";
 import type { Principal } from "./ports.js";
 import {
-  COMMAND_CENTER_METHODS, commandCenterMutation, hostId, parseCommandCenterRequest, text, uuid,
-  type CommandCenterAccess, type CommandCenterBinding, type CommandCenterMethod, type CommandCenterReceiptEntry,
+  COMMAND_CENTER_METHODS, commandCenterMutation, hostId, parseCommandCenterConsumptionRequest,
+  parseCommandCenterRequest, text, uuid,
+  type CommandCenterAccess, type CommandCenterBinding,
+  type CommandCenterMethod, type CommandCenterReceiptEntry,
   type CommandCenterRepository, type CommandCenterRepositoryContext, type CommandCenterRepositoryMethod,
   type CommandCenterRepositoryRequests, type CommandCenterRepositoryResults, type CommandCenterRequests,
   type CommandCenterResults,
@@ -26,18 +29,22 @@ export type CommandCenterRuntimeDispatchMetadata = {
 };
 
 /**
- * The acknowledgement a qualified runtime consumer returns for one intent.
+ * The acknowledgement a qualified runtime consumer returns for one dispatch.
  * `recorded` is not a legal acknowledgement: that state is the durable claim.
+ * Consumption is a later, separately evidenced boundary acknowledgement via
+ * `CommandCenterControl.acknowledgeConsumption`; a dispatch itself never claims
+ * that a revision was consumed.
  */
 export type CommandCenterRuntimeAcknowledgement =
-  | { status: "accepted" | "consumed" | "completed" | "interrupted"; effectiveGoalRevision?: number }
+  | { status: "accepted" | "completed" | "interrupted"; effectiveGoalRevision?: number }
   | { status: "rejected" | "conflicted"; error: { code: string; message: string } }
   | { status: "outcome_unknown"; error?: { code: string; message: string } };
 
 /** C4 supplies a consumer only after its exact-target integration exists.
  * `dispatch` is optional so a Host that only records receipts keeps the C3
  * behavior; when present, one durable claim drives at most one dispatch and one
- * receipt transition through the C2 repository. */
+ * receipt transition through the C2 repository. `createCommandCenterHost`
+ * callers that require dispatch opt in explicitly and fail closed without it. */
 export interface CommandCenterRuntimeHandoff {
   canRecord(binding: CommandCenterBinding, target: CommandCenterExecutionTarget, operation: CommandCenterOperation): boolean;
   dispatch?(
@@ -100,7 +107,7 @@ function acknowledgementIsValid(value: unknown): value is CommandCenterRuntimeAc
   const record = value as Record<string, unknown>;
   const status = String(record.status);
   const error = record.error as { code?: unknown; message?: unknown } | undefined;
-  if (!["accepted", "consumed", "completed", "rejected", "conflicted", "interrupted", "outcome_unknown"].includes(status)) return false;
+  if (!["accepted", "completed", "rejected", "conflicted", "interrupted", "outcome_unknown"].includes(status)) return false;
   if (record.effectiveGoalRevision !== undefined &&
       (typeof record.effectiveGoalRevision !== "number" || !Number.isSafeInteger(record.effectiveGoalRevision) || record.effectiveGoalRevision < 0)) {
     return false;
@@ -110,7 +117,7 @@ function acknowledgementIsValid(value: unknown): value is CommandCenterRuntimeAc
     return false;
   }
   if ((status === "rejected" || status === "conflicted") && error === undefined) return false;
-  if ((status === "accepted" || status === "consumed" || status === "completed") && error !== undefined) return false;
+  if ((status === "accepted" || status === "completed") && error !== undefined) return false;
   return true;
 }
 
@@ -295,6 +302,123 @@ export class CommandCenterControl {
     assertCurrent();
     if (!commandCenterWithinBytes(result, 256 * 1024)) throw new RacpError("RESOURCE_EXHAUSTED", "command-center response exceeds page budget");
     return result as PublicResults[M];
+  }
+
+  /**
+   * Persist one execution-boundary consumption acknowledgement.
+   *
+   * This is the in-process seam a qualified runtime consumer calls after it
+   * actually reaches the named scheduling boundary. It never dispatches and
+   * never invents a revision: the exact target, consumed revision and boundary
+   * must match the committed receipt, and C2 performs the accepted -> consumed
+   * transition (idempotently for a duplicate boundary event).
+   */
+  async acknowledgeConsumption(
+    authenticatedPrincipal: Principal,
+    value: unknown,
+  ): Promise<{ receipt: CommandCenterReceipt; replayed: boolean }> {
+    const principal = { ...authenticatedPrincipal, roles: [...authenticatedPrincipal.roles] };
+    text(principal.subject, 256);
+    if (principal.roles.some((role) => !["viewer", "controller", "approver", "owner"].includes(role))) forbidden();
+    // Consumption is a control mutation; viewer/approver roles cannot report it.
+    if (!rolesAllowOperation(principal.roles, "turn/start")) forbidden();
+    const input = parseCommandCenterConsumptionRequest(value);
+    const binding = { ...this.options.hostIdentity() };
+    hostId(binding.hostId); uuid(binding.hostEpoch);
+    if (input.hostId !== binding.hostId || input.expectedHostEpoch !== binding.hostEpoch) conflict();
+    const context: CommandCenterRepositoryContext = {
+      binding, auth: { subject: principal.subject, roles: principal.roles, sessionIds: [], workspaceIds: [] },
+    };
+    const assertCurrent = () => {
+      const current = this.options.hostIdentity();
+      if (current.hostId !== binding.hostId || current.hostEpoch !== binding.hostEpoch) conflict();
+    };
+    const requireControl = async (kind: "session" | "workspace", id: string) => {
+      const allowed = await this.options.authorize(principal, { kind, id, permission: "control" });
+      assertCurrent();
+      if (!allowed) forbidden();
+      const grants = kind === "session" ? context.auth.sessionIds : context.auth.workspaceIds;
+      if (!grants.includes(id)) grants.push(id);
+    };
+    const repository = async <K extends CommandCenterRepositoryMethod>(
+      operation: K, request: CommandCenterRepositoryRequests[K],
+    ): Promise<CommandCenterRepositoryResults[K]> => {
+      assertCurrent();
+      const result = await this.options.repository.call(operation, request, context);
+      assertCurrent();
+      return result;
+    };
+    const entry = await repository("receipt/get", { version: 1, hostId: binding.hostId, requestId: input.requestId });
+    if (!entry) throw new RacpError("NOT_FOUND", `request ${input.requestId} has no durable receipt`, { retriable: false });
+    if (entry.hostId !== binding.hostId || entry.hostEpoch !== binding.hostEpoch) conflict();
+    if (entry.receipt.requestId !== input.requestId) {
+      throw new RacpError("INTERNAL", "command-center repository returned an unrelated receipt", { retriable: false });
+    }
+    await requireControl("session", sessionId(entry.receipt.target));
+    await requireControl("workspace", entry.commandWorkspaceId);
+    if (input.expectedRevision !== entry.receipt.revision) {
+      throw new RacpError("CONFLICT", "command-center receipt revision changed; reconcile before retrying", { retriable: false });
+    }
+    if (entry.receipt.status !== "accepted" && entry.receipt.status !== "consumed") {
+      throw new RacpError("CONFLICT", `the command-center receipt is ${entry.receipt.status} and cannot be consumed`, { retriable: false });
+    }
+    if (!commandCenterConsumptionBindsReceipt(input.consumption, entry.receipt)) {
+      throw new RacpError("CONFLICT", "consumption acknowledgement does not match the committed receipt", { retriable: false });
+    }
+    const ack = {
+      version: 1 as const,
+      hostId: binding.hostId,
+      expectedHostEpoch: binding.hostEpoch,
+      requestId: input.requestId,
+      expectedRevision: input.expectedRevision,
+      status: "consumed" as const,
+      effectiveGoalRevision: input.consumption.consumedRevision,
+      consumption: input.consumption,
+    };
+    let outcome: CommandCenterRepositoryResults["intervention/ack"];
+    try {
+      outcome = await repository("intervention/ack", ack);
+    } catch (error) {
+      if (error instanceof RacpError && PROVEN_REPOSITORY_REFUSALS.has(error.code)) throw error;
+      const reconciled = await this.reconcileConsumptionEntry(context, binding, input.requestId).catch((reconcileError: unknown) => {
+        if (reconcileError instanceof RacpError && reconcileError.code === "CONFLICT") throw reconcileError;
+        return null;
+      });
+      if (reconciled?.receipt.status === "consumed" &&
+          reconciled.receipt.effectiveGoalRevision === input.consumption.consumedRevision) {
+        return { receipt: reconciled.receipt, replayed: true };
+      }
+      throw new RacpError("AGENT_UNAVAILABLE", "command-center consumption outcome is unknown; reconcile before retrying", { retriable: false });
+    }
+    if (outcome.entry.hostId !== binding.hostId || outcome.entry.hostEpoch !== binding.hostEpoch ||
+        outcome.entry.commandWorkspaceId !== entry.commandWorkspaceId ||
+        outcome.entry.receipt.status !== "consumed" ||
+        !commandCenterConsumptionBindsReceipt(input.consumption, outcome.entry.receipt)) {
+      throw new RacpError("INTERNAL", "command-center repository returned an unexpected consumption receipt", { retriable: false });
+    }
+    return { receipt: outcome.entry.receipt, replayed: outcome.replayed };
+  }
+
+  private async reconcileConsumptionEntry(
+    context: CommandCenterRepositoryContext,
+    binding: CommandCenterBinding,
+    requestId: string,
+  ): Promise<CommandCenterReceiptEntry | null> {
+    const assertCurrent = () => {
+      const current = this.options.hostIdentity();
+      if (current.hostId !== binding.hostId || current.hostEpoch !== binding.hostEpoch) conflict();
+    };
+    assertCurrent();
+    const entry = await this.options.repository.call(
+      "receipt/get", { version: 1, hostId: binding.hostId, requestId }, context,
+    ).catch(() => null);
+    assertCurrent();
+    if (!entry) return null;
+    if (entry.hostId !== binding.hostId || entry.hostEpoch !== binding.hostEpoch) conflict();
+    if (entry.receipt.requestId !== requestId) {
+      throw new RacpError("INTERNAL", "command-center repository returned an unrelated receipt", { retriable: false });
+    }
+    return entry;
   }
 
   /**

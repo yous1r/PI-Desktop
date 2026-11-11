@@ -2,6 +2,10 @@ import { type Static, Type } from "typebox";
 import * as Value from "typebox/value";
 import { CommandCenterExecutionTargetSchema, commandCenterExecutionKey } from "./identity.js";
 import {
+  parseCommandCenterConsumption,
+  type CommandCenterConsumption,
+} from "./goal.js";
+import {
   CommandCenterInterventionRequestSchema, CommandCenterOperationSchema,
   type CommandCenterInterventionRequest,
 } from "./intervention.js";
@@ -122,4 +126,28 @@ export function commandCenterReceiptBindsRequest(
   return receipt.requestId === request.requestId &&
     receipt.operation === request.intent.kind &&
     commandCenterExecutionKey(receipt.target) === commandCenterExecutionKey(request.target);
+}
+
+/**
+ * True when a runtime consumption acknowledgement is evidence for this receipt.
+ *
+ * It names the same request, the same concrete execution (including the native
+ * generation) and the exact desired revision the receipt committed. Boundary
+ * validity and the accepted -> consumed transition remain the C2 transaction's
+ * authority; this helper only rejects a delayed or mismatched acknowledgement
+ * before it reaches that path.
+ */
+export function commandCenterConsumptionBindsReceipt(
+  consumption: CommandCenterConsumption,
+  receipt: CommandCenterReceipt,
+): boolean {
+  try {
+    parseCommandCenterConsumption(consumption);
+    parseCommandCenterReceipt(receipt);
+  } catch {
+    return false;
+  }
+  return consumption.requestId === receipt.requestId &&
+    consumption.consumedRevision === receipt.desiredGoalRevision &&
+    commandCenterExecutionKey(consumption.target) === commandCenterExecutionKey(receipt.target);
 }

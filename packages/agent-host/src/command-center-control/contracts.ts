@@ -1,7 +1,8 @@
 import {
-  COMMAND_CENTER_MAX_RECEIPT_BYTES, commandCenterWithinBytes, parseCommandCenterInterventionRequest,
-  type CommandCenterInterventionRequest, type CommandCenterReceipt, type CommandCenterReceiptStatus,
-  type CommandCenterWorkspace,
+  COMMAND_CENTER_MAX_RECEIPT_BYTES, commandCenterWithinBytes, parseCommandCenterConsumption,
+  parseCommandCenterInterventionRequest,
+  type CommandCenterConsumption, type CommandCenterInterventionRequest, type CommandCenterReceipt,
+  type CommandCenterReceiptStatus, type CommandCenterWorkspace,
 } from "@pi-desktop/shared";
 import { RacpError } from "../errors.js";
 import type { Principal } from "../ports.js";
@@ -84,6 +85,21 @@ export type CommandCenterAckRequest = Mutation & {
   status: CommandCenterAckStatus;
   effectiveGoalRevision?: number;
   error?: CommandCenterReceiptError;
+  /** Required exactly when `status` is `consumed`; forbidden otherwise. */
+  consumption?: CommandCenterConsumption;
+};
+
+/**
+ * Private runtime consumption seam. `consumption` carries the exact execution
+ * target, consumed revision and scheduling boundary that C2
+ * `goal::acknowledge_consumption_in` requires. It is never accepted from an
+ * external principal directly; `CommandCenterControl` re-authorizes the
+ * receipt's session and workspace before building the ACK.
+ */
+export type CommandCenterConsumptionRequest = Mutation & {
+  requestId: string;
+  expectedRevision: number;
+  consumption: CommandCenterConsumption;
 };
 
 /** Public control operations plus the private C2 receipt transition. */
@@ -195,14 +211,38 @@ export function parseCommandCenterAckRequest(value: unknown): CommandCenterAckRe
   strictKeys(
     input,
     ["version", "hostId", "expectedHostEpoch", "requestId", "expectedRevision", "status"],
-    ["effectiveGoalRevision", "error"],
+    ["effectiveGoalRevision", "error", "consumption"],
   );
   if (input.effectiveGoalRevision !== undefined) integer(input.effectiveGoalRevision, 0);
   const status = input.status as CommandCenterReceiptStatus;
   const error = input.error === undefined ? undefined : receiptError(input.error);
   if ((status === "rejected" || status === "conflicted") && error === undefined) invalid();
   if ((status === "accepted" || status === "consumed" || status === "completed") && error !== undefined) invalid();
-  return { ...(input as CommandCenterAckRequest), ...(error ? { error } : {}) };
+  let consumption: CommandCenterConsumption | undefined;
+  if (input.consumption !== undefined) {
+    try { consumption = parseCommandCenterConsumption(input.consumption); } catch { return invalid(); }
+    if (status !== "consumed" || consumption.requestId !== input.requestId) invalid();
+    if (input.effectiveGoalRevision !== undefined && input.effectiveGoalRevision !== consumption.consumedRevision) invalid();
+  }
+  if (status === "consumed" && consumption === undefined) invalid();
+  return { ...(input as CommandCenterAckRequest), ...(error ? { error } : {}), ...(consumption ? { consumption } : {}) };
+}
+
+/**
+ * Validate the private runtime consumption request. The target is the concrete
+ * execution that reached the stated boundary; C2 re-checks it against the
+ * committed receipt and desired revision transactionally.
+ */
+export function parseCommandCenterConsumptionRequest(value: unknown): CommandCenterConsumptionRequest {
+  if (!commandCenterWithinBytes(value, COMMAND_CENTER_MAX_RECEIPT_BYTES)) invalid();
+  const input = record(JSON.parse(JSON.stringify(value)));
+  if (input.version !== 1) invalid();
+  hostId(input.hostId); uuid(input.expectedHostEpoch); uuid(input.requestId); integer(input.expectedRevision, 1);
+  strictKeys(input, ["version", "hostId", "expectedHostEpoch", "requestId", "expectedRevision", "consumption"]);
+  let consumption: CommandCenterConsumption;
+  try { consumption = parseCommandCenterConsumption(input.consumption); } catch { return invalid(); }
+  if (consumption.requestId !== input.requestId) invalid();
+  return { ...(input as CommandCenterConsumptionRequest), consumption };
 }
 
 /** Repository-side request parsing: public control requests plus the private ACK. */

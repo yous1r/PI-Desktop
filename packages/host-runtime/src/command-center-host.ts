@@ -35,8 +35,18 @@ export type CommandCenterDispatchFactory = (
 export type CommandCenterHostClock = { now(): number };
 
 /**
+ * Whether this Host must have a real exact-target runtime consumer.
+ *
+ * - `record-only` (default): no dispatch seam is required; the control service
+ *   records and reconciles receipts but never reports dispatch success.
+ * - `required`: construction fails closed unless `runtime.dispatch` exists; the
+ *   Host is asserting it can actually execute the control path.
+ */
+export type CommandCenterRuntimeMode = "record-only" | "required";
+
+/**
  * Everything the in-repo command-center composition needs. Every port is
- * explicit and required except `runtime` (absent = record-only, C3 behavior).
+ * explicit and required except `runtime`/`runtimeMode` (default record-only).
  */
 export type CommandCenterHostPorts = {
   /** Rust host-core stdio transport used by `RustCommandCenterRepository`. */
@@ -52,12 +62,16 @@ export type CommandCenterHostPorts = {
   createDispatch: CommandCenterDispatchFactory;
   /** Exact-target runtime consumer. Omitted keeps the C3 record-only boundary. */
   runtime?: CommandCenterRuntimeHandoff;
+  /** Explicit dispatch requirement; see `CommandCenterRuntimeMode`. */
+  runtimeMode?: CommandCenterRuntimeMode;
   dispatchTimeoutMs?: number;
 };
 
 export type CommandCenterHost = {
   readonly repository: RustCommandCenterRepository;
   readonly control: CommandCenterControl;
+  /** The effective dispatch mode; never silently promoted to `required`. */
+  readonly runtimeMode: CommandCenterRuntimeMode;
   /** One host-owned dispatcher bound to this control. */
   readonly dispatch: CommandCenterDispatchPort;
   /** Create an additional connection-scoped dispatcher; dispose covers all. */
@@ -96,6 +110,20 @@ export function createCommandCenterHost(ports: CommandCenterHostPorts): CommandC
   const clock = requiredPort(ports.clock, "clock");
   if (typeof clock.now !== "function") throw new Error("command-center host requires the clock port");
   const dispatchFactory = requiredFunction(ports.createDispatch, "createDispatch");
+  const runtimeMode: CommandCenterRuntimeMode = ports.runtimeMode ?? "record-only";
+  if (runtimeMode !== "record-only" && runtimeMode !== "required") {
+    throw new Error(`command-center host received an unknown runtime mode: ${String(runtimeMode)}`);
+  }
+  const runtime = ports.runtime;
+  if (runtime !== undefined && typeof runtime.canRecord !== "function") {
+    throw new Error("command-center host requires a valid runtime canRecord port");
+  }
+  if (runtimeMode === "required") {
+    if (runtime === undefined) throw new Error("command-center host requires a runtime dispatch consumer");
+    if (typeof runtime.dispatch !== "function") {
+      throw new Error("command-center host requires a runtime dispatch consumer");
+    }
+  }
 
   const repository = new RustCommandCenterRepository(transport, hostIdentity);
   const control = new CommandCenterControl({
@@ -105,7 +133,7 @@ export function createCommandCenterHost(ports: CommandCenterHostPorts): CommandC
     authorize: authorizer,
     now: () => clock.now(),
     ...(ports.dispatchTimeoutMs === undefined ? {} : { dispatchTimeoutMs: ports.dispatchTimeoutMs }),
-    ...(ports.runtime === undefined ? {} : { runtime: ports.runtime }),
+    ...(runtime === undefined ? {} : { runtime }),
   });
 
   const dispatches = new Set<CommandCenterDispatchPort>();
@@ -122,6 +150,7 @@ export function createCommandCenterHost(ports: CommandCenterHostPorts): CommandC
   return {
     repository,
     control,
+    runtimeMode,
     dispatch,
     createDispatch: create,
     async dispose(): Promise<void> {

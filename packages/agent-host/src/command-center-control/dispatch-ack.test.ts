@@ -55,6 +55,25 @@ const rejectedEntry = () =>
     status: "rejected",
     error: { code: "FORBIDDEN", message: "runtime refused the intervention" },
   });
+const consumedEntry = () => entry(fixture.receipts.consumed);
+
+function consumptionRequest(expectedRevision: number, overrides: Record<string, unknown> = {}) {
+  return {
+    version: 1,
+    hostId: binding.hostId,
+    expectedHostEpoch: binding.hostEpoch,
+    requestId: fixture.request.requestId,
+    expectedRevision,
+    consumption: {
+      version: 1,
+      requestId: fixture.request.requestId,
+      target: fixture.targets.execution,
+      consumedRevision: 5,
+      boundary: "model_step",
+    },
+    ...overrides,
+  };
+}
 
 function setup(options: {
   handlers?: Partial<Record<string, (input: Record<string, unknown>, callIndex: number) => unknown>>;
@@ -266,5 +285,87 @@ describe("command-center C4 dispatch claim and acknowledgement", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(dispatch).not.toHaveBeenCalled();
     expect(calls).toHaveLength(0);
+  });
+
+  it("persists a consumed acknowledgement with the exact execution boundary evidence", async () => {
+    const stored = new Map<string, unknown>();
+    stored.set(request.requestId, acceptedEntry());
+    const { control, calls } = setup({
+      handlers: {
+        "receipt/get": () => stored.get(request.requestId) ?? null,
+        "intervention/ack": (input) => {
+          expect(input.status).toBe("consumed");
+          expect(input.expectedRevision).toBe(2);
+          expect(input.effectiveGoalRevision).toBe(5);
+          expect(input.consumption).toEqual({
+            version: 1,
+            requestId: fixture.request.requestId,
+            target: fixture.targets.execution,
+            consumedRevision: 5,
+            boundary: "model_step",
+          });
+          stored.set(request.requestId, consumedEntry());
+          return { entry: consumedEntry(), replayed: false };
+        },
+      },
+    });
+    const result = await control.acknowledgeConsumption(owner, consumptionRequest(2));
+    expect(result.receipt.status).toBe("consumed");
+    expect(result.receipt.effectiveGoalRevision).toBe(5);
+    expect(result.replayed).toBe(false);
+    expect(calls.map((call) => call.method)).toEqual(["receipt/get", "intervention/ack"]);
+  });
+
+  it("refuses consumed without matching target, revision or boundary evidence", async () => {
+    const stored = new Map<string, unknown>();
+    stored.set(request.requestId, acceptedEntry());
+    const { control, calls } = setup({
+      handlers: { "receipt/get": () => stored.get(request.requestId) ?? null },
+    });
+    await expect(control.acknowledgeConsumption(owner, consumptionRequest(1))).rejects.toMatchObject({ code: "CONFLICT" });
+    const wrongTarget = consumptionRequest(2, {
+      consumption: {
+        version: 1, requestId: fixture.request.requestId, target: fixture.targets.replacementExecution,
+        consumedRevision: 5, boundary: "model_step",
+      },
+    });
+    await expect(control.acknowledgeConsumption(owner, wrongTarget)).rejects.toMatchObject({ code: "CONFLICT" });
+    const wrongRevision = consumptionRequest(2, {
+      consumption: {
+        version: 1, requestId: fixture.request.requestId, target: fixture.targets.execution,
+        consumedRevision: 4, boundary: "model_step",
+      },
+    });
+    await expect(control.acknowledgeConsumption(owner, wrongRevision)).rejects.toMatchObject({ code: "CONFLICT" });
+    const badBoundary = consumptionRequest(2, {
+      consumption: {
+        version: 1, requestId: fixture.request.requestId, target: fixture.targets.execution,
+        consumedRevision: 5, boundary: "Invalid Boundary",
+      },
+    });
+    await expect(control.acknowledgeConsumption(owner, badBoundary)).rejects.toMatchObject({ code: "INVALID_ARGUMENT" });
+    expect(calls.filter((call) => call.method === "intervention/ack")).toHaveLength(0);
+  });
+
+  it("refuses a dispatch that tries to claim consumption without boundary evidence", async () => {
+    const stored = new Map<string, unknown>();
+    const dispatch = vi.fn(async () => ({ status: "consumed" }));
+    const { control } = setup({
+      dispatch: dispatch as never,
+      handlers: {
+        "receipt/get": () => stored.get(request.requestId) ?? null,
+        "intervention/record": () => {
+          stored.set(request.requestId, recordedEntry());
+          return { entry: recordedEntry(), replayed: false };
+        },
+        "intervention/ack": (input) => {
+          expect(input.status).toBe("outcome_unknown");
+          stored.set(request.requestId, outcomeUnknownEntry());
+          return { entry: outcomeUnknownEntry(), replayed: false };
+        },
+      },
+    });
+    const result = await control.call("intervention/record", request as never, owner);
+    expect(result.receipt.status).toBe("outcome_unknown");
   });
 });
