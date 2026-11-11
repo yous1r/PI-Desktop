@@ -19,7 +19,11 @@ mod bootstrap_tests;
 mod entry_tests;
 mod ready_resources_tests;
 mod ready_tests;
+// These two suites exercise the real Windows Job/pipe root join and the framed
+// serving gate, so they only exist where those native APIs do.
+#[cfg(windows)]
 mod root_join_tests;
+#[cfg(windows)]
 mod serving_tests;
 
 fn id() -> String {
