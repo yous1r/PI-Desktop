@@ -127,7 +127,7 @@
 | N1 native application association | **Blocked by design** | Window-generation identity, privilege and detach policy are not settled; nominated programs/versions absent |
 | W1 browser HTTPS edge | **Blocked** | Requires deployment/security decisions, enrollment/revocation workflow and environment |
 | W2 Web/PWA client | Foundations done; product **blocked** | Portal receipt model and monitor session are browser-safe and tested; real device/network acceptance needs W1, M1, C4, H5, E4 |
-| Q0 qualification preparation | Harness + new real end-to-end scripts | Existing Q0 manifest/validation harness (24 tests) plus `scripts/e2e-command-center-control.mjs` (18 checks) and `scripts/e2e-command-center-pi-host.mjs` (5 checks, both modes), all PASS with real Rust binary/SQLite/WebSocket. No Q1-Q3 capacity or device run exists |
+| Q0 qualification preparation | Harness + real end-to-end scripts verified on Windows and Linux | Existing Q0 manifest/validation harness (24 tests) plus `scripts/e2e-command-center-control.mjs` (18 checks) and `scripts/e2e-command-center-pi-host.mjs` (5 checks, both modes), all PASS with the real Rust binary/SQLite/WebSocket on Windows and on the remote `dev` Linux host. Scope suites on Linux: `command_center` 82/82, `owner_handoff` 141/141, `state` 5/5. The whole Linux Rust suite is not green because suites that simulate permission failures or need network fail as root; those modules were untouched. No Q1-Q3 capacity or device run exists |
 | Q1/Q2/Q3 measurement and devices | **Blocked** | Requires integrated candidate plus nominated two-core/8 GB runner, programs and phones |
 | R1 release readiness | **Blocked** | Depends on Q1-Q3 |
 | X1 macOS/Linux native lane | **Blocked** | Requires nominated native runners |

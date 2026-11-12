@@ -55,6 +55,34 @@ Both end-to-end scripts run the real Rust binary, real SQLite, the production
 the model sidecar (deterministic external runtime acknowledgement / a
 `sidecar.configure`-only stub), so no provider, paid API or user profile is used.
 
+## Cross-machine verification on the remote `dev` Linux host
+
+The same candidate (`7afbd2bb6`, then the docs commit) was cloned on
+`dev` (Debian 12, x86_64, Node 24.21, rustc 1.89) and exercised there:
+
+| Check | Result |
+|---|---|
+| `cargo test -p host-core command_center` | **82/82** |
+| `cargo test -p host-core owner_handoff` | **141/141** (the 24 Windows-only native-root/serving tests correctly do not compile here) |
+| `cargo test -p host-core state::tests` | **5/5** |
+| `cargo fmt -p host-core --check` | pass |
+| shared / agent-host / racp / client / i18n | 812 / 172 / 53 / 259 / 33 passed |
+| `scripts/e2e-command-center-control.mjs` | **PASS**, 18 checks, cleanup confirmed |
+| `scripts/e2e-command-center-pi-host.mjs` | **PASS**, command-center mode, cleanup confirmed |
+| `scripts/e2e-command-center-pi-host.mjs --default-mode` | **PASS**, no capability advertised |
+
+`cargo test -p host-core` as a whole is **not green on this host**: the
+`dev` account is root, so suites that simulate permission failures
+(`config_sync` transport/crypto), network-facing review/S3 suites and some
+transcript-integrity cases fail for environment reasons. Those modules are
+outside this change's surface and were not modified here; the scope suites
+listed above are the authoritative signal. This limitation is recorded, not
+waived.
+
+Two harness defects found by that run were fixed and re-verified on both
+platforms: a clone carrying only the request branch has no `origin/main`, and
+a POSIX Host data directory must be owner-only (`0700`) before startup.
+
 ## Still open after Batch 6
 
 1. Desktop successor production launch: startup constructs the root and the
