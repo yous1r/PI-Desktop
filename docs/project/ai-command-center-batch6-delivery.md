@@ -90,13 +90,14 @@ a POSIX Host data directory must be owner-only (`0700`) before startup.
    composition still needs a prepared-claim producer plus the target's real live
    event epoch from the Node hub; until then an opted-in Desktop host fails
    closed with `HANDOFF_ATTACHMENT_READY_UNAVAILABLE`.
-2. `target_serve` is serial and drops notifications; the ordinary `rpc::serve`
-   concurrency/notification parity and a Node post-Ready RPC/notification client
-   remain tickets.
-3. Entry-point quota wiring: `admitExecution`/`holdExecution`/
-   `releaseExecution` exist and are C2-authoritative, but Desktop session start,
-   RACP turn/session create, plugin tools, scheduler, Task/Worker and background
-   tasks do not call them yet.
+2. `target_serve` is serial and still drops server notifications; the Node
+   post-Ready RPC/notification client now exists, but the Rust forwarding and
+   ordinary `rpc::serve` concurrency/notification parity remain tickets.
+3. Entry-point quota wiring: `admitExecution`/`holdExecution`/`releaseExecution`
+   are C2-authoritative and the headless Host now reserves every RACP `turn/start`
+   before prompting; Desktop local session start, plugin tools, scheduler,
+   Task/subagent, native child/Worker and background tasks still do not call the
+   port.
 4. `membership.remove` and `intervention.ack status=consumed` boundary
    whitelisting keep their documented C2 gaps.
 5. External lanes remain out of scope: N1, W1/W2, Q1-Q3, R1, X1, Voice.
