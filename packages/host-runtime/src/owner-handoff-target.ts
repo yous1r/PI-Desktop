@@ -131,6 +131,13 @@ export interface OwnerHandoffTargetReadyResources {
   }): Promise<OwnerHandoffReadyOutcome> | OwnerHandoffReadyOutcome;
 }
 
+/** A server-initiated JSON-RPC notification on the post-Ready framed channel. */
+export type OwnerHandoffTargetNotification = {
+  method: string;
+  params: unknown;
+};
+export type OwnerHandoffTargetNotificationHandler = (notification: OwnerHandoffTargetNotification) => void;
+
 /**
  * Framed private transport to the original `--owner-target` child. Disposal
  * must end stdin, wait for the original child exit and must not adopt or look
@@ -144,6 +151,12 @@ export interface OwnerHandoffTargetTransport {
   attachEpoch?(request: OwnerHandoffTargetAttachEpoch, timeoutMs: number): Promise<OwnerHandoffReadyOutcome>;
   /** Ask the same claimed Rust process to commit and return ReadyOutcome. */
   ready?(request: OwnerHandoffTargetReadyRequest, timeoutMs: number): Promise<OwnerHandoffReadyOutcome>;
+  /** Post-Ready ordinary JSON-RPC over the same framed channel. */
+  rpcCall?<T = unknown>(method: string, params: unknown, timeoutMs?: number): Promise<T>;
+  /** Bounded server notifications after Ready; the returned function unsubscribes. */
+  onTargetNotification?(handler: OwnerHandoffTargetNotificationHandler): () => void;
+  /** Drop buffered notifications and observers without ending the child. */
+  closeTargetNotifications?(): void;
   confirmExit(timeoutMs: number): Promise<boolean>;
   /** False when a failed spawn never produced an original child to wait for. */
   hasProcess?(): boolean;

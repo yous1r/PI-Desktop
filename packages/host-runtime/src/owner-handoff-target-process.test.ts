@@ -17,12 +17,15 @@ vi.mock("node:child_process", () => ({
 import {
   launchOwnerHandoffTarget,
   OwnerHandoffTargetProcess,
+  OWNER_HANDOFF_TARGET_NOTIFICATION_LIMIT,
+  OWNER_HANDOFF_TARGET_RPC_MAX_INFLIGHT,
   parseOwnerHandoffTargetReadyResponse,
 } from "./owner-handoff-target-process.js";
-import type {
-  OwnerHandoffReadyOutcome,
-  OwnerHandoffTargetLaunch,
-  OwnerHandoffTargetTicket,
+import {
+  createOwnerHandoffTargetReadyRequest,
+  type OwnerHandoffReadyOutcome,
+  type OwnerHandoffTargetLaunch,
+  type OwnerHandoffTargetTicket,
 } from "./owner-handoff-target.js";
 
 const fixture = JSON.parse(readFileSync(new URL("../../shared/test/fixtures/owner-handoff.json", import.meta.url), "utf8"));
@@ -108,6 +111,55 @@ function setup() {
 }
 function nextFrame(child: Child): Promise<Buffer> {
   return new Promise((resolve) => child.stdin.once("data", resolve));
+}
+/** Parse the 4-byte framed JSON objects the transport writes to stdin. */
+function stdinFrames(child: Child) {
+  let buffer = Buffer.alloc(0);
+  const frames: unknown[] = [];
+  const waiters: Array<(value: unknown) => void> = [];
+  const drain = () => {
+    while (waiters.length > 0 && frames.length > 0) waiters.shift()!(frames.shift());
+  };
+  child.stdin.on("data", (chunk: Buffer) => {
+    buffer = Buffer.concat([buffer, chunk]);
+    while (buffer.length >= 4) {
+      const length = buffer.readUInt32LE(0);
+      if (buffer.length < length + 4) break;
+      frames.push(JSON.parse(buffer.subarray(4, length + 4).toString("utf8")));
+      buffer = buffer.subarray(length + 4);
+    }
+    drain();
+  });
+  return {
+    next(): Promise<unknown> {
+      if (frames.length > 0) return Promise.resolve(frames.shift());
+      return new Promise((resolve) => { waiters.push(resolve); drain(); });
+    },
+  };
+}
+function rpcProcess() {
+  const child = new Child();
+  spawnState.child = child;
+  const transport = new OwnerHandoffTargetProcess({
+    binaryPath: "C:\\fixture\\host.exe",
+    dataDir: "C:\\fixture\\data",
+    profileId,
+    onStderr: () => {},
+  });
+  return { child, transport, frames: stdinFrames(child) };
+}
+const READY_REQUEST_ID = "99999999-9999-4999-8999-999999999999";
+async function openRpc(
+  transport: OwnerHandoffTargetProcess,
+  child: Child,
+  frames: ReturnType<typeof stdinFrames>,
+) {
+  const request = createOwnerHandoffTargetReadyRequest(claimedRecord, READY_REQUEST_ID);
+  const written = frames.next();
+  const readying = transport.ready(request);
+  await written;
+  child.stdout.write(frame({ version: 1, ready: readyOutcome }));
+  await readying;
 }
 afterEach(() => vi.useRealTimers());
 
@@ -290,5 +342,180 @@ describe.skipIf(process.platform !== "win32")("restricted target process", () =>
     await vi.advanceTimersByTimeAsync(25);
     await rejected;
     await transport.dispose();
+  });
+
+  describe("post-Ready JSON-RPC", () => {
+    const tick = () => new Promise((resolve) => setImmediate(resolve));
+
+    it("correlates out-of-order replies coalesced in one stdout chunk", async () => {
+      const { child, transport, frames } = rpcProcess();
+      await openRpc(transport, child, frames);
+      const first = transport.rpcCall<{ a: number }>("session/list", { limit: 1 });
+      const second = transport.rpcCall<{ b: number }>("host/list", { filter: "x" });
+      const requestA = await frames.next() as { id: string };
+      const requestB = await frames.next() as { id: string };
+      expect(requestA).toMatchObject({ jsonrpc: "2.0", method: "session/list", params: { limit: 1 } });
+      expect(requestB).toMatchObject({ jsonrpc: "2.0", method: "host/list", params: { filter: "x" } });
+      child.stdout.write(Buffer.concat([
+        frame({ jsonrpc: "2.0", id: requestB.id, result: { b: 2 } }),
+        frame({ jsonrpc: "2.0", id: requestA.id, result: { a: 1 } }),
+      ]));
+      await expect(first).resolves.toEqual({ a: 1 });
+      await expect(second).resolves.toEqual({ b: 2 });
+      await transport.dispose();
+    });
+
+    it("parses a post-Ready reply split across every byte", async () => {
+      const { child, transport, frames } = rpcProcess();
+      await openRpc(transport, child, frames);
+      const call = transport.rpcCall("session/list", {});
+      const request = await frames.next() as { id: string };
+      const response = frame({ jsonrpc: "2.0", id: request.id, result: { ok: true } });
+      for (let index = 0; index < response.length; index += 1) {
+        child.stdout.write(response.subarray(index, index + 1));
+      }
+      await expect(call).resolves.toEqual({ ok: true });
+      await transport.dispose();
+    });
+
+    it("maps a JSON-RPC error reply to an errorCode", async () => {
+      const { child, transport, frames } = rpcProcess();
+      await openRpc(transport, child, frames);
+      const call = transport.rpcCall("session/list", {});
+      const request = await frames.next() as { id: string };
+      child.stdout.write(frame({
+        jsonrpc: "2.0", id: request.id,
+        error: { code: -32000, message: "denied", data: { errorCode: "HANDOFF_TEST_DENIED" } },
+      }));
+      const error = await call.catch((failure: Error & { code?: number; errorCode?: string }) => failure);
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe("denied");
+      expect((error as Error & { code?: number }).code).toBe(-32000);
+      expect((error as Error & { errorCode?: string }).errorCode).toBe("HANDOFF_TEST_DENIED");
+      await transport.dispose();
+    });
+
+    it("rejects a timed-out call, ignores its late reply and keeps serving", async () => {
+      const { child, transport, frames } = rpcProcess();
+      await openRpc(transport, child, frames);
+      vi.useFakeTimers();
+      const timedOut = transport.rpcCall("session/list", {}, 25);
+      const request = await frames.next() as { id: string };
+      const rejected = expect(timedOut).rejects.toMatchObject({ errorCode: "HANDOFF_TARGET_RPC_TIMEOUT" });
+      await vi.advanceTimersByTimeAsync(25);
+      await rejected;
+      vi.useRealTimers();
+      child.stdout.write(frame({ jsonrpc: "2.0", id: request.id, result: { late: true } }));
+      await tick();
+      const next = transport.rpcCall("host/list", {});
+      const second = await frames.next() as { id: string };
+      child.stdout.write(frame({ jsonrpc: "2.0", id: second.id, result: { ok: 1 } }));
+      await expect(next).resolves.toEqual({ ok: 1 });
+      await transport.dispose();
+    });
+
+    it("caps in-flight calls instead of queueing without bound", async () => {
+      const { child, transport, frames } = rpcProcess();
+      await openRpc(transport, child, frames);
+      const calls = Array.from({ length: OWNER_HANDOFF_TARGET_RPC_MAX_INFLIGHT }, (_, index) =>
+        transport.rpcCall<{ index: number }>("session/list", { index }));
+      const requests = [];
+      for (let index = 0; index < OWNER_HANDOFF_TARGET_RPC_MAX_INFLIGHT; index += 1) {
+        requests.push(await frames.next() as { id: string });
+      }
+      await expect(transport.rpcCall("session/list", { index: 32 }))
+        .rejects.toMatchObject({ errorCode: "HANDOFF_TARGET_RPC_BUSY" });
+      child.stdout.write(Buffer.concat(requests.map((request, index) =>
+        frame({ jsonrpc: "2.0", id: request.id, result: { index } }))));
+      await expect(Promise.all(calls)).resolves.toHaveLength(OWNER_HANDOFF_TARGET_RPC_MAX_INFLIGHT);
+      await transport.dispose();
+    });
+
+    it("opens the RPC mirror synchronously when Ready and a notification share a chunk", async () => {
+      const { child, transport } = rpcProcess();
+      const request = createOwnerHandoffTargetReadyRequest(claimedRecord, READY_REQUEST_ID);
+      const written = nextFrame(child);
+      const readying = transport.ready(request);
+      await written;
+      child.stdout.write(Buffer.concat([
+        frame({ version: 1, ready: readyOutcome }),
+        frame({ jsonrpc: "2.0", method: "turn/progress", params: { id: 9 } }),
+      ]));
+      await readying;
+      const seen: unknown[] = [];
+      transport.onTargetNotification((notification) => seen.push(notification));
+      expect(seen).toEqual([{ method: "turn/progress", params: { id: 9 } }]);
+      await transport.dispose();
+    });
+
+    it("buffers notifications for a subscriber and stops after unsubscribe", async () => {
+      const { child, transport, frames } = rpcProcess();
+      await openRpc(transport, child, frames);
+      child.stdout.write(Buffer.concat([
+        frame({ jsonrpc: "2.0", method: "approval/requested", params: { id: 1 } }),
+        frame({ jsonrpc: "2.0", method: "turn/progress", params: { id: 2 } }),
+      ]));
+      await tick();
+      const seen: Array<{ method: string; params: unknown }> = [];
+      const unsubscribe = transport.onTargetNotification((notification) => seen.push(notification));
+      expect(seen).toEqual([
+        { method: "approval/requested", params: { id: 1 } },
+        { method: "turn/progress", params: { id: 2 } },
+      ]);
+      unsubscribe();
+      child.stdout.write(frame({ jsonrpc: "2.0", method: "after/unsubscribe", params: {} }));
+      await tick();
+      expect(seen).toHaveLength(2);
+      await transport.dispose();
+    });
+
+    it("fails closed on notification overflow instead of dropping silently", async () => {
+      const { child, transport, frames } = rpcProcess();
+      await openRpc(transport, child, frames);
+      const pending = transport.rpcCall("session/list", {});
+      await frames.next();
+      const burst = Array.from({ length: OWNER_HANDOFF_TARGET_NOTIFICATION_LIMIT + 1 }, (_, index) =>
+        frame({ jsonrpc: "2.0", method: "progress", params: { index } }));
+      child.stdout.write(Buffer.concat(burst));
+      await expect(pending).rejects.toMatchObject({ errorCode: "HANDOFF_TARGET_NOTIFICATION_OVERFLOW" });
+      await expect(transport.rpcCall("host/list", {}))
+        .rejects.toMatchObject({ errorCode: "HANDOFF_TARGET_NOTIFICATION_OVERFLOW" });
+      await transport.dispose();
+    });
+
+    it("ignores unknown ids and rejects before Ready", async () => {
+      const preReady = rpcProcess();
+      await expect(preReady.transport.rpcCall("session/list", {}))
+        .rejects.toMatchObject({ errorCode: "HANDOFF_TARGET_RPC_UNAVAILABLE" });
+      await preReady.transport.dispose();
+
+      const { child, transport, frames } = rpcProcess();
+      await openRpc(transport, child, frames);
+      child.stdout.write(frame({ jsonrpc: "2.0", id: "unknown", result: { ignored: true } }));
+      await tick();
+      const call = transport.rpcCall("session/list", {});
+      const request = await frames.next() as { id: string };
+      child.stdout.write(frame({ jsonrpc: "2.0", id: request.id, result: { ok: true } }));
+      await expect(call).resolves.toEqual({ ok: true });
+      await transport.dispose();
+    });
+
+    it("dispose rejects in-flight calls and late frames cannot revive it", async () => {
+      const { child, transport, frames } = rpcProcess();
+      await openRpc(transport, child, frames);
+      const pending = transport.rpcCall("session/list", {});
+      await frames.next();
+      const disposing = transport.dispose();
+      await expect(pending).rejects.toMatchObject({ errorCode: "HANDOFF_TRANSPORT_CLOSED" });
+      await disposing;
+      await expect(transport.rpcCall("host/list", {}))
+        .rejects.toMatchObject({ errorCode: "HANDOFF_TRANSPORT_CLOSED" });
+      const seen: unknown[] = [];
+      const unsubscribe = transport.onTargetNotification((notification) => seen.push(notification));
+      child.stdout.write(frame({ jsonrpc: "2.0", method: "late/notification", params: {} }));
+      await tick();
+      expect(seen).toEqual([]);
+      unsubscribe();
+    });
   });
 });
