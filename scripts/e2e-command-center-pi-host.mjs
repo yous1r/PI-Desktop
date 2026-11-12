@@ -33,9 +33,14 @@ rl.on('close', () => process.exit(0));
 `);
 const checks = [];
 const digest = value => createHash('sha256').update(value).digest('hex');
+// A verification clone may carry only the request branch; record the base when known.
+function baseMainRef() {
+  try { return execFileSync('git', ['rev-parse', 'origin/main'], { cwd: root, encoding: 'utf8' }).trim(); }
+  catch { return null; }
+}
 const result = {
   status: 'FAIL', candidate: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
-  baseMain: execFileSync('git', ['rev-parse', 'origin/main'], { cwd: root, encoding: 'utf8' }).trim(),
+  baseMain: baseMainRef(),
   scriptSha256: digest(await readFile(fileURLToPath(import.meta.url))),
   hostBinarySha256: digest(await readFile(binary)), platform: process.platform,
   checks, cleanupConfirmed: false, scope: 'production startPiHost + Rust + WS; external model sidecar double',

@@ -28,9 +28,14 @@ const directory = await mkdtemp(join(resolve(process.env.PI_SCRATCH_DIR), 'cc-co
 for (const name of ['profile', 'home', 'temp']) await mkdir(join(directory, name));
 const profile = join(directory, 'profile');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+// A verification clone may carry only the request branch; record the base when known.
+function baseMainRef() {
+  try { return execFileSync('git', ['rev-parse', 'origin/main'], { cwd: root, encoding: 'utf8' }).trim(); }
+  catch { return null; }
+}
 const result = {
   status: 'FAIL', candidate: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
-  baseMain: execFileSync('git', ['rev-parse', 'origin/main'], { cwd: root, encoding: 'utf8' }).trim(),
+  baseMain: baseMainRef(),
   scriptSha256: hash(await readFile(fileURLToPath(import.meta.url))),
   hostBinarySha256: hash(await readFile(binary)),
   platform: process.platform, node: process.version, checks: [], cleanupConfirmed: false,
