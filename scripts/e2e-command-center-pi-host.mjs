@@ -16,7 +16,7 @@ const binary = resolve(process.env.PI_DESKTOP_HOST_BIN);
 const scratch = resolve(process.env.PI_SCRATCH_DIR);
 await mkdir(scratch, { recursive: true });
 const directory = await mkdtemp(join(scratch, 'cc-pi-host-'));
-for (const name of ['home', 'temp', 'off', 'on']) await mkdir(join(directory, name));
+// pi-host refuses a data directory that other users can read on POSIX.\nfor (const name of ['home', 'temp', 'off', 'on']) await mkdir(join(directory, name), { mode: 0o700 });
 const sidecarEntry = join(directory, 'sidecar-edge.cjs');
 await writeFile(sidecarEntry, `
 const rl = require('node:readline').createInterface({input:process.stdin});
