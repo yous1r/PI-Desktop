@@ -18,12 +18,13 @@ import {
   type CommandCenterHost,
   type CommandCenterMonitorRpcPort,
   type RuntimeService,
+  type RuntimeTurnAdmissionPort,
 } from "@pi-desktop/host-runtime";
 import { createCommandCenterDispatch, type RacpHostOperations } from "@pi-desktop/racp";
 import type { PiHostConfig } from "./config.js";
 
 /** The exact RuntimeService operations the command-center consumer may use. */
-export type PiHostCommandCenterRuntime = Pick<RuntimeService, "activeTurnId" | "steer" | "abort">;
+export type PiHostCommandCenterRuntime = Pick<RuntimeService, "activeTurnId" | "steer" | "abort" | "setAdmission">;
 
 export type PiHostCommandCenter = {
   readonly control: CommandCenterHost["control"];
@@ -125,6 +126,38 @@ export function createPiHostRuntimeHandoff(runtime: PiHostCommandCenterRuntime):
 }
 
 /**
+ * Bridge the control-level session admission helpers to the RuntimeService
+ * turn lifecycle. The workspace membership is resolved by the control service
+ * from C2; this adapter never guesses a workspace or counts capacity itself.
+ */
+export function createPiHostTurnAdmission(
+  control: CommandCenterHost["control"],
+  hostIdentity: () => CommandCenterBinding,
+  principal: Principal = { subject: "command-center", roles: ["owner"] },
+): RuntimeTurnAdmissionPort {
+  return {
+    async admit({ sessionId, turnId }) {
+      const binding = hostIdentity();
+      await control.admitSessionTurn(principal, {
+        version: 1, hostId: binding.hostId, expectedHostEpoch: binding.hostEpoch, sessionId, turnId,
+      });
+    },
+    async hold({ sessionId, turnId }, state, evidence) {
+      const binding = hostIdentity();
+      await control.holdSessionTurn(principal, {
+        version: 1, hostId: binding.hostId, expectedHostEpoch: binding.hostEpoch, sessionId, turnId, state, evidence,
+      });
+    },
+    async release({ sessionId, turnId }, terminal, evidence) {
+      const binding = hostIdentity();
+      return control.releaseSessionTurn(principal, {
+        version: 1, hostId: binding.hostId, expectedHostEpoch: binding.hostEpoch, sessionId, turnId, to: terminal, evidence,
+      });
+    },
+  };
+}
+
+/**
  * Bind the real command-center composition to the running pi-host.
  *
  * Off by default: no operation key, capability or monitor port is added unless
@@ -170,10 +203,14 @@ export function attachPiHostCommandCenter(deps: PiHostCommandCenterDeps): PiHost
 
   deps.operations.commandCenter = host.control;
   deps.operations.commandCenterMonitorPage = monitorPage;
+  // Every RACP turn now passes C2 admission before its sidecar prompt. The
+  // runtime is constructed before this factory, so the port is installed here.
+  deps.runtime.setAdmission(createPiHostTurnAdmission(host.control, hostIdentity));
   return {
     control: host.control,
     monitorPage,
     async dispose() {
+      deps.runtime.setAdmission(null);
       monitorPage.dispose();
       await host.dispose();
     },

@@ -4,7 +4,8 @@ import {
   commandCenterCanonicalPayload, commandCenterConsumptionBindsReceipt, commandCenterExecutionKey,
   commandCenterReceiptBindsRequest, commandCenterReceiptCanTransition, commandCenterWithinBytes,
   parseCommandCenterAdmissionSnapshot, rolesAllowOperation,
-  type CommandCenterAdmissionSnapshot, type CommandCenterExecutionTarget,
+  type CommandCenterAdmissionSnapshot, type CommandCenterAdmissionState,
+  type CommandCenterExecutionTarget,
   type CommandCenterInterventionRequest, type CommandCenterOperation, type CommandCenterReceipt,
 } from "@pi-desktop/shared";
 import { RacpError } from "./errors.js";
@@ -18,7 +19,7 @@ import {
   COMMAND_CENTER_METHODS, commandCenterMutation, hostId,
   parseCommandCenterAdmissionHoldRequest, parseCommandCenterAdmissionReleaseRequest,
   parseCommandCenterAdmissionRequest, parseCommandCenterConsumptionRequest,
-  parseCommandCenterRequest, text, uuid,
+  parseCommandCenterRequest, invalid, record, strictKeys, text, uuid,
   type CommandCenterAccess, type CommandCenterBinding,
   type CommandCenterMethod, type CommandCenterReceiptEntry,
   type CommandCenterRepository, type CommandCenterRepositoryContext, type CommandCenterRepositoryMethod,
@@ -87,6 +88,63 @@ type PublicResults = Omit<CommandCenterResults, "intervention/record" | "receipt
   "receipt/get": CommandCenterReceipt | null;
   "receipt/list": { receipts: CommandCenterReceipt[]; nextAfterSequence: number | null };
 };
+
+/** One RACP turn asking for admission by its durable session/turn identity. */
+export type CommandCenterSessionAdmissionRef = {
+  version: 1;
+  hostId: string;
+  expectedHostEpoch: string;
+  sessionId: string;
+  turnId: string;
+};
+export type CommandCenterSessionHoldRequest = CommandCenterSessionAdmissionRef & {
+  state: "outcome_unknown";
+  evidence: string;
+};
+export type CommandCenterSessionReleaseRequest = CommandCenterSessionAdmissionRef & {
+  to: "completed" | "aborted" | "failed" | "launch_failed";
+  evidence: string;
+};
+
+function sessionRefFields(value: unknown): CommandCenterSessionAdmissionRef {
+  if (!commandCenterWithinBytes(value, 16 * 1024)) invalid();
+  const input = record(JSON.parse(JSON.stringify(value)));
+  if (input.version !== 1) invalid();
+  hostId(input.hostId); uuid(input.expectedHostEpoch); text(input.sessionId, 128); text(input.turnId, 256);
+  return {
+    version: 1,
+    hostId: hostId(input.hostId),
+    expectedHostEpoch: uuid(input.expectedHostEpoch),
+    sessionId: text(input.sessionId, 128),
+    turnId: text(input.turnId, 256),
+  };
+}
+
+function parseSessionAdmissionRef(value: unknown): CommandCenterSessionAdmissionRef {
+  const ref = sessionRefFields(value);
+  strictKeys(record(JSON.parse(JSON.stringify(value))), ["version", "hostId", "expectedHostEpoch", "sessionId", "turnId"]);
+  return ref;
+}
+
+function parseSessionHold(value: unknown): CommandCenterSessionHoldRequest {
+  const ref = sessionRefFields(value);
+  const input = record(JSON.parse(JSON.stringify(value)));
+  if (input.state !== "outcome_unknown") invalid();
+  strictKeys(input, ["version", "hostId", "expectedHostEpoch", "sessionId", "turnId", "state", "evidence"]);
+  return { ...ref, state: "outcome_unknown", evidence: text(input.evidence, 128) };
+}
+
+function parseSessionRelease(value: unknown): CommandCenterSessionReleaseRequest {
+  const ref = sessionRefFields(value);
+  const input = record(JSON.parse(JSON.stringify(value)));
+  if (!["completed", "aborted", "failed", "launch_failed"].includes(String(input.to))) invalid();
+  strictKeys(input, ["version", "hostId", "expectedHostEpoch", "sessionId", "turnId", "to", "evidence"]);
+  return {
+    ...ref,
+    to: input.to as CommandCenterSessionReleaseRequest["to"],
+    evidence: text(input.evidence, 128),
+  };
+}
 /** Repository failures that prove the request was never applied. */
 const PROVEN_REPOSITORY_REFUSALS: ReadonlySet<string> = new Set([
   "FORBIDDEN", "INVALID_ARGUMENT", "CAPABILITY_UNAVAILABLE", "HOST_BUSY", "RESOURCE_EXHAUSTED", "NOT_FOUND",
@@ -514,6 +572,108 @@ export class CommandCenterControl {
     await this.assertAdmissionStillAllowed(principal, binding, "workspace", input.commandWorkspaceId);
     await this.assertAdmissionStillAllowed(principal, binding, "session", sessionId(input.target));
     return outcome;
+  }
+
+  /**
+   * Admit one RACP turn by its durable session/turn identity.
+   *
+   * The command workspace and its revision come only from the C2 membership
+   * record; a missing membership or disabled workspace is an explicit refusal,
+   * never a guessed default workspace. The actual quota decision reuses
+   * `admitExecution` and the same C2 reservation transaction.
+   */
+  async admitSessionTurn(
+    authenticatedPrincipal: Principal,
+    value: unknown,
+  ): Promise<CommandCenterAdmissionReservation> {
+    const principal = this.admissionPrincipal(authenticatedPrincipal, true);
+    const input = parseSessionAdmissionRef(value);
+    const resolved = await this.resolveSessionAdmission(principal, input);
+    return this.admitExecution(principal, {
+      version: input.version,
+      hostId: input.hostId,
+      expectedHostEpoch: input.expectedHostEpoch,
+      commandWorkspaceId: resolved.workspaceId,
+      expectedMembershipRevision: resolved.revision,
+      target: { kind: "session", sessionId: input.sessionId, turnId: input.turnId },
+    });
+  }
+
+  /** Retain a turn's slot while its terminal outcome is unknown. */
+  async holdSessionTurn(
+    authenticatedPrincipal: Principal,
+    value: unknown,
+  ): Promise<CommandCenterAdmissionReservation> {
+    const principal = this.admissionPrincipal(authenticatedPrincipal, true);
+    const input = parseSessionHold(value);
+    const resolved = await this.resolveSessionAdmission(principal, input);
+    const base = {
+      version: input.version,
+      hostId: input.hostId,
+      expectedHostEpoch: input.expectedHostEpoch,
+      commandWorkspaceId: resolved.workspaceId,
+      target: { kind: "session" as const, sessionId: input.sessionId, turnId: input.turnId },
+      evidence: input.evidence,
+    };
+    // A reserved turn holds capacity already; C2 only allows `reserved` to move
+    // to `starting`, so advance it first, then record the uncertain outcome.
+    await this.holdExecution(principal, { ...base, from: "reserved", to: "starting" })
+      .catch((error: unknown) => {
+        if (!(error instanceof RacpError && error.code === "CONFLICT")) throw error;
+      });
+    return this.holdExecution(principal, { ...base, from: "starting", to: input.state });
+  }
+
+  /** Release a finished turn's slot; terminal state comes from its outcome. */
+  async releaseSessionTurn(
+    authenticatedPrincipal: Principal,
+    value: unknown,
+  ): Promise<{ released: boolean }> {
+    const principal = this.admissionPrincipal(authenticatedPrincipal, true);
+    const input = parseSessionRelease(value);
+    const resolved = await this.resolveSessionAdmission(principal, input);
+    return this.releaseExecution(principal, {
+      version: input.version,
+      hostId: input.hostId,
+      expectedHostEpoch: input.expectedHostEpoch,
+      commandWorkspaceId: resolved.workspaceId,
+      target: { kind: "session", sessionId: input.sessionId, turnId: input.turnId },
+      to: input.to,
+      evidence: input.evidence,
+    });
+  }
+
+  private async resolveSessionAdmission(
+    principal: Principal,
+    input: CommandCenterSessionAdmissionRef,
+  ): Promise<{ workspaceId: string; revision: number }> {
+    const binding = this.admissionBinding(input.hostId, input.expectedHostEpoch);
+    const auth = this.admissionAuth(principal);
+    await this.requireAdmissionControl(principal, binding, auth, "session", input.sessionId);
+    this.assertAdmissionOpen(binding);
+    const context: CommandCenterRepositoryContext = { binding, auth };
+    const membership = await this.options.repository.call(
+      "membership/get", { version: 1, hostId: binding.hostId, sessionId: input.sessionId }, context,
+    );
+    this.assertAdmissionOpen(binding);
+    if (!membership) {
+      throw new RacpError("NOT_FOUND", `session ${input.sessionId} is not bound to a command workspace`, { retriable: false });
+    }
+    await this.requireAdmissionControl(principal, binding, auth, "workspace", membership.commandWorkspaceId);
+    this.assertAdmissionOpen(binding);
+    const workspace = await this.options.repository.call(
+      "workspace/get", { version: 1, hostId: binding.hostId, commandWorkspaceId: membership.commandWorkspaceId }, context,
+    );
+    this.assertAdmissionOpen(binding);
+    if (!workspace) {
+      throw new RacpError("NOT_FOUND", `command workspace ${membership.commandWorkspaceId} is unknown`, { retriable: false });
+    }
+    if (!workspace.enabled) {
+      // C2 would refuse the reservation; fail before any turn-side effect with
+      // the same error family the repository adapter maps for CC_WORKSPACE_DISABLED.
+      throw new RacpError("CONFLICT", `command workspace ${membership.commandWorkspaceId} is not enabled`, { retriable: false });
+    }
+    return { workspaceId: membership.commandWorkspaceId, revision: membership.revision };
   }
 
   /**

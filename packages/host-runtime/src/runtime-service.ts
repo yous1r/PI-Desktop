@@ -41,6 +41,24 @@ export type RuntimeSidecarLink = {
  */
 export type TurnEndReason = "completed" | "aborted" | "error";
 
+/**
+ * C2 command-center admission as the turn lifecycle consumes it.
+ *
+ * `admit` is called after the durable turn row exists and before the sidecar is
+ * asked to run; a rejection settles the turn as failed and never prompts.
+ * `release` is exactly-once per admitted turn; an uncertain settlement holds
+ * the slot (state `outcome_unknown`) so capacity is not handed out.
+ */
+export type RuntimeTurnAdmissionPort = {
+  admit(input: { sessionId: string; turnId: string }): Promise<unknown>;
+  hold(input: { sessionId: string; turnId: string }, state: "outcome_unknown", evidence: string): Promise<unknown>;
+  release(
+    input: { sessionId: string; turnId: string },
+    terminal: "completed" | "aborted" | "failed" | "launch_failed",
+    evidence: string,
+  ): Promise<{ released: boolean }>;
+};
+
 export type TurnEndedInfo = {
   sessionId: string;
   turnId: string;
@@ -72,6 +90,8 @@ export type RuntimeServiceOptions = {
     projectPath?: string;
   }) => Promise<{ content: string; command?: string } | null>;
   checkpointIntervalMs?: number;
+  /** Optional C2 admission for RACP turns; absent means behavior is unchanged. */
+  admission?: RuntimeTurnAdmissionPort;
 };
 
 type FinishTurnOptions = { turnId: string; recoverInflight?: boolean; terminalEvent?: AgentEventEnvelope };
@@ -100,6 +120,16 @@ function errorCodeOf(error: unknown): string | undefined {
   return typeof candidate?.errorCode === "string" ? candidate.errorCode : undefined;
 }
 
+/** Preserve the transport error family, else report a quota refusal. */
+function admissionErrorCode(error: unknown): string {
+  const candidate = error as { errorCode?: unknown; code?: unknown; data?: { errorCode?: unknown } } | null;
+  const nested = candidate?.data?.errorCode;
+  if (typeof nested === "string") return nested;
+  if (typeof candidate?.errorCode === "string") return candidate.errorCode;
+  if (typeof candidate?.code === "string") return candidate.code;
+  return ErrorCodes.LIMIT_EXCEEDED;
+}
+
 /**
  * The turn lifecycle of a headless Host: prompt admission, the durable turn
  * row, turn ownership and finalization, and the runtime control calls the
@@ -117,10 +147,14 @@ export class RuntimeService implements RuntimePort {
   private readonly events: TurnEventPipeline;
   private readonly detachers: Array<() => void> = [];
   private readonly now: () => number;
+  private admission: RuntimeTurnAdmissionPort | null;
+  /** Admitted session/turn keys; release is attempted once and then dropped. */
+  private readonly admittedTurns = new Set<string>();
   private disposed = false;
 
   constructor(private readonly options: RuntimeServiceOptions) {
     this.now = options.now ?? (() => Date.now());
+    this.admission = options.admission ?? null;
     this.events = new TurnEventPipeline({
       getHost: () => options.getHost(),
       ownership: {
@@ -139,6 +173,15 @@ export class RuntimeService implements RuntimePort {
   // -------------------------------------------------------------------------
   // Wiring
   // -------------------------------------------------------------------------
+
+  /**
+   * Register the C2 admission authority after construction (the Host factory is
+   * built after the runtime) or clear it. Clearing never releases slots that
+   * were already admitted; their turns settle through the configured port.
+   */
+  setAdmission(admission: RuntimeTurnAdmissionPort | null): void {
+    this.admission = admission;
+  }
 
   /** Observe a (re)started host-core: permission requests become agent events. */
   attachHost(host: RuntimeHostLink): void {
@@ -327,6 +370,19 @@ export class RuntimeService implements RuntimePort {
     sidecar.setProjectInstructionRoot(sessionId, launch.projectPath);
 
     const turnId = await this.beginTurn(sessionId, launch.providerId, launch.modelId, sessionMessage?.origin.messageId);
+    try {
+      // C2 quota admission happens before any prompt is persisted or sent: a
+      // refused turn must never reach the sidecar.
+      await this.admitTurn(sessionId, turnId);
+    } catch (error) {
+      // A lost reservation reply may still have committed a slot. Release by
+      // exact turn identity; C2 answers "not found" when admission truly
+      // refused, so this cannot free another turn's capacity.
+      await this.admission?.release({ sessionId, turnId }, "failed", "turn-admission-failed")
+        .catch(() => undefined);
+      await this.finishTurn(sessionId, "error", admissionErrorCode(error), { turnId });
+      throw error;
+    }
 
     let content = sessionMessage?.content ?? request.content;
     let command: string | undefined;
@@ -636,6 +692,9 @@ export class RuntimeService implements RuntimePort {
           this.options.log("warn", "endTurn failed", { sessionId: id, turnId, error: String(error) });
         }
       } finally {
+        // A terminal row that could not be acknowledged is an uncertain
+        // outcome: keep the C2 slot instead of releasing it as settled.
+        await this.settleAdmission(id, turnId, settled ? reason : null);
         if (this.activeTurns.get(id) === turnId) this.activeTurns.delete(id);
         this.events.scheduleToolCallCleanup(id, turnId);
       }
@@ -669,6 +728,48 @@ export class RuntimeService implements RuntimePort {
     const record: Promise<void> = Promise.resolve().then(run).finally(release);
     this.turnFinalizations.set(key, record);
     return record;
+  }
+
+  private async admitTurn(sessionId: string, turnId: string): Promise<void> {
+    const admission = this.admission;
+    if (!admission) return;
+    await admission.admit({ sessionId, turnId });
+    this.admittedTurns.add(turnKey(sessionId.trim(), turnId.trim()));
+  }
+
+  /**
+   * Settle C2 capacity for one admitted turn, exactly once.
+   *
+   * A settled turn releases as completed/aborted/failed. An unacknowledged
+   * terminal row keeps its slot as `outcome_unknown`. Admitting never happened
+   * for this key when admission is off or was refused; that is a no-op.
+   */
+  private async settleAdmission(
+    sessionId: string,
+    turnId: string,
+    reason: TurnEndReason | null,
+  ): Promise<void> {
+    const admission = this.admission;
+    if (!admission) return;
+    const key = turnKey(sessionId.trim(), turnId.trim());
+    if (!this.admittedTurns.delete(key)) return;
+    try {
+      if (reason === null) {
+        await admission.hold({ sessionId, turnId }, "outcome_unknown", "turn-outcome-unknown");
+        return;
+      }
+      const terminal = reason === "completed" ? "completed" : reason === "aborted" ? "aborted" : "failed";
+      await admission.release({ sessionId, turnId }, terminal, `turn-${terminal}`);
+    } catch (error) {
+      // Capacity reconciliation is authoritative in C2; never fail or restart a
+      // finished turn because its release transport was unavailable.
+      this.options.log("warn", "turn admission settlement failed", {
+        sessionId,
+        turnId,
+        reason: reason ?? "outcome_unknown",
+        error: String(error),
+      });
+    }
   }
 
   private async settleCrashedSession(sessionId: string, crashedTurnId: string): Promise<void> {

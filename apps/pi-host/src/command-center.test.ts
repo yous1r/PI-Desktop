@@ -5,6 +5,13 @@ import { commandCenterExecutionKey, parseCommandCenterInterventionRequest, type 
 import type { Principal } from "@pi-desktop/agent-host";
 import type { RacpHostOperations } from "@pi-desktop/racp";
 import {
+  RuntimeService,
+  type LaunchResolver,
+  type RuntimeHostLink,
+  type RuntimeSidecarLink,
+  type RuntimeTurnAdmissionPort,
+} from "@pi-desktop/host-runtime";
+import {
   attachPiHostCommandCenter,
   createPiHostRuntimeHandoff,
   type PiHostCommandCenterRuntime,
@@ -60,6 +67,7 @@ function runtimeDouble() {
   const active = new Map<string, string | undefined>();
   const steered: string[] = [];
   const aborted: string[] = [];
+  let admission: RuntimeTurnAdmissionPort | null = null;
   const runtime: PiHostCommandCenterRuntime = {
     activeTurnId: (sessionId) => active.get(sessionId),
     async steer(request) {
@@ -70,8 +78,11 @@ function runtimeDouble() {
       aborted.push(`${sessionId}/${turnId ?? ""}`);
       active.delete(sessionId);
     },
+    setAdmission(value) {
+      admission = value;
+    },
   };
-  return { runtime, active, steered, aborted };
+  return { runtime, active, steered, aborted, admission: () => admission };
 }
 
 function intervention(overrides: Partial<CommandCenterInterventionRequest> & {
@@ -222,5 +233,228 @@ describe("pi-host command-center composition", () => {
     await commandCenter!.dispose();
     await expect(commandCenter!.monitorPage.page({ version: 1, hostId: HOST_ID }, { principal }))
       .rejects.toMatchObject({ code: "AGENT_UNAVAILABLE" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RACP turn admission through the real RuntimeService + control service
+// ---------------------------------------------------------------------------
+
+type TurnHarnessOptions = {
+  quotaFull?: boolean;
+  endOk?: boolean;
+  membership?: "ok" | "missing";
+  workspaceEnabled?: boolean;
+};
+
+function turnHarness(options: TurnHarnessOptions = {}) {
+  const calls: Call[] = [];
+  let turnCounter = 0;
+  let endOk = options.endOk ?? true;
+  let quotaFull = options.quotaFull ?? false;
+  const membershipMode = options.membership ?? "ok";
+  const workspaceRecord = { id: workspace.id, name: "Main", enabled: options.workspaceEnabled ?? true, revision: 4 };
+
+  const host: RuntimeHostLink = {
+    async call<T = unknown>(method: string, params?: unknown): Promise<T> {
+      const input = (params ?? {}) as Record<string, unknown>;
+      calls.push({ method, params: input });
+      switch (method) {
+        case "settings.get": return {} as T;
+        case "session.get": return { session: { id: input.id, mode: "agent", permissionMode: "ask", providerId: "p1", modelId: "m1", messages: [] } } as T;
+        case "session.beginTurn": { turnCounter += 1; return { turnId: `turn-${turnCounter}` } as T; }
+        case "session.appendMessage": return {} as T;
+        case "session.saveInflightMessage": return { ok: true } as T;
+        case "session.endTurn": return { ok: endOk } as T;
+        case "plans.abort": return {} as T;
+        case "commandCenter.membership.get": {
+          if (membershipMode === "missing") return null as T;
+          const membershipInput = input.input as { sessionId: string };
+          return { sessionId: membershipInput.sessionId, commandWorkspaceId: workspaceRecord.id, revision: 4 } as T;
+        }
+        case "commandCenter.workspace.get": return workspaceRecord as T;
+        case "commandCenter.reservation.reserve": {
+          if (quotaFull) throw new Error("CC_QUOTA_EXCEEDED: Host already holds 36 live executions");
+          const reservationInput = input.input as { target: CommandCenterExecutionTarget; commandWorkspaceId: string; expectedMembershipRevision: number };
+          return {
+            executionKey: commandCenterExecutionKey(reservationInput.target), workspaceId: reservationInput.commandWorkspaceId,
+            membershipRevision: reservationInput.expectedMembershipRevision, state: "reserved", hostLive: 1, workspaceLive: 1,
+          } as T;
+        }
+        case "commandCenter.reservation.hold": {
+          const reservationInput = input.input as { target: CommandCenterExecutionTarget; commandWorkspaceId: string; to: string };
+          return {
+            executionKey: commandCenterExecutionKey(reservationInput.target), workspaceId: reservationInput.commandWorkspaceId,
+            membershipRevision: 4, state: reservationInput.to, hostLive: 1, workspaceLive: 1,
+          } as T;
+        }
+        case "commandCenter.reservation.release": return { released: true } as T;
+        default: throw new Error(`unexpected host call ${method}`);
+      }
+    },
+    isAvailable: () => true,
+    onNotification: () => () => undefined,
+    onExit: () => () => undefined,
+  };
+
+  const sidecarCalls: Call[] = [];
+  let notify: ((method: string, params: unknown) => void) | null = null;
+  const sidecar: RuntimeSidecarLink = {
+    async call<T = unknown>(method: string, params?: unknown): Promise<T> {
+      const input = (params ?? {}) as Record<string, unknown>;
+      sidecarCalls.push({ method, params: input });
+      switch (method) {
+        case "agent.prompt": return { accepted: true, turnId: input.turnId } as T;
+        case "agent.abort": return { ok: true } as T;
+        case "agent.getStatus": return { status: { sessionId: input.sessionId, isRunning: false, pendingToolConfirmations: 0 } } as T;
+        default: return {} as T;
+      }
+    },
+    onNotification(handler) { notify = handler; return () => { notify = null; }; },
+    onExit: () => () => undefined,
+    setProjectInstructionRoot: () => undefined,
+    clearProjectInstructionRoot: () => undefined,
+    clearVendorAuthBindings: () => undefined,
+  };
+
+  const launch: LaunchResolver = {
+    async resolve(sessionId, session) {
+      return {
+        providerId: String(session.providerId ?? "p1"), modelId: String(session.modelId ?? "m1"),
+        projectPath: "/work/project",
+        sidecarParams: { sessionId, mode: "agent", provider: { id: "p1", name: "P1", modelId: "m1", supportsReasoning: false, supportedThinkingLevels: ["off"] } },
+      };
+    },
+  };
+
+  const runtime = new RuntimeService({ getHost: () => host, getSidecar: () => sidecar, launch, log: () => undefined, now: () => 1 });
+  runtime.attachHost(host);
+  runtime.attachSidecar(sidecar);
+  const operations = {} as RacpHostOperations;
+  const commandCenter = attachPiHostCommandCenter({
+    config: { commandCenter: true }, operations,
+    getHost: () => host, hostId: HOST_ID, getHostEpoch: () => EPOCH,
+    runtime, maintenanceClosed: () => false,
+  });
+  return {
+    runtime, commandCenter, host, sidecarCalls,
+    terminal(turnId: string) {
+      notify?.("agent.event", { sessionId: "s1", turnId, ts: 1, event: { type: "agent_end", messageIds: [] } });
+    },
+    setQuotaFull(value: boolean) { quotaFull = value; },
+    setEndOk(value: boolean) { endOk = value; },
+    calls,
+  };
+}
+
+async function flushTurns(): Promise<void> {
+  for (let index = 0; index < 8; index += 1) await new Promise((resolve) => setImmediate(resolve));
+}
+
+const turnOwner: Principal = { subject: "command-center", roles: ["owner"] };
+const turnRequest = { sessionId: "s1", content: "hello", effectivePermissionMode: "ask" as const, principal: turnOwner };
+
+describe("pi-host RACP turn admission", () => {
+  it("refuses a turn at the C2 quota and never prompts the sidecar", async () => {
+    const harness = turnHarness({ quotaFull: true });
+    await expect(harness.runtime.prompt(turnRequest)).rejects.toMatchObject({ code: "RESOURCE_EXHAUSTED" });
+    expect(harness.sidecarCalls.some((call) => call.method === "agent.prompt")).toBe(false);
+    expect(harness.calls.some((call) => call.method === "commandCenter.reservation.reserve")).toBe(true);
+    expect(harness.calls.some((call) => call.method === "session.endTurn")).toBe(true);
+    await harness.commandCenter!.dispose();
+  });
+
+  it("admits before prompting and releases completed exactly once", async () => {
+    const harness = turnHarness();
+    const { turnId } = await harness.runtime.prompt(turnRequest);
+    const reserveIndex = harness.calls.findIndex((call) => call.method === "commandCenter.reservation.reserve");
+    expect(reserveIndex).toBeGreaterThanOrEqual(0);
+    expect(harness.sidecarCalls.some((call) => call.method === "agent.prompt")).toBe(true);
+    harness.terminal(turnId);
+    await flushTurns();
+    const releases = harness.calls.filter((call) => call.method === "commandCenter.reservation.release");
+    expect(releases).toHaveLength(1);
+    expect((releases[0].params.input as { to: string }).to).toBe("completed");
+    harness.terminal(turnId);
+    await flushTurns();
+    expect(harness.calls.filter((call) => call.method === "commandCenter.reservation.release")).toHaveLength(1);
+    await harness.commandCenter!.dispose();
+  });
+
+  it("releases an aborted turn as aborted", async () => {
+    const harness = turnHarness();
+    await harness.runtime.prompt(turnRequest);
+    await harness.runtime.abort("s1");
+    await flushTurns();
+    const release = harness.calls.find((call) => call.method === "commandCenter.reservation.release");
+    expect((release?.params.input as { to?: string } | undefined)?.to).toBe("aborted");
+    await harness.commandCenter!.dispose();
+  });
+
+  it("keeps an unacknowledged terminal turn as outcome_unknown capacity", async () => {
+    const harness = turnHarness({ endOk: false });
+    const { turnId } = await harness.runtime.prompt(turnRequest);
+    harness.terminal(turnId);
+    await flushTurns();
+    const holds = harness.calls.filter((call) => call.method === "commandCenter.reservation.hold");
+    expect(holds).toHaveLength(2);
+    expect((holds[1].params.input as { to: string }).to).toBe("outcome_unknown");
+    expect(harness.calls.some((call) => call.method === "commandCenter.reservation.release")).toBe(false);
+    await harness.commandCenter!.dispose();
+  });
+
+  it("refuses a turn whose session has no command workspace membership", async () => {
+    const harness = turnHarness({ membership: "missing" });
+    await expect(harness.runtime.prompt(turnRequest)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(harness.sidecarCalls.some((call) => call.method === "agent.prompt")).toBe(false);
+    expect(harness.calls.some((call) => call.method === "commandCenter.reservation.reserve")).toBe(false);
+    await harness.commandCenter!.dispose();
+  });
+
+  it("refuses a turn whose command workspace is disabled", async () => {
+    const harness = turnHarness({ workspaceEnabled: false });
+    await expect(harness.runtime.prompt(turnRequest)).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(harness.sidecarCalls.some((call) => call.method === "agent.prompt")).toBe(false);
+    expect(harness.calls.some((call) => call.method === "commandCenter.reservation.reserve")).toBe(false);
+    await harness.commandCenter!.dispose();
+  });
+
+  it("leaves turn behavior unchanged when the command-center flag is off", async () => {
+    const calls: Call[] = [];
+    const host: RuntimeHostLink = {
+      async call<T = unknown>(method: string, params?: unknown): Promise<T> {
+        const input = (params ?? {}) as Record<string, unknown>;
+        calls.push({ method, params: input });
+        switch (method) {
+          case "settings.get": return {} as T;
+          case "session.get": return { session: { id: input.id, mode: "agent", permissionMode: "ask", providerId: "p1", modelId: "m1", messages: [] } } as T;
+          case "session.beginTurn": return { turnId: "turn-1" } as T;
+          case "session.appendMessage": return {} as T;
+          case "session.saveInflightMessage": return { ok: true } as T;
+          case "session.endTurn": return { ok: true } as T;
+          default: throw new Error(`unexpected host call ${method}`);
+        }
+      },
+      isAvailable: () => true, onNotification: () => () => undefined, onExit: () => () => undefined,
+    };
+    const sidecar: RuntimeSidecarLink = {
+      async call<T = unknown>(method: string): Promise<T> {
+        if (method === "agent.prompt") return { accepted: true, turnId: "turn-1" } as T;
+        return {} as T;
+      },
+      onNotification: () => () => undefined, onExit: () => () => undefined,
+      setProjectInstructionRoot: () => undefined, clearProjectInstructionRoot: () => undefined, clearVendorAuthBindings: () => undefined,
+    };
+    const launch: LaunchResolver = { async resolve(sessionId) { return { providerId: "p1", modelId: "m1", sidecarParams: { sessionId, mode: "agent", provider: { id: "p1", name: "P1", modelId: "m1", supportsReasoning: false, supportedThinkingLevels: ["off"] } } }; } };
+    const runtime = new RuntimeService({ getHost: () => host, getSidecar: () => sidecar, launch, log: () => undefined });
+    runtime.attachHost(host); runtime.attachSidecar(sidecar);
+    const operations = {} as RacpHostOperations;
+    expect(attachPiHostCommandCenter({
+      config: { commandCenter: false }, operations,
+      getHost: () => host, hostId: HOST_ID, getHostEpoch: () => EPOCH,
+      runtime, maintenanceClosed: () => false,
+    })).toBeUndefined();
+    await expect(runtime.prompt(turnRequest)).resolves.toMatchObject({ turnId: "turn-1" });
+    expect(calls.some((call) => call.method.startsWith("commandCenter."))).toBe(false);
   });
 });
