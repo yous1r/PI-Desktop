@@ -6,7 +6,9 @@
   `commandCenter/*` RACP control and monitor operations to the running host-core
   handshake epoch, keeps paired single-user roles unchanged, supports exact-turn
   steer/reviseGoal and stop, and refuses append/delegation/inactive targets
-  without recording a false success. Default off.
+  without recording a false success. While enabled, each RACP turn/start must
+  already have a command workspace membership and reserves a C2 slot that is
+  released or retained by its outcome. Default off.
 
 ## 0.22.3
 

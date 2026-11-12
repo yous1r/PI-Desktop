@@ -10751,6 +10751,7 @@ must keep splitting are covered by `markdown-blocks.test.mjs`.
 | Acceptance | Scenarios |
 |---|---|
 | C / Security / Persistence — Real command-center private RPC, quotas, receipts and WS monitor path | E2E-COMMAND-CENTER-private-rpc-control |
+| C / Security — Headless Host turns reserve C2 capacity before prompting | E2E-COMMAND-CENTER-turn-admission |
 | Security / Lifecycle — Target Ready requires a native root and retained ownership | E2E-HANDOFF-target-real-root |
 | Quality — Command-center P0 runtime baseline (partial evidence for proposed AC-07) | E2E-COMMAND-CENTER-runtime-baseline |
 | Quality — Command-center one-hour fixed-context diagnostic | E2E-COMMAND-CENTER-runtime-soak |
@@ -21078,6 +21079,36 @@ Voice/LiveVoice remains deferred; the earlier isolation incident is unresolved.
   candidate/base revisions and binary/script hashes. The deterministic runtime
   acknowledgement is not an actual model result or a 36-agent performance test.
 - **Status:** Implemented; results apply only to the recorded candidate and inputs.
+
+### E2E-COMMAND-CENTER-turn-admission
+
+- **Title:** A hosted turn reserves a C2 slot before the agent sidecar runs.
+- **Milestone:** C4 entry-point wiring for the headless Host only; Desktop,
+  plugin, scheduler, Task/subagent and background entry points remain separate.
+- **Preconditions:** Candidate `pi-host --command-center` against a candidate
+  host-core, a paired owner device, and a session bound to a command workspace.
+- **Entry:** `apps/pi-host` command-center suite (real `RuntimeService` +
+  `CommandCenterControl`, fake host transport) plus the startup harness
+  `scripts/e2e-command-center-pi-host.mjs` for the binding itself.
+- **Steps:**
+  1. Start a turn for a session with no command workspace membership; require
+     `NOT_FOUND` and confirm the sidecar never receives `agent.prompt`.
+  2. Disable its workspace and repeat; require `CONFLICT`, no prompt.
+  3. Fill a workspace to twelve live slots, then start another turn; require a
+     quota refusal, one settled failed turn row and no prompt.
+  4. Start a normal turn, let it finish `completed`, and require exactly one
+     release; repeat a terminal event and require no second decrement.
+  5. Abort a turn and require release as `aborted`; make `session.endTurn`
+     unacknowledged and require the slot to stay `outcome_unknown`.
+  6. Start the Host with the flag off and confirm the original turn path is
+     unchanged and no admission transport call is made.
+- **Expected:** Capacity is decided only by C2; a refusal never starts
+  execution; release is exactly once and uncertain outcomes retain capacity.
+- **Specs:** [RACP command-center operations](../03-runtime/19-remote-agent-control-protocol.md#622-command-center-operations-catalogued-capability-gated),
+  [Host RPC](../03-runtime/06-host-rpc-protocol.md#22-private-command-center-persistence-and-boot-fencing).
+- **Acceptance:** The named suites pass on the candidate. This does not qualify
+  the remaining entry points or a real model/provider turn.
+- **Status:** Unit-level implemented; the startup harness covers binding only.
 
 ### E2E-HANDOFF-target-real-root
 

@@ -122,8 +122,15 @@ Supported runtime actions are an exact active session target only:
 consumer are refused with `CAPABILITY_UNAVAILABLE`/`CONFLICT` before a receipt
 could be marked accepted or consumed. The monitor page remains bounded (≤100
 rows, ≤64 KiB) and every row is re-authorized for its workspace and session.
-With the flag off, no operation key, monitor port or advertised capability is
-added.
+
+While this mode is on, every RACP `turn/start` first reserves a C2 execution
+slot for its exact session and turn. A session with no command workspace
+membership, or one whose workspace is disabled, is refused with
+`NOT_FOUND`/`CONFLICT` and the sidecar is never prompted; bind the session with
+`commandCenter/membership/bind` first. A settled turn releases its slot, an
+aborted turn releases as `aborted`, and an unconfirmed terminal row keeps
+`outcome_unknown` so capacity is not reused. With the flag off, no operation
+key, monitor port, advertised capability or turn admission is added.
 
 ## Legacy remote-Agent provider import operational behavior
 

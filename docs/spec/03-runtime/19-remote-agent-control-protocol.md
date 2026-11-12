@@ -683,9 +683,12 @@ availability from catalog membership.
 When the Host binds command-center admission, every `turn/start` reserves a C2
 execution slot for its exact session and turn before the agent sidecar is
 prompted, and releases it on a settled terminal outcome or keeps it as
-`outcome_unknown` when the terminal row cannot be confirmed. A refused
-admission fails the turn without starting execution. Hosts that do not bind
-admission keep the unchanged turn path.
+`outcome_unknown` when the terminal row cannot be confirmed. The command
+workspace comes only from the C2 membership record, so a session without
+membership (or with a disabled workspace) is refused with `NOT_FOUND`/`CONFLICT`
+and no execution starts; bind the session first. A refused admission fails the
+turn without starting execution. Hosts that do not bind admission keep the
+unchanged turn path.
 
 A successful `commandCenter/intervention/record` is also the single durable
 dispatch claim for its `(requestId, fingerprint)`: a repeated request replays the

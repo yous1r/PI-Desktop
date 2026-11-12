@@ -239,7 +239,7 @@ owner，工作区读取都按会话持久根、Host 忽略规则和 `PATH_OUTSID
 保持关闭，14 个操作全部在 dispatcher/控制服务运行前返回 `CAPABILITY_UNAVAILABLE`（§6
 错误表）。仅绑定控制服务不能启用该路径，客户端不得从目录成员资格推断可用性。
 
-当 Host 绑定命令中心准入时，每次 `turn/start` 在启动 agent sidecar 之前为其精确的 session/turn 预留 C2 执行槽，终态确认后释放；终态行无法确认时保留为 `outcome_unknown`。准入被拒时该回合直接失败，不会启动执行。未绑定准入的 Host 保持原回合路径。
+当 Host 绑定命令中心准入时，每次 `turn/start` 在启动 agent sidecar 之前为其精确的 session/turn 预留 C2 执行槽，终态确认后释放；终态行无法确认时保留为 `outcome_unknown`。命令工作区只来自 C2 成员关系记录：会话没有成员关系或工作区被禁用时以 `NOT_FOUND`/`CONFLICT` 拒绝，且不会启动执行（需先绑定会话）。准入被拒时该回合直接失败。未绑定准入的 Host 保持原回合路径。
 `commandCenter/intervention/record` 成功落库的回执同时是该 `(requestId, fingerprint)` 的
 唯一持久派发凭据：重复请求返回原回执，payload 变化返回冲突，派发回复丢失时先用保留回执
 对账、不盲目重试。运行时完成通过私有 `commandCenter.intervention.ack` 以预期 revision 的
